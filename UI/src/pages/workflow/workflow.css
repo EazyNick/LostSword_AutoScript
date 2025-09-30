@@ -1,0 +1,725 @@
+/* ========================================== */
+/* 워크플로우 페이지 전용 스타일 */
+/* ========================================== */
+
+/* ========================================== */
+/* 메인 레이아웃 */
+/* ========================================== */
+
+/* 메인 컨텐츠 영역: 헤더 아래 전체 공간을 차지 */
+.main-content {
+    flex: 1;                                    /* 남은 공간을 모두 차지 */
+    display: flex;                              /* 플렉스박스 레이아웃 */
+    height: calc(100vh - 80px);                /* 전체 화면 높이에서 헤더 높이(80px) 제외 */
+}
+
+/* ========================================== */
+/* 워크플로우 영역 */
+/* ========================================== */
+
+/* 워크플로우 영역: 메인 캔버스가 들어가는 공간 */
+.workflow-area {
+    flex: 1;                                    /* 사이드바를 제외한 남은 공간을 모두 차지 */
+    position: relative;                         /* 미니맵의 절대 위치 기준점 */
+    background-color: #1a202c;                  /* 어두운 배경색 */
+    
+    /* 격자 패턴 배경: 점들이 격자 형태로 배치된 패턴 */
+    background-image: 
+        radial-gradient(circle at 1px 1px, rgba(255,255,255,0.1) 1px, transparent 0);
+    background-size: 20px 20px;                 /* 격자 크기: 20x20 픽셀 */
+    
+    overflow: auto;                            /* 스크롤 가능하게 설정 */
+    
+    /* 부모 컨테이너 크기 고정 - 절대 크기로 설정 */
+    width: 100%;
+    height: 100%;
+    min-width: 0;                              /* 플렉스 아이템이 축소될 수 있도록 */
+    min-height: 0;                             /* 플렉스 아이템이 축소될 수 있도록 */
+}
+
+/* 워크플로우 캔버스: 노드들이 배치되는 메인 영역 */
+.workflow-canvas {
+    /* 피그마 방식: Transform 기반 패닝 */
+    position: absolute;                        /* 절대 위치로 설정 */
+    top: 0;
+    left: 0;
+    width: 100%;                               /* 부모 컨테이너 전체 크기 */
+    height: 100%;                              /* 부모 컨테이너 전체 크기 */
+    overflow: hidden;                          /* 스크롤바 숨김 */
+    cursor: grab;                              /* 드래그 가능한 커서 */
+    transform-origin: 0 0;                     /* Transform 기준점 */
+}
+
+/* 캔버스 내부 콘텐츠 컨테이너 */
+.canvas-content {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100000px;                           /* 무한 캔버스 크기 */
+    height: 100000px;                          /* 무한 캔버스 크기 */
+    transform-origin: 0 0;                     /* Transform 기준점 */
+}
+
+/* ========================================== */
+/* 패닝 모드 (마우스 휠로 화면 이동) */
+/* ========================================== */
+
+/* 패닝 모드: 마우스 휠 버튼을 누르고 드래그할 때 */
+.workflow-canvas.panning {
+    cursor: grabbing !important;                /* 드래그 중 커서로 변경 */
+    user-select: none;                         /* 텍스트 선택 방지 */
+    
+    /* 스크롤바 숨김 (모든 브라우저 지원) */
+    scrollbar-width: none;                      /* Firefox */
+    -ms-overflow-style: none;                  /* IE and Edge */
+}
+
+.workflow-canvas.panning::-webkit-scrollbar {
+    display: none;                             /* Chrome, Safari, Opera */
+}
+
+/* 패닝 중에는 텍스트 선택만 방지 (pointer-events는 제거하여 패닝 동작 보장) */
+.workflow-canvas.panning * {
+    user-select: none;                         /* 텍스트 선택 방지 */
+}
+
+/* ========================================== */
+/* 줌 모드 (Ctrl + 마우스 휠로 확대/축소) */
+/* ========================================== */
+
+/* 줌 모드: 줌 가능한 상태임을 나타내는 커서 */
+.workflow-canvas.zooming {
+    cursor: zoom-in;                           /* 확대 커서 */
+}
+
+.workflow-canvas.zooming:hover {
+    cursor: zoom-out;                          /* 축소 커서 */
+}
+
+/* ========================================== */
+/* SVG 연결선 컨테이너 */
+/* ========================================== */
+
+/* 연결선을 그리는 SVG 컨테이너 */
+.connection-svg {
+    position: absolute !important;              /* 절대 위치 (노드 위에 표시) */
+    top: 0 !important;                         /* 캔버스 상단에 고정 */
+    left: 0 !important;                        /* 캔버스 좌측에 고정 */
+    width: 100% !important;                     /* 캔버스 전체 너비 */
+    height: 100% !important;                    /* 캔버스 전체 높이 */
+    pointer-events: none !important;           /* 마우스 이벤트 무시 (노드 클릭 방해 방지) */
+    z-index: 1 !important;                     /* 노드들 위에 표시 */
+    overflow: visible !important;              /* 연결선이 영역 밖으로 나가도 표시 */
+}
+
+/* ========================================== */
+/* 워크플로우 노드 */
+/* ========================================== */
+
+/* 워크플로우 노드 기본 스타일 */
+.workflow-node {
+    position: absolute;                         /* 절대 위치 (캔버스 내에서 자유 배치) */
+    width: 200px;                              /* 노드 너비 */
+    height: 80px;                              /* 노드 높이 */
+    border-radius: 12px;                       /* 둥근 모서리 */
+    cursor: move;                              /* 드래그 가능함을 나타내는 커서 */
+    transition: all 0.3s ease;                 /* 부드러운 전환 효과 */
+    display: flex;                             /* 플렉스박스 레이아웃 */
+    align-items: center;                       /* 세로 중앙 정렬 */
+    justify-content: space-between;            /* 요소들 사이에 공간 배분 */
+    padding: 0 15px;                           /* 좌우 여백 */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); /* 그림자 효과 */
+    animation: fadeIn 0.5s ease-out;          /* 생성 시 페이드인 애니메이션 */
+}
+
+/* 노드 호버 효과: 마우스를 올렸을 때 */
+.workflow-node:hover {
+    transform: translateY(-2px);               /* 살짝 위로 이동 */
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3); /* 그림자 강화 */
+}
+
+/* ========================================== */
+/* 노드 색상 테마 */
+/* ========================================== */
+
+/* 파란색 노드: 일반 액션 노드 */
+.node-blue {
+    background: #3182ce;                        /* 파란색 배경 */
+    border: 2px solid #2c5282;                 /* 진한 파란색 테두리 */
+}
+
+/* 주황색 노드: 조건 노드 */
+.node-orange {
+    background: #ed8936;                       /* 주황색 배경 */
+    border: 2px solid #dd6b20;                 /* 진한 주황색 테두리 */
+}
+
+/* 초록색 노드: 성공/완료 노드 */
+.node-green {
+    background: #38a169;                       /* 초록색 배경 */
+    border: 2px solid #2f855a;                 /* 진한 초록색 테두리 */
+}
+
+/* 보라색 노드: 특별한 기능 노드 */
+.node-purple {
+    background: #805ad5;                        /* 보라색 배경 */
+    border: 2px solid #6b46c1;                 /* 진한 보라색 테두리 */
+}
+
+/* ========================================== */
+/* 노드 내부 요소들 */
+/* ========================================== */
+
+/* 입력 연결점: 다른 노드에서 이 노드로 연결되는 지점 */
+.node-input {
+    width: 12px;                               /* 연결점 크기 */
+    height: 12px;                              /* 연결점 크기 */
+    background-color: #60a5fa;                 /* 파란색 연결점 */
+    border-radius: 50%;                        /* 원형 */
+    border: 2px solid #ffffff;                 /* 흰색 테두리 */
+    position: absolute;                         /* 절대 위치 */
+    left: -6px;                                /* 노드 왼쪽 밖에 배치 */
+    top: 50%;                                  /* 세로 중앙 */
+    transform: translateY(-50%);               /* 정확한 중앙 정렬 */
+    transition: all 0.3s ease;                 /* 부드러운 전환 효과 */
+}
+
+/* 조건 노드의 입력점은 노란색으로 구분 */
+.node-orange .node-input {
+    background-color: #fbbf24;                 /* 노란색 연결점 */
+}
+
+/* 입력점 호버 효과 */
+.node-input:hover {
+    transform: translateY(-50%) scale(1.2);    /* 크기 확대 */
+    background-color: #ffd700;                 /* 금색으로 변경 */
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.8); /* 발광 효과 */
+}
+
+/* 연결 중인 입력점 */
+.node-input.connecting {
+    background-color: #ff6b35;                 /* 주황색으로 변경 */
+    transform: translateY(-50%) scale(1.3);    /* 더 크게 확대 */
+    box-shadow: 0 0 15px rgba(255, 107, 53, 0.9); /* 강한 발광 효과 */
+}
+
+/* 노드 메인 컨텐츠 영역 */
+.node-content {
+    flex: 1;                                   /* 남은 공간을 모두 차지 */
+    display: flex;                             /* 플렉스박스 레이아웃 */
+    align-items: center;                       /* 세로 중앙 정렬 */
+    gap: 10px;                                 /* 요소들 사이 간격 */
+    padding: 0 10px;                           /* 좌우 여백 */
+}
+
+/* 노드 아이콘 (조건 노드 등에 사용) */
+.node-icon {
+    font-size: 20px;                           /* 아이콘 크기 */
+    margin-right: 8px;                         /* 오른쪽 여백 */
+    display: flex;                              /* 플렉스박스 */
+    align-items: center;                       /* 세로 중앙 정렬 */
+}
+
+/* 노드 제목 */
+.node-title {
+    font-size: 14px;                           /* 제목 크기 */
+    font-weight: 600;                          /* 굵은 글씨 */
+    color: #ffffff;                            /* 흰색 텍스트 */
+    text-align: center;                        /* 가운데 정렬 */
+}
+
+/* 출력 연결점: 이 노드에서 다른 노드로 연결되는 지점 */
+.node-output {
+    width: 12px;                               /* 연결점 크기 */
+    height: 12px;                              /* 연결점 크기 */
+    background-color: #60a5fa;                 /* 파란색 연결점 */
+    border-radius: 50%;                        /* 원형 */
+    border: 2px solid #ffffff;                 /* 흰색 테두리 */
+    position: absolute;                         /* 절대 위치 */
+    right: -6px;                               /* 노드 오른쪽 밖에 배치 */
+    top: 50%;                                  /* 세로 중앙 */
+    transform: translateY(-50%);                /* 정확한 중앙 정렬 */
+    transition: all 0.3s ease;                 /* 부드러운 전환 효과 */
+}
+
+/* 출력점 호버 효과 */
+.node-output:hover {
+    transform: translateY(-50%) scale(1.2);    /* 크기 확대 */
+    background-color: #ffd700;                 /* 금색으로 변경 */
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.8); /* 발광 효과 */
+}
+
+/* 연결 중인 출력점 */
+.node-output.connecting {
+    background-color: #ff6b35;                 /* 주황색으로 변경 */
+    transform: translateY(-50%) scale(1.3);    /* 더 크게 확대 */
+    box-shadow: 0 0 15px rgba(255, 107, 53, 0.9); /* 강한 발광 효과 */
+}
+
+/* ========================================== */
+/* 조건 노드의 다중 출력점 */
+/* ========================================== */
+
+/* 조건 노드의 출력점들 컨테이너 */
+.node-outputs {
+    position: absolute;                         /* 절대 위치 */
+    right: -6px;                               /* 노드 오른쪽 밖에 배치 */
+    top: 50%;                                  /* 세로 중앙 */
+    transform: translateY(-50%);                /* 정확한 중앙 정렬 */
+    display: flex;                              /* 플렉스박스 레이아웃 */
+    flex-direction: column;                     /* 세로 방향 배치 */
+    gap: 20px;                                 /* 출력점들 사이 간격 */
+}
+
+/* True/False 출력점 */
+.node-output.true-output,
+.node-output.false-output {
+    display: flex;                              /* 플렉스박스 레이아웃 */
+    align-items: center;                        /* 세로 중앙 정렬 */
+    gap: 8px;                                  /* 점과 라벨 사이 간격 */
+    position: relative;                         /* 상대 위치 */
+}
+
+/* 출력점 원형 도트 */
+.output-dot {
+    width: 12px;                               /* 도트 크기 */
+    height: 12px;                              /* 도트 크기 */
+    border-radius: 50%;                        /* 원형 */
+    border: 2px solid #ffffff;                 /* 흰색 테두리 */
+    transition: all 0.3s ease;                 /* 부드러운 전환 효과 */
+}
+
+/* 출력점 도트 호버 효과 */
+.output-dot:hover {
+    transform: scale(1.2);                     /* 크기 확대 */
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.6); /* 발광 효과 */
+}
+
+/* 연결 중인 출력점 도트 */
+.output-dot.connecting {
+    transform: scale(1.3);                     /* 더 크게 확대 */
+    box-shadow: 0 0 12px rgba(255, 107, 53, 0.9); /* 강한 발광 효과 */
+}
+
+/* True 출력점: 성공/참일 때 */
+.true-dot {
+    background-color: #22c55e;                 /* 초록색 */
+}
+
+/* False 출력점: 실패/거짓일 때 */
+.false-dot {
+    background-color: #ef4444;                 /* 빨간색 */
+}
+
+/* 출력점 라벨 (True/False 텍스트) */
+.output-label {
+    font-size: 12px;                           /* 라벨 크기 */
+    color: #ffffff;                             /* 흰색 텍스트 */
+    font-weight: 500;                          /* 중간 굵기 */
+    white-space: nowrap;                        /* 줄바꿈 방지 */
+}
+
+/* ========================================== */
+/* 노드 설정 버튼 */
+/* ========================================== */
+
+/* 노드 설정 버튼 (기어 아이콘) */
+.node-settings {
+    position: absolute;                         /* 절대 위치 */
+    top: -8px;                                 /* 노드 상단 밖에 배치 */
+    right: -8px;                               /* 노드 오른쪽 밖에 배치 */
+    width: 20px;                               /* 버튼 크기 */
+    height: 20px;                              /* 버튼 크기 */
+    background-color: #4a5568;                 /* 회색 배경 */
+    border-radius: 50%;                        /* 원형 */
+    display: flex;                              /* 플렉스박스 */
+    align-items: center;                        /* 세로 중앙 정렬 */
+    justify-content: center;                    /* 가로 중앙 정렬 */
+    font-size: 12px;                           /* 아이콘 크기 */
+    color: #ffffff;                            /* 흰색 아이콘 */
+    cursor: pointer;                            /* 클릭 가능한 커서 */
+    transition: all 0.3s ease;                 /* 부드러운 전환 효과 */
+    opacity: 0;                                /* 기본적으로 숨김 */
+}
+
+/* 노드 호버 시 설정 버튼 표시 */
+.workflow-node:hover .node-settings {
+    opacity: 1;                                /* 완전히 표시 */
+}
+
+/* 설정 버튼 호버 효과 */
+.node-settings:hover {
+    background-color: #2d3748;                 /* 더 어두운 회색 */
+    transform: scale(1.1);                     /* 크기 확대 */
+}
+
+/* ========================================== */
+/* 연결선 */
+/* ========================================== */
+
+/* 연결선 컨테이너 */
+.connections {
+    position: absolute;                         /* 절대 위치 */
+    top: 0;                                    /* 캔버스 상단에 고정 */
+    left: 0;                                   /* 캔버스 좌측에 고정 */
+    width: 100%;                               /* 캔버스 전체 너비 */
+    height: 100%;                              /* 캔버스 전체 높이 */
+    pointer-events: none;                      /* 마우스 이벤트 무시 */
+    z-index: 1;                                /* 노드들 위에 표시 */
+}
+
+/* 연결선 기본 스타일 */
+.connection-line {
+    stroke: #9ca3af;                           /* 회색 선 */
+    stroke-width: 2;                           /* 선 두께 */
+    fill: none;                                /* 채우기 없음 */
+    stroke-dasharray: none;                    /* 점선 없음 */
+}
+
+/* 실행 중인 연결선 */
+.connection-line.executing {
+    stroke: #ff6b35;                           /* 주황색 선 */
+    stroke-width: 3;                           /* 더 두꺼운 선 */
+    animation: pulse-line 1s infinite;        /* 펄스 애니메이션 */
+}
+
+/* 완료된 연결선 */
+.connection-line.completed {
+    stroke: #2ecc71;                           /* 초록색 선 */
+    stroke-width: 3;                           /* 더 두꺼운 선 */
+}
+
+/* 실패한 연결선 */
+.connection-line.failed {
+    stroke: #e74c3c;                           /* 빨간색 선 */
+    stroke-width: 3;                           /* 더 두꺼운 선 */
+}
+
+/* ========================================== */
+/* 애니메이션 */
+/* ========================================== */
+
+/* 연결선 펄스 애니메이션 */
+@keyframes pulse-line {
+    0% {
+        stroke-opacity: 0.7;                   /* 투명도 70% */
+    }
+    50% {
+        stroke-opacity: 1;                     /* 투명도 100% */
+    }
+    100% {
+        stroke-opacity: 0.7;                   /* 투명도 70% */
+    }
+}
+
+/* ========================================== */
+/* 미니맵 */
+/* ========================================== */
+
+/* 미니맵 컨테이너 */
+.minimap {
+    position: fixed;                           /* 화면에 고정 */
+    bottom: 20px;                              /* 화면 하단에서 20px */
+    right: 20px;                               /* 화면 우측에서 20px */
+    width: 250px;                              /* 미니맵 너비 */
+    height: 180px;                             /* 미니맵 높이 */
+    background-color: rgba(0, 0, 0, 0.9);      /* 반투명 검은색 배경 */
+    border: 2px solid #444;                    /* 회색 테두리 */
+    border-radius: 12px;                       /* 둥근 모서리 */
+    backdrop-filter: blur(10px);               /* 배경 블러 효과 */
+    transition: all 0.3s ease;                 /* 부드러운 전환 효과 */
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5); /* 그림자 효과 */
+    z-index: 1000;                             /* 다른 요소들 위에 표시 */
+}
+
+/* 미니맵 호버 효과 */
+.minimap:hover {
+    transform: scale(1.05);                    /* 살짝 확대 */
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3); /* 그림자 강화 */
+}
+
+/* 미니맵 헤더 */
+.minimap-header {
+    background: rgba(255, 255, 255, 0.1);      /* 반투명 흰색 배경 */
+    padding: 8px 12px;                         /* 내부 여백 */
+    border-bottom: 1px solid #444;             /* 하단 테두리 */
+}
+
+/* 미니맵 제목 */
+.minimap-title {
+    color: #ffffff;                            /* 흰색 텍스트 */
+    font-size: 12px;                           /* 작은 글씨 */
+    font-weight: 600;                          /* 굵은 글씨 */
+}
+
+/* 미니맵 컨텐츠 영역 */
+.minimap-content {
+    position: relative;                        /* 상대 위치 */
+    width: 100%;                               /* 전체 너비 */
+    height: calc(100% - 40px);                 /* 헤더를 제외한 높이 */
+    background: rgba(30, 30, 30, 0.8);        /* 어두운 반투명 배경 */
+    overflow: hidden;                          /* 넘치는 내용 숨김 */
+    cursor: crosshair;                         /* 십자 커서 (클릭 가능함을 표시) */
+    
+    /* 미니맵을 고정 크기로 설정 (피그마 스타일) */
+    min-width: 200px;                          /* 최소 너비 */
+    min-height: 120px;                         /* 최소 높이 */
+    max-width: 250px;                          /* 최대 너비 */
+    max-height: 150px;                         /* 최대 높이 */
+}
+
+/* 미니맵 뷰포트: 현재 보이는 영역 표시 */
+.minimap-viewport {
+    position: absolute;                         /* 절대 위치 */
+    border: 2px solid #60a5fa;                 /* 파란색 테두리 */
+    background: rgba(96, 165, 250, 0.2);       /* 반투명 파란색 배경 */
+    border-radius: 4px;                        /* 둥근 모서리 */
+    pointer-events: none;                      /* 마우스 이벤트 무시 */
+    z-index: 10;                               /* 다른 요소들 위에 표시 */
+    transition: all 0.2s ease;                /* 부드러운 전환 효과 */
+}
+
+/* 미니맵 노드: 축소된 노드들 */
+.minimap-node {
+    position: absolute;                         /* 절대 위치 */
+    width: 16px;                               /* 크기 증가 (12px → 16px) */
+    height: 12px;                              /* 크기 증가 (10px → 12px) */
+    border-radius: 4px;                        /* 둥근 모서리 */
+    border: 2px solid rgba(255, 255, 255, 0.8); /* 밝은 흰색 테두리 */
+    pointer-events: none;                      /* 마우스 이벤트 무시 */
+    z-index: 5;                                /* 중간 레이어 */
+    display: block;                            /* 미니맵 노드 표시 */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); /* 그림자 효과 */
+    transition: all 0.2s ease;                 /* 부드러운 전환 */
+}
+
+/* 미니맵 노드 호버 효과 */
+.minimap-node:hover {
+    transform: scale(1.2);                     /* 호버 시 확대 */
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4); /* 그림자 강화 */
+}
+
+/* 미니맵 노드 색상들 */
+.minimap-blue {
+    background: linear-gradient(135deg, #3182ce, #2c5aa0); /* 파란색 그라데이션 */
+    border-color: #60a5fa;                     /* 밝은 파란색 테두리 */
+}
+
+.minimap-orange {
+    background: linear-gradient(135deg, #ed8936, #dd6b20); /* 주황색 그라데이션 */
+    border-color: #fbbf24;                     /* 밝은 주황색 테두리 */
+}
+
+.minimap-green {
+    background: linear-gradient(135deg, #38a169, #2f855a); /* 초록색 그라데이션 */
+    border-color: #68d391;                     /* 밝은 초록색 테두리 */
+}
+
+.minimap-purple {
+    background: linear-gradient(135deg, #805ad5, #6b46c1); /* 보라색 그라데이션 */
+    border-color: #a78bfa;                     /* 밝은 보라색 테두리 */
+}
+
+.minimap-red {
+    background: linear-gradient(135deg, #e53e3e, #c53030); /* 빨간색 그라데이션 */
+    border-color: #fc8181;                     /* 밝은 빨간색 테두리 */
+}
+
+.minimap-yellow {
+    background: linear-gradient(135deg, #d69e2e, #b7791f); /* 노란색 그라데이션 */
+    border-color: #f6e05e;                     /* 밝은 노란색 테두리 */
+}
+
+/* 미니맵 연결선들 */
+.minimap-connections {
+    position: absolute;                         /* 절대 위치 */
+    top: 0;                                    /* 상단에 고정 */
+    left: 0;                                   /* 좌측에 고정 */
+    width: 100%;                               /* 전체 너비 */
+    height: 100%;                              /* 전체 높이 */
+}
+
+/* 미니맵 연결선 */
+.minimap-line {
+    position: absolute;                         /* 절대 위치 */
+    height: 1px;                               /* 얇은 선 */
+    background-color: #ffffff;                  /* 흰색 선 */
+    opacity: 0.6;                              /* 반투명 */
+}
+
+/* ========================================== */
+/* 노드 상태 */
+/* ========================================== */
+
+/* 드래그 중인 노드 */
+.workflow-node.dragging {
+    opacity: 0.7;                              /* 반투명 */
+    transform: scale(1.1);                     /* 크기 확대 */
+    z-index: 1000;                             /* 다른 노드들 위에 표시 */
+    transition: none !important;               /* 드래그 중에는 위치 변경 애니메이션 비활성화 */
+}
+
+/* 선택된 노드 */
+.workflow-node.selected {
+    border-color: #f6e05e;                     /* 노란색 테두리 */
+    box-shadow: 0 0 20px rgba(246, 224, 94, 0.5); /* 노란색 발광 효과 */
+}
+
+/* 실행 중인 노드 */
+.workflow-node.executing {
+    border-color: #ff6b35;                     /* 주황색 테두리 */
+    box-shadow: 0 0 15px rgba(255, 107, 53, 0.5); /* 주황색 발광 효과 */
+    animation: pulse-executing 1s infinite;    /* 펄스 애니메이션 */
+}
+
+/* 완료된 노드 */
+.workflow-node.completed {
+    border-color: #2ecc71;                     /* 초록색 테두리 */
+    box-shadow: 0 0 15px rgba(46, 204, 113, 0.5); /* 초록색 발광 효과 */
+}
+
+/* 실패한 노드 */
+.workflow-node.failed {
+    border-color: #e74c3c;                     /* 빨간색 테두리 */
+    box-shadow: 0 0 15px rgba(231, 76, 60, 0.5); /* 빨간색 발광 효과 */
+}
+
+/* 실행 중 노드 펄스 애니메이션 */
+@keyframes pulse-executing {
+    0% {
+        box-shadow: 0 0 15px rgba(255, 107, 53, 0.5); /* 기본 발광 */
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(255, 107, 53, 0.8); /* 강한 발광 */
+    }
+    100% {
+        box-shadow: 0 0 15px rgba(255, 107, 53, 0.5); /* 기본 발광 */
+    }
+}
+
+/* ========================================== */
+/* 샘플 노드 위치 설정 (데모용) */
+/* ========================================== */
+
+/* 샘플 노드들의 초기 위치 */
+#node1 {
+    top: 100px;                                /* 상단에서 100px */
+    left: 100px;                               /* 좌측에서 100px */
+}
+
+#node2 {
+    top: 100px;                                /* 상단에서 100px */
+    left: 350px;                               /* 좌측에서 350px */
+}
+
+#node3 {
+    top: 100px;                                /* 상단에서 100px */
+    left: 600px;                               /* 좌측에서 600px */
+}
+
+/* ========================================== */
+/* 드래그 연결 관련 스타일 */
+/* ========================================== */
+
+/* 드래그 연결 중인 출력 연결점 */
+.node-output.dragging-connection {
+    background-color: #FF6B35 !important;
+    border-color: #FF6B35 !important;
+    box-shadow: 0 0 15px rgba(255, 107, 53, 0.8) !important;
+    transform: translateY(-50%) scale(1.3) !important;
+    z-index: 1001;
+}
+
+/* 마그네틱 하이라이트된 입력 연결점 */
+.node-input.magnetic-highlight {
+    background-color: #34C759 !important;
+    border-color: #34C759 !important;
+    box-shadow: 0 0 15px rgba(52, 199, 89, 0.8) !important;
+    transform: translateY(-50%) scale(1.2) !important;
+    z-index: 1001;
+}
+
+/* 연결된 연결점 스타일 */
+.node-input.connected,
+.node-output.connected {
+    background-color: #34C759 !important;
+    border-color: #34C759 !important;
+    box-shadow: 0 0 8px rgba(52, 199, 89, 0.6) !important;
+}
+
+/* 임시 연결선 애니메이션 */
+#temp-connection-line path {
+    animation: connection-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes connection-pulse {
+    0% {
+        stroke-opacity: 0.6;
+    }
+    50% {
+        stroke-opacity: 1;
+    }
+    100% {
+        stroke-opacity: 0.6;
+    }
+}
+
+/* 드래그 연결 메시지 스타일 */
+#drag-connection-message {
+    animation: message-fade-in 0.3s ease-out;
+}
+
+@keyframes message-fade-in {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+/* ========================================== */
+/* 반응형 디자인 */
+/* ========================================== */
+
+/* 중간 크기 화면 (1200px 이하) */
+@media (max-width: 1200px) {
+    .workflow-node {
+        width: 180px;                          /* 노드 크기 축소 */
+        height: 70px;                          /* 노드 높이 축소 */
+    }
+    
+    .minimap {
+        width: 150px;                          /* 미니맵 크기 축소 */
+        height: 90px;                          /* 미니맵 높이 축소 */
+    }
+}
+
+/* 작은 화면 (768px 이하) - 모바일 */
+@media (max-width: 768px) {
+    .main-content {
+        flex-direction: column;                /* 세로 방향 배치 */
+    }
+    
+    .workflow-area {
+        height: calc(100vh - 280px);           /* 높이 조정 */
+    }
+    
+    .workflow-node {
+        width: 160px;                          /* 노드 크기 더 축소 */
+        height: 60px;                          /* 노드 높이 더 축소 */
+    }
+    
+    .node-title {
+        font-size: 12px;                       /* 제목 크기 축소 */
+    }
+    
+    .minimap {
+        width: 120px;                          /* 미니맵 크기 더 축소 */
+        height: 70px;                          /* 미니맵 높이 더 축소 */
+        bottom: 10px;                          /* 하단 여백 축소 */
+        right: 10px;                           /* 우측 여백 축소 */
+    }
+}

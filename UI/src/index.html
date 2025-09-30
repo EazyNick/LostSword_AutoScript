@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>로스트소드 자동화 도구</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNCIgZmlsbD0iIzI2NzNlYSIvPgo8cGF0aCBkPSJNOCAxMkgxNlYyMEg4VjEyWiIgZmlsbD0iI2ZmZmZmZiIvPgo8cGF0aCBkPSJNMTYgMTJIMjRWMjBIMTZWMTJaIiBmaWxsPSIjZmZmZmZmIi8+CjxwYXRoIGQ9Ik04IDIwSDE2VjI4SDhWMjBaIiBmaWxsPSIjZmZmZmZmIi8+CjxwYXRoIGQ9Ik0xNiAyMEgyNFYyOEgxNlYyMFoiIGZpbGw9IiNmZmZmZmYiLz4KPC9zdmc+">
+    <link rel="stylesheet" href="/static/styles/common.css">
+    <link rel="stylesheet" href="/static/styles/components/header.css">
+    <link rel="stylesheet" href="/static/styles/components/sidebar.css">
+    <link rel="stylesheet" href="/static/styles/components/modal.css">
+    <link rel="stylesheet" href="/static/styles/components/node.css">
+    <link rel="stylesheet" href="/static/pages/workflow/workflow.css">
+</head>
+<body>
+    <div id="app">
+        <!-- 상단 헤더 -->
+        <header class="top-header">
+            <div class="header-left">
+                <div class="document-icon">📄</div>
+                <span class="header-title">테스트 스크립트</span>
+            </div>
+            <div class="header-center">
+                <h1 class="script-title">로그인 테스트</h1>
+                <p class="script-description">사용자 로그인 프로세스 검증</p>
+            </div>
+            <div class="header-right">
+                <button class="header-btn save-btn">
+                    <span class="btn-icon">💾</span>
+                    <span class="btn-text">저장</span>
+                </button>
+                <button class="header-btn add-node-btn">
+                    <span class="btn-icon">+</span>
+                    <span class="btn-text">노드 추가</span>
+                </button>
+                <button class="header-btn run-btn">
+                    <span class="btn-icon">▶</span>
+                    <span class="btn-text">실행</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- 메인 컨텐츠 -->
+        <main class="main-content">
+            <!-- 왼쪽 사이드바 -->
+            <aside class="sidebar">
+                <div class="sidebar-header">
+                    <h2>테스트 스크립트</h2>
+                    <button class="add-script-btn">+</button>
+                </div>
+                
+                <div class="script-list">
+                    <div class="script-item active">
+                        <div class="script-icon">📄</div>
+                        <div class="script-info">
+                            <div class="script-name">로그인 테스트</div>
+                            <div class="script-desc">사용자 로그인 프로세스 검증</div>
+                            <div class="script-date">
+                                <span class="date-icon">🕐</span>
+                                <span class="date-text">2024. 1. 1.</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="script-item">
+                        <div class="script-icon">📄</div>
+                        <div class="script-info">
+                            <div class="script-name">결제 프로세스 테스트</div>
+                            <div class="script-desc">온라인 결제 과정 검증</div>
+                            <div class="script-date">
+                                <span class="date-icon">🕐</span>
+                                <span class="date-text">2024. 1. 2.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- 메인 워크플로우 영역 -->
+            <div class="workflow-area">
+                <div class="workflow-canvas" id="workflow-canvas">
+                    <!-- 노드들이 여기에 동적으로 추가됩니다 -->
+                </div>
+                
+                <!-- 미니맵 -->
+                <div class="minimap">
+                    <div class="minimap-header">
+                        <span class="minimap-title">미니맵</span>
+                    </div>
+                    <div class="minimap-content" id="minimap-content">
+                        <div class="minimap-viewport" id="minimap-viewport"></div>
+                        <!-- 미니맵 노드들이 여기에 동적으로 추가됩니다 -->
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 모달 -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <!-- 스크립트 로드 -->
+    <script src="/static/js/utils/modal.js"></script>
+    <script src="/static/js/components/sidebar.js"></script>
+    <script src="/static/js/components/connection.js"></script>
+    <script src="/static/js/components/node.js"></script>
+    <script src="/static/js/components/minimap.js"></script>
+    <script src="/static/pages/workflow/workflow.js"></script>
+</body>
+</html>

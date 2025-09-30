@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>워크플로우 편집기</title>
+    
+    <!-- CSS 파일들 로드 -->
+    <!-- 공통 스타일 (전체 앱의 기본 스타일) -->
+    <link rel="stylesheet" href="../../styles/common.css">
+    <!-- 헤더 컴포넌트 스타일 -->
+    <link rel="stylesheet" href="../../styles/components/header.css">
+    <!-- 사이드바 컴포넌트 스타일 -->
+    <link rel="stylesheet" href="../../styles/components/sidebar.css">
+    <!-- 모달 컴포넌트 스타일 -->
+    <link rel="stylesheet" href="../../styles/components/modal.css">
+    <!-- 워크플로우 페이지 전용 스타일 -->
+    <link rel="stylesheet" href="./workflow.css">
+</head>
+<body>
+    <!-- 메인 앱 컨테이너 -->
+    <div id="app">
+        
+        <!-- ========================================== -->
+        <!-- 상단 헤더 영역 -->
+        <!-- ========================================== -->
+        <header class="top-header">
+            <!-- 헤더 왼쪽: 문서 정보 -->
+            <div class="header-left">
+                <div class="document-icon">📄</div>
+                <span class="header-title">테스트 스크립트</span>
+            </div>
+            
+            <!-- 헤더 중앙: 스크립트 제목 및 설명 -->
+            <div class="header-center">
+                <h1 class="script-title">로그인 테스트</h1>
+                <p class="script-description">사용자 로그인 프로세스 검증</p>
+            </div>
+            
+            <!-- 헤더 오른쪽: 액션 버튼들 -->
+            <div class="header-right">
+                <!-- 저장 버튼: 현재 워크플로우를 로컬 스토리지에 저장 -->
+                <button class="header-btn save-btn">
+                    <span class="btn-icon">💾</span>
+                    <span class="btn-text">저장</span>
+                </button>
+                
+                <!-- 노드 추가 버튼: 새 워크플로우 노드를 추가 -->
+                <button class="header-btn add-node-btn">
+                    <span class="btn-icon">+</span>
+                    <span class="btn-text">노드 추가</span>
+                </button>
+                
+                <!-- 실행 버튼: 워크플로우를 실행 (현재는 시뮬레이션) -->
+                <button class="header-btn run-btn">
+                    <span class="btn-icon">▶</span>
+                    <span class="btn-text">실행</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- ========================================== -->
+        <!-- 메인 컨텐츠 영역 -->
+        <!-- ========================================== -->
+        <main class="main-content">
+            
+            <!-- ========================================== -->
+            <!-- 왼쪽 사이드바: 스크립트 목록 -->
+            <!-- ========================================== -->
+            <aside class="sidebar">
+                <!-- 사이드바 헤더 -->
+                <div class="sidebar-header">
+                    <h2>테스트 스크립트</h2>
+                    <!-- 새 스크립트 추가 버튼 -->
+                    <button class="add-script-btn">+</button>
+                </div>
+                
+                <!-- 스크립트 목록 -->
+                <div class="script-list">
+                    <!-- 활성 스크립트 (현재 선택된 스크립트) -->
+                    <div class="script-item active">
+                        <div class="script-icon">📄</div>
+                        <div class="script-info">
+                            <div class="script-name">로그인 테스트</div>
+                            <div class="script-desc">사용자 로그인 프로세스 검증</div>
+                            <div class="script-date">
+                                <span class="date-icon">🕐</span>
+                                <span class="date-text">2024. 1. 1.</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 다른 스크립트들 -->
+                    <div class="script-item">
+                        <div class="script-icon">📄</div>
+                        <div class="script-info">
+                            <div class="script-name">결제 프로세스 테스트</div>
+                            <div class="script-desc">온라인 결제 과정 검증</div>
+                            <div class="script-date">
+                                <span class="date-icon">🕐</span>
+                                <span class="date-text">2024. 1. 2.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- ========================================== -->
+            <!-- 메인 워크플로우 영역 -->
+            <!-- ========================================== -->
+            <div class="workflow-area">
+                
+                <!-- 워크플로우 캔버스: 노드들이 배치되는 메인 영역 -->
+                <!-- tabindex="0": 키보드 포커스 가능하게 설정 (줌 기능을 위해 필요) -->
+                <div class="workflow-canvas" id="workflow-canvas" tabindex="0">
+                    <!-- 캔버스 내부 콘텐츠 컨테이너 (피그마 방식) -->
+                    <div class="canvas-content" id="canvas-content">
+                    
+                    <!-- ========================================== -->
+                    <!-- 샘플 노드들 (데모용) -->
+                    <!-- ========================================== -->
+                    
+                    <!-- 노드 1: 페이지 이동 노드 (파란색) -->
+                    <div class="workflow-node node-blue" id="node1">
+                        <!-- 입력 연결점: 다른 노드에서 이 노드로 연결되는 지점 -->
+                        <div class="node-input"></div>
+                        
+                        <!-- 노드 메인 컨텐츠 -->
+                        <div class="node-content">
+                            <div class="node-title">페이지 이동</div>
+                        </div>
+                        
+                        <!-- 출력 연결점: 이 노드에서 다른 노드로 연결되는 지점 -->
+                        <div class="node-output"></div>
+                        
+                        <!-- 노드 설정 버튼 (호버 시 표시) -->
+                        <div class="node-settings">⚙</div>
+                    </div>
+                    
+                    <!-- 노드 2: 아이디 입력 노드 (파란색) -->
+                    <div class="workflow-node node-blue" id="node2">
+                        <div class="node-input"></div>
+                        <div class="node-content">
+                            <div class="node-title">아이디 입력</div>
+                        </div>
+                        <div class="node-output"></div>
+                        <div class="node-settings">⚙</div>
+                    </div>
+                    
+                    <!-- 노드 3: 로그인 성공 확인 노드 (주황색, 조건 노드) -->
+                    <div class="workflow-node node-orange" id="node3">
+                        <div class="node-input"></div>
+                        <div class="node-content">
+                            <!-- 조건 노드는 아이콘 표시 -->
+                            <div class="node-icon">🔐</div>
+                            <div class="node-title">로그인 성공 확인</div>
+                        </div>
+                        
+                        <!-- 조건 노드는 두 개의 출력점 (True/False) -->
+                        <div class="node-outputs">
+                            <!-- True 출력점 (성공 시) -->
+                            <div class="node-output true-output">
+                                <div class="output-dot true-dot"></div>
+                                <span class="output-label">True</span>
+                            </div>
+                            <!-- False 출력점 (실패 시) -->
+                            <div class="node-output false-output">
+                                <div class="output-dot false-dot"></div>
+                                <span class="output-label">False</span>
+                            </div>
+                        </div>
+                        
+                        <div class="node-settings">⚙</div>
+                    </div>
+                    
+                    <!-- ========================================== -->
+                    <!-- 연결선들 (SVG로 그려짐) -->
+                    <!-- ========================================== -->
+                    <svg class="connections" id="connections">
+                        <!-- 노드1에서 노드2로의 연결선 -->
+                        <path class="connection-line" d="M 200 100 L 350 100" stroke="#ffffff" stroke-width="2" fill="none"/>
+                        <!-- 노드2에서 노드3으로의 연결선 -->
+                        <path class="connection-line" d="M 500 100 L 650 100" stroke="#ffffff" stroke-width="2" fill="none"/>
+                    </svg>
+                </div>
+                
+                <!-- ========================================== -->
+                <!-- 미니맵: 캔버스 전체를 축소해서 보여주는 작은 지도 -->
+                <!-- ========================================== -->
+                <div class="minimap">
+                    <!-- 미니맵 헤더 -->
+                    <div class="minimap-header">
+                        <div class="minimap-title">미니맵</div>
+                    </div>
+                    
+                    <!-- 미니맵 컨텐츠 영역 -->
+                    <div class="minimap-content" id="minimap-content">
+                        <!-- 현재 보이는 영역을 표시하는 뷰포트 -->
+                        <div class="minimap-viewport" id="minimap-viewport"></div>
+                        
+                        <!-- 미니맵에 표시되는 노드들 (JavaScript로 동적 생성) -->
+                        <div class="minimap-node minimap-blue"></div>
+                        <div class="minimap-node minimap-blue"></div>
+                        <div class="minimap-node minimap-orange"></div>
+                        
+                        <!-- 미니맵에 표시되는 연결선들 -->
+                        <div class="minimap-connections">
+                            <div class="minimap-line"></div>
+                            <div class="minimap-line"></div>
+                        </div>
+                    </div>
+                    </div> <!-- canvas-content 닫기 -->
+                </div> <!-- workflow-canvas 닫기 -->
+            </div>
+        </main>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 모달 창: 팝업 형태의 대화상자 -->
+    <!-- ========================================== -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <!-- 모달 닫기 버튼 -->
+            <span class="close">&times;</span>
+            <!-- 모달 내용이 동적으로 삽입되는 영역 -->
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- JavaScript 파일들 로드 -->
+    <!-- ========================================== -->
+    
+    <!-- 유틸리티: 모달 관리 기능 -->
+    <script src="../../js/utils/modal.js"></script>
+    
+    <!-- 컴포넌트들: 각각의 기능을 담당하는 모듈들 -->
+    <script src="../../js/components/sidebar.js"></script>    <!-- 사이드바 관리 -->
+    <script src="../../js/components/node.js"></script>       <!-- 노드 관리 -->
+    <script src="../../js/components/minimap.js"></script>    <!-- 미니맵 관리 -->
+    
+    <!-- 메인 페이지 로직: 전체 워크플로우 페이지 관리 -->
+    <script src="./workflow.js"></script>
+</body>
+</html>

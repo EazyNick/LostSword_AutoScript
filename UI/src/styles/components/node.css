@@ -1,0 +1,572 @@
+/* 노드 기본 스타일 */
+.node {
+    position: absolute;
+    min-width: 120px;
+    min-height: 60px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    cursor: move;
+    user-select: none;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+    overflow: hidden;
+}
+
+.node:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.node.selected {
+    border-color: #ffd700;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+}
+
+/* 노드 타입별 색상 */
+.node.type-click {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.node.type-move {
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+}
+
+.node.type-collect {
+    background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+}
+
+.node.type-battle {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+}
+
+.node.type-navigate {
+    background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+}
+
+.node.type-wait {
+    background: linear-gradient(135deg, #d299c2 0%, #fef9d7 100%);
+}
+
+.node.type-condition {
+    background: linear-gradient(135deg, #89f7fe 0%, #66a6ff 100%);
+}
+
+.node.type-loop {
+    background: linear-gradient(135deg, #fdbb2d 0%, #22c1c3 100%);
+}
+
+/* 노드 실행 상태 */
+.node.executing {
+    border-color: #ff6b35;
+    box-shadow: 0 0 20px rgba(255, 107, 53, 0.7);
+    animation: pulse-executing 1s infinite;
+}
+
+.node.completed {
+    border-color: #2ecc71;
+    box-shadow: 0 0 20px rgba(46, 204, 113, 0.7);
+}
+
+.node.failed {
+    border-color: #e74c3c;
+    box-shadow: 0 0 20px rgba(231, 76, 60, 0.7);
+}
+
+.node.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* 실행 상태 애니메이션 */
+@keyframes pulse-executing {
+    0% {
+        box-shadow: 0 0 20px rgba(255, 107, 53, 0.7);
+    }
+    50% {
+        box-shadow: 0 0 30px rgba(255, 107, 53, 1);
+    }
+    100% {
+        box-shadow: 0 0 20px rgba(255, 107, 53, 0.7);
+    }
+}
+
+/* 노드 내용 */
+.node-content {
+    padding: 12px;
+    color: white;
+    text-align: center;
+    position: relative;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.node-title {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 4px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.node-description {
+    font-size: 11px;
+    opacity: 0.9;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* 노드 연결점 */
+.node-connector {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: #fff;
+    border: 2px solid #333;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    z-index: 10;
+    top: 50%;
+    margin-top: -6px; /* 높이의 절반만큼 위로 이동 */
+}
+
+.node-connector:hover {
+    transform: scale(1.2);
+    background: #ffd700;
+    box-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+}
+
+.node-connector.input {
+    left: -6px;
+}
+
+.node-connector.output {
+    right: -6px;
+}
+
+/* 연결 중 상태 */
+.node-connector.connecting {
+    background: #ff6b35 !important;
+    transform: scale(1.3) !important;
+    box-shadow: 0 0 10px rgba(255, 107, 53, 0.7);
+}
+
+.node-connector.connected {
+    background: #2ecc71 !important;
+    transform: scale(1.1) !important;
+}
+
+/* 노드 삭제 버튼 */
+.node-delete {
+    position: absolute;
+    top: -8px;
+    right: 8px; /* 연결점과 겹치지 않도록 위치 조정 */
+    width: 20px;
+    height: 20px;
+    background: #e74c3c;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: white;
+    transition: all 0.2s ease;
+    z-index: 15; /* 연결점보다 위에 표시 */
+}
+
+.node:hover .node-delete {
+    display: flex;
+}
+
+.node-delete:hover {
+    background: #c0392b;
+    transform: scale(1.1);
+}
+
+/* 노드 드래그 중 */
+.node.dragging {
+    z-index: 1000;
+    transform: rotate(5deg);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+/* 노드 연결선 */
+.connection-line {
+    position: absolute;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.connection-line.active {
+    stroke: #ffd700;
+    stroke-width: 3;
+}
+
+.connection-line.executing {
+    stroke: #ff6b35;
+    stroke-width: 3;
+    animation: pulse-line 1s infinite;
+}
+
+.connection-line.completed {
+    stroke: #2ecc71;
+    stroke-width: 3;
+}
+
+.connection-line.failed {
+    stroke: #e74c3c;
+    stroke-width: 3;
+}
+
+@keyframes pulse-line {
+    0% {
+        stroke-opacity: 0.7;
+    }
+    50% {
+        stroke-opacity: 1;
+    }
+    100% {
+        stroke-opacity: 0.7;
+    }
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .node {
+        min-width: 100px;
+        min-height: 50px;
+    }
+    
+    .node-title {
+        font-size: 12px;
+    }
+    
+    .node-description {
+        font-size: 10px;
+    }
+}
+
+/* ==========================================
+   연결 모드 관련 스타일
+   ========================================== */
+
+/* 연결 모드 캔버스 */
+.workflow-canvas.connection-mode {
+    cursor: crosshair;
+}
+
+.workflow-canvas.connection-mode .workflow-node {
+    pointer-events: auto;
+}
+
+/* 연결점 기본 스타일 */
+.node-input,
+.node-output {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 2px solid #666;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    z-index: 10;
+}
+
+.node-input {
+    left: -6px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.node-output {
+    right: -6px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+/* 연결점 호버 효과 */
+.node-input:hover,
+.node-output:hover {
+    transform: translateY(-50%) scale(1.2);
+    background: #007AFF;
+    border-color: #007AFF;
+    box-shadow: 0 0 8px rgba(0, 122, 255, 0.6);
+}
+
+/* 연결된 연결점 스타일 */
+.node-input.connected,
+.node-output.connected {
+    background: #34C759;
+    border-color: #34C759;
+    box-shadow: 0 0 8px rgba(52, 199, 89, 0.6);
+    animation: connected-pulse 2s infinite;
+}
+
+/* 연결된 연결점 펄스 애니메이션 */
+@keyframes connected-pulse {
+    0% {
+        box-shadow: 0 0 8px rgba(52, 199, 89, 0.6);
+    }
+    50% {
+        box-shadow: 0 0 12px rgba(52, 199, 89, 0.8);
+    }
+    100% {
+        box-shadow: 0 0 8px rgba(52, 199, 89, 0.6);
+    }
+}
+
+/* 연결 모드에서 활성화된 입력 연결점 */
+.node-input.connection-active {
+    background: #34C759;
+    border-color: #34C759;
+    box-shadow: 0 0 12px rgba(52, 199, 89, 0.8);
+    animation: connection-pulse 1.5s infinite;
+}
+
+/* 연결 시작점 하이라이트 */
+.node-output.connection-highlight {
+    background: #FF9500;
+    border-color: #FF9500;
+    box-shadow: 0 0 12px rgba(255, 149, 0, 0.8);
+    animation: connection-pulse 1.5s infinite;
+}
+
+/* 연결점 펄스 애니메이션 */
+@keyframes connection-pulse {
+    0% {
+        box-shadow: 0 0 12px rgba(52, 199, 89, 0.8);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(52, 199, 89, 1);
+    }
+    100% {
+        box-shadow: 0 0 12px rgba(52, 199, 89, 0.8);
+    }
+}
+
+/* 조건 노드 출력점 스타일 */
+.node-outputs {
+    position: absolute;
+    right: -6px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.node-outputs .node-output {
+    position: relative;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 2px solid #666;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.node-outputs .node-output:hover {
+    transform: scale(1.2);
+    background: #007AFF;
+    border-color: #007AFF;
+    box-shadow: 0 0 8px rgba(0, 122, 255, 0.6);
+}
+
+/* True/False 출력점 색상 */
+.true-output .output-dot {
+    background: #34C759;
+    border-color: #34C759;
+}
+
+.false-output .output-dot {
+    background: #FF3B30;
+    border-color: #FF3B30;
+}
+
+/* 출력점 라벨 */
+.output-label {
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 11px;
+    color: #666;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+/* 연결 모드 안내 메시지 */
+.connection-mode-message {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    z-index: 10000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.connection-mode-message.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.message-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.message-icon {
+    font-size: 16px;
+}
+
+.message-hint {
+    font-size: 12px;
+    color: #ccc;
+    margin-left: 8px;
+}
+
+/* 연결점 툴팁 */
+.connector-tooltip {
+    position: fixed;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    z-index: 10001;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    pointer-events: none;
+    transform: translateX(-50%);
+}
+
+.connector-tooltip.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.connector-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 4px solid transparent;
+    border-top-color: rgba(0, 0, 0, 0.8);
+}
+
+/* ==========================================
+   연결선 스타일
+   ========================================== */
+
+/* SVG 연결선 컨테이너 */
+.connection-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+    overflow: visible;
+}
+
+/* 연결선 기본 스타일 */
+.connection-line {
+    stroke: #007AFF;
+    stroke-width: 2;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: all 0.2s ease;
+    pointer-events: stroke;
+}
+
+/* 연결선 호버 효과 */
+.connection-line:hover {
+    stroke: #FF3B30;
+    stroke-width: 3;
+    filter: drop-shadow(0 0 4px rgba(255, 59, 48, 0.6));
+}
+
+/* 연결선 선택 상태 */
+.connection-line.selected {
+    stroke: #FF9500;
+    stroke-width: 3;
+    stroke-dasharray: 5,5;
+    animation: connection-dash 1s linear infinite;
+}
+
+/* 연결선 대시 애니메이션 */
+@keyframes connection-dash {
+    0% {
+        stroke-dashoffset: 0;
+    }
+    100% {
+        stroke-dashoffset: 10;
+    }
+}
+
+/* 연결선 삭제 버튼 */
+.connection-delete-btn {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    background: #FF3B30;
+    border-radius: 50%;
+    border: 2px solid white;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    z-index: 10;
+}
+
+.connection-delete-btn:hover {
+    background: #FF1A00;
+    transform: scale(1.1);
+}
+
+.connection-line:hover + .connection-delete-btn {
+    display: flex;
+}
+
+/* 마그네틱 하이라이트 스타일 */
+.magnetic-highlight {
+    background-color: #34C759 !important;
+    border-color: #34C759 !important;
+    box-shadow: 0 0 15px rgba(52, 199, 89, 0.8) !important;
+    transform: scale(1.2) !important;
+    transition: all 0.2s ease !important;
+}
+
+/* 임시 연결선 스타일 */
+.temp-connection-line {
+    stroke: #FF6B35 !important;
+    stroke-width: 2 !important;
+    stroke-dasharray: 5,5 !important;
+    animation: temp-connection-dash 1s linear infinite;
+}
+
+@keyframes temp-connection-dash {
+    0% { stroke-dashoffset: 0; }
+    100% { stroke-dashoffset: 10; }
+}

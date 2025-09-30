@@ -1,0 +1,177 @@
+/* 모달 컴포넌트 스타일 */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 2000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(5px);
+}
+
+.modal-content {
+    background-color: #2d3748;
+    margin: 5% auto;
+    padding: 2rem;
+    border-radius: 12px;
+    width: 80%;
+    max-width: 600px;
+    position: relative;
+    border: 1px solid #4a5568;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.close {
+    color: #a0aec0;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    position: absolute;
+    right: 1rem;
+    top: 1rem;
+    transition: color 0.3s ease;
+}
+
+.close:hover {
+    color: #ffffff;
+}
+
+.modal-content h3 {
+    color: #667eea;
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+/* 모달 내부 폼 스타일 */
+.modal .form-group {
+    margin-bottom: 1.5rem;
+}
+
+.modal .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #e2e8f0;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.modal .form-group input,
+.modal .form-group select,
+.modal .form-group textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #4a5568;
+    border-radius: 6px;
+    background-color: #1a202c;
+    color: #ffffff;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+}
+
+.modal .form-group input:focus,
+.modal .form-group select:focus,
+.modal .form-group textarea:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 8px rgba(102, 126, 234, 0.3);
+    background-color: #2d3748;
+}
+
+.modal .form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.modal .form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid #4a5568;
+}
+
+.modal .form-actions .btn {
+    padding: 0.75rem 1.5rem;
+    font-size: 0.9rem;
+}
+
+/* 모달 애니메이션 */
+.modal.show {
+    display: block;
+    animation: modalFadeIn 0.3s ease-out;
+}
+
+.modal.hide {
+    animation: modalFadeOut 0.3s ease-out;
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes modalFadeOut {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}
+
+/* 반응형 모달 */
+@media (max-width: 768px) {
+    .modal-content {
+        margin: 10% auto;
+        padding: 1.5rem;
+        width: 90%;
+        max-width: none;
+    }
+    
+    .modal .form-actions {
+        flex-direction: column;
+    }
+    
+    .modal .form-actions .btn {
+        width: 100%;
+    }
+    
+    .close {
+        font-size: 24px;
+        right: 0.75rem;
+        top: 0.75rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .modal-content {
+        margin: 5% auto;
+        padding: 1rem;
+        width: 95%;
+    }
+    
+    .modal-content h3 {
+        font-size: 1.25rem;
+    }
+}
