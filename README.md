@@ -177,7 +177,7 @@ POST /api/execute-nodes
 
 ## 라이선스
 
-MIT License
+Apache-2.0 license
 
 ## 기여
 
