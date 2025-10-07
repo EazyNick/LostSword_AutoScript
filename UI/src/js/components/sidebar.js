@@ -19,6 +19,7 @@ class SidebarManager {
         ];
         
         this.currentScriptIndex = 0;
+        this.previousScript = null; // 이전 스크립트 정보 저장
         this.init();
     }
     
@@ -55,6 +56,7 @@ class SidebarManager {
             `;
             
             scriptItem.addEventListener('click', () => {
+                console.log('사이드바 스크립트 클릭됨:', script.name, '인덱스:', index);
                 this.selectScript(index);
             });
             
@@ -63,6 +65,10 @@ class SidebarManager {
     }
     
     selectScript(index) {
+        // 이전 스크립트 정보 저장 (스크립트 변경 전에)
+        const previousScript = this.getCurrentScript();
+        this.previousScript = previousScript;
+        
         // 모든 스크립트 비활성화
         this.scripts.forEach(script => script.active = false);
         
@@ -170,6 +176,109 @@ class SidebarManager {
         return this.scripts[this.currentScriptIndex];
     }
     
+    getPreviousScript() {
+        return this.previousScript || null;
+    }
+    
+    /**
+     * 스크립트 변경 전 현재 워크플로우 저장
+     * 노드가 삭제되기 전에 현재 상태를 저장합니다.
+     */
+    saveCurrentWorkflowBeforeSwitch() {
+        // 현재 스크립트 정보 가져오기
+        const currentScript = this.getCurrentScript();
+        if (!currentScript) {
+            console.log('현재 스크립트 정보가 없어서 저장 건너뜀');
+            return;
+        }
+        
+        // 현재 노드와 연결선 정보 가져오기
+        const currentNodes = window.nodeManager ? window.nodeManager.getAllNodes() : [];
+        const currentConnections = window.nodeManager ? window.nodeManager.getAllConnections() : [];
+        
+        console.log('사이드바에서 스크립트 전환 전 저장할 데이터:', {
+            script: currentScript.name,
+            scriptId: currentScript.id,
+            nodes: currentNodes.length,
+            connections: currentConnections.length
+        });
+        
+        // 노드 데이터 상세 로그
+        if (currentNodes.length > 0) {
+            console.log('저장할 노드 데이터:', currentNodes);
+        }
+        
+        // 노드가 없어도 저장 (초기 상태도 보존)
+        console.log('사이드바에서 노드 개수:', currentNodes.length, '연결선 개수:', currentConnections.length);
+        
+        // 현재 캔버스 뷰포트 위치 가져오기
+        const viewportPosition = this.getCurrentViewportPosition();
+        
+        const workflowData = {
+            script: currentScript,
+            nodes: currentNodes,
+            connections: currentConnections,
+            viewport: viewportPosition,
+            timestamp: new Date().toISOString()
+        };
+        
+        // 로컬 스토리지에 저장 (기존 데이터 업데이트 방식)
+        const savedWorkflows = JSON.parse(localStorage.getItem('workflows') || '[]');
+        const scriptId = currentScript.id;
+        
+        // 기존 스크립트 데이터가 있으면 업데이트, 없으면 새로 추가
+        const existingIndex = savedWorkflows.findIndex(w => w.script && w.script.id === scriptId);
+        if (existingIndex >= 0) {
+            savedWorkflows[existingIndex] = workflowData;
+            console.log('사이드바에서 기존 스크립트 데이터 업데이트:', scriptId);
+        } else {
+            savedWorkflows.push(workflowData);
+            console.log('사이드바에서 새 스크립트 데이터 추가:', scriptId);
+        }
+        
+        localStorage.setItem('workflows', JSON.stringify(savedWorkflows));
+        console.log('사이드바에서 스크립트 전환 전 저장 완료:', workflowData);
+    }
+    
+    /**
+     * 현재 캔버스 뷰포트 위치 가져오기
+     */
+    getCurrentViewportPosition() {
+        const canvasContent = document.getElementById('canvas-content');
+        
+        if (canvasContent) {
+            // Transform 기반 패닝 (피그마 방식)
+            const transform = canvasContent.style.transform || 'translate(-50000px, -50000px) scale(1)';
+            
+            // Transform 파싱
+            let x = -50000, y = -50000, scale = 1;
+            
+            const translateMatch = transform.match(/translate\(([^,]+)px,\s*([^)]+)px\)/);
+            if (translateMatch) {
+                x = parseFloat(translateMatch[1]) || -50000;
+                y = parseFloat(translateMatch[2]) || -50000;
+            }
+            
+            const scaleMatch = transform.match(/scale\(([^)]+)\)/);
+            if (scaleMatch) {
+                scale = parseFloat(scaleMatch[1]) || 1;
+            }
+            
+            return { x, y, scale, mode: 'transform' };
+        } else {
+            // 스크롤 기반 패닝 (전통적 방식)
+            const canvas = document.getElementById('workflow-canvas');
+            if (canvas) {
+                const x = canvas.scrollLeft || 0;
+                const y = canvas.scrollTop || 0;
+                return { x, y, scale: 1, mode: 'scroll' };
+            }
+        }
+        
+        // 기본값 반환
+        return { x: -50000, y: -50000, scale: 1, mode: 'transform' };
+    }
+    
     getAllScripts() {
         return this.scripts;
     }
@@ -178,6 +287,7 @@ class SidebarManager {
         const event = new CustomEvent('scriptChanged', {
             detail: {
                 script: this.getCurrentScript(),
+                previousScript: this.getPreviousScript(),
                 index: this.currentScriptIndex
             }
         });

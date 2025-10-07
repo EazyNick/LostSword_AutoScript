@@ -99,6 +99,10 @@ class NodeManager {
         // 연결 관리자 초기화
             if (window.ConnectionManager && !this.connectionManager) {
                 this.connectionManager = new window.ConnectionManager(this.canvas);
+                // 전역 변수로 설정
+                if (window.setConnectionManager) {
+                    window.setConnectionManager(this.connectionManager);
+                }
                 console.log('연결 관리자 초기화 완료');
         } else if (!window.ConnectionManager) {
             console.warn('ConnectionManager 클래스를 찾을 수 없습니다.');
@@ -440,6 +444,8 @@ class NodeManager {
         nodeElement.dataset.nodeId = nodeData.id;
         nodeElement.style.left = nodeData.x + 'px';
         nodeElement.style.top = nodeData.y + 'px';
+        
+        console.log(`노드 생성: ${nodeData.id} 위치 (${nodeData.x}, ${nodeData.y})`);
         
         return nodeElement;
     }
@@ -833,14 +839,48 @@ class NodeManager {
      * @returns {Object} 연결점 위치 {x, y}
      */
     getConnectorPosition(connector) {
-        const rect = connector.getBoundingClientRect();
-        const canvasRect = this.canvas.getBoundingClientRect();
+        // 캔버스 콘텐츠 컨테이너 확인
+        const canvasContent = document.getElementById('canvas-content');
         
-        // 캔버스 내에서의 상대 위치 계산 (연결점 중심 좌표)
-        const relativeX = rect.left - canvasRect.left + rect.width / 2;
-        const relativeY = rect.top - canvasRect.top + rect.height / 2;
-        
-        return { x: relativeX, y: relativeY };
+        if (canvasContent) {
+            // Transform 기반 패닝 (피그마 방식)
+            const transform = canvasContent.style.transform;
+            let transformX = 0, transformY = 0;
+            
+            if (transform && transform !== 'none') {
+                const match = transform.match(/translate\(([^,]+)px,\s*([^)]+)px\)/);
+                if (match) {
+                    transformX = parseFloat(match[1]);
+                    transformY = parseFloat(match[2]);
+                }
+            }
+            
+            // 연결점의 절대 위치 계산
+            const connectorRect = connector.getBoundingClientRect();
+            const canvasRect = this.canvas.getBoundingClientRect();
+            
+            // 캔버스 내에서의 상대 위치 계산 (Transform 고려)
+            // Transform이 적용된 상태에서의 실제 화면 위치를 계산
+            const relativeX = connectorRect.left - canvasRect.left + connectorRect.width / 2;
+            const relativeY = connectorRect.top - canvasRect.top + connectorRect.height / 2;
+            
+            // SVG는 캔버스 뷰포트 기준이므로 Transform을 빼야 함
+            // Transform이 음수이면 캔버스가 왼쪽/위로 이동한 것이므로 연결점은 오른쪽/아래로 이동
+            const actualX = relativeX - transformX;
+            const actualY = relativeY - transformY;
+            
+            return { x: actualX, y: actualY };
+        } else {
+            // 스크롤 기반 패닝 (전통적 방식)
+            const rect = connector.getBoundingClientRect();
+            const canvasRect = this.canvas.getBoundingClientRect();
+            
+            // 캔버스 내에서의 상대 위치 계산 (연결점 중심 좌표)
+            const relativeX = rect.left - canvasRect.left + rect.width / 2;
+            const relativeY = rect.top - canvasRect.top + rect.height / 2;
+            
+            return { x: relativeX, y: relativeY };
+        }
     }
     
     /**
@@ -1449,6 +1489,10 @@ class NodeManager {
         if (!this.connectionManager) {
             if (window.ConnectionManager) {
                 this.connectionManager = new window.ConnectionManager(this.canvas);
+                // 전역 변수로 설정
+                if (window.setConnectionManager) {
+                    window.setConnectionManager(this.connectionManager);
+                }
                 console.log('연결 관리자 지연 초기화 완료');
             } else {
                 console.warn('연결 관리자가 초기화되지 않았습니다.');
@@ -1743,6 +1787,11 @@ class NodeManager {
             this.canvas.appendChild(nodeElement);
             console.log(`노드 ${nodeElement.dataset.nodeId}를 캔버스에 직접 추가 완료 (canvas-content 없음)`);
         }
+        
+        // 미니맵에 노드 추가 이벤트 발생
+        if (window.minimapManager) {
+            window.minimapManager.onNodeAdded(nodeElement);
+        }
     }
     
     /**
@@ -1770,6 +1819,10 @@ class NodeManager {
                 this.connectionManager.bindNodeConnector(nodeElement);
             } else if (window.ConnectionManager) {
                 this.connectionManager = new window.ConnectionManager(this.canvas);
+                // 전역 변수로 설정
+                if (window.setConnectionManager) {
+                    window.setConnectionManager(this.connectionManager);
+                }
                 this.connectionManager.bindNodeConnector(nodeElement);
             }
         }, 50);
@@ -1960,13 +2013,13 @@ class NodeManager {
      * @param {HTMLElement} node - 노드 요소
      */
     updateRelatedComponents(node) {
-        // 미니맵 업데이트
-        if (this.minimapManager) {
+        // 미니맵 업데이트 (드래그 중이 아닐 때만)
+        if (this.minimapManager && !this.isDragging) {
             this.minimapManager.onNodeMoved(node);
         }
         
-        // 연결선 업데이트
-        if (this.connectionManager) {
+        // 연결선 업데이트 (드래그 중이 아닐 때만)
+        if (this.connectionManager && !this.isDragging) {
             this.updateConnectionsImmediately(node.id);
         }
     }
@@ -1990,8 +2043,18 @@ class NodeManager {
             // 연결선 최종 업데이트
             this.finalizeConnections(nodeId);
             
-            // 미니맵 업데이트
-            this.updateMinimapAfterDrag();
+            // 미니맵에 노드 이동 이벤트 발생 (드래그 완료 시에만)
+            if (window.minimapManager) {
+                window.minimapManager.onNodeMoved(this.selectedNode);
+            }
+            
+            // 연결선 업데이트 (노드 이동 완료 시)
+            if (window.connectionManager) {
+                // 드래그 완료 후 연결선 업데이트
+                setTimeout(() => {
+                    window.connectionManager.updateConnections();
+                }, 10); // 약간의 지연으로 안정성 확보
+            }
             
             console.log(`드래그 종료: ${nodeId}`);
             
@@ -2036,14 +2099,12 @@ class NodeManager {
     }
             
     /**
-     * 드래그 후 미니맵 업데이트
+     * 드래그 후 미니맵 업데이트 (사용하지 않음 - 중복 방지)
      */
     updateMinimapAfterDrag() {
-            setTimeout(() => {
-        if (this.minimapManager) {
-                    this.minimapManager.updateMinimap();
-                }
-            }, 100);
+        // 이 메서드는 더 이상 사용하지 않습니다
+        // 전체 미니맵 업데이트로 인한 노드 중복 추가 방지
+        console.log('updateMinimapAfterDrag 호출됨 - 무시됨 (중복 방지)');
     }
     
     // ==========================================
@@ -2061,6 +2122,10 @@ class NodeManager {
         if (!this.connectionManager) {
             if (window.ConnectionManager) {
                 this.connectionManager = new window.ConnectionManager(this.canvas);
+                // 전역 변수로 설정
+                if (window.setConnectionManager) {
+                    window.setConnectionManager(this.connectionManager);
+                }
                 console.log('연결 관리자 지연 초기화 완료');
             } else {
                 console.warn('연결 관리자가 초기화되지 않았습니다.');
@@ -2292,6 +2357,11 @@ class NodeManager {
         // 미니맵 뷰포트 업데이트
         if (this.minimapManager) {
             this.minimapManager.updateViewport();
+        }
+        
+        // 연결선 업데이트 (Transform 변경 시) - 드래그 중이 아닐 때만
+        if (window.connectionManager && !this.isDragging) {
+            window.connectionManager.updateConnections();
         }
     }
     
@@ -2651,6 +2721,16 @@ class NodeManager {
         // 연결선 제거
         if (this.connectionManager) {
             this.connectionManager.removeNodeConnections(nodeId);
+        } else {
+            // 연결선 매니저가 없으면 초기화 시도
+            console.warn('연결선 매니저가 없어서 연결선 제거를 건너뜁니다.');
+            if (window.ConnectionManager) {
+                this.connectionManager = new window.ConnectionManager(this.canvas);
+                if (window.setConnectionManager) {
+                    window.setConnectionManager(this.connectionManager);
+                }
+                console.log('연결선 매니저 지연 초기화 완료');
+            }
         }
         
         // 선택 해제

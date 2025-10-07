@@ -46,6 +46,20 @@ class WorkflowPage {
             this.runWorkflow();
         });
         
+        // === 페이지 이벤트 ===
+        
+        // 페이지를 떠날 때 자동 저장
+        window.addEventListener('beforeunload', () => {
+            this.autoSaveCurrentWorkflow();
+        });
+        
+        // 페이지 숨김 시 자동 저장 (모바일/탭 전환 시)
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                this.autoSaveCurrentWorkflow();
+            }
+        });
+        
         // 컴포넌트 이벤트 리스너 설정
         this.setupComponentEventListeners();
     }
@@ -58,7 +72,7 @@ class WorkflowPage {
         // 스크립트 변경 이벤트 (사이드바에서 스크립트 선택 시)
         document.addEventListener('scriptChanged', (e) => {
             console.log('스크립트 변경됨:', e.detail.script.name);
-            this.onScriptChanged(e.detail.script);
+            this.onScriptChanged(e);
         });
         
         // 노드 선택 이벤트 (노드 매니저에서 노드 선택 시)
@@ -211,6 +225,16 @@ class WorkflowPage {
                         console.log('연결선 위치 재조정 시작');
                         window.nodeManager.connectionManager.updateAllConnections();
                         console.log('연결선 위치 재조정 완료');
+                        
+                        // 초기 노드와 연결선 생성 완료 후 자동 저장
+                        setTimeout(() => {
+                            console.log('초기 노드 생성 완료 - 자동 저장 시작');
+                            if (window.sidebarManager) {
+                                window.sidebarManager.saveCurrentWorkflowBeforeSwitch();
+                            } else {
+                                console.log('사이드바 매니저가 없어서 초기 저장 건너뜀');
+                            }
+                        }, 200);
                     }
                 }, 100);
             } else {
@@ -307,20 +331,114 @@ class WorkflowPage {
      * 현재 워크플로우 상태를 로컬 스토리지에 저장합니다.
      */
     saveWorkflow() {
+        // 현재 캔버스 뷰포트 위치 가져오기
+        const viewportPosition = this.getCurrentViewportPosition();
+        
         const workflowData = {
             script: window.sidebarManager ? window.sidebarManager.getCurrentScript() : null,
             nodes: window.nodeManager ? window.nodeManager.getAllNodes() : [],
             connections: window.nodeManager ? window.nodeManager.getAllConnections() : [],
+            viewport: viewportPosition, // 캔버스 뷰포트 위치 추가
             timestamp: new Date().toISOString()
         };
         
-        // 로컬 스토리지에 저장
+        // 로컬 스토리지에 저장 (기존 데이터 업데이트 방식으로 변경)
         const savedWorkflows = JSON.parse(localStorage.getItem('workflows') || '[]');
-        savedWorkflows.push(workflowData);
+        const scriptId = workflowData.script ? workflowData.script.id : 'default';
+        
+        // 기존 스크립트 데이터가 있으면 업데이트, 없으면 새로 추가
+        const existingIndex = savedWorkflows.findIndex(w => w.script && w.script.id === scriptId);
+        if (existingIndex >= 0) {
+            savedWorkflows[existingIndex] = workflowData;
+            console.log('기존 스크립트 데이터 업데이트:', scriptId);
+        } else {
+            savedWorkflows.push(workflowData);
+            console.log('새 스크립트 데이터 추가:', scriptId);
+        }
+        
         localStorage.setItem('workflows', JSON.stringify(savedWorkflows));
         
         window.modalManager.showAlert('저장 완료', '워크플로우가 성공적으로 저장되었습니다.');
         console.log('워크플로우 저장:', workflowData);
+    }
+    
+    /**
+     * 현재 캔버스 뷰포트 위치 가져오기
+     * Transform 기반 패닝과 스크롤 기반 패닝 모두 지원
+     */
+    getCurrentViewportPosition() {
+        const canvasContent = document.getElementById('canvas-content');
+        
+        if (canvasContent) {
+            // Transform 기반 패닝 (피그마 방식)
+            const transform = canvasContent.style.transform || 'translate(-50000px, -50000px) scale(1)';
+            
+            // Transform 파싱
+            let x = -50000, y = -50000, scale = 1;
+            
+            const translateMatch = transform.match(/translate\(([^,]+)px,\s*([^)]+)px\)/);
+            if (translateMatch) {
+                x = parseFloat(translateMatch[1]) || -50000;
+                y = parseFloat(translateMatch[2]) || -50000;
+            }
+            
+            const scaleMatch = transform.match(/scale\(([^)]+)\)/);
+            if (scaleMatch) {
+                scale = parseFloat(scaleMatch[1]) || 1;
+            }
+            
+            console.log('현재 뷰포트 위치 (Transform 모드):', { x, y, scale });
+            return { x, y, scale, mode: 'transform' };
+        } else {
+            // 스크롤 기반 패닝 (전통적 방식)
+            const canvas = document.getElementById('workflow-canvas');
+            if (canvas) {
+                const x = canvas.scrollLeft || 0;
+                const y = canvas.scrollTop || 0;
+                console.log('현재 뷰포트 위치 (스크롤 모드):', { x, y });
+                return { x, y, scale: 1, mode: 'scroll' };
+            }
+        }
+        
+        // 기본값 반환
+        return { x: -50000, y: -50000, scale: 1, mode: 'transform' };
+    }
+    
+    /**
+     * 캔버스 뷰포트 위치 복원
+     * 저장된 뷰포트 위치로 캔버스를 이동시킵니다.
+     */
+    restoreViewportPosition(viewportData) {
+        if (!viewportData) {
+            console.log('뷰포트 데이터가 없어서 기본 위치로 설정');
+            return;
+        }
+        
+        console.log('뷰포트 위치 복원 시작:', viewportData);
+        
+        const canvasContent = document.getElementById('canvas-content');
+        
+        if (viewportData.mode === 'transform' && canvasContent) {
+            // Transform 기반 패닝 (피그마 방식)
+            const { x, y, scale } = viewportData;
+            canvasContent.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+            console.log(`뷰포트 복원 (Transform): translate(${x}, ${y}) scale(${scale})`);
+        } else if (viewportData.mode === 'scroll') {
+            // 스크롤 기반 패닝 (전통적 방식)
+            const canvas = document.getElementById('workflow-canvas');
+            if (canvas) {
+                canvas.scrollLeft = viewportData.x || 0;
+                canvas.scrollTop = viewportData.y || 0;
+                console.log(`뷰포트 복원 (스크롤): (${viewportData.x}, ${viewportData.y})`);
+            }
+        }
+        
+        // 미니맵 뷰포트 업데이트
+        if (window.minimapManager) {
+            setTimeout(() => {
+                window.minimapManager.updateViewport();
+            }, 100);
+        }
     }
     
     /**
@@ -492,12 +610,160 @@ class WorkflowPage {
      * 스크립트 변경 처리
      * 사이드바에서 다른 스크립트를 선택했을 때 호출됩니다.
      */
-    onScriptChanged(script) {
+    onScriptChanged(event) {
+        const { script, previousScript } = event.detail;
+        
         // 스크립트가 변경되었을 때의 처리
         console.log('새 스크립트 로드:', script.name);
+        console.log('이전 스크립트:', previousScript ? previousScript.name : '없음');
         
-        // 필요시 노드들을 초기화하거나 다른 스크립트 데이터를 로드
-        this.loadScriptData(script);
+        // 이전 스크립트가 있으면 먼저 저장 (노드가 삭제되기 전에)
+        if (previousScript) {
+            console.log('워크플로우에서 이전 스크립트 저장 시도:', previousScript.name);
+            this.saveWorkflowForScript(previousScript);
+            
+            // 저장 완료 후 새 스크립트 로드
+            setTimeout(() => {
+                this.loadScriptData(script);
+            }, 100);
+        } else {
+            // 이전 스크립트가 없으면 바로 로드
+            this.loadScriptData(script);
+        }
+    }
+    
+    /**
+     * 특정 스크립트의 워크플로우 저장
+     * 현재 상태를 지정된 스크립트로 저장합니다.
+     */
+    saveWorkflowForScript(script) {
+        if (!script) {
+            console.log('스크립트 정보가 없어서 저장 건너뜀');
+            return;
+        }
+        
+        // 현재 노드와 연결선 정보 가져오기
+        const currentNodes = window.nodeManager ? window.nodeManager.getAllNodes() : [];
+        const currentConnections = window.nodeManager ? window.nodeManager.getAllConnections() : [];
+        
+        console.log('스크립트 저장할 데이터:', {
+            script: script.name,
+            nodes: currentNodes.length,
+            connections: currentConnections.length
+        });
+        
+        // 노드가 없어도 저장 (초기 상태도 보존)
+        console.log('노드 개수:', currentNodes.length, '연결선 개수:', currentConnections.length);
+        
+        // 현재 캔버스 뷰포트 위치 가져오기
+        const viewportPosition = this.getCurrentViewportPosition();
+        
+        const workflowData = {
+            script: script,
+            nodes: currentNodes,
+            connections: currentConnections,
+            viewport: viewportPosition,
+            timestamp: new Date().toISOString()
+        };
+        
+        // 로컬 스토리지에 저장 (기존 데이터 업데이트 방식)
+        const savedWorkflows = JSON.parse(localStorage.getItem('workflows') || '[]');
+        const scriptId = script.id;
+        
+        // 기존 스크립트 데이터가 있으면 업데이트, 없으면 새로 추가
+        const existingIndex = savedWorkflows.findIndex(w => w.script && w.script.id === scriptId);
+        if (existingIndex >= 0) {
+            savedWorkflows[existingIndex] = workflowData;
+            console.log('기존 스크립트 데이터 업데이트:', scriptId);
+        } else {
+            savedWorkflows.push(workflowData);
+            console.log('새 스크립트 데이터 추가:', scriptId);
+        }
+        
+        localStorage.setItem('workflows', JSON.stringify(savedWorkflows));
+        console.log('스크립트 저장 완료:', workflowData);
+        
+        // 저장 후 상태 확인
+        this.debugStorageState();
+    }
+    
+    /**
+     * 현재 워크플로우 자동 저장
+     * 스크립트 변경 시 현재 상태를 자동으로 저장합니다.
+     */
+    autoSaveCurrentWorkflow() {
+        // 현재 스크립트 정보 가져오기
+        const currentScript = window.sidebarManager ? window.sidebarManager.getCurrentScript() : null;
+        if (!currentScript) {
+            console.log('현재 스크립트 정보가 없어서 자동 저장 건너뜀');
+            return;
+        }
+        
+        // 현재 노드와 연결선 정보 가져오기
+        const currentNodes = window.nodeManager ? window.nodeManager.getAllNodes() : [];
+        const currentConnections = window.nodeManager ? window.nodeManager.getAllConnections() : [];
+        
+        console.log('자동 저장할 데이터:', {
+            script: currentScript.name,
+            nodes: currentNodes.length,
+            connections: currentConnections.length
+        });
+        
+        // 노드가 없으면 저장하지 않음 (초기 상태)
+        if (currentNodes.length === 0) {
+            console.log('노드가 없어서 자동 저장 건너뜀');
+            return;
+        }
+        
+        // 현재 캔버스 뷰포트 위치 가져오기
+        const viewportPosition = this.getCurrentViewportPosition();
+        
+        const workflowData = {
+            script: currentScript,
+            nodes: currentNodes,
+            connections: currentConnections,
+            viewport: viewportPosition,
+            timestamp: new Date().toISOString()
+        };
+        
+        // 로컬 스토리지에 저장 (기존 데이터 업데이트 방식)
+        const savedWorkflows = JSON.parse(localStorage.getItem('workflows') || '[]');
+        const scriptId = currentScript.id;
+        
+        // 기존 스크립트 데이터가 있으면 업데이트, 없으면 새로 추가
+        const existingIndex = savedWorkflows.findIndex(w => w.script && w.script.id === scriptId);
+        if (existingIndex >= 0) {
+            savedWorkflows[existingIndex] = workflowData;
+            console.log('기존 스크립트 데이터 업데이트:', scriptId);
+        } else {
+            savedWorkflows.push(workflowData);
+            console.log('새 스크립트 데이터 추가:', scriptId);
+        }
+        
+        localStorage.setItem('workflows', JSON.stringify(savedWorkflows));
+        console.log('자동 저장 완료:', workflowData);
+        
+        // 저장 후 상태 확인
+        this.debugStorageState();
+    }
+    
+    /**
+     * 로컬 스토리지 상태 디버깅
+     */
+    debugStorageState() {
+        const savedWorkflows = JSON.parse(localStorage.getItem('workflows') || '[]');
+        console.log('=== 로컬 스토리지 상태 ===');
+        console.log('총 저장된 워크플로우 개수:', savedWorkflows.length);
+        savedWorkflows.forEach((workflow, index) => {
+            console.log(`워크플로우 ${index + 1}:`, {
+                scriptName: workflow.script ? workflow.script.name : 'Unknown',
+                scriptId: workflow.script ? workflow.script.id : 'Unknown',
+                nodeCount: workflow.nodes ? workflow.nodes.length : 0,
+                connectionCount: workflow.connections ? workflow.connections.length : 0,
+                hasViewport: !!workflow.viewport
+            });
+        });
+        console.log('=== 로컬 스토리지 상태 끝 ===');
     }
     
     /**
@@ -505,33 +771,109 @@ class WorkflowPage {
      * 저장된 워크플로우 데이터에서 해당 스크립트의 데이터를 찾아 로드합니다.
      */
     loadScriptData(script) {
+        console.log('스크립트 데이터 로드 시작:', script.name, 'ID:', script.id);
+        
+        // 연결선 매니저 초기화 확인 및 보장
+        this.ensureConnectionManagerInitialized();
+        
         // 저장된 워크플로우 데이터에서 해당 스크립트의 데이터를 찾아 로드
         const savedWorkflows = JSON.parse(localStorage.getItem('workflows') || '[]');
-        const scriptWorkflow = savedWorkflows.find(w => w.script && w.script.id === script.id);
+        console.log('저장된 모든 워크플로우:', savedWorkflows);
         
-        if (scriptWorkflow && scriptWorkflow.nodes) {
-            // 기존 노드들 제거
-            document.querySelectorAll('.workflow-node').forEach(node => {
+        // 로컬 스토리지 상태 디버깅
+        this.debugStorageState();
+        
+        const scriptWorkflow = savedWorkflows.find(w => w.script && w.script.id === script.id);
+        console.log('찾은 스크립트 워크플로우:', scriptWorkflow);
+        
+        if (scriptWorkflow && scriptWorkflow.nodes && scriptWorkflow.nodes.length > 0) {
+            console.log('저장된 스크립트 데이터 발견:', scriptWorkflow.nodes.length + '개 노드');
+            console.log('저장된 노드 데이터:', scriptWorkflow.nodes);
+            
+            // 기존 노드들 제거 (연결선도 함께 제거됨)
+            const existingNodes = document.querySelectorAll('.workflow-node');
+            console.log('기존 노드 제거 시작:', existingNodes.length + '개');
+            existingNodes.forEach(node => {
                 if (window.nodeManager) {
                     window.nodeManager.deleteNode(node);
                 }
             });
             
-            // 저장된 노드들 복원
-            scriptWorkflow.nodes.forEach(nodeData => {
-                if (window.nodeManager) {
-                    window.nodeManager.createNode(nodeData);
+            // 연결선 매니저가 완전히 초기화될 때까지 대기
+            setTimeout(() => {
+                // 저장된 노드들 복원
+                console.log('노드 복원 시작:', scriptWorkflow.nodes.length + '개 노드');
+                scriptWorkflow.nodes.forEach((nodeData, index) => {
+                    console.log(`노드 ${index + 1} 복원:`, nodeData);
+                    if (window.nodeManager) {
+                        window.nodeManager.createNode(nodeData);
+                    }
+                });
+                
+                // 저장된 연결들 복원
+                if (scriptWorkflow.connections && window.nodeManager.connectionManager) {
+                    console.log('연결선 복원 시작:', scriptWorkflow.connections.length + '개 연결선');
+                    window.nodeManager.connectionManager.setConnections(scriptWorkflow.connections);
                 }
-            });
-            
-            // 저장된 연결들 복원
-            if (scriptWorkflow.connections && window.nodeManager.connectionManager) {
-                window.nodeManager.connectionManager.setConnections(scriptWorkflow.connections);
-            }
-            
-            console.log('스크립트 데이터 로드 완료:', scriptWorkflow.nodes.length + '개 노드');
+                
+                // 저장된 뷰포트 위치 복원
+                if (scriptWorkflow.viewport) {
+                    console.log('뷰포트 위치 복원 시작:', scriptWorkflow.viewport);
+                    this.restoreViewportPosition(scriptWorkflow.viewport);
+                }
+                
+                console.log('스크립트 데이터 로드 완료:', scriptWorkflow.nodes.length + '개 노드');
+            }, 100);
         } else {
             console.log('저장된 스크립트 데이터가 없습니다.');
+            console.log('스크립트 워크플로우 상태:', {
+                exists: !!scriptWorkflow,
+                hasNodes: !!(scriptWorkflow && scriptWorkflow.nodes),
+                nodeCount: scriptWorkflow ? scriptWorkflow.nodes.length : 0
+            });
+            
+            // 기존 노드들 제거
+            const existingNodes = document.querySelectorAll('.workflow-node');
+            console.log('기존 노드 제거 시작 (데이터 없음):', existingNodes.length + '개');
+            existingNodes.forEach(node => {
+                if (window.nodeManager) {
+                    window.nodeManager.deleteNode(node);
+                }
+            });
+        }
+    }
+    
+    /**
+     * 연결선 매니저 초기화 보장
+     * 스크립트 변경 시 연결선 매니저가 제대로 초기화되도록 보장합니다.
+     */
+    ensureConnectionManagerInitialized() {
+        console.log('연결선 매니저 초기화 확인 중...');
+        
+        if (!window.nodeManager) {
+            console.warn('노드 매니저가 없습니다.');
+            return;
+        }
+        
+        // 연결선 매니저가 없거나 제대로 초기화되지 않은 경우
+        if (!window.nodeManager.connectionManager || !window.connectionManager) {
+            console.log('연결선 매니저 재초기화 시작...');
+            
+            if (window.ConnectionManager && window.nodeManager.canvas) {
+                // 새로운 연결선 매니저 생성
+                window.nodeManager.connectionManager = new window.ConnectionManager(window.nodeManager.canvas);
+                
+                // 전역 변수로 설정
+                if (window.setConnectionManager) {
+                    window.setConnectionManager(window.nodeManager.connectionManager);
+                }
+                
+                console.log('연결선 매니저 재초기화 완료');
+            } else {
+                console.warn('연결선 매니저 초기화 실패: ConnectionManager 클래스 또는 캔버스를 찾을 수 없습니다.');
+            }
+        } else {
+            console.log('연결선 매니저가 이미 초기화되어 있습니다.');
         }
     }
     

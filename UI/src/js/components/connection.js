@@ -7,6 +7,7 @@ class ConnectionManager {
         this.connections = new Map(); // 연결 정보 저장
         this.connectionLines = new Map(); // SVG 라인 요소 저장
         this.isConnecting = false;
+        this.isUpdating = false; // 업데이트 중복 방지 플래그
         this.startNode = null;
         this.startConnector = null;
         this.startConnectorType = null;
@@ -46,24 +47,45 @@ class ConnectionManager {
     
     /**
      * SVG 크기 업데이트
-     * 캔버스 크기 변경 시 SVG 크기도 함께 업데이트
+     * 무한 캔버스 모드에서 Transform을 고려한 SVG 크기 업데이트
      */
     updateSVGSize() {
         if (!this.svgContainer) return;
         
-        // 캔버스의 실제 크기 가져오기
-        const canvasRect = this.canvas.getBoundingClientRect();
+        // 캔버스 콘텐츠 컨테이너 확인
+        const canvasContent = document.getElementById('canvas-content');
         
-        // 캔버스 크기에 맞춰 SVG 크기 설정
-        this.svgContainer.setAttribute('width', canvasRect.width);
-        this.svgContainer.setAttribute('height', canvasRect.height);
-        this.svgContainer.style.width = canvasRect.width + 'px';
-        this.svgContainer.style.height = canvasRect.height + 'px';
-        
-        console.log('SVG 크기 업데이트:', {
-            width: this.svgContainer.getAttribute('width'),
-            height: this.svgContainer.getAttribute('height')
-        });
+        if (canvasContent) {
+            // Transform 기반 패닝 (피그마 방식)
+            // 무한 캔버스에서는 실제 화면 크기를 사용
+            const canvasRect = this.canvas.getBoundingClientRect();
+            
+            // SVG 크기를 캔버스 뷰포트 크기로 설정
+            this.svgContainer.setAttribute('width', canvasRect.width);
+            this.svgContainer.setAttribute('height', canvasRect.height);
+            this.svgContainer.style.width = canvasRect.width + 'px';
+            this.svgContainer.style.height = canvasRect.height + 'px';
+            
+            console.log('SVG 크기 업데이트 (Transform 모드):', {
+                width: canvasRect.width,
+                height: canvasRect.height,
+                transform: canvasContent.style.transform
+            });
+        } else {
+            // 스크롤 기반 패닝 (전통적 방식)
+            const canvasRect = this.canvas.getBoundingClientRect();
+            
+            // 캔버스 크기에 맞춰 SVG 크기 설정
+            this.svgContainer.setAttribute('width', canvasRect.width);
+            this.svgContainer.setAttribute('height', canvasRect.height);
+            this.svgContainer.style.width = canvasRect.width + 'px';
+            this.svgContainer.style.height = canvasRect.height + 'px';
+            
+            console.log('SVG 크기 업데이트 (스크롤 모드):', {
+                width: canvasRect.width,
+                height: canvasRect.height
+            });
+        }
     }
     
     /**
@@ -291,11 +313,34 @@ class ConnectionManager {
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
         
+        // Transform 모드에서 마우스 위치도 올바르게 변환
+        const canvasContent = document.getElementById('canvas-content');
+        let actualMouseX = mouseX;
+        let actualMouseY = mouseY;
+        
+        if (canvasContent) {
+            // Transform 기반 패닝 (피그마 방식)
+            const transform = canvasContent.style.transform;
+            if (transform && transform !== 'none') {
+                const match = transform.match(/translate\(([^,]+)px,\s*([^)]+)px\)/);
+                if (match) {
+                    const transformX = parseFloat(match[1]);
+                    const transformY = parseFloat(match[2]);
+                    
+                    // 마우스 위치도 Transform을 고려하여 변환
+                    actualMouseX = mouseX - transformX;
+                    actualMouseY = mouseY - transformY;
+                    
+                    console.log(`마우스 위치 변환: (${mouseX}, ${mouseY}) -> (${actualMouseX}, ${actualMouseY})`);
+                }
+            }
+        }
+        
         // 시작점 좌표
         const startPos = this.getConnectorPosition(this.startConnector);
         
         // 임시 연결선 업데이트
-        this.updateTempLine(startPos.x, startPos.y, mouseX, mouseY);
+        this.updateTempLine(startPos.x, startPos.y, actualMouseX, actualMouseY);
     }
     
     /**
@@ -303,19 +348,61 @@ class ConnectionManager {
      * 무한 캔버스 모드에서 Transform을 고려한 정확한 위치 계산
      */
     getConnectorPosition(connectorElement) {
-        const rect = connectorElement.getBoundingClientRect();
-        const canvasRect = this.canvas.getBoundingClientRect();
+        // 캔버스 콘텐츠 컨테이너 확인
+        const canvasContent = document.getElementById('canvas-content');
         
-        // 캔버스 내에서의 상대 위치 계산 (연결점 중심 좌표)
-        const relativeX = rect.left - canvasRect.left + rect.width / 2;
-        const relativeY = rect.top - canvasRect.top + rect.height / 2;
-        
-        console.log(`연결점 위치 계산:`);
-        console.log(`- 연결점 크기: ${rect.width}x${rect.height}`);
-        console.log(`- 상대 위치 (중심): (${relativeX}, ${relativeY})`);
-        console.log(`- 최종 위치 (중심): (${relativeX}, ${relativeY})`);
-        
-        return { x: relativeX, y: relativeY };
+        if (canvasContent) {
+            // Transform 기반 패닝 (피그마 방식)
+            const transform = canvasContent.style.transform;
+            let transformX = 0, transformY = 0;
+            
+            if (transform && transform !== 'none') {
+                const match = transform.match(/translate\(([^,]+)px,\s*([^)]+)px\)/);
+                if (match) {
+                    transformX = parseFloat(match[1]);
+                    transformY = parseFloat(match[2]);
+                }
+            }
+            
+            // 연결점의 절대 위치 계산
+            const connectorRect = connectorElement.getBoundingClientRect();
+            const canvasRect = this.canvas.getBoundingClientRect();
+            
+            // 캔버스 내에서의 상대 위치 계산 (Transform 고려)
+            // Transform이 적용된 상태에서의 실제 화면 위치를 계산
+            const relativeX = connectorRect.left - canvasRect.left + connectorRect.width / 2;
+            const relativeY = connectorRect.top - canvasRect.top + connectorRect.height / 2;
+            
+            // SVG는 캔버스 뷰포트 기준이므로 Transform을 빼야 함
+            // Transform이 음수이면 캔버스가 왼쪽/위로 이동한 것이므로 연결점은 오른쪽/아래로 이동
+            const actualX = relativeX - transformX;
+            const actualY = relativeY - transformY;
+            
+            console.log(`연결점 위치 계산 (Transform 모드):`);
+            console.log(`- Transform: (${transformX}, ${transformY})`);
+            console.log(`- 연결점 크기: ${connectorRect.width}x${connectorRect.height}`);
+            console.log(`- 캔버스 크기: ${canvasRect.width}x${canvasRect.height}`);
+            console.log(`- 연결점 절대 위치: (${connectorRect.left}, ${connectorRect.top})`);
+            console.log(`- 캔버스 절대 위치: (${canvasRect.left}, ${canvasRect.top})`);
+            console.log(`- 상대 위치 (중심): (${relativeX}, ${relativeY})`);
+            console.log(`- Transform 적용 후 실제 위치: (${actualX}, ${actualY})`);
+            
+            return { x: actualX, y: actualY };
+        } else {
+            // 스크롤 기반 패닝 (전통적 방식)
+            const rect = connectorElement.getBoundingClientRect();
+            const canvasRect = this.canvas.getBoundingClientRect();
+            
+            // 캔버스 내에서의 상대 위치 계산 (연결점 중심 좌표)
+            const relativeX = rect.left - canvasRect.left + rect.width / 2;
+            const relativeY = rect.top - canvasRect.top + rect.height / 2;
+            
+            console.log(`연결점 위치 계산 (스크롤 모드):`);
+            console.log(`- 연결점 크기: ${rect.width}x${rect.height}`);
+            console.log(`- 상대 위치 (중심): (${relativeX}, ${relativeY})`);
+            
+            return { x: relativeX, y: relativeY };
+        }
     }
     
     /**
@@ -330,6 +417,13 @@ class ConnectionManager {
         this.tempLine.style.pointerEvents = 'none';
         
         this.svgContainer.appendChild(this.tempLine);
+        
+        // 연결점의 실제 위치를 가져와서 초기 위치 설정
+        const startPos = this.getConnectorPosition(this.startConnector);
+        console.log(`임시 연결선 생성 - 시작점 위치: (${startPos.x}, ${startPos.y})`);
+        
+        // 초기에는 시작점과 같은 위치에 설정 (마우스 이동 시 업데이트됨)
+        this.updateTempLine(startPos.x, startPos.y, startPos.x, startPos.y);
     }
     
     /**
@@ -360,6 +454,58 @@ class ConnectionManager {
         this.canvas.dispatchEvent(new CustomEvent('connectionCreated', {
             detail: { from: fromNodeId, to: toNodeId }
         }));
+    }
+    
+    /**
+     * 모든 연결선 다시 그리기
+     * Transform 변경 시 연결선 위치를 업데이트합니다.
+     */
+    redrawAllConnections() {
+        console.log('모든 연결선 다시 그리기 시작');
+        
+        // 기존 연결선들 모두 제거
+        const existingLines = this.svgContainer.querySelectorAll('.connection-line');
+        existingLines.forEach(line => line.remove());
+        
+        // 저장된 연결 정보를 기반으로 다시 그리기
+        this.connections.forEach(connection => {
+            this.drawConnection(connection.from, connection.to);
+        });
+        
+        console.log(`연결선 다시 그리기 완료: ${this.connections.length}개`);
+    }
+    
+    /**
+     * 연결선 업데이트
+     * 노드 이동 시 연결선 위치를 업데이트합니다.
+     */
+    updateConnections() {
+        // 노드 드래그 중이면 업데이트 건너뛰기 (성능 최적화)
+        if (window.nodeManager && window.nodeManager.isDragging) {
+            console.log('노드 드래그 중 - 연결선 업데이트 건너뛰기');
+            return;
+        }
+        
+        // 이미 업데이트 중이면 건너뛰기 (중복 방지)
+        if (this.isUpdating) {
+            console.log('연결선 업데이트 중 - 중복 호출 방지');
+            return;
+        }
+        
+        this.isUpdating = true;
+        console.log('연결선 업데이트 시작');
+        
+        try {
+            // SVG 크기 업데이트
+            this.updateSVGSize();
+            
+            // 모든 연결선 다시 그리기
+            this.redrawAllConnections();
+            
+            console.log('연결선 업데이트 완료');
+        } finally {
+            this.isUpdating = false;
+        }
     }
     
     /**
@@ -395,6 +541,13 @@ class ConnectionManager {
             console.warn('유효하지 않은 연결점 위치:', fromPos, toPos);
             return;
         }
+        
+        // 기존 연결선 제거 (같은 연결이 있다면) - 강화된 제거 로직
+        const existingLines = this.svgContainer.querySelectorAll(`[data-connection-id="${fromNodeId}-${toNodeId}"]`);
+        existingLines.forEach(line => {
+            line.remove();
+            console.log(`기존 연결선 제거: ${fromNodeId}-${toNodeId}`);
+        });
         
         // 연결선 생성
         const path = this.createCurvedPath(fromPos.x, fromPos.y, toPos.x, toPos.y);
@@ -438,6 +591,16 @@ class ConnectionManager {
             height: this.svgContainer.getAttribute('height')
         });
         console.log('연결선 경로:', path);
+        
+        // 미니맵에 연결선 추가 이벤트 발생
+        if (window.minimapManager) {
+            const connectionId = `${fromNodeId}-${toNodeId}`;
+            const connection = {
+                fromNodeId: fromNodeId,
+                toNodeId: toNodeId
+            };
+            window.minimapManager.onConnectionAdded(connectionId, connection);
+        }
     }
     
     /**
@@ -528,6 +691,11 @@ class ConnectionManager {
         this.canvas.dispatchEvent(new CustomEvent('connectionDeleted', {
             detail: { connectionId }
         }));
+        
+        // 미니맵에서 연결선 삭제 이벤트 발생
+        if (window.minimapManager) {
+            window.minimapManager.onConnectionRemoved(connectionId);
+        }
     }
     
     /**
@@ -561,6 +729,8 @@ class ConnectionManager {
      * 연결 정보 설정
      */
     setConnections(connections) {
+        console.log('연결선 정보 설정 시작:', connections.length + '개 연결선');
+        
         // 기존 연결 제거
         this.connections.clear();
         this.connectionLines.forEach(line => line.remove());
@@ -568,9 +738,21 @@ class ConnectionManager {
         
         // 새 연결 추가
         connections.forEach(connection => {
-            this.connections.set(connection.id, connection);
-            this.drawConnection(connection.from, connection.to);
+            console.log('연결선 추가:', connection);
+            
+            // 연결선 정보 구조 확인 및 정규화
+            const connectionId = connection.id || `${connection.from}-${connection.to}`;
+            const normalizedConnection = {
+                id: connectionId,
+                from: connection.from || connection.fromNodeId,
+                to: connection.to || connection.toNodeId
+            };
+            
+            this.connections.set(connectionId, normalizedConnection);
+            this.drawConnection(normalizedConnection.from, normalizedConnection.to);
         });
+        
+        console.log('연결선 정보 설정 완료:', this.connections.size + '개 연결선');
     }
     
     /**
@@ -665,7 +847,57 @@ class ConnectionManager {
             console.log('임시 연결선 제거됨');
         }
     }
+    
+    /**
+     * 특정 노드와 관련된 모든 연결선 제거
+     * 노드가 삭제될 때 호출됩니다.
+     */
+    removeNodeConnections(nodeId) {
+        console.log(`노드 ${nodeId}의 연결선 제거 시작`);
+        
+        const connectionsToRemove = [];
+        
+        // 해당 노드와 관련된 모든 연결 찾기
+        this.connections.forEach((connection, connectionId) => {
+            if (connection.from === nodeId || connection.to === nodeId) {
+                connectionsToRemove.push(connectionId);
+            }
+        });
+        
+        // 찾은 연결들 제거
+        connectionsToRemove.forEach(connectionId => {
+            console.log(`연결선 제거: ${connectionId}`);
+            this.deleteConnection(connectionId);
+        });
+        
+        console.log(`노드 ${nodeId}의 연결선 제거 완료: ${connectionsToRemove.length}개 제거됨`);
+    }
+    
+    /**
+     * 모든 연결선 제거
+     * 캔버스를 완전히 초기화할 때 사용됩니다.
+     */
+    clearAllConnections() {
+        console.log('모든 연결선 제거 시작');
+        
+        // 모든 연결선 SVG 요소 제거
+        this.connectionLines.forEach(line => {
+            line.remove();
+        });
+        this.connectionLines.clear();
+        
+        // 모든 연결 정보 제거
+        this.connections.clear();
+        
+        console.log('모든 연결선 제거 완료');
+    }
 }
 
 // 전역으로 사용할 수 있도록 export
 window.ConnectionManager = ConnectionManager;
+
+// 연결선 매니저 인스턴스를 전역 변수로 설정하는 함수
+window.setConnectionManager = function(connectionManager) {
+    window.connectionManager = connectionManager;
+    console.log('연결선 매니저 전역 변수 설정 완료:', window.connectionManager);
+};
