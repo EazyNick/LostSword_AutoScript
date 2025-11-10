@@ -184,32 +184,7 @@
                     </svg>
                 </div>
                 
-                <!-- ========================================== -->
-                <!-- 미니맵: 캔버스 전체를 축소해서 보여주는 작은 지도 -->
-                <!-- ========================================== -->
-                <div class="minimap">
-                    <!-- 미니맵 헤더 -->
-                    <div class="minimap-header">
-                        <div class="minimap-title">미니맵</div>
-                    </div>
-                    
-                    <!-- 미니맵 컨텐츠 영역 -->
-                    <div class="minimap-content" id="minimap-content">
-                        <!-- 현재 보이는 영역을 표시하는 뷰포트 -->
-                        <div class="minimap-viewport" id="minimap-viewport"></div>
-                        
-                        <!-- 미니맵에 표시되는 노드들 (JavaScript로 동적 생성) -->
-                        <div class="minimap-node minimap-blue"></div>
-                        <div class="minimap-node minimap-blue"></div>
-                        <div class="minimap-node minimap-orange"></div>
-                        
-                        <!-- 미니맵에 표시되는 연결선들 -->
-                        <div class="minimap-connections">
-                            <div class="minimap-line"></div>
-                            <div class="minimap-line"></div>
-                        </div>
-                    </div>
-                    </div> <!-- canvas-content 닫기 -->
+                
                 </div> <!-- workflow-canvas 닫기 -->
             </div>
         </main>
@@ -237,7 +212,7 @@
     <!-- 컴포넌트들: 각각의 기능을 담당하는 모듈들 -->
     <script src="../../js/components/sidebar.js"></script>    <!-- 사이드바 관리 -->
     <script src="../../js/components/node.js"></script>       <!-- 노드 관리 -->
-    <script src="../../js/components/minimap.js"></script>    <!-- 미니맵 관리 -->
+    
     
     <!-- 메인 페이지 로직: 전체 워크플로우 페이지 관리 -->
     <script src="./workflow.js"></script>

@@ -59,7 +59,9 @@ class NodeManager {
         
         // === 외부 매니저 참조 ===
         this.connectionManager = null;     // 노드 간 연결선 관리자
-        this.minimapManager = null;         // 미니맵 관리자
+        // 드래그 중 연결선 업데이트 스케줄링 플래그
+        this.connectionUpdateScheduled = false;
+        this.pendingConnectionUpdateNodeId = null;
         
         this.init();
     }
@@ -108,16 +110,7 @@ class NodeManager {
             console.warn('ConnectionManager 클래스를 찾을 수 없습니다.');
             }
             
-        // 미니맵 관리자 초기화
-            if (window.MinimapManager && !this.minimapManager) {
-                const minimapContent = document.getElementById('minimap-content');
-                if (minimapContent) {
-                    this.minimapManager = new window.MinimapManager(this.canvas, minimapContent);
-                    console.log('미니맵 관리자 초기화 완료');
-                }
-        } else if (!window.MinimapManager) {
-            console.warn('MinimapManager 클래스를 찾을 수 없습니다.');
-            }
+        
     }
     
     /**
@@ -457,6 +450,8 @@ class NodeManager {
      */
     generateNodeContent(nodeData) {
         const nodeTemplates = {
+            start: this.generateStartNodeContent(nodeData),
+            end: this.generateEndNodeContent(nodeData),
             condition: this.generateConditionNodeContent(nodeData),
             action: this.generateActionNodeContent(nodeData),
             default: this.generateActionNodeContent(nodeData)
@@ -903,8 +898,8 @@ class NodeManager {
             nodeId: nodeId,
             outputType: outputType,
             connector: outputConnector,
-            startX: e.clientX,
-            startY: e.clientY
+            // 시작점은 실제 커넥터 좌표(캔버스 기준)로 고정
+            ...(() => { const p = this.getConnectorPosition(outputConnector); return { startCanvasX: p.x, startCanvasY: p.y }; })()
         };
         
         // 연결점 하이라이트
@@ -912,8 +907,8 @@ class NodeManager {
         outputConnector.style.borderColor = '#FF6B35';
         outputConnector.style.boxShadow = '0 0 15px rgba(255, 107, 53, 0.8)';
         
-        // 임시 연결선 생성
-        this.createTempConnectionLine(e.clientX, e.clientY);
+        // 임시 연결선 생성 (캔버스 기준 좌표)
+        this.createTempConnectionLine(this.dragConnectionStart.startCanvasX, this.dragConnectionStart.startCanvasY);
         
         // 전역 마우스 이벤트 리스너 추가
         document.addEventListener('mousemove', this.handleDragConnectionMove);
@@ -932,8 +927,16 @@ class NodeManager {
     handleDragConnectionMove = (e) => {
         if (!this.isDraggingConnection) return;
         
-        // 임시 연결선 업데이트
-        this.updateTempConnectionLine(e.clientX, e.clientY);
+        // 마우스 좌표를 캔버스 기준으로 정규화
+        const canvasRect = this.canvas.getBoundingClientRect();
+        const mouseX = e.clientX - canvasRect.left;
+        const mouseY = e.clientY - canvasRect.top;
+        
+        // 임시 연결선 업데이트 (객체 좌표 형식)
+        this.updateTempConnectionLine(
+            { x: this.dragConnectionStart.startCanvasX, y: this.dragConnectionStart.startCanvasY },
+            { x: mouseX, y: mouseY }
+        );
         
         // 가까운 입력 연결점 찾기 (마그네틱 효과)
         const nearbyInputConnector = this.findNearbyInputConnector(e.clientX, e.clientY);
@@ -1764,6 +1767,30 @@ class NodeManager {
         }
         
     /**
+     * 시작 노드 내용 생성 (출력만 존재)
+     */
+    generateStartNodeContent(nodeData) {
+        return `
+                <div class="node-content">
+                <div class="node-title">${this.escapeHtml(nodeData.title)}</div>
+                </div>
+                <div class="node-output"></div>
+            `;
+    }
+    
+    /**
+     * 종료 노드 내용 생성 (입력만 존재)
+     */
+    generateEndNodeContent(nodeData) {
+        return `
+                <div class="node-input"></div>
+                <div class="node-content">
+                <div class="node-title">${this.escapeHtml(nodeData.title)}</div>
+                </div>
+            `;
+    }
+        
+    /**
      * HTML 이스케이프 처리
      * @param {string} text - 이스케이프할 텍스트
      * @returns {string} 이스케이프된 텍스트
@@ -1788,10 +1815,7 @@ class NodeManager {
             console.log(`노드 ${nodeElement.dataset.nodeId}를 캔버스에 직접 추가 완료 (canvas-content 없음)`);
         }
         
-        // 미니맵에 노드 추가 이벤트 발생
-        if (window.minimapManager) {
-            window.minimapManager.onNodeAdded(nodeElement);
-        }
+        
     }
     
     /**
@@ -2013,14 +2037,14 @@ class NodeManager {
      * @param {HTMLElement} node - 노드 요소
      */
     updateRelatedComponents(node) {
-        // 미니맵 업데이트 (드래그 중이 아닐 때만)
-        if (this.minimapManager && !this.isDragging) {
-            this.minimapManager.onNodeMoved(node);
-        }
-        
-        // 연결선 업데이트 (드래그 중이 아닐 때만)
-        if (this.connectionManager && !this.isDragging) {
-            this.updateConnectionsImmediately(node.id);
+        // 드래그 중에도 rAF로 연결선을 부드럽게 업데이트
+        if (this.connectionManager) {
+            const nodeId = node.id;
+            if (this.isDragging) {
+                this.updateConnectionsDuringDrag(nodeId);
+            } else {
+                this.updateConnectionsImmediately(nodeId);
+            }
         }
     }
     
@@ -2043,10 +2067,7 @@ class NodeManager {
             // 연결선 최종 업데이트
             this.finalizeConnections(nodeId);
             
-            // 미니맵에 노드 이동 이벤트 발생 (드래그 완료 시에만)
-            if (window.minimapManager) {
-                window.minimapManager.onNodeMoved(this.selectedNode);
-            }
+            
             
             // 연결선 업데이트 (노드 이동 완료 시)
             if (window.connectionManager) {
@@ -2146,6 +2167,34 @@ class NodeManager {
         } catch (error) {
             console.error('연결선 업데이트 실패:', error);
         }
+    }
+
+    /**
+     * 드래그 중 연결선 업데이트 (requestAnimationFrame 스로틀)
+     * @param {string} nodeId
+     */
+    updateConnectionsDuringDrag(nodeId) {
+        // 연결 관리자가 없으면 초기화 시도
+        if (!this.connectionManager) {
+            if (window.ConnectionManager) {
+                this.connectionManager = new window.ConnectionManager(this.canvas);
+                if (window.setConnectionManager) {
+                    window.setConnectionManager(this.connectionManager);
+                }
+            } else {
+                return;
+            }
+        }
+        this.pendingConnectionUpdateNodeId = nodeId;
+        if (this.connectionUpdateScheduled) return;
+        this.connectionUpdateScheduled = true;
+        requestAnimationFrame(() => {
+            this.connectionUpdateScheduled = false;
+            const targetNodeId = this.pendingConnectionUpdateNodeId;
+            if (typeof this.connectionManager.updateNodeConnectionsImmediately === 'function') {
+                this.connectionManager.updateNodeConnectionsImmediately(targetNodeId);
+            }
+        });
     }
     
     /**
@@ -2354,10 +2403,7 @@ class NodeManager {
             });
         }
         
-        // 미니맵 뷰포트 업데이트
-        if (this.minimapManager) {
-            this.minimapManager.updateViewport();
-        }
+        
         
         // 연결선 업데이트 (Transform 변경 시) - 드래그 중이 아닐 때만
         if (window.connectionManager && !this.isDragging) {
@@ -2640,10 +2686,7 @@ class NodeManager {
         // 줌 레벨 표시
         this.showZoomLevel(newScale);
         
-        // 미니맵 업데이트
-        if (this.minimapManager) {
-            this.minimapManager.updateMinimap();
-        }
+        
         
         console.log(`캔버스 줌 레벨 변경: ${currentScale.toFixed(2)}x → ${newScale.toFixed(2)}x`);
         console.log(`줌 중심: (${mouseX}, ${mouseY}), 새 위치: (${newX.toFixed(0)}, ${newY.toFixed(0)})`);
@@ -2705,6 +2748,11 @@ class NodeManager {
      */
     deleteNode(node) {
         const nodeId = node.dataset.nodeId;
+        // 시작/종료 노드는 삭제 불가
+        if (nodeId === 'start' || nodeId === 'end') {
+            console.warn('시작/종료 노드는 삭제할 수 없습니다.');
+            return;
+        }
         
         // DOM에서 노드 제거
         node.remove();
@@ -2713,10 +2761,7 @@ class NodeManager {
         this.nodes = this.nodes.filter(n => n.id !== nodeId);
         delete this.nodeData[nodeId];
         
-        // 미니맵에서 노드 제거
-        if (this.minimapManager) {
-            this.minimapManager.onNodeRemoved(nodeId);
-        }
+        
         
         // 연결선 제거
         if (this.connectionManager) {

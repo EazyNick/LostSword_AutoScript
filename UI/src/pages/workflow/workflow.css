@@ -412,151 +412,6 @@
     }
 }
 
-/* ========================================== */
-/* 미니맵 */
-/* ========================================== */
-
-/* 미니맵 컨테이너 - 통합된 크기 설정 */
-.minimap {
-    position: fixed;                           /* 화면에 고정 */
-    bottom: 20px;                              /* 화면 하단에서 20px */
-    right: 20px;                               /* 화면 우측에서 20px */
-    width: 400px;                              /* 미니맵 너비 (JavaScript와 동일) */
-    height: 300px;                             /* 미니맵 높이 (JavaScript와 동일) */
-    background-color: rgba(0, 0, 0, 0.9);      /* 반투명 검은색 배경 */
-    border: 2px solid #444;                    /* 회색 테두리 */
-    border-radius: 12px;                       /* 둥근 모서리 */
-    backdrop-filter: blur(10px);               /* 배경 블러 효과 */
-    transition: all 0.3s ease;                 /* 부드러운 전환 효과 */
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5); /* 그림자 효과 */
-    z-index: 1000;                             /* 다른 요소들 위에 표시 */
-}
-
-/* 미니맵 호버 효과 */
-.minimap:hover {
-    transform: scale(1.05);                    /* 살짝 확대 */
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3); /* 그림자 강화 */
-}
-
-/* 미니맵 헤더 */
-.minimap-header {
-    background: rgba(255, 255, 255, 0.1);      /* 반투명 흰색 배경 */
-    padding: 8px 12px;                         /* 내부 여백 */
-    border-bottom: 1px solid #444;             /* 하단 테두리 */
-}
-
-/* 미니맵 제목 */
-.minimap-title {
-    color: #ffffff;                            /* 흰색 텍스트 */
-    font-size: 12px;                           /* 작은 글씨 */
-    font-weight: 600;                          /* 굵은 글씨 */
-}
-
-/* 미니맵 컨텐츠 영역 - 통합된 크기 설정 */
-.minimap-content {
-    position: relative;                        /* 상대 위치 */
-    width: 100%;                               /* 전체 너비 */
-    height: calc(100% - 40px);                 /* 헤더를 제외한 높이 */
-    background: rgba(30, 30, 30, 0.8);        /* 어두운 반투명 배경 */
-    overflow: hidden;                          /* 넘치는 내용 숨김 */
-    cursor: crosshair;                         /* 십자 커서 (클릭 가능함을 표시) */
-    
-    /* 미니맵을 고정 크기로 설정 (JavaScript와 동일) */
-    min-width: 350px;                          /* 최소 너비 (JavaScript와 동일) */
-    min-height: 250px;                         /* 최소 높이 (JavaScript와 동일) */
-    max-width: 400px;                          /* 최대 너비 (JavaScript와 동일) */
-    max-height: 300px;                         /* 최대 높이 (JavaScript와 동일) */
-}
-
-/* 미니맵 뷰포트: 현재 보이는 영역 표시 */
-.minimap-viewport {
-    position: absolute;                         /* 절대 위치 */
-    border: 2px solid #60a5fa;                 /* 파란색 테두리 */
-    background: rgba(96, 165, 250, 0.2);       /* 반투명 파란색 배경 */
-    border-radius: 4px;                        /* 둥근 모서리 */
-    pointer-events: none;                      /* 마우스 이벤트 무시 */
-    z-index: 10;                               /* 다른 요소들 위에 표시 */
-    transition: all 0.2s ease;                /* 부드러운 전환 효과 */
-}
-
-/* 미니맵 노드: 축소된 노드들 */
-.minimap-node {
-    position: absolute;                         /* 절대 위치 */
-    width: 24px;                               /* 크기 증가 (16px → 24px) */
-    height: 18px;                              /* 크기 증가 (12px → 18px) */
-    border-radius: 4px;                        /* 둥근 모서리 */
-    border: 2px solid rgba(255, 255, 255, 0.8); /* 밝은 흰색 테두리 */
-    pointer-events: none;                      /* 마우스 이벤트 무시 */
-    z-index: 5;                                /* 중간 레이어 */
-    display: block;                            /* 미니맵 노드 표시 */
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); /* 그림자 효과 */
-    transition: all 0.2s ease;                 /* 부드러운 전환 */
-}
-
-/* 미니맵 노드 호버 효과 */
-.minimap-node:hover {
-    transform: scale(1.2);                     /* 호버 시 확대 */
-    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4); /* 그림자 강화 */
-}
-
-/* 미니맵 노드 색상들 */
-.minimap-blue {
-    background: linear-gradient(135deg, #3182ce, #2c5aa0); /* 파란색 그라데이션 */
-    border-color: #60a5fa;                     /* 밝은 파란색 테두리 */
-}
-
-.minimap-orange {
-    background: linear-gradient(135deg, #ed8936, #dd6b20); /* 주황색 그라데이션 */
-    border-color: #fbbf24;                     /* 밝은 주황색 테두리 */
-}
-
-.minimap-green {
-    background: linear-gradient(135deg, #38a169, #2f855a); /* 초록색 그라데이션 */
-    border-color: #68d391;                     /* 밝은 초록색 테두리 */
-}
-
-.minimap-purple {
-    background: linear-gradient(135deg, #805ad5, #6b46c1); /* 보라색 그라데이션 */
-    border-color: #a78bfa;                     /* 밝은 보라색 테두리 */
-}
-
-.minimap-red {
-    background: linear-gradient(135deg, #e53e3e, #c53030); /* 빨간색 그라데이션 */
-    border-color: #fc8181;                     /* 밝은 빨간색 테두리 */
-}
-
-.minimap-yellow {
-    background: linear-gradient(135deg, #d69e2e, #b7791f); /* 노란색 그라데이션 */
-    border-color: #f6e05e;                     /* 밝은 노란색 테두리 */
-}
-
-/* 미니맵 SVG 컨테이너 */
-.minimap-svg {
-    position: absolute;                         /* 절대 위치 */
-    top: 0;                                    /* 상단에 고정 */
-    left: 0;                                   /* 좌측에 고정 */
-    width: 100%;                               /* 전체 너비 */
-    height: 100%;                              /* 전체 높이 */
-    pointer-events: none;                      /* 마우스 이벤트 무시 */
-    z-index: 2;                                /* 노드 위에 표시 */
-}
-
-/* 미니맵 연결선 */
-.minimap-connection-line {
-    stroke: #ffffff;                           /* 흰색 선 */
-    stroke-width: 0.5;                         /* 매우 얇은 선 */
-    fill: none;                                /* 채우기 없음 */
-    stroke-linecap: round;                     /* 둥근 선 끝 */
-    stroke-linejoin: round;                    /* 둥근 선 연결 */
-    opacity: 0.5;                              /* 더 투명하게 */
-    transition: all 0.2s ease;                 /* 부드러운 전환 */
-}
-
-/* 미니맵 연결선 호버 효과 */
-.minimap-connection-line:hover {
-    stroke-width: 1;                           /* 호버 시 약간 두꺼워짐 */
-    opacity: 0.8;                              /* 호버 시 더 선명하게 */
-}
 
 /* ========================================== */
 /* 노드 상태 */
@@ -702,10 +557,7 @@
         height: 70px;                          /* 노드 높이 축소 */
     }
     
-    .minimap {
-        width: 150px;                          /* 미니맵 크기 축소 */
-        height: 90px;                          /* 미니맵 높이 축소 */
-    }
+    
 }
 
 /* 작은 화면 (768px 이하) - 모바일 */
@@ -727,10 +579,5 @@
         font-size: 12px;                       /* 제목 크기 축소 */
     }
     
-    .minimap {
-        width: 120px;                          /* 미니맵 크기 더 축소 */
-        height: 70px;                          /* 미니맵 높이 더 축소 */
-        bottom: 10px;                          /* 하단 여백 축소 */
-        right: 10px;                           /* 우측 여백 축소 */
-    }
+    
 }
