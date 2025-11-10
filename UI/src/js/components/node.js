@@ -449,15 +449,29 @@ class NodeManager {
      * @returns {string} HTML 내용
      */
     generateNodeContent(nodeData) {
-        const nodeTemplates = {
-            start: this.generateStartNodeContent(nodeData),
-            end: this.generateEndNodeContent(nodeData),
-            condition: this.generateConditionNodeContent(nodeData),
-            action: this.generateActionNodeContent(nodeData),
-            default: this.generateActionNodeContent(nodeData)
-        };
+        // 정적 레지스트리에서 타입별 렌더러 가져오기
+        const registry = this.constructor.nodeTypeDefinitions || {};
         
-        return nodeTemplates[nodeData.type] || nodeTemplates.default;
+        // 우선순위: 정확한 타입 → action → default
+        const def =
+            registry[nodeData.type] ||
+            registry['action'] ||
+            registry['default'];
+
+        if (def && typeof def.renderContent === 'function') {
+            // renderContent 안에서 this.escapeHtml 등을 쓸 수 있게 this를 그대로 넘김
+            return def.renderContent.call(this, nodeData);
+        }
+
+        // 혹시 아무 것도 등록 안 돼 있으면 완전 기본 형태로 fallback
+        return `
+            <div class="node-input"></div>
+            <div class="node-content">
+                <div class="node-title">${this.escapeHtml(nodeData.title)}</div>
+            </div>
+            <div class="node-output"></div>
+            <div class="node-settings">⚙</div>
+        `;
     }
     
     /**
@@ -1723,73 +1737,7 @@ class NodeManager {
             }
         }
     }
-    
-    /**
-     * 조건 노드 내용 생성
-     * @param {Object} nodeData - 노드 데이터
-     * @returns {string} HTML 내용
-     */
-    generateConditionNodeContent(nodeData) {
-        return `
-                <div class="node-input"></div>
-                <div class="node-content">
-                    <div class="node-icon">🔐</div>
-                <div class="node-title">${this.escapeHtml(nodeData.title)}</div>
-                </div>
-                <div class="node-outputs">
-                    <div class="node-output true-output">
-                        <div class="output-dot true-dot"></div>
-                        <span class="output-label">True</span>
-                    </div>
-                    <div class="node-output false-output">
-                        <div class="output-dot false-dot"></div>
-                        <span class="output-label">False</span>
-                    </div>
-                </div>
-                <div class="node-settings">⚙</div>
-            `;
-    }
-    
-    /**
-     * 액션 노드 내용 생성
-     * @param {Object} nodeData - 노드 데이터
-     * @returns {string} HTML 내용
-     */
-    generateActionNodeContent(nodeData) {
-        return `
-                <div class="node-input"></div>
-                <div class="node-content">
-                <div class="node-title">${this.escapeHtml(nodeData.title)}</div>
-                </div>
-                <div class="node-output"></div>
-                <div class="node-settings">⚙</div>
-            `;
-        }
-        
-    /**
-     * 시작 노드 내용 생성 (출력만 존재)
-     */
-    generateStartNodeContent(nodeData) {
-        return `
-                <div class="node-content">
-                <div class="node-title">${this.escapeHtml(nodeData.title)}</div>
-                </div>
-                <div class="node-output"></div>
-            `;
-    }
-    
-    /**
-     * 종료 노드 내용 생성 (입력만 존재)
-     */
-    generateEndNodeContent(nodeData) {
-        return `
-                <div class="node-input"></div>
-                <div class="node-content">
-                <div class="node-title">${this.escapeHtml(nodeData.title)}</div>
-                </div>
-            `;
-    }
-        
+
     /**
      * HTML 이스케이프 처리
      * @param {string} text - 이스케이프할 텍스트
@@ -3122,3 +3070,20 @@ document.addEventListener('DOMContentLoaded', () => {
 window.nodeManager = new NodeManager();
     console.log('노드 매니저 인스턴스 생성 완료:', window.nodeManager);
 });
+
+// ==== 노드 타입 레지스트리 (정적) ====
+// 각 노드 타입별로 템플릿/기능을 등록하는 용도
+NodeManager.nodeTypeDefinitions = {};
+
+/**
+ * 정적 타입 등록 함수
+ * @param {string} type - 노드 타입 (예: 'action', 'condition', 'loop')
+ * @param {Object} definition - 타입 정의 객체
+ * @param {Function} definition.renderContent - 노드 innerHTML을 생성하는 함수
+ */
+NodeManager.registerNodeType = function (type, definition) {
+    if (!NodeManager.nodeTypeDefinitions) {
+        NodeManager.nodeTypeDefinitions = {};
+    }
+    NodeManager.nodeTypeDefinitions[type] = definition;
+};
