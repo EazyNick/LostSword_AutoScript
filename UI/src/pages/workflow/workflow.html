@@ -75,33 +75,9 @@
                     <button class="add-script-btn">+</button>
                 </div>
                 
-                <!-- 스크립트 목록 -->
+                <!-- 스크립트 목록 (동적으로 로드됨) -->
                 <div class="script-list">
-                    <!-- 활성 스크립트 (현재 선택된 스크립트) -->
-                    <div class="script-item active">
-                        <div class="script-icon">📄</div>
-                        <div class="script-info">
-                            <div class="script-name">로그인 테스트</div>
-                            <div class="script-desc">사용자 로그인 프로세스 검증</div>
-                            <div class="script-date">
-                                <span class="date-icon">🕐</span>
-                                <span class="date-text">2024. 1. 1.</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- 다른 스크립트들 -->
-                    <div class="script-item">
-                        <div class="script-icon">📄</div>
-                        <div class="script-info">
-                            <div class="script-name">결제 프로세스 테스트</div>
-                            <div class="script-desc">온라인 결제 과정 검증</div>
-                            <div class="script-date">
-                                <span class="date-icon">🕐</span>
-                                <span class="date-text">2024. 1. 2.</span>
-                            </div>
-                        </div>
-                    </div>
+                    <!-- 스크립트 목록은 sidebar.js에서 동적으로 생성됩니다 -->
                 </div>
             </aside>
 
@@ -206,21 +182,38 @@
     <!-- JavaScript 파일들 로드 -->
     <!-- ========================================== -->
     
-    <!-- 유틸리티: 모달 관리 기능 -->
-    <script src="../../js/utils/modal.js"></script>
+    <!-- 1. 유틸 -->
+    <script src="../../js/utils/logger.js"></script>
+    <script type="module" src="../../js/utils/modal.js"></script>
     
-    <!-- 컴포넌트들: 각각의 기능을 담당하는 모듈들 -->
-    <script src="../../js/components/sidebar.js"></script>    <!-- 사이드바 관리 -->
-    <script src="../../js/components/node.js"></script>         <!-- 공통 NodeManager -->
-    <script src="../../js/components/node-start.js"></script>   <!-- 시작 노드 -->
-    <script src="../../js/components/node-end.js"></script>     <!-- 종료 노드 -->
-    <script src="../../js/components/node-action.js"></script>  <!-- 액션 노드 -->
-    <script src="../../js/components/node-condition.js"></script><!-- 조건 노드 -->
-    <script src="../../js/components/node-loop.js"></script>    <!-- 반복 노드 -->
-    <script src="../../js/components/node-wait.js"></script>    <!-- 대기 노드 -->
+    <!-- 2. API 유틸리티 (ES6 모듈) -->
+    <script type="module" src="../../js/api/api.js"></script>
+    <script type="module" src="../../js/api/scriptapi.js"></script>
+    <script type="module" src="../../js/api/nodeapi.js"></script>
+
+    <!-- 3. NodeManager가 의존하는 서브 컨트롤러들 -->
+    <script src="../../js/components/node/node-selection.js"></script>
+    <script src="../../js/components/node/node-drag.js"></script>
+    <script src="../../js/components/node/node-canvas.js"></script>
     
-    
-    <!-- 메인 페이지 로직: 전체 워크플로우 페이지 관리 -->
-    <script src="./workflow.js"></script>
+    <script type="module" src="../../js/components/sidebar.js"></script>  
+    <script type="module" src="../../js/components/connection.js"></script>
+
+    <!-- 4. 연결 핸들러 (NodeManager보다 먼저 로드) -->
+    <script src="../../js/components/node/node-connection-handler.js"></script>
+
+    <!-- 5. 공통 NodeManager -->
+    <script src="../../js/components/node/node.js"></script>
+
+    <!-- 6. 각 노드 타입 정의 (NodeManager.registerNodeType 사용) -->
+    <script src="../../js/components/node/node-start.js"></script>
+    <script src="../../js/components/node/node-end.js"></script>
+    <script src="../../js/components/node/node-action.js"></script>
+    <script src="../../js/components/node/node-condition.js"></script>
+    <script src="../../js/components/node/node-loop.js"></script>
+    <script src="../../js/components/node/node-wait.js"></script>
+
+    <!-- 7. 페이지 전체 로직 -->
+    <script type="module" src="./workflow.js"></script>
 </body>
 </html>

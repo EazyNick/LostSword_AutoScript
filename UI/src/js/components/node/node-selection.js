@@ -1,0 +1,46 @@
+// node-selection.js
+// ?∏Îìú ?†ÌÉù ?ÑÎã¥ Ïª®Ìä∏Î°§Îü¨
+
+(function () {
+    class NodeSelectionController {
+        /**
+         * @param {NodeManager} nodeManager
+         */
+        constructor(nodeManager) {
+            this.nodeManager = nodeManager;
+        }
+
+        /**
+         * ?∏Îìú ?†ÌÉù
+         * @param {HTMLElement} node
+         */
+        selectNode(node) {
+            const nm = this.nodeManager;
+
+            // Í∏∞Ï°¥ ?†ÌÉù ?¥Ï†ú
+            if (nm.selectedNode && nm.selectedNode !== node) {
+                this.deselectNode();
+            }
+
+            nm.selectedNode = node;
+
+            if (node) {
+                node.classList.add('selected');
+                log('?∏Îìú ?†ÌÉù??', node.id);
+            }
+        }
+
+        /**
+         * ?†ÌÉù ?¥Ï†ú
+         */
+        deselectNode() {
+            const nm = this.nodeManager;
+            if (nm.selectedNode) {
+                nm.selectedNode.classList.remove('selected');
+                nm.selectedNode = null;
+            }
+        }
+    }
+
+    window.NodeSelectionController = NodeSelectionController;
+})();

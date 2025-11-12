@@ -1,5 +1,13 @@
-// 모달 유틸리티 클래스 (웹 기반)
-class ModalManager {
+/**
+ * 모달 유틸리티 클래스
+ * ES6 모듈 방식으로 작성됨
+ */
+
+/**
+ * ModalManager 클래스
+ * 모달 창을 관리하는 유틸리티 클래스입니다.
+ */
+export class ModalManager {
     constructor() {
         this.modal = document.getElementById('modal');
         this.modalBody = document.getElementById('modal-body');
@@ -130,5 +138,27 @@ class ModalManager {
     }
 }
 
-// 전역 모달 매니저 인스턴스
-window.modalManager = new ModalManager();
+/**
+ * ModalManager 인스턴스 생성 및 export
+ * 싱글톤 패턴으로 하나의 인스턴스만 사용
+ */
+let modalManagerInstance = null;
+
+/**
+ * ModalManager 인스턴스 가져오기
+ * ES6 모듈에서 명시적으로 인스턴스를 가져올 수 있도록 제공
+ * 
+ * @returns {ModalManager} ModalManager 인스턴스
+ */
+export function getModalManagerInstance() {
+    if (!modalManagerInstance) {
+        modalManagerInstance = new ModalManager();
+    }
+    return modalManagerInstance;
+}
+
+// 전역 호환성을 위한 설정 (다른 파일과의 호환성 유지)
+// TODO: 다른 파일들이 ES6 모듈로 전환되면 제거
+if (typeof window !== 'undefined') {
+    window.modalManager = getModalManagerInstance();
+}

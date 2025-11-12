@@ -95,30 +95,16 @@ async def execute_script(script_id: int, request: NodeExecutionRequest):
         if not script:
             raise HTTPException(status_code=404, detail="스크립트를 찾을 수 없습니다.")
         
-        # 실행 로그 기록
-        db_manager.log_execution(script_id, "script_start", "started", "스크립트 실행 시작")
-        
         # 노드들 순차 실행
         results = []
         for node in request.nodes:
             try:
-                # 노드 실행 로그
-                db_manager.log_execution(script_id, node.get("id", "unknown"), "executing", "노드 실행 중")
-                
                 # 실제 노드 실행 로직 (여기에 게임 액션 처리 추가)
                 result = await action_service.process_game_action(node.get("type", "unknown"), node.get("data", {}))
                 results.append(result)
                 
-                # 성공 로그
-                db_manager.log_execution(script_id, node.get("id", "unknown"), "completed", "노드 실행 완료")
-                
             except Exception as e:
-                # 실패 로그
-                db_manager.log_execution(script_id, node.get("id", "unknown"), "failed", str(e))
                 results.append({"error": str(e)})
-        
-        # 완료 로그
-        db_manager.log_execution(script_id, "script_end", "completed", "스크립트 실행 완료")
         
         return {
             "success": True,
@@ -130,13 +116,3 @@ async def execute_script(script_id: int, request: NodeExecutionRequest):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"스크립트 실행 실패: {str(e)}")
-
-
-@router.get("/scripts/{script_id}/logs", response_model=List[dict])
-async def get_execution_logs(script_id: int, limit: int = 100):
-    """스크립트 실행 로그 조회"""
-    try:
-        logs = db_manager.get_execution_logs(script_id, limit)
-        return logs
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"실행 로그 조회 실패: {str(e)}")

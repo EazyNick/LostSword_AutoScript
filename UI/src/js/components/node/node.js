@@ -1,108 +1,144 @@
 /**
- * 워크플로우 노드 관리 클래스
- * 
- * 이 클래스는 워크플로우 캔버스에서 노드들을 생성, 관리, 조작하는 모든 기능을 담당합니다.
+ * ?�크?�로???�드 관�??�래?? * 
+ * ???�래?�는 ?�크?�로??캔버?�에???�드?�을 ?�성, 관�? 조작?�는 모든 기능???�당?�니??
  * 주요 기능:
- * - 노드 생성, 이동, 삭제
- * - 마우스 휠 패닝 (화면 이동)
- * - Ctrl + 마우스 휠 줌 (확대/축소)
- * - 캔버스 크기 자동 조정
- * - 미니맵과의 연동
+ * - ?�드 ?�성, ?�동, ??��
+ * - 마우?????�닝 (?�면 ?�동)
+ * - Ctrl + 마우????�?(?��?/축소)
+ * - 캔버???�기 ?�동 조정
+ * - 미니맵과???�동
  */
+
+// Logger??logger.js?�서 로드??const log = window.Logger ? window.Logger.log.bind(window.Logger) : console.log;
+const logWarn = window.Logger ? window.Logger.warn.bind(window.Logger) : console.warn;
+const logError = window.Logger ? window.Logger.error.bind(window.Logger) : console.error;
+
 class NodeManager {
     constructor() {
-        // === 기본 속성 초기화 ===
-        this.nodes = [];                    // 생성된 모든 노드들의 배열
-        this.selectedNode = null;           // 현재 선택된 노드
-        this.nodeData = {};                 // 노드 데이터 저장소 (위치, 설정 등)
+        // === 기본 ?�성 초기??===
+        this.nodes = [];                    // ?�성??모든 ?�드?�의 배열
+        this.selectedNode = null;           // ?�재 ?�택???�드
+        this.nodeData = {};                 // ?�드 ?�이???�?�소 (?�치, ?�정 ??
         
-        // === 무한 캔버스 관련 속성 ===
-        this.isInfiniteCanvas = true;       // 무한 캔버스 모드 활성화
+        // === 무한 캔버??관???�성 ===
+        this.isInfiniteCanvas = true;       // 무한 캔버??모드 ?�성??        
+        // === ?�결 모드 관???�성 ===
+        this.isConnecting = false;            // ?�결 모드 ?��? (?�거?? ?�용 ????
+        this.connectionStart = null;          // ?�결 ?�작 ?�보 (?�거?? ?�용 ????
+        this.canvasSize = { width: 50000, height: 50000 }; // 무한 캔버???�기
         
-        // === 연결 모드 관련 속성 ===
-        this.isConnecting = false;            // 연결 모드 여부 (레거시, 사용 안 함)
-        this.connectionStart = null;          // 연결 시작 정보 (레거시, 사용 안 함)
-        this.canvasSize = { width: 50000, height: 50000 }; // 무한 캔버스 크기
+        // === ?�결 ?�들??===
+        this.connectionHandler = null;        // ?�결 처리 ?�들??(지??초기??
         
-        // === 연결 핸들러 ===
-        this.connectionHandler = null;        // 연결 처리 핸들러 (지연 초기화)
+        // === 캔버??관???�성 ===
+        this.canvas = null;                 // ?�크?�로??캔버??DOM ?�소
+        this.isCanvasFocused = false;       // 캔버?�에 ?�커?��? ?�는지 ?��?
         
-        // === 캔버스 관련 속성 ===
-        this.canvas = null;                 // 워크플로우 캔버스 DOM 요소
-        this.isCanvasFocused = false;       // 캔버스에 포커스가 있는지 여부
-        
-        // === 외부 매니저 참조 ===
-        this.connectionManager = null;     // 노드 간 연결선 관리자
-        // 드래그 중 연결선 업데이트 스케줄링 플래그
-        this.connectionUpdateScheduled = false;
+        // === ?��? 매니?� 참조 ===
+        this.connectionManager = null;     // ?�드 �??�결??관리자
+        // ?�래�?�??�결???�데?�트 ?��?줄링 ?�래�?        this.connectionUpdateScheduled = false;
         this.pendingConnectionUpdateNodeId = null;
         
         this.init();
     }
     
     /**
-     * 초기화 메서드
-     * 캔버스 설정, 이벤트 리스너 등록, 기존 노드 설정을 수행합니다.
+     * 초기??메서??     * 캔버???�정, ?�벤??리스???�록, 기존 ?�드 ?�정???�행?�니??
      */
     init() {
-        // 캔버스 DOM 요소 가져오기
-        this.canvas = document.getElementById('workflow-canvas');
+        // 캔버??DOM ?�소 가?�오�?        this.canvas = document.getElementById('workflow-canvas');
         if (!this.canvas) {
-            console.error('워크플로우 캔버스를 찾을 수 없습니다.');
+            logError('?�크?�로??캔버?��? 찾을 ???�습?�다.');
             return;
         }
-        if (typeof window.NodeSelectionController === 'function') {
-        this.selectionController = new window.NodeSelectionController(this);
-    } else {
-        console.warn('NodeSelectionController 를 찾을 수 없습니다. (선택 기능 기본 모드로 동작)');
-        this.selectionController = null;
-    }
-
-    // 드래그 컨트롤러
-    if (typeof window.NodeDragController === 'function') {
-        this.dragController = new window.NodeDragController(this);
-    } else {
-        console.warn('NodeDragController 를 찾을 수 없습니다. (드래그 기능 비활성)');
-        this.dragController = null;
-    }
-
-    // 캔버스 컨트롤러
-    if (typeof window.NodeCanvasController === 'function') {
-        this.canvasController = new window.NodeCanvasController(this);
-
-        // 캔버스 이벤트(패닝/줌 등) 바인딩
-        this.canvasController.bindEvents();
-
-        // 캔버스가 항상 스크롤 가능하도록 크기 설정
-        this.canvasController.ensureCanvasScrollable();
-    } else {
-        console.warn('NodeCanvasController 를 찾을 수 없습니다. (기본 캔버스 모드)');
-        this.canvasController = null;
-        // 필요하면 여기서 예전 방식의 fallback을 호출해도 됨
-        // 예: this.ensureCanvasScrollable && this.ensureCanvasScrollable();
-    }
         
-        // 이벤트 리스너 등록
+        // ?�벤??리스???�록
         this.setupEventListeners();
         
-        // 기존 노드들에 이벤트 리스너 추가
+        // 기존 ?�드?�에 ?�벤??리스??추�?
         this.setupExistingNodes();
         
-        // 연결 핸들러 초기화
-        if (typeof window.NodeConnectionHandler === 'function') {
-            this.connectionHandler = new window.NodeConnectionHandler(this);
-        } else {
-            console.warn('NodeConnectionHandler를 찾을 수 없습니다. (연결 기능 비활성)');
-            this.connectionHandler = null;
-        }
+        // 컨트롤러??초기??(지??초기?�로 ?�른 ?�크립트?�이 로드?????�행)
+        // ?�크립트가 로드???�까지 기다리기
+        this.waitForControllersAndInitialize();
         
-        // 외부 매니저들 초기화 (지연 초기화로 다른 컴포넌트들이 로드된 후 실행)
+        // ?��? 매니?�??초기??(지??초기?�로 ?�른 컴포?�트?�이 로드?????�행)
         setTimeout(() => {
             this.initializeExternalManagers();
         }, 100);
     }
     
-    // === 선택 관련 프록시 ===
+    /**
+     * 컨트롤러 ?�크립트가 로드???�까지 기다�???초기??     */
+    waitForControllersAndInitialize(maxAttempts = 20, attempt = 0) {
+        const requiredControllers = [
+            'NodeSelectionController',
+            'NodeDragController',
+            'NodeCanvasController',
+            'NodeConnectionHandler'
+        ];
+        
+        const allLoaded = requiredControllers.every(name => typeof window[name] === 'function');
+        
+        if (allLoaded || attempt >= maxAttempts) {
+            if (allLoaded) {
+                log('모든 컨트롤러 ?�크립트 로드 ?�료, 초기???�작');
+            } else {
+                logWarn('?��? 컨트롤러�?찾을 ???��?�?초기?��? 진행?�니??');
+            }
+            this.initializeControllers();
+        } else {
+            // 50ms ???�시 ?�도
+            setTimeout(() => {
+                this.waitForControllersAndInitialize(maxAttempts, attempt + 1);
+            }, 50);
+        }
+    }
+    
+    /**
+     * 컨트롤러??초기??     * ?�른 ?�크립트?�이 로드?????�행?�니??
+     */
+    initializeControllers() {
+        // ?�택 컨트롤러
+        if (typeof window.NodeSelectionController === 'function') {
+            this.selectionController = new window.NodeSelectionController(this);
+        } else {
+            logWarn('NodeSelectionController �?찾을 ???�습?�다. (?�택 기능 기본 모드�??�작)');
+            this.selectionController = null;
+        }
+
+        // ?�래�?컨트롤러
+        if (typeof window.NodeDragController === 'function') {
+            this.dragController = new window.NodeDragController(this);
+        } else {
+            logWarn('NodeDragController �?찾을 ???�습?�다. (?�래�?기능 비활??');
+            this.dragController = null;
+        }
+
+        // 캔버??컨트롤러
+        if (typeof window.NodeCanvasController === 'function') {
+            this.canvasController = new window.NodeCanvasController(this);
+
+            // 캔버???�벤???�닝/�??? 바인??            this.canvasController.bindEvents();
+
+            // 캔버?��? ??�� ?�크�?가?�하?�록 ?�기 ?�정
+            this.canvasController.ensureCanvasScrollable();
+        } else {
+            logWarn('NodeCanvasController �?찾을 ???�습?�다. (기본 캔버??모드)');
+            this.canvasController = null;
+        }
+        
+        // ?�결 ?�들??초기??        if (typeof window.NodeConnectionHandler === 'function') {
+            this.connectionHandler = new window.NodeConnectionHandler(this);
+        } else {
+            logWarn('NodeConnectionHandler�?찾을 ???�습?�다. (?�결 기능 비활??');
+            this.connectionHandler = null;
+        }
+        
+        // 컨트롤러 초기????기존 ?�드?�에 ?�벤??리스???�시 바인??        this.setupExistingNodes();
+    }
+    
+    // === ?�택 관???�록??===
     selectNode(node) {
         if (this.selectionController) {
             this.selectionController.selectNode(node);
@@ -115,7 +151,7 @@ class NodeManager {
         }
     }
 
-    // === 상태 조회용 getter (connection.js에서 사용 중) ===
+    // === ?�태 조회??getter (connection.js?�서 ?�용 �? ===
     get isDragging() {
         return this.dragController ? this.dragController.isDragging : false;
     }
@@ -125,33 +161,31 @@ class NodeManager {
     }
 
     /**
-     * 외부 매니저들 초기화
-     * 연결 관리자와 미니맵 관리자를 초기화합니다.
+     * ?��? 매니?�??초기??     * ?�결 관리자?� 미니�?관리자�?초기?�합?�다.
      */
     initializeExternalManagers() {
-        // 연결 관리자 초기화
-            if (window.ConnectionManager && !this.connectionManager) {
+            // ?�결 관리자 초기??            if (window.ConnectionManager && !this.connectionManager) {
                 this.connectionManager = new window.ConnectionManager(this.canvas);
-                // 전역 변수로 설정
+                // ?�역 변?�로 ?�정
                 if (window.setConnectionManager) {
                     window.setConnectionManager(this.connectionManager);
                 }
-                console.log('연결 관리자 초기화 완료');
-        } else if (!window.ConnectionManager) {
-            console.warn('ConnectionManager 클래스를 찾을 수 없습니다.');
+                log('?�결 관리자 초기???�료');
+            } else if (!window.ConnectionManager) {
+                logWarn('ConnectionManager ?�래?��? 찾을 ???�습?�다.');
             }
             
         
     }
     
     /**
-     * 이벤트 리스너 설정
-     * 마우스, 키보드, 휠 등 모든 사용자 입력 이벤트를 처리합니다.
+     * ?�벤??리스???�정
+     * 마우?? ?�보?? ????모든 ?�용???�력 ?�벤?��? 처리?�니??
      */
     setupEventListeners() {
-        // === 연결 모드 관련 이벤트만 남김 ===
+        // === ?�결 모드 관???�벤?�만 ?��? ===
     
-        // 캔버스 클릭 이벤트 (연결 모드 취소용)
+        // 캔버???�릭 ?�벤??(?�결 모드 취소??
         this.canvas.addEventListener('click', (e) => {
             if (e.target === this.canvas) {
                 if (this.isConnecting) {
@@ -162,14 +196,14 @@ class NodeManager {
             }
         });
         
-        // 마우스 이동 이벤트 (클릭 연결 중 임시 연결선 업데이트)
+        // 마우???�동 ?�벤??(?�릭 ?�결 �??�시 ?�결???�데?�트)
         this.canvas.addEventListener('mousemove', (e) => {
             if (this.connectionHandler && this.connectionHandler.isClickConnecting) {
                 this.connectionHandler.updateClickConnectionLine(e);
             }
         });
         
-        // ESC 키 이벤트 (연결 모드 취소용)
+        // ESC ???�벤??(?�결 모드 취소??
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 if (this.isConnecting) {
@@ -184,8 +218,8 @@ class NodeManager {
     }
     
     /**
-     * 기존 노드들에 이벤트 리스너 설정
-     * 페이지 로드 시 이미 존재하는 노드들에 이벤트를 바인딩합니다.
+     * 기존 ?�드?�에 ?�벤??리스???�정
+     * ?�이지 로드 ???��? 존재?�는 ?�드?�에 ?�벤?��? 바인?�합?�다.
      */
     setupExistingNodes() {
         const existingNodes = document.querySelectorAll('.workflow-node');
@@ -195,82 +229,79 @@ class NodeManager {
     }
     
     /**
-     * 개별 노드에 이벤트 리스너 설정
-     * 노드의 클릭, 드래그, 선택 등의 이벤트를 처리합니다.
+     * 개별 ?�드???�벤??리스???�정
+     * ?�드???�릭, ?�래�? ?�택 ?�의 ?�벤?��? 처리?�니??
      */
     setupNodeEventListeners(node) {
-        // 클릭 → 선택은 NodeManager가 그대로 담당
+        // ?�릭 ???�택?� NodeManager가 그�?�??�당
         node.addEventListener('click', (e) => {
             e.stopPropagation();
             this.selectNode(node);
         });
     
-        // 드래그/호버는 드래그 컨트롤러에 위임
+        // ?�래�??�버???�래�?컨트롤러???�임
         if (this.dragController) {
             this.dragController.attachNode(node);
         }
     }
     
     // ==========================================
-    // 노드 생성 관련 메서드들
+    // ?�드 ?�성 관??메서?�들
     // ==========================================
     
     /**
-     * 노드 생성 (메인 메서드)
-     * 새로운 워크플로우 노드를 생성하고 캔버스에 추가합니다.
+     * ?�드 ?�성 (메인 메서??
+     * ?�로???�크?�로???�드�??�성?�고 캔버?�에 추�??�니??
      * 
-     * @param {Object} nodeData - 노드 데이터
-     * @param {string} nodeData.id - 노드 ID
-     * @param {string} nodeData.title - 노드 제목
-     * @param {string} nodeData.type - 노드 타입 ('action' | 'condition')
-     * @param {string} nodeData.color - 노드 색상
+     * @param {Object} nodeData - ?�드 ?�이??     * @param {string} nodeData.id - ?�드 ID
+     * @param {string} nodeData.title - ?�드 ?�목
+     * @param {string} nodeData.type - ?�드 ?�??('action' | 'condition')
+     * @param {string} nodeData.color - ?�드 ?�상
      * @param {number} nodeData.x - X 좌표
      * @param {number} nodeData.y - Y 좌표
-     * @returns {HTMLElement} 생성된 노드 요소
+     * @returns {HTMLElement} ?�성???�드 ?�소
      */
     createNode(nodeData) {
         try {
-            // 1. 기본 노드 요소 생성
+            // 1. 기본 ?�드 ?�소 ?�성
             const nodeElement = this.createNodeElement(nodeData);
             
-            // 2. 노드 내용 생성
+            // 2. ?�드 ?�용 ?�성
             const nodeContent = this.generateNodeContent(nodeData);
             nodeElement.innerHTML = nodeContent;
             
-            // 3. 이벤트 리스너 설정
+            // 3. ?�벤??리스???�정
             this.setupNodeEventListeners(nodeElement);
             
-            // 4. 연결 이벤트 설정
+            // 4. ?�결 ?�벤???�정
             if (this.connectionHandler) {
                 this.connectionHandler.setupConnectionEvents(nodeElement);
             }
             
-            // 5. 캔버스에 추가
+            // 5. 캔버?�에 추�?
             this.addNodeToCanvas(nodeElement);
             
-            // 6. 노드 데이터 저장
-            this.saveNodeData(nodeData);
+            // 6. ?�드 ?�이???�??            this.saveNodeData(nodeData);
 
-            // ★ nodes 배열에도 등록 (저장용)
+            // ??nodes 배열?�도 ?�록 (?�?�용)
             this.nodes.push({
                 id: nodeData.id,
                 data: nodeData,
                 element: nodeElement
             });
             
-            console.log(`노드 생성 완료: ${nodeData.id} (${nodeData.title})`);
+            log(`?�드 ?�성 ?�료: ${nodeData.id} (${nodeData.title})`);
             return nodeElement;
             
         } catch (error) {
-            console.error('노드 생성 실패:', error);
+            logError('?�드 ?�성 ?�패:', error);
             throw error;
         }
     }
     
     /**
-     * 노드 DOM 요소 생성
-     * @param {Object} nodeData - 노드 데이터
-     * @returns {HTMLElement} 노드 요소
+     * ?�드 DOM ?�소 ?�성
+     * @param {Object} nodeData - ?�드 ?�이??     * @returns {HTMLElement} ?�드 ?�소
      */
     createNodeElement(nodeData) {
         const nodeElement = document.createElement('div');
@@ -280,45 +311,43 @@ class NodeManager {
         nodeElement.style.left = nodeData.x + 'px';
         nodeElement.style.top = nodeData.y + 'px';
         
-        console.log(`노드 생성: ${nodeData.id} 위치 (${nodeData.x}, ${nodeData.y})`);
+        log(`?�드 ?�성: ${nodeData.id} ?�치 (${nodeData.x}, ${nodeData.y})`);
         
         return nodeElement;
     }
     
     /**
-     * 노드 내용 HTML 생성
-     * @param {Object} nodeData - 노드 데이터
-     * @returns {string} HTML 내용
+     * ?�드 ?�용 HTML ?�성
+     * @param {Object} nodeData - ?�드 ?�이??     * @returns {string} HTML ?�용
      */
     generateNodeContent(nodeData) {
-        // 정적 레지스트리에서 타입별 렌더러 가져오기
-        const registry = this.constructor.nodeTypeDefinitions || {};
+        // ?�적 ?��??�트리에???�?�별 ?�더??가?�오�?        const registry = this.constructor.nodeTypeDefinitions || {};
         
-        // 우선순위: 정확한 타입 → action → default
+        // ?�선?�위: ?�확???�????action ??default
         const def =
             registry[nodeData.type] ||
             registry['action'] ||
             registry['default'];
 
         if (def && typeof def.renderContent === 'function') {
-            // renderContent 안에서 this.escapeHtml 등을 쓸 수 있게 this를 그대로 넘김
+            // renderContent ?�에??this.escapeHtml ?�을 ?????�게 this�?그�?�??��?
             return def.renderContent.call(this, nodeData);
         }
 
-        // 혹시 아무 것도 등록 안 돼 있으면 완전 기본 형태로 fallback
+        // ?�시 ?�무 것도 ?�록 ?????�으�??�전 기본 ?�태�?fallback
         return `
             <div class="node-input"></div>
             <div class="node-content">
                 <div class="node-title">${this.escapeHtml(nodeData.title)}</div>
             </div>
             <div class="node-output"></div>
-            <div class="node-settings">⚙</div>
+            <div class="node-settings">??/div>
         `;
     }
     
     /**
-     * 연결점 이벤트 설정 (connectionHandler로 위임)
-     * @param {HTMLElement} nodeElement - 노드 요소
+     * ?�결???�벤???�정 (connectionHandler�??�임)
+     * @param {HTMLElement} nodeElement - ?�드 ?�소
      */
     setupConnectionEvents(nodeElement) {
         if (this.connectionHandler) {
@@ -327,30 +356,30 @@ class NodeManager {
     }
     
     /**
-     * 입력 연결점 이벤트 설정
-     * @param {HTMLElement} inputConnector - 입력 연결점 요소
-     * @param {HTMLElement} nodeElement - 노드 요소
+     * ?�력 ?�결???�벤???�정
+     * @param {HTMLElement} inputConnector - ?�력 ?�결???�소
+     * @param {HTMLElement} nodeElement - ?�드 ?�소
      */
     setupInputConnectorEvents(inputConnector, nodeElement) {
-        // 클릭으로 연결 완료
+        // ?�릭?�로 ?�결 ?�료
         inputConnector.addEventListener('click', (e) => {
             e.stopPropagation();
                 this.handleInputConnectorClick(inputConnector, nodeElement);
         });
         
-        // 더블클릭으로 연결선 삭제
+        // ?�블?�릭?�로 ?�결????��
         inputConnector.addEventListener('dblclick', (e) => {
             e.stopPropagation();
             this.handleConnectorDoubleClick(inputConnector, nodeElement, 'input');
         });
         
-        // 연결점에 연결 상태 표시
+        // ?�결?�에 ?�결 ?�태 ?�시
         const connections = this.findConnectionsByNode(nodeElement.dataset.nodeId, 'input');
         this.updateConnectorVisualState(inputConnector, connections.length > 0);
         
         inputConnector.addEventListener('mouseenter', (e) => {
             const tooltipText = connections.length > 0 ? 
-                `입력 연결점 (${connections.length}개 연결됨)` : '입력 연결점';
+                `?�력 ?�결??(${connections.length}�??�결??` : '?�력 ?�결??;
             this.showConnectorTooltip(inputConnector, tooltipText);
         });
         
@@ -360,41 +389,41 @@ class NodeManager {
     }
     
     /**
-     * 출력 연결점 이벤트 설정
-     * @param {HTMLElement} outputConnector - 출력 연결점 요소
-     * @param {HTMLElement} nodeElement - 노드 요소
+     * 출력 ?�결???�벤???�정
+     * @param {HTMLElement} outputConnector - 출력 ?�결???�소
+     * @param {HTMLElement} nodeElement - ?�드 ?�소
      */
     setupOutputConnectorEvents(outputConnector, nodeElement) {
-        // 클릭으로 연결 모드 시작
+        // ?�릭?�로 ?�결 모드 ?�작
         outputConnector.addEventListener('click', (e) => {
             e.stopPropagation();
             if (this.isClickConnecting) {
-                // 연결 모드 중: 연결 완료
+                // ?�결 모드 �? ?�결 ?�료
                 const nodeId = nodeElement.dataset.nodeId;
                 const outputType = outputConnector.classList.contains('true-output') ? 'true' : 
                                   outputConnector.classList.contains('false-output') ? 'false' : 'default';
                 this.completeClickConnection(nodeId, outputType);
             } else {
-                // 연결 모드가 아님: 연결 시작
+                // ?�결 모드가 ?�님: ?�결 ?�작
                 this.startClickConnection(outputConnector, nodeElement);
             }
         });
         
-        // 더블클릭으로 연결선 삭제
+        // ?�블?�릭?�로 ?�결????��
         outputConnector.addEventListener('dblclick', (e) => {
             e.stopPropagation();
             this.handleConnectorDoubleClick(outputConnector, nodeElement, 'output');
         });
         
-        // 연결점에 연결 상태 표시
+        // ?�결?�에 ?�결 ?�태 ?�시
         const outputConnections = this.findConnectionsByNode(nodeElement.dataset.nodeId, 'output');
         this.updateConnectorVisualState(outputConnector, outputConnections.length > 0);
         
         outputConnector.addEventListener('mouseenter', (e) => {
             const label = outputConnector.querySelector('.output-label');
-            const baseText = label ? label.textContent : '출력 연결점';
+            const baseText = label ? label.textContent : '출력 ?�결??;
             const tooltipText = outputConnections.length > 0 ? 
-                `${baseText} (${outputConnections.length}개 연결됨)` : baseText;
+                `${baseText} (${outputConnections.length}�??�결??` : baseText;
             this.showConnectorTooltip(outputConnector, tooltipText);
         });
         
@@ -404,36 +433,36 @@ class NodeManager {
     }
     
     /**
-     * 입력 연결점 클릭 처리
-     * @param {HTMLElement} inputConnector - 입력 연결점 요소
-     * @param {HTMLElement} nodeElement - 노드 요소
+     * ?�력 ?�결???�릭 처리
+     * @param {HTMLElement} inputConnector - ?�력 ?�결???�소
+     * @param {HTMLElement} nodeElement - ?�드 ?�소
      */
     handleInputConnectorClick(inputConnector, nodeElement) {
         const nodeId = nodeElement.dataset.nodeId;
         
         if (this.isClickConnecting) {
-            // 연결 모드 중: 연결 완료
+            // ?�결 모드 �? ?�결 ?�료
             this.completeClickConnection(nodeId, 'input');
         } else {
-            // 연결 모드가 아님: 입력 연결점에서 연결 시작
+            // ?�결 모드가 ?�님: ?�력 ?�결?�에???�결 ?�작
             this.startClickConnectionFromInput(inputConnector, nodeElement);
         }
     }
     
     /**
-     * 클릭 연결 시작 (출력 연결점에서)
-     * 출력 연결점을 클릭하면 연결 모드를 시작합니다.
-     * @param {HTMLElement} outputConnector - 출력 연결점 요소
-     * @param {HTMLElement} nodeElement - 노드 요소
+     * ?�릭 ?�결 ?�작 (출력 ?�결?�에??
+     * 출력 ?�결?�을 ?�릭?�면 ?�결 모드�??�작?�니??
+     * @param {HTMLElement} outputConnector - 출력 ?�결???�소
+     * @param {HTMLElement} nodeElement - ?�드 ?�소
      */
     startClickConnection(outputConnector, nodeElement) {
-        console.log('출력 연결점에서 클릭 연결 시작');
+        log('출력 ?�결?�에???�릭 ?�결 ?�작');
         
         const nodeId = nodeElement.dataset.nodeId;
         const outputType = outputConnector.classList.contains('true-output') ? 'true' : 
                           outputConnector.classList.contains('false-output') ? 'false' : 'default';
         
-        // 클릭 연결 상태 설정
+        // ?�릭 ?�결 ?�태 ?�정
         this.isClickConnecting = true;
         this.clickConnectionStart = {
             nodeId: nodeId,
@@ -442,36 +471,34 @@ class NodeManager {
             isFromOutput: true
         };
         
-        // 연결점 하이라이트
-        outputConnector.style.backgroundColor = '#FF6B35';
+        // ?�결???�이?�이??        outputConnector.style.backgroundColor = '#FF6B35';
         outputConnector.style.borderColor = '#FF6B35';
         outputConnector.style.boxShadow = '0 0 15px rgba(255, 107, 53, 0.8)';
         
-        // 임시 연결선 생성
+        // ?�시 ?�결???�성
         const startPos = this.getConnectorPosition(outputConnector);
         this.createTempConnectionLine(startPos.x, startPos.y);
         
-        // 연결 모드 메시지 표시
-        this.showClickConnectionMessage('입력 연결점을 클릭하여 연결하세요');
+        // ?�결 모드 메시지 ?�시
+        this.showClickConnectionMessage('?�력 ?�결?�을 ?�릭?�여 ?�결?�세??);
         
-        // 모든 입력 연결점 활성화
-        this.activateInputConnectors();
+        // 모든 ?�력 ?�결???�성??        this.activateInputConnectors();
         
-        console.log(`출력 연결점에서 클릭 연결 시작: ${nodeId} (${outputType})`);
+        log(`출력 ?�결?�에???�릭 ?�결 ?�작: ${nodeId} (${outputType})`);
     }
     
     /**
-     * 클릭 연결 시작 (입력 연결점에서)
-     * 입력 연결점을 클릭하면 연결 모드를 시작합니다.
-     * @param {HTMLElement} inputConnector - 입력 연결점 요소
-     * @param {HTMLElement} nodeElement - 노드 요소
+     * ?�릭 ?�결 ?�작 (?�력 ?�결?�에??
+     * ?�력 ?�결?�을 ?�릭?�면 ?�결 모드�??�작?�니??
+     * @param {HTMLElement} inputConnector - ?�력 ?�결???�소
+     * @param {HTMLElement} nodeElement - ?�드 ?�소
      */
     startClickConnectionFromInput(inputConnector, nodeElement) {
-        console.log('입력 연결점에서 클릭 연결 시작');
+        log('?�력 ?�결?�에???�릭 ?�결 ?�작');
         
         const nodeId = nodeElement.dataset.nodeId;
         
-        // 클릭 연결 상태 설정
+        // ?�릭 ?�결 ?�태 ?�정
         this.isClickConnecting = true;
         this.clickConnectionStart = {
             nodeId: nodeId,
@@ -480,33 +507,30 @@ class NodeManager {
             isFromOutput: false
         };
         
-        // 연결점 하이라이트
-        inputConnector.style.backgroundColor = '#FF6B35';
+        // ?�결???�이?�이??        inputConnector.style.backgroundColor = '#FF6B35';
         inputConnector.style.borderColor = '#FF6B35';
         inputConnector.style.boxShadow = '0 0 15px rgba(255, 107, 53, 0.8)';
         
-        // 임시 연결선 생성
+        // ?�시 ?�결???�성
         const startPos = this.getConnectorPosition(inputConnector);
         this.createTempConnectionLine(startPos.x, startPos.y);
         
-        // 연결 모드 메시지 표시
-        this.showClickConnectionMessage('출력 연결점을 클릭하여 연결하세요');
+        // ?�결 모드 메시지 ?�시
+        this.showClickConnectionMessage('출력 ?�결?�을 ?�릭?�여 ?�결?�세??);
         
-        // 모든 출력 연결점 활성화
-        this.activateOutputConnectors();
+        // 모든 출력 ?�결???�성??        this.activateOutputConnectors();
         
-        console.log(`입력 연결점에서 클릭 연결 시작: ${nodeId}`);
+        log(`?�력 ?�결?�에???�릭 ?�결 ?�작: ${nodeId}`);
     }
     
     /**
-     * 클릭 연결 완료
-     * 연결점을 클릭하면 연결을 완료합니다.
-     * @param {string} nodeId - 대상 노드 ID
-     * @param {string} connectorType - 연결점 타입
-     */
+     * ?�릭 ?�결 ?�료
+     * ?�결?�을 ?�릭?�면 ?�결???�료?�니??
+     * @param {string} nodeId - ?�???�드 ID
+     * @param {string} connectorType - ?�결???�??     */
     completeClickConnection(nodeId, connectorType) {
         if (!this.isClickConnecting || !this.clickConnectionStart) {
-            console.warn('클릭 연결 모드가 활성화되지 않았습니다.');
+            logWarn('?�릭 ?�결 모드가 ?�성?�되지 ?�았?�니??');
             return;
         }
         
@@ -514,13 +538,12 @@ class NodeManager {
         const startOutputType = this.clickConnectionStart.outputType;
         const isFromOutput = this.clickConnectionStart.isFromOutput;
         
-        // 연결 방향에 따른 유효성 검사
-        let isValid = false;
+        // ?�결 방향???�른 ?�효??검??        let isValid = false;
         if (isFromOutput) {
-            // 출력 → 입력 연결
+            // 출력 ???�력 ?�결
             isValid = this.validateConnection(startNodeId, nodeId, 'output', 'input');
         } else {
-            // 입력 → 출력 연결
+            // ?�력 ??출력 ?�결
             isValid = this.validateConnection(nodeId, startNodeId, 'input', 'output');
         }
         
@@ -529,59 +552,56 @@ class NodeManager {
             return;
         }
         
-        // 연결 생성
+        // ?�결 ?�성
         if (isFromOutput) {
             this.createNodeConnection(startNodeId, nodeId, startOutputType, connectorType);
         } else {
             this.createNodeConnection(nodeId, startNodeId, connectorType, 'input');
         }
         
-        // 클릭 연결 정리
+        // ?�릭 ?�결 ?�리
         this.cleanupClickConnection();
         
-        console.log(`클릭 연결 완료: ${startNodeId}(${startOutputType}) → ${nodeId}(${connectorType})`);
+        log(`?�릭 ?�결 ?�료: ${startNodeId}(${startOutputType}) ??${nodeId}(${connectorType})`);
     }
     
     /**
-     * 클릭 연결 취소
-     * ESC 키나 캔버스 클릭 시 클릭 연결 모드를 취소합니다.
+     * ?�릭 ?�결 취소
+     * ESC ?�나 캔버???�릭 ???�릭 ?�결 모드�?취소?�니??
      */
     cancelClickConnection() {
-        console.log('클릭 연결 취소');
+        log('?�릭 ?�결 취소');
         this.cleanupClickConnection();
     }
     
     /**
-     * 클릭 연결 정리
-     * 클릭 연결 관련 상태와 UI를 정리합니다.
+     * ?�릭 ?�결 ?�리
+     * ?�릭 ?�결 관???�태?� UI�??�리?�니??
      */
     cleanupClickConnection() {
         this.isClickConnecting = false;
         
-        // 시작 연결점 하이라이트 제거
+        // ?�작 ?�결???�이?�이???�거
         if (this.clickConnectionStart && this.clickConnectionStart.connector) {
             this.updateConnectorVisualState(this.clickConnectionStart.connector, false);
         }
         
-        // 임시 연결선 제거
+        // ?�시 ?�결???�거
         this.removeTempConnectionLine();
         
-        // 모든 연결점 비활성화
+        // 모든 ?�결??비활?�화
         this.deactivateAllConnectors();
         
-        // 연결 모드 메시지 숨기기
-        this.hideClickConnectionMessage();
+        // ?�결 모드 메시지 ?�기�?        this.hideClickConnectionMessage();
         
-        // 상태 초기화
-        this.clickConnectionStart = null;
+        // ?�태 초기??        this.clickConnectionStart = null;
     }
     
     /**
-     * 클릭 연결 메시지 표시
-     * 클릭 연결 중임을 알리는 메시지를 표시합니다.
-     * @param {string} text - 표시할 메시지 텍스트
-     */
-    showClickConnectionMessage(text = '입력 연결점을 클릭하여 연결하세요') {
+     * ?�릭 ?�결 메시지 ?�시
+     * ?�릭 ?�결 중임???�리??메시지�??�시?�니??
+     * @param {string} text - ?�시??메시지 ?�스??     */
+    showClickConnectionMessage(text = '?�력 ?�결?�을 ?�릭?�여 ?�결?�세??) {
         const message = document.createElement('div');
         message.id = 'click-connection-message';
         message.style.cssText = `
@@ -603,8 +623,7 @@ class NodeManager {
     }
     
     /**
-     * 클릭 연결 메시지 숨기기
-     * 클릭 연결 메시지를 제거합니다.
+     * ?�릭 ?�결 메시지 ?�기�?     * ?�릭 ?�결 메시지�??�거?�니??
      */
     hideClickConnectionMessage() {
         const message = document.getElementById('click-connection-message');
@@ -614,10 +633,9 @@ class NodeManager {
     }
     
     /**
-     * 클릭 연결 중 임시 연결선 업데이트
-     * 마우스 위치에 따라 임시 연결선을 업데이트합니다.
-     * @param {MouseEvent} e - 마우스 이벤트
-     */
+     * ?�릭 ?�결 �??�시 ?�결???�데?�트
+     * 마우???�치???�라 ?�시 ?�결?�을 ?�데?�트?�니??
+     * @param {MouseEvent} e - 마우???�벤??     */
     updateClickConnectionLine(e) {
         if (!this.isClickConnecting || !this.clickConnectionStart || !this.tempConnectionLine) {
             return;
@@ -626,26 +644,23 @@ class NodeManager {
         const startConnector = this.clickConnectionStart.connector;
         const startPos = this.getConnectorPosition(startConnector);
         
-        // 마우스 위치를 캔버스 좌표로 변환
-        const canvasRect = this.canvas.getBoundingClientRect();
+        // 마우???�치�?캔버??좌표�?변??        const canvasRect = this.canvas.getBoundingClientRect();
         const mouseX = e.clientX - canvasRect.left;
         const mouseY = e.clientY - canvasRect.top;
         
-        // 임시 연결선 업데이트
+        // ?�시 ?�결???�데?�트
         this.updateTempConnectionLine(startPos, { x: mouseX, y: mouseY });
         
-        // 마그네틱 효과: 근처 입력 연결점 하이라이트
-        this.highlightNearbyInputConnector(mouseX, mouseY);
+        // 마그?�틱 ?�과: 근처 ?�력 ?�결???�이?�이??        this.highlightNearbyInputConnector(mouseX, mouseY);
     }
     
     /**
-     * 근처 입력 연결점 하이라이트
-     * 마우스 위치 근처의 입력 연결점을 하이라이트합니다.
-     * @param {number} mouseX - 마우스 X 좌표
-     * @param {number} mouseY - 마우스 Y 좌표
+     * 근처 ?�력 ?�결???�이?�이??     * 마우???�치 근처???�력 ?�결?�을 ?�이?�이?�합?�다.
+     * @param {number} mouseX - 마우??X 좌표
+     * @param {number} mouseY - 마우??Y 좌표
      */
     highlightNearbyInputConnector(mouseX, mouseY) {
-        // 모든 입력 연결점 확인
+        // 모든 ?�력 ?�결???�인
         const inputConnectors = document.querySelectorAll('.node-input');
         let nearestConnector = null;
         let minDistance = this.magneticThreshold;
@@ -662,29 +677,28 @@ class NodeManager {
             }
         });
         
-        // 이전 하이라이트 제거
+        // ?�전 ?�이?�이???�거
         inputConnectors.forEach(connector => {
             connector.classList.remove('magnetic-highlight');
         });
         
-        // 가장 가까운 연결점 하이라이트
-        if (nearestConnector) {
+        // 가??가까운 ?�결???�이?�이??        if (nearestConnector) {
             nearestConnector.classList.add('magnetic-highlight');
         }
     }
     
     /**
-     * 연결점 위치 계산
-     * 연결점의 캔버스 상의 위치를 계산합니다.
-     * @param {HTMLElement} connector - 연결점 요소
-     * @returns {Object} 연결점 위치 {x, y}
+     * ?�결???�치 계산
+     * ?�결?�의 캔버???�의 ?�치�?계산?�니??
+     * @param {HTMLElement} connector - ?�결???�소
+     * @returns {Object} ?�결???�치 {x, y}
      */
     getConnectorPosition(connector) {
-        // 캔버스 콘텐츠 컨테이너 확인
+        // 캔버??콘텐�?컨테?�너 ?�인
         const canvasContent = document.getElementById('canvas-content');
         
         if (canvasContent) {
-            // Transform 기반 패닝 (피그마 방식)
+            // Transform 기반 ?�닝 (?�그�?방식)
             const transform = canvasContent.style.transform;
             let transformX = 0, transformY = 0;
             
@@ -696,27 +710,26 @@ class NodeManager {
                 }
             }
             
-            // 연결점의 절대 위치 계산
+            // ?�결?�의 ?��? ?�치 계산
             const connectorRect = connector.getBoundingClientRect();
             const canvasRect = this.canvas.getBoundingClientRect();
             
-            // 캔버스 내에서의 상대 위치 계산 (Transform 고려)
-            // Transform이 적용된 상태에서의 실제 화면 위치를 계산
+            // 캔버???�에?�의 ?��? ?�치 계산 (Transform 고려)
+            // Transform???�용???�태?�서???�제 ?�면 ?�치�?계산
             const relativeX = connectorRect.left - canvasRect.left + connectorRect.width / 2;
             const relativeY = connectorRect.top - canvasRect.top + connectorRect.height / 2;
             
-            // SVG는 캔버스 뷰포트 기준이므로 Transform을 빼야 함
-            // Transform이 음수이면 캔버스가 왼쪽/위로 이동한 것이므로 연결점은 오른쪽/아래로 이동
+            // SVG??캔버??뷰포??기�??��?�?Transform??빼야 ??            // Transform???�수?�면 캔버?��? ?�쪽/?�로 ?�동??것이므�??�결?��? ?�른�??�래�??�동
             const actualX = relativeX - transformX;
             const actualY = relativeY - transformY;
             
             return { x: actualX, y: actualY };
         } else {
-            // 스크롤 기반 패닝 (전통적 방식)
+            // ?�크�?기반 ?�닝 (?�통??방식)
             const rect = connector.getBoundingClientRect();
             const canvasRect = this.canvas.getBoundingClientRect();
             
-            // 캔버스 내에서의 상대 위치 계산 (연결점 중심 좌표)
+            // 캔버???�에?�의 ?��? ?�치 계산 (?�결??중심 좌표)
             const relativeX = rect.left - canvasRect.left + rect.width / 2;
             const relativeY = rect.top - canvasRect.top + rect.height / 2;
             
@@ -725,99 +738,95 @@ class NodeManager {
     }
     
     /**
-     * 드래그 연결 시작
-     * 출력 연결점을 클릭하면 마우스를 따라가는 연결선을 그립니다.
-     * @param {MouseEvent} e - 마우스 이벤트
-     * @param {HTMLElement} outputConnector - 출력 연결점 요소
-     * @param {HTMLElement} nodeElement - 노드 요소
+     * ?�래�??�결 ?�작
+     * 출력 ?�결?�을 ?�릭?�면 마우?��? ?�라가???�결?�을 그립?�다.
+     * @param {MouseEvent} e - 마우???�벤??     * @param {HTMLElement} outputConnector - 출력 ?�결???�소
+     * @param {HTMLElement} nodeElement - ?�드 ?�소
      */
     startDragConnection(e, outputConnector, nodeElement) {
-        console.log('드래그 연결 시작');
+        log('?�래�??�결 ?�작');
         
         const nodeId = nodeElement.dataset.nodeId;
         const outputType = outputConnector.classList.contains('true-output') ? 'true' : 
                           outputConnector.classList.contains('false-output') ? 'false' : 'default';
         
-        // 드래그 연결 상태 설정
+        // ?�래�??�결 ?�태 ?�정
         this.isDraggingConnection = true;
         this.dragConnectionStart = {
             nodeId: nodeId,
             outputType: outputType,
             connector: outputConnector,
-            // 시작점은 실제 커넥터 좌표(캔버스 기준)로 고정
+            // ?�작?��? ?�제 커넥??좌표(캔버??기�?)�?고정
             ...(() => { const p = this.getConnectorPosition(outputConnector); return { startCanvasX: p.x, startCanvasY: p.y }; })()
         };
         
-        // 연결점 하이라이트
-        outputConnector.style.backgroundColor = '#FF6B35';
+        // ?�결???�이?�이??        outputConnector.style.backgroundColor = '#FF6B35';
         outputConnector.style.borderColor = '#FF6B35';
         outputConnector.style.boxShadow = '0 0 15px rgba(255, 107, 53, 0.8)';
         
-        // 임시 연결선 생성 (캔버스 기준 좌표)
+        // ?�시 ?�결???�성 (캔버??기�? 좌표)
         this.createTempConnectionLine(this.dragConnectionStart.startCanvasX, this.dragConnectionStart.startCanvasY);
         
-        // 전역 마우스 이벤트 리스너 추가
+        // ?�역 마우???�벤??리스??추�?
         document.addEventListener('mousemove', this.handleDragConnectionMove);
         document.addEventListener('mouseup', this.handleDragConnectionEnd);
         
-        // 연결 모드 메시지 표시
+        // ?�결 모드 메시지 ?�시
         this.showDragConnectionMessage();
         
-        console.log(`드래그 연결 시작: ${nodeId} (${outputType})`);
+        log(`?�래�??�결 ?�작: ${nodeId} (${outputType})`);
     }
     
     /**
-     * 드래그 연결 이동 처리
-     * 마우스 이동에 따라 임시 연결선을 업데이트합니다.
+     * ?�래�??�결 ?�동 처리
+     * 마우???�동???�라 ?�시 ?�결?�을 ?�데?�트?�니??
      */
     handleDragConnectionMove = (e) => {
         if (!this.isDraggingConnection) return;
         
-        // 마우스 좌표를 캔버스 기준으로 정규화
-        const canvasRect = this.canvas.getBoundingClientRect();
+        // 마우??좌표�?캔버??기�??�로 ?�규??        const canvasRect = this.canvas.getBoundingClientRect();
         const mouseX = e.clientX - canvasRect.left;
         const mouseY = e.clientY - canvasRect.top;
         
-        // 임시 연결선 업데이트 (객체 좌표 형식)
+        // ?�시 ?�결???�데?�트 (객체 좌표 ?�식)
         this.updateTempConnectionLine(
             { x: this.dragConnectionStart.startCanvasX, y: this.dragConnectionStart.startCanvasY },
             { x: mouseX, y: mouseY }
         );
         
-        // 가까운 입력 연결점 찾기 (마그네틱 효과)
+        // 가까운 ?�력 ?�결??찾기 (마그?�틱 ?�과)
         const nearbyInputConnector = this.findNearbyInputConnector(e.clientX, e.clientY);
         
-        // 모든 연결점 하이라이트 제거
+        // 모든 ?�결???�이?�이???�거
         this.clearAllConnectorHighlights();
         
-        // 가까운 입력 연결점 하이라이트
-        if (nearbyInputConnector) {
+        // 가까운 ?�력 ?�결???�이?�이??        if (nearbyInputConnector) {
             this.highlightConnector(nearbyInputConnector);
         }
     }
     
     /**
-     * 드래그 연결 종료 처리
-     * 마우스 업 시 연결을 완료하거나 취소합니다.
+     * ?�래�??�결 종료 처리
+     * 마우???????�결???�료?�거??취소?�니??
      */
     handleDragConnectionEnd = (e) => {
         if (!this.isDraggingConnection) return;
         
-        // 가까운 입력 연결점 찾기
+        // 가까운 ?�력 ?�결??찾기
         const nearbyInputConnector = this.findNearbyInputConnector(e.clientX, e.clientY);
         
         if (nearbyInputConnector) {
-            // 연결 완료
+            // ?�결 ?�료
             this.completeDragConnection(nearbyInputConnector);
         } else {
-            // 연결 취소
+            // ?�결 취소
             this.cancelDragConnection();
         }
     }
     
     /**
-     * 가까운 입력 연결점 찾기
-     * 마우스 위치에서 가까운 입력 연결점을 찾습니다.
+     * 가까운 ?�력 ?�결??찾기
+     * 마우???�치?�서 가까운 ?�력 ?�결?�을 찾습?�다.
      */
     findNearbyInputConnector(mouseX, mouseY) {
         const inputConnectors = this.canvas.querySelectorAll('.node-input');
@@ -843,8 +852,8 @@ class NodeManager {
     }
     
     /**
-     * 드래그 연결 완료
-     * 찾은 입력 연결점으로 연결을 완료합니다.
+     * ?�래�??�결 ?�료
+     * 찾�? ?�력 ?�결?�으�??�결???�료?�니??
      */
     completeDragConnection(targetInputConnector) {
         if (!this.dragConnectionStart || !targetInputConnector) return;
@@ -856,67 +865,65 @@ class NodeManager {
         const startNodeId = this.dragConnectionStart.nodeId;
         const outputType = this.dragConnectionStart.outputType;
         
-        console.log(`드래그 연결 완료: ${startNodeId}(${outputType}) → ${targetNodeId}(input)`);
+        log(`?�래�??�결 ?�료: ${startNodeId}(${outputType}) ??${targetNodeId}(input)`);
         
-        // 연결 생성
+        // ?�결 ?�성
         this.createNodeConnection(startNodeId, targetNodeId, outputType, 'input');
         
-        // 드래그 연결 정리
+        // ?�래�??�결 ?�리
         this.cleanupDragConnection();
         
-        console.log('드래그 연결 완료');
+        log('?�래�??�결 ?�료');
     }
     
     /**
-     * 드래그 연결 취소
-     * 드래그 연결을 취소하고 정리합니다.
+     * ?�래�??�결 취소
+     * ?�래�??�결??취소?�고 ?�리?�니??
      */
     cancelDragConnection() {
-        console.log('드래그 연결 취소');
+        log('?�래�??�결 취소');
         this.cleanupDragConnection();
     }
     
     /**
-     * 드래그 연결 정리
-     * 드래그 연결 관련 상태와 UI를 정리합니다.
+     * ?�래�??�결 ?�리
+     * ?�래�??�결 관???�태?� UI�??�리?�니??
      */
     cleanupDragConnection() {
         this.isDraggingConnection = false;
         
-        // 시작 연결점 하이라이트 제거
+        // ?�작 ?�결???�이?�이???�거
         if (this.dragConnectionStart && this.dragConnectionStart.connector) {
             this.updateConnectorVisualState(this.dragConnectionStart.connector, false);
         }
         
-        // 전역 이벤트 리스너 제거
+        // ?�역 ?�벤??리스???�거
         document.removeEventListener('mousemove', this.handleDragConnectionMove);
         document.removeEventListener('mouseup', this.handleDragConnectionEnd);
         
-        // 임시 연결선 제거
+        // ?�시 ?�결???�거
         this.removeTempConnectionLine();
         
-        // 모든 연결점 하이라이트 제거
+        // 모든 ?�결???�이?�이???�거
         this.clearAllConnectorHighlights();
         
-        // 연결 모드 메시지 숨기기
-        this.hideDragConnectionMessage();
+        // ?�결 모드 메시지 ?�기�?        this.hideDragConnectionMessage();
         
-        // 상태 초기화
-        this.dragConnectionStart = null;
+        // ?�태 초기??        this.dragConnectionStart = null;
     }
     
     /**
-     * 임시 연결선 생성
-     * 드래그 중에 표시될 임시 연결선을 생성합니다.
+     * ?�시 ?�결???�성
+     * ?�래�?중에 ?�시???�시 ?�결?�을 ?�성?�니??
      */
     createTempConnectionLine(startX, startY) {
-        // 기존 임시 연결선 제거
+        // 기존 ?�시 ?�결???�거
         this.removeTempConnectionLine();
         
-        // 캔버스 위치 계산
+        // 캔버???�치 계산
         const canvasRect = this.canvas.getBoundingClientRect();
         
-        // SVG 연결선 생성
+        // SVG ?�결???�성
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.id = 'temp-connection-line';
         svg.style.cssText = `
@@ -943,8 +950,8 @@ class NodeManager {
     }
     
     /**
-     * 임시 연결선 업데이트
-     * 마우스 위치에 따라 임시 연결선을 업데이트합니다.
+     * ?�시 ?�결???�데?�트
+     * 마우???�치???�라 ?�시 ?�결?�을 ?�데?�트?�니??
      */
     updateTempConnectionLine(startPos, endPos) {
         if (!this.tempConnectionLine) return;
@@ -954,8 +961,7 @@ class NodeManager {
         const currentX = endPos.x;
         const currentY = endPos.y;
         
-        // 베지어 곡선으로 부드러운 연결선 그리기
-        const controlPoint1X = startX + (currentX - startX) * 0.5;
+        // 베�???곡선?�로 부?�러???�결??그리�?        const controlPoint1X = startX + (currentX - startX) * 0.5;
         const controlPoint1Y = startY;
         const controlPoint2X = startX + (currentX - startX) * 0.5;
         const controlPoint2Y = currentY;
@@ -965,8 +971,8 @@ class NodeManager {
     }
     
     /**
-     * 임시 연결선 제거
-     * 임시 연결선을 DOM에서 제거합니다.
+     * ?�시 ?�결???�거
+     * ?�시 ?�결?�을 DOM?�서 ?�거?�니??
      */
     removeTempConnectionLine() {
         if (this.tempConnectionLine && this.tempConnectionLine.svg) {
@@ -976,8 +982,8 @@ class NodeManager {
     }
     
     /**
-     * 드래그 연결 메시지 표시
-     * 드래그 연결 중임을 알리는 메시지를 표시합니다.
+     * ?�래�??�결 메시지 ?�시
+     * ?�래�??�결 중임???�리??메시지�??�시?�니??
      */
     showDragConnectionMessage() {
         const message = document.createElement('div');
@@ -995,14 +1001,13 @@ class NodeManager {
             z-index: 1001;
             pointer-events: none;
         `;
-        message.textContent = '입력 연결점에 놓아서 연결하세요';
+        message.textContent = '?�력 ?�결?�에 ?�아???�결?�세??;
         
         document.body.appendChild(message);
     }
     
     /**
-     * 드래그 연결 메시지 숨기기
-     * 드래그 연결 메시지를 제거합니다.
+     * ?�래�??�결 메시지 ?�기�?     * ?�래�??�결 메시지�??�거?�니??
      */
     hideDragConnectionMessage() {
         const message = document.getElementById('drag-connection-message');
@@ -1012,52 +1017,51 @@ class NodeManager {
     }
     
     /**
-     * 연결점 더블클릭 처리
-     * 연결된 연결점을 더블클릭하면 연결선을 삭제합니다.
+     * ?�결???�블?�릭 처리
+     * ?�결???�결?�을 ?�블?�릭?�면 ?�결?�을 ??��?�니??
      * 
-     * @param {HTMLElement} connector - 연결점 요소
-     * @param {HTMLElement} nodeElement - 노드 요소
-     * @param {string} connectorType - 연결점 타입 ('input' | 'output')
+     * @param {HTMLElement} connector - ?�결???�소
+     * @param {HTMLElement} nodeElement - ?�드 ?�소
+     * @param {string} connectorType - ?�결???�??('input' | 'output')
      */
     handleConnectorDoubleClick(connector, nodeElement, connectorType) {
         const nodeId = nodeElement.dataset.nodeId;
         
         try {
-            // 연결된 연결선 찾기
+            // ?�결???�결??찾기
             const connections = this.findConnectionsByNode(nodeId, connectorType);
             
             if (connections.length === 0) {
-                console.log(`노드 ${nodeId}의 ${connectorType} 연결점에 연결된 선이 없습니다.`);
-                this.showConnectorTooltip(connector, '연결된 선이 없습니다');
+                log(`?�드 ${nodeId}??${connectorType} ?�결?�에 ?�결???�이 ?�습?�다.`);
+                this.showConnectorTooltip(connector, '?�결???�이 ?�습?�다');
                 setTimeout(() => this.hideConnectorTooltip(), 2000);
                 return;
             }
             
-            // 연결선 삭제
+            // ?�결????��
             connections.forEach(connection => {
                 this.deleteConnectionByConnectionId(connection.id);
             });
             
-            // 시각적 피드백
-            this.showConnectionDeletedFeedback(connector, connections.length);
+            // ?�각???�드�?            this.showConnectionDeletedFeedback(connector, connections.length);
             
-            // 연결점 시각적 상태 업데이트
+            // ?�결???�각???�태 ?�데?�트
             setTimeout(() => {
                 this.updateAllConnectorsVisualState();
             }, 100);
             
-            console.log(`노드 ${nodeId}의 ${connectorType} 연결점에서 ${connections.length}개의 연결선 삭제됨`);
+            log(`?�드 ${nodeId}??${connectorType} ?�결?�에??${connections.length}개의 ?�결????��??);
             
         } catch (error) {
-            console.error('연결선 삭제 실패:', error);
+            logError('?�결????�� ?�패:', error);
         }
     }
     
     /**
-     * 노드의 연결점에 연결된 연결선들 찾기
-     * @param {string} nodeId - 노드 ID
-     * @param {string} connectorType - 연결점 타입 ('input' | 'output')
-     * @returns {Array} 연결된 연결선 배열
+     * ?�드???�결?�에 ?�결???�결?�들 찾기
+     * @param {string} nodeId - ?�드 ID
+     * @param {string} connectorType - ?�결???�??('input' | 'output')
+     * @returns {Array} ?�결???�결??배열
      */
     findConnectionsByNode(nodeId, connectorType) {
         if (!this.connectionManager || !this.connectionManager.connections) {
@@ -1077,42 +1081,41 @@ class NodeManager {
     }
     
     /**
-     * 연결선 ID로 연결선 삭제
-     * @param {string} connectionId - 연결선 ID
+     * ?�결??ID�??�결????��
+     * @param {string} connectionId - ?�결??ID
      */
     deleteConnectionByConnectionId(connectionId) {
         if (!this.connectionManager) {
-            console.warn('연결 관리자가 초기화되지 않았습니다.');
+            logWarn('?�결 관리자가 초기?�되지 ?�았?�니??');
             return;
         }
         
         try {
-            // 연결 관리자의 삭제 메서드 호출
+            // ?�결 관리자????�� 메서???�출
             if (typeof this.connectionManager.deleteConnection === 'function') {
                 this.connectionManager.deleteConnection(connectionId);
             } else {
-                console.warn('연결 관리자에 deleteConnection 메서드가 없습니다.');
+                logWarn('?�결 관리자??deleteConnection 메서?��? ?�습?�다.');
             }
         } catch (error) {
-            console.error('연결선 삭제 실패:', error);
+            logError('?�결????�� ?�패:', error);
         }
     }
     
     /**
-     * 연결선 삭제 시각적 피드백
-     * @param {HTMLElement} connector - 연결점 요소
-     * @param {number} deletedCount - 삭제된 연결선 개수
+     * ?�결????�� ?�각???�드�?     * @param {HTMLElement} connector - ?�결???�소
+     * @param {number} deletedCount - ??��???�결??개수
      */
     showConnectionDeletedFeedback(connector, deletedCount) {
-        // 연결점에 삭제 애니메이션 효과
+        // ?�결?�에 ??�� ?�니메이???�과
         connector.style.transform = 'scale(0.8)';
         connector.style.backgroundColor = '#FF3B30';
         connector.style.borderColor = '#FF3B30';
         
-        // 툴팁으로 삭제 확인 메시지 표시
-        this.showConnectorTooltip(connector, `${deletedCount}개 연결선 삭제됨`);
+        // ?�팁?�로 ??�� ?�인 메시지 ?�시
+        this.showConnectorTooltip(connector, `${deletedCount}�??�결????��??);
         
-        // 0.3초 후 원래 상태로 복원
+        // 0.3�????�래 ?�태�?복원
         setTimeout(() => {
             connector.style.transform = '';
             connector.style.backgroundColor = '';
@@ -1122,21 +1125,21 @@ class NodeManager {
     }
     
     /**
-     * 연결점 시각적 상태 업데이트
-     * 연결된 연결점과 연결되지 않은 연결점을 구분하여 표시합니다.
+     * ?�결???�각???�태 ?�데?�트
+     * ?�결???�결?�과 ?�결?��? ?��? ?�결?�을 구분?�여 ?�시?�니??
      * 
-     * @param {HTMLElement} connector - 연결점 요소
-     * @param {boolean} isConnected - 연결 상태
+     * @param {HTMLElement} connector - ?�결???�소
+     * @param {boolean} isConnected - ?�결 ?�태
      */
     updateConnectorVisualState(connector, isConnected) {
         if (isConnected) {
-            // 연결된 상태: 초록색으로 표시
+            // ?�결???�태: 초록?�으�??�시
             connector.classList.add('connected');
             connector.style.backgroundColor = '#34C759';
             connector.style.borderColor = '#34C759';
             connector.style.boxShadow = '0 0 8px rgba(52, 199, 89, 0.6)';
         } else {
-            // 연결되지 않은 상태: 기본 색상
+            // ?�결?��? ?��? ?�태: 기본 ?�상
             connector.classList.remove('connected');
             connector.style.backgroundColor = '#ffffff';
             connector.style.borderColor = '#666';
@@ -1145,8 +1148,8 @@ class NodeManager {
     }
     
     /**
-     * 모든 연결점의 시각적 상태 업데이트
-     * 노드 생성 후 또는 연결 상태 변경 후 호출합니다.
+     * 모든 ?�결?�의 ?�각???�태 ?�데?�트
+     * ?�드 ?�성 ???�는 ?�결 ?�태 변�????�출?�니??
      */
     updateAllConnectorsVisualState() {
         const allNodes = this.canvas.querySelectorAll('.workflow-node');
@@ -1154,14 +1157,14 @@ class NodeManager {
         allNodes.forEach(node => {
             const nodeId = node.dataset.nodeId;
             
-            // 입력 연결점 업데이트
+            // ?�력 ?�결???�데?�트
             const inputConnector = node.querySelector('.node-input');
             if (inputConnector) {
                 const inputConnections = this.findConnectionsByNode(nodeId, 'input');
                 this.updateConnectorVisualState(inputConnector, inputConnections.length > 0);
             }
             
-            // 출력 연결점들 업데이트
+            // 출력 ?�결?�들 ?�데?�트
             const outputConnectors = node.querySelectorAll('.node-output');
             outputConnectors.forEach(outputConnector => {
                 const outputConnections = this.findConnectionsByNode(nodeId, 'output');
@@ -1171,12 +1174,12 @@ class NodeManager {
     }
     
     /**
-     * 연결 모드 시작
-     * 출력 연결점을 클릭했을 때 연결 모드를 시작합니다.
+     * ?�결 모드 ?�작
+     * 출력 ?�결?�을 ?�릭?�을 ???�결 모드�??�작?�니??
      * 
-     * @param {string} nodeId - 시작 노드 ID
-     * @param {string} connectorType - 연결점 타입 ('input' | 'output')
-     * @param {string} outputType - 출력 타입 ('true' | 'false' | 'default')
+     * @param {string} nodeId - ?�작 ?�드 ID
+     * @param {string} connectorType - ?�결???�??('input' | 'output')
+     * @param {string} outputType - 출력 ?�??('true' | 'false' | 'default')
      */
     startConnection(nodeId, connectorType, outputType = 'default') {
         try {
@@ -1188,32 +1191,30 @@ class NodeManager {
                 timestamp: Date.now()
             };
             
-            // 연결 모드 UI 활성화
-            this.activateConnectionMode();
+            // ?�결 모드 UI ?�성??            this.activateConnectionMode();
             
-            // 연결 시작점 하이라이트
-            this.highlightConnectionStart(nodeId, connectorType, outputType);
+            // ?�결 ?�작???�이?�이??            this.highlightConnectionStart(nodeId, connectorType, outputType);
             
-            console.log(`연결 모드 시작: ${nodeId} (${connectorType}, ${outputType})`);
+            log(`?�결 모드 ?�작: ${nodeId} (${connectorType}, ${outputType})`);
             
         } catch (error) {
-            console.error('연결 모드 시작 실패:', error);
+            logError('?�결 모드 ?�작 ?�패:', error);
             this.cancelConnection();
         }
     }
     
     /**
-     * 연결 완료
-     * 입력 연결점을 클릭했을 때 연결을 완료합니다.
+     * ?�결 ?�료
+     * ?�력 ?�결?�을 ?�릭?�을 ???�결???�료?�니??
      * 
-     * @param {string} nodeId - 대상 노드 ID
-     * @param {string} connectorType - 연결점 타입 ('input' | 'output')
-     * @param {string} outputType - 출력 타입 (선택사항)
+     * @param {string} nodeId - ?�???�드 ID
+     * @param {string} connectorType - ?�결???�??('input' | 'output')
+     * @param {string} outputType - 출력 ?�??(?�택?�항)
      */
     completeConnection(nodeId, connectorType, outputType = 'default') {
         try {
             if (!this.isConnecting || !this.connectionStart) {
-                console.warn('연결 모드가 활성화되지 않았습니다.');
+                logWarn('?�결 모드가 ?�성?�되지 ?�았?�니??');
                 return;
             }
             
@@ -1221,84 +1222,79 @@ class NodeManager {
             const startConnectorType = this.connectionStart.connectorType;
             const startOutputType = this.connectionStart.outputType;
             
-            // 연결 유효성 검사
-            if (!this.validateConnection(startNodeId, nodeId, startConnectorType, connectorType)) {
+            // ?�결 ?�효??검??            if (!this.validateConnection(startNodeId, nodeId, startConnectorType, connectorType)) {
                 this.cancelConnection();
                 return;
             }
             
-            // 연결 생성
+            // ?�결 ?�성
             this.createNodeConnection(startNodeId, nodeId, startOutputType, outputType);
             
-            // 연결 모드 종료
+            // ?�결 모드 종료
             this.finishConnection();
             
-            console.log(`연결 완료: ${startNodeId} → ${nodeId}`);
+            log(`?�결 ?�료: ${startNodeId} ??${nodeId}`);
             
         } catch (error) {
-            console.error('연결 완료 실패:', error);
+            logError('?�결 ?�료 ?�패:', error);
             this.cancelConnection();
         }
     }
     
     /**
-     * 연결 취소
-     * ESC 키나 캔버스 클릭 시 연결 모드를 취소합니다.
+     * ?�결 취소
+     * ESC ?�나 캔버???�릭 ???�결 모드�?취소?�니??
      */
     cancelConnection() {
         this.isConnecting = false;
         this.connectionStart = null;
         
-        // 연결 모드 UI 비활성화
+        // ?�결 모드 UI 비활?�화
         this.deactivateConnectionMode();
         
-        // 모든 하이라이트 제거
+        // 모든 ?�이?�이???�거
         this.clearAllHighlights();
         
-        console.log('연결 모드 취소됨');
+        log('?�결 모드 취소??);
     }
     
     /**
-     * 연결 완료 처리
-     * 연결이 성공적으로 완료된 후 정리 작업을 수행합니다.
+     * ?�결 ?�료 처리
+     * ?�결???�공?�으�??�료?????�리 ?�업???�행?�니??
      */
     finishConnection() {
         this.isConnecting = false;
         this.connectionStart = null;
         
-        // 연결 모드 UI 비활성화
+        // ?�결 모드 UI 비활?�화
         this.deactivateConnectionMode();
         
-        // 모든 하이라이트 제거
+        // 모든 ?�이?�이???�거
         this.clearAllHighlights();
     }
     
     /**
-     * 연결 유효성 검사
-     * 연결이 유효한지 검사합니다.
+     * ?�결 ?�효??검??     * ?�결???�효?��? 검?�합?�다.
      * 
-     * @param {string} fromNodeId - 시작 노드 ID
-     * @param {string} toNodeId - 대상 노드 ID
-     * @param {string} fromType - 시작 연결점 타입
-     * @param {string} toType - 대상 연결점 타입
-     * @returns {boolean} 연결 유효성
-     */
+     * @param {string} fromNodeId - ?�작 ?�드 ID
+     * @param {string} toNodeId - ?�???�드 ID
+     * @param {string} fromType - ?�작 ?�결???�??     * @param {string} toType - ?�???�결???�??     * @returns {boolean} ?�결 ?�효??     */
     validateConnection(fromNodeId, toNodeId, fromType, toType) {
-        // 자기 자신과의 연결 방지
+        // ?�기 ?�신과의 ?�결 방�?
         if (fromNodeId === toNodeId) {
-            console.warn('자기 자신과는 연결할 수 없습니다.');
+            logWarn('?�기 ?�신과는 ?�결?????�습?�다.');
             return false;
         }
         
-        // 출력 → 입력 또는 입력 → 출력 연결 허용
+        // 출력 ???�력 ?�는 ?�력 ??출력 ?�결 ?�용
         if (!((fromType === 'output' && toType === 'input') || (fromType === 'input' && toType === 'output'))) {
-            console.warn('출력 → 입력 또는 입력 → 출력 연결만 가능합니다.');
+            logWarn('출력 ???�력 ?�는 ?�력 ??출력 ?�결�?가?�합?�다.');
             return false;
         }
         
-        // 중복 연결 방지 (같은 입력에 여러 연결 방지)
+        // 중복 ?�결 방�? (같�? ?�력???�러 ?�결 방�?)
         if (this.hasExistingConnection(toNodeId, 'input')) {
-            console.warn('이미 연결된 입력 연결점입니다.');
+            logWarn('?��? ?�결???�력 ?�결?�입?�다.');
             return false;
         }
         
@@ -1306,10 +1302,9 @@ class NodeManager {
     }
     
     /**
-     * 기존 연결 확인
-     * @param {string} nodeId - 노드 ID
-     * @param {string} connectorType - 연결점 타입
-     * @returns {boolean} 기존 연결 존재 여부
+     * 기존 ?�결 ?�인
+     * @param {string} nodeId - ?�드 ID
+     * @param {string} connectorType - ?�결???�??     * @returns {boolean} 기존 ?�결 존재 ?��?
      */
     hasExistingConnection(nodeId, connectorType) {
         if (!this.connectionManager || !this.connectionManager.connections) {
@@ -1327,30 +1322,28 @@ class NodeManager {
     }
     
     /**
-     * 노드 연결 생성
-     * @param {string} fromNodeId - 시작 노드 ID
-     * @param {string} toNodeId - 대상 노드 ID
-     * @param {string} fromOutputType - 시작 출력 타입
-     * @param {string} toOutputType - 대상 출력 타입
-     */
+     * ?�드 ?�결 ?�성
+     * @param {string} fromNodeId - ?�작 ?�드 ID
+     * @param {string} toNodeId - ?�???�드 ID
+     * @param {string} fromOutputType - ?�작 출력 ?�??     * @param {string} toOutputType - ?�??출력 ?�??     */
     createNodeConnection(fromNodeId, toNodeId, fromOutputType, toOutputType) {
-        // 연결 관리자가 없으면 초기화 시도
+        // ?�결 관리자가 ?�으�?초기???�도
         if (!this.connectionManager) {
             if (window.ConnectionManager) {
                 this.connectionManager = new window.ConnectionManager(this.canvas);
-                // 전역 변수로 설정
+                // ?�역 변?�로 ?�정
                 if (window.setConnectionManager) {
                     window.setConnectionManager(this.connectionManager);
                 }
-                console.log('연결 관리자 지연 초기화 완료');
+                log('?�결 관리자 지??초기???�료');
             } else {
-                console.warn('연결 관리자가 초기화되지 않았습니다.');
+                logWarn('?�결 관리자가 초기?�되지 ?�았?�니??');
                 return;
             }
         }
         
         try {
-            // 연결 데이터 생성
+            // ?�결 ?�이???�성
             const connectionData = {
                 from: fromNodeId,
                 to: toNodeId,
@@ -1359,58 +1352,54 @@ class NodeManager {
                 createdAt: new Date().toISOString()
             };
             
-            // 연결 생성
+            // ?�결 ?�성
             this.connectionManager.createConnection(fromNodeId, toNodeId);
             
-            console.log('노드 연결 생성 완료:', connectionData);
+            log('?�드 ?�결 ?�성 ?�료:', connectionData);
             
-            // 연결점 시각적 상태 업데이트
+            // ?�결???�각???�태 ?�데?�트
             setTimeout(() => {
                 this.updateAllConnectorsVisualState();
             }, 100);
             
         } catch (error) {
-            console.error('노드 연결 생성 실패:', error);
+            logError('?�드 ?�결 ?�성 ?�패:', error);
         }
     }
     
     // ==========================================
-    // 연결 모드 UI 관련 메서드들
+    // ?�결 모드 UI 관??메서?�들
     // ==========================================
     
     /**
-     * 연결 모드 UI 활성화
-     * 연결 모드일 때 캔버스와 연결점들의 스타일을 변경합니다.
+     * ?�결 모드 UI ?�성??     * ?�결 모드????캔버?��? ?�결?�들???��??�을 변경합?�다.
      */
     activateConnectionMode() {
-        // 캔버스에 연결 모드 클래스 추가
+        // 캔버?�에 ?�결 모드 ?�래??추�?
         this.canvas.classList.add('connection-mode');
         
-        // 모든 입력 연결점을 활성화
-        this.activateInputConnectors();
+        // 모든 ?�력 ?�결?�을 ?�성??        this.activateInputConnectors();
         
-        // 연결 모드 안내 메시지 표시
+        // ?�결 모드 ?�내 메시지 ?�시
         this.showConnectionModeMessage();
     }
     
     /**
-     * 연결 모드 UI 비활성화
-     * 연결 모드가 끝날 때 UI를 원래 상태로 복원합니다.
+     * ?�결 모드 UI 비활?�화
+     * ?�결 모드가 ?�날 ??UI�??�래 ?�태�?복원?�니??
      */
     deactivateConnectionMode() {
-        // 캔버스에서 연결 모드 클래스 제거
+        // 캔버?�에???�결 모드 ?�래???�거
         this.canvas.classList.remove('connection-mode');
         
-        // 모든 연결점 비활성화
+        // 모든 ?�결??비활?�화
         this.deactivateAllConnectors();
         
-        // 연결 모드 안내 메시지 숨기기
-        this.hideConnectionModeMessage();
+        // ?�결 모드 ?�내 메시지 ?�기�?        this.hideConnectionModeMessage();
     }
     
     /**
-     * 입력 연결점 활성화
-     * 연결 가능한 입력 연결점들을 하이라이트합니다.
+     * ?�력 ?�결???�성??     * ?�결 가?�한 ?�력 ?�결?�들???�이?�이?�합?�다.
      */
     activateInputConnectors() {
         const inputConnectors = this.canvas.querySelectorAll('.node-input');
@@ -1420,7 +1409,7 @@ class NodeManager {
     }
     
     /**
-     * 연결 가능한 출력 연결점들을 하이라이트합니다.
+     * ?�결 가?�한 출력 ?�결?�들???�이?�이?�합?�다.
      */
     activateOutputConnectors() {
         const outputConnectors = this.canvas.querySelectorAll('.node-output');
@@ -1430,8 +1419,8 @@ class NodeManager {
     }
     
     /**
-     * 모든 연결점 비활성화
-     * 모든 연결점의 활성 상태를 제거합니다.
+     * 모든 ?�결??비활?�화
+     * 모든 ?�결?�의 ?�성 ?�태�??�거?�니??
      */
     deactivateAllConnectors() {
         const allConnectors = this.canvas.querySelectorAll('.node-input, .node-output');
@@ -1441,11 +1430,8 @@ class NodeManager {
     }
     
     /**
-     * 연결 시작점 하이라이트
-     * @param {string} nodeId - 노드 ID
-     * @param {string} connectorType - 연결점 타입
-     * @param {string} outputType - 출력 타입
-     */
+     * ?�결 ?�작???�이?�이??     * @param {string} nodeId - ?�드 ID
+     * @param {string} connectorType - ?�결???�??     * @param {string} outputType - 출력 ?�??     */
     highlightConnectionStart(nodeId, connectorType, outputType) {
         const node = document.getElementById(nodeId);
         if (!node) return;
@@ -1467,8 +1453,8 @@ class NodeManager {
     }
     
     /**
-     * 모든 하이라이트 제거
-     * 모든 연결점의 하이라이트를 제거합니다.
+     * 모든 ?�이?�이???�거
+     * 모든 ?�결?�의 ?�이?�이?��? ?�거?�니??
      */
     clearAllHighlights() {
         const highlightedConnectors = this.canvas.querySelectorAll('.connection-highlight');
@@ -1478,7 +1464,7 @@ class NodeManager {
     }
     
     /**
-     * 연결 모드 안내 메시지 표시
+     * ?�결 모드 ?�내 메시지 ?�시
      */
     showConnectionModeMessage() {
         let message = document.getElementById('connection-mode-message');
@@ -1488,9 +1474,9 @@ class NodeManager {
             message.className = 'connection-mode-message';
             message.innerHTML = `
                 <div class="message-content">
-                    <span class="message-icon">🔗</span>
-                    <span class="message-text">연결할 입력 연결점을 클릭하세요</span>
-                    <span class="message-hint">ESC 키로 취소</span>
+                    <span class="message-icon">?��</span>
+                    <span class="message-text">?�결???�력 ?�결?�을 ?�릭?�세??/span>
+                    <span class="message-hint">ESC ?�로 취소</span>
                 </div>
             `;
             document.body.appendChild(message);
@@ -1500,8 +1486,7 @@ class NodeManager {
     }
     
     /**
-     * 연결 모드 안내 메시지 숨기기
-     */
+     * ?�결 모드 ?�내 메시지 ?�기�?     */
     hideConnectionModeMessage() {
         const message = document.getElementById('connection-mode-message');
         if (message) {
@@ -1510,10 +1495,9 @@ class NodeManager {
     }
     
     /**
-     * 연결점 툴팁 표시
-     * @param {HTMLElement} connector - 연결점 요소
-     * @param {string} text - 툴팁 텍스트
-     */
+     * ?�결???�팁 ?�시
+     * @param {HTMLElement} connector - ?�결???�소
+     * @param {string} text - ?�팁 ?�스??     */
     showConnectorTooltip(connector, text) {
         let tooltip = document.getElementById('connector-tooltip');
         if (!tooltip) {
@@ -1525,7 +1509,7 @@ class NodeManager {
         
         tooltip.textContent = text;
         
-        // 위치 계산
+        // ?�치 계산
         const rect = connector.getBoundingClientRect();
         tooltip.style.left = rect.left + rect.width / 2 + 'px';
         tooltip.style.top = rect.top - 30 + 'px';
@@ -1534,8 +1518,7 @@ class NodeManager {
     }
     
     /**
-     * 연결점 툴팁 숨기기
-     */
+     * ?�결???�팁 ?�기�?     */
     hideConnectorTooltip() {
         const tooltip = document.getElementById('connector-tooltip');
         if (tooltip) {
@@ -1544,10 +1527,9 @@ class NodeManager {
     }
     
     /**
-     * 연결점 정보 표시
-     * @param {string} nodeId - 노드 ID
-     * @param {string} connectorType - 연결점 타입
-     */
+     * ?�결???�보 ?�시
+     * @param {string} nodeId - ?�드 ID
+     * @param {string} connectorType - ?�결???�??     */
     showConnectionInfo(nodeId, connectorType) {
         const node = document.getElementById(nodeId);
         if (!node) return;
@@ -1555,9 +1537,9 @@ class NodeManager {
         const nodeTitle = node.querySelector('.node-title');
         const title = nodeTitle ? nodeTitle.textContent : nodeId;
         
-        console.log(`연결점 정보: ${title} (${connectorType})`);
+        log(`?�결???�보: ${title} (${connectorType})`);
         
-        // 연결된 노드들 표시
+        // ?�결???�드???�시
         if (this.connectionManager && this.connectionManager.connections) {
             const connections = Array.from(this.connectionManager.connections.values());
             const relatedConnections = connections.filter(conn => 
@@ -1565,16 +1547,14 @@ class NodeManager {
             );
             
             if (relatedConnections.length > 0) {
-                console.log('연결된 노드들:', relatedConnections);
+                log('?�결???�드??', relatedConnections);
             }
         }
     }
 
     /**
-     * HTML 이스케이프 처리
-     * @param {string} text - 이스케이프할 텍스트
-     * @returns {string} 이스케이프된 텍스트
-     */
+     * HTML ?�스케?�프 처리
+     * @param {string} text - ?�스케?�프???�스??     * @returns {string} ?�스케?�프???�스??     */
     escapeHtml(text) {
         const div = document.createElement('div');
         div.textContent = text;
@@ -1582,26 +1562,24 @@ class NodeManager {
     }
     
     /**
-     * 노드를 캔버스에 추가
-     * @param {HTMLElement} nodeElement - 노드 요소
+     * ?�드�?캔버?�에 추�?
+     * @param {HTMLElement} nodeElement - ?�드 ?�소
      */
     addNodeToCanvas(nodeElement) {
         const canvasContent = document.getElementById('canvas-content');
         if (canvasContent) {
             canvasContent.appendChild(nodeElement);
-            console.log(`노드 ${nodeElement.dataset.nodeId}를 canvas-content에 추가 완료`);
+            log(`?�드 ${nodeElement.dataset.nodeId}�?canvas-content??추�? ?�료`);
         } else {
             this.canvas.appendChild(nodeElement);
-            console.log(`노드 ${nodeElement.dataset.nodeId}를 캔버스에 직접 추가 완료 (canvas-content 없음)`);
+            log(`?�드 ${nodeElement.dataset.nodeId}�?캔버?�에 직접 추�? ?�료 (canvas-content ?�음)`);
         }
         
         
     }
     
     /**
-     * 노드 데이터 저장
-     * @param {Object} nodeData - 노드 데이터
-     */
+     * ?�드 ?�이???�??     * @param {Object} nodeData - ?�드 ?�이??     */
     saveNodeData(nodeData) {
         if (!this.nodeData) {
             this.nodeData = {};
@@ -1614,8 +1592,8 @@ class NodeManager {
     }
     
     /**
-     * 연결 관리자에 노드 등록 (지연 초기화)
-     * @param {HTMLElement} nodeElement - 노드 요소
+     * ?�결 관리자???�드 ?�록 (지??초기??
+     * @param {HTMLElement} nodeElement - ?�드 ?�소
      */
     registerNodeWithConnectionManager(nodeElement) {
         setTimeout(() => {
@@ -1623,7 +1601,7 @@ class NodeManager {
                 this.connectionManager.bindNodeConnector(nodeElement);
             } else if (window.ConnectionManager) {
                 this.connectionManager = new window.ConnectionManager(this.canvas);
-                // 전역 변수로 설정
+                // ?�역 변?�로 ?�정
                 if (window.setConnectionManager) {
                     window.setConnectionManager(this.connectionManager);
                 }
@@ -1633,52 +1611,52 @@ class NodeManager {
     }
     
     /**
-     * 노드 삭제
-     * 선택된 노드를 캔버스와 데이터에서 제거합니다.
+     * ?�드 ??��
+     * ?�택???�드�?캔버?��? ?�이?�에???�거?�니??
      */
     deleteNode(node) {
         const nodeId = node.dataset.nodeId;
-        // 시작/종료 노드는 삭제 불가
+        // ?�작/종료 ?�드????�� 불�?
         if (nodeId === 'start' || nodeId === 'end') {
-            console.warn('시작/종료 노드는 삭제할 수 없습니다.');
+            logWarn('?�작/종료 ?�드????��?????�습?�다.');
             return;
         }
         
-        // DOM에서 노드 제거
+        // DOM?�서 ?�드 ?�거
         node.remove();
         
-        // 데이터에서 노드 제거
+        // ?�이?�에???�드 ?�거
         this.nodes = this.nodes.filter(n => n.id !== nodeId);
         delete this.nodeData[nodeId];
         
         
         
-        // 연결선 제거
+        // ?�결???�거
         if (this.connectionManager) {
             this.connectionManager.removeNodeConnections(nodeId);
         } else {
-            // 연결선 매니저가 없으면 초기화 시도
-            console.warn('연결선 매니저가 없어서 연결선 제거를 건너뜁니다.');
+            // ?�결??매니?�가 ?�으�?초기???�도
+            logWarn('?�결??매니?�가 ?�어???�결???�거�?건너?�니??');
             if (window.ConnectionManager) {
                 this.connectionManager = new window.ConnectionManager(this.canvas);
                 if (window.setConnectionManager) {
                     window.setConnectionManager(this.connectionManager);
                 }
-                console.log('연결선 매니저 지연 초기화 완료');
+                log('?�결??매니?� 지??초기???�료');
             }
         }
         
-        // 선택 해제
+        // ?�택 ?�제
         if (this.selectedNode === node) {
             this.selectedNode = null;
         }
         
-        console.log('노드 삭제됨:', nodeId);
+        log('?�드 ??��??', nodeId);
     }
     
     /**
-     * 노드 애니메이션 (생성 시)
-     * 새로 생성된 노드에 페이드인 애니메이션을 적용합니다.
+     * ?�드 ?�니메이??(?�성 ??
+     * ?�로 ?�성???�드???�이?�인 ?�니메이?�을 ?�용?�니??
      */
     animateNodeIn(nodeElement) {
         nodeElement.style.opacity = '0';
@@ -1692,8 +1670,8 @@ class NodeManager {
     }
     
     /**
-     * 모든 노드 데이터 반환
-     * 현재 생성된 모든 노드의 정보를 반환합니다.
+     * 모든 ?�드 ?�이??반환
+     * ?�재 ?�성??모든 ?�드???�보�?반환?�니??
      */
     getAllNodes() {
         return this.nodes.map(n => ({
@@ -1707,8 +1685,8 @@ class NodeManager {
     }
     
     /**
-     * 모든 연결선 데이터 반환
-     * 현재 생성된 모든 연결선의 정보를 반환합니다.
+     * 모든 ?�결???�이??반환
+     * ?�재 ?�성??모든 ?�결?�의 ?�보�?반환?�니??
      */
     getAllConnections() {
         if (this.connectionManager) {
@@ -1718,37 +1696,37 @@ class NodeManager {
     }
     
     /**
-     * 롱터치 시작
-     * 연결점을 롱터치하여 연결선 그리기 모드를 시작합니다.
+     * 롱터�??�작
+     * ?�결?�을 롱터치하???�결??그리�?모드�??�작?�니??
      */
     startLongTouch(e, connector, nodeElement, connectorType) {
-        console.log(`롱터치 시작: ${connectorType} 연결점`, {
+        log(`롱터�??�작: ${connectorType} ?�결??, {
             connector: connector,
             nodeElement: nodeElement,
             delay: this.longTouchDelay
         });
         
-        // 기존 타이머가 있으면 취소
+        // 기존 ?�?�머가 ?�으�?취소
         if (this.longTouchTimer) {
             clearTimeout(this.longTouchTimer);
-            console.log('기존 롱터치 타이머 취소됨');
+            log('기존 롱터�??�?�머 취소??);
         }
         
-        // 롱터치 타이머 시작
+        // 롱터�??�?�머 ?�작
         this.longTouchTimer = setTimeout(() => {
-            console.log('롱터치 타이머 완료 - 연결선 그리기 모드 활성화');
+            log('롱터�??�?�머 ?�료 - ?�결??그리�?모드 ?�성??);
             this.activateConnectionDrawingMode(e, connector, nodeElement, connectorType);
         }, this.longTouchDelay);
         
-        console.log(`롱터치 타이머 시작됨 (${this.longTouchDelay}ms 후 활성화)`);
+        log(`롱터�??�?�머 ?�작??(${this.longTouchDelay}ms ???�성??`);
     }
     
     /**
-     * 롱터치 취소
-     * 롱터치를 취소하고 연결선 그리기 모드를 비활성화합니다.
+     * 롱터�?취소
+     * 롱터치�? 취소?�고 ?�결??그리�?모드�?비활?�화?�니??
      */
     cancelLongTouch() {
-        console.log('롱터치 취소 시도', {
+        log('롱터�?취소 ?�도', {
             hasTimer: !!this.longTouchTimer,
             isDrawing: this.isDrawingConnection
         });
@@ -1756,21 +1734,20 @@ class NodeManager {
         if (this.longTouchTimer) {
             clearTimeout(this.longTouchTimer);
             this.longTouchTimer = null;
-            console.log('롱터치 타이머 취소됨');
+            log('롱터�??�?�머 취소??);
         }
         
         if (this.isDrawingConnection) {
-            console.log('연결선 그리기 모드 비활성화 중...');
+            log('?�결??그리�?모드 비활?�화 �?..');
             this.deactivateConnectionDrawingMode();
         }
     }
     
     /**
-     * 연결선 그리기 모드 활성화
-     * 롱터치가 완료되면 연결선 그리기 모드를 시작합니다.
+     * ?�결??그리�?모드 ?�성??     * 롱터치�? ?�료?�면 ?�결??그리�?모드�??�작?�니??
      */
     activateConnectionDrawingMode(e, connector, nodeElement, connectorType) {
-        console.log(`연결선 그리기 모드 활성화: ${connectorType}`);
+        log(`?�결??그리�?모드 ?�성?? ${connectorType}`);
         
         this.isDrawingConnection = true;
         this.connectionStartConnector = connector;
@@ -1781,63 +1758,61 @@ class NodeManager {
             connectorType: connectorType
         };
         
-        // 연결점 하이라이트
-        connector.style.backgroundColor = '#FF6B35';
+        // ?�결???�이?�이??        connector.style.backgroundColor = '#FF6B35';
         connector.style.borderColor = '#FF6B35';
         connector.style.boxShadow = '0 0 15px rgba(255, 107, 53, 0.8)';
         
-        // 캔버스에 마우스 이벤트 추가
+        // 캔버?�에 마우???�벤??추�?
         this.canvas.addEventListener('mousemove', this.handleConnectionDrawing);
         this.canvas.addEventListener('mouseup', this.handleConnectionComplete);
         
-        // 연결선 그리기 메시지 표시
+        // ?�결??그리�?메시지 ?�시
         this.showConnectionDrawingMessage(connectorType);
         
-        console.log('연결선 그리기 모드 활성화 완료');
+        log('?�결??그리�?모드 ?�성???�료');
     }
     
     /**
-     * 연결선 그리기 모드 비활성화
-     * 연결선 그리기를 취소하고 모드를 비활성화합니다.
+     * ?�결??그리�?모드 비활?�화
+     * ?�결??그리기�? 취소?�고 모드�?비활?�화?�니??
      */
     deactivateConnectionDrawingMode() {
-        console.log('연결선 그리기 모드 비활성화');
+        log('?�결??그리�?모드 비활?�화');
         
         this.isDrawingConnection = false;
         this.connectionStartPoint = null;
         this.connectionStartConnector = null;
         
-        // 연결점 하이라이트 제거
+        // ?�결???�이?�이???�거
         if (this.connectionStartConnector) {
             this.updateConnectorVisualState(this.connectionStartConnector, false);
         }
         
-        // 캔버스 이벤트 제거
+        // 캔버???�벤???�거
         this.canvas.removeEventListener('mousemove', this.handleConnectionDrawing);
         this.canvas.removeEventListener('mouseup', this.handleConnectionComplete);
         
-        // 연결선 그리기 메시지 숨기기
-        this.hideConnectionDrawingMessage();
+        // ?�결??그리�?메시지 ?�기�?        this.hideConnectionDrawingMessage();
         
-        // 임시 연결선 제거
+        // ?�시 ?�결???�거
         if (this.connectionManager) {
             this.connectionManager.removeTempConnection();
         }
         
-        // 모든 연결점 하이라이트 제거
+        // 모든 ?�결???�이?�이???�거
         this.clearAllConnectorHighlights();
         
-        console.log('연결선 그리기 모드 비활성화 완료');
+        log('?�결??그리�?모드 비활?�화 ?�료');
     }
     
     /**
-     * 연결선 그리기 처리
-     * 마우스 이동 시 연결선을 그리고 마그네틱 기능을 처리합니다.
+     * ?�결??그리�?처리
+     * 마우???�동 ???�결?�을 그리�?마그?�틱 기능??처리?�니??
      */
     handleConnectionDrawing = (e) => {
         if (!this.isDrawingConnection || !this.connectionStartPoint) return;
         
-        // 임시 연결선 그리기 (connectionManager에 위임)
+        // ?�시 ?�결??그리�?(connectionManager???�임)
         if (this.connectionManager) {
             this.connectionManager.updateTempConnection(
                 this.connectionStartPoint.x,
@@ -1847,7 +1822,7 @@ class NodeManager {
             );
         }
         
-        // 마그네틱 기능: 가까운 연결점 찾기
+        // 마그?�틱 기능: 가까운 ?�결??찾기
         const nearbyConnector = this.findNearbyConnector(e.clientX, e.clientY);
         if (nearbyConnector) {
             this.highlightConnector(nearbyConnector);
@@ -1857,27 +1832,27 @@ class NodeManager {
     }
     
     /**
-     * 연결선 완료 처리
-     * 마우스 업 시 연결을 완료하거나 취소합니다.
+     * ?�결???�료 처리
+     * 마우???????�결???�료?�거??취소?�니??
      */
     handleConnectionComplete = (e) => {
         if (!this.isDrawingConnection || !this.connectionStartPoint) return;
         
-        // 가까운 연결점 찾기
+        // 가까운 ?�결??찾기
         const nearbyConnector = this.findNearbyConnector(e.clientX, e.clientY);
         
         if (nearbyConnector) {
-            // 연결 완료
+            // ?�결 ?�료
             this.completeConnectionToConnector(nearbyConnector);
         } else {
-            // 연결 취소
+            // ?�결 취소
             this.deactivateConnectionDrawingMode();
         }
     }
     
     /**
-     * 가까운 연결점 찾기 (마그네틱 기능)
-     * 마우스 위치에서 가까운 연결점을 찾습니다.
+     * 가까운 ?�결??찾기 (마그?�틱 기능)
+     * 마우???�치?�서 가까운 ?�결?�을 찾습?�다.
      */
     findNearbyConnector(mouseX, mouseY) {
         const allConnectors = this.canvas.querySelectorAll('.node-input, .node-output');
@@ -1903,15 +1878,13 @@ class NodeManager {
     }
     
     /**
-     * 연결점 하이라이트
-     * 연결점을 하이라이트하여 마그네틱 효과를 표시합니다.
+     * ?�결???�이?�이??     * ?�결?�을 ?�이?�이?�하??마그?�틱 ?�과�??�시?�니??
      */
     highlightConnector(connector) {
-        // 기존 하이라이트 제거
+        // 기존 ?�이?�이???�거
         this.clearAllConnectorHighlights();
         
-        // 새 연결점 하이라이트
-        connector.style.backgroundColor = '#34C759';
+        // ???�결???�이?�이??        connector.style.backgroundColor = '#34C759';
         connector.style.borderColor = '#34C759';
         connector.style.boxShadow = '0 0 15px rgba(52, 199, 89, 0.8)';
         connector.style.transform = 'scale(1.2)';
@@ -1919,7 +1892,7 @@ class NodeManager {
     }
     
     /**
-     * 모든 연결점 하이라이트 제거
+     * 모든 ?�결???�이?�이???�거
      */
     clearAllConnectorHighlights() {
         const highlightedConnectors = this.canvas.querySelectorAll('.magnetic-highlight');
@@ -1933,8 +1906,8 @@ class NodeManager {
     }
     
     /**
-     * 연결점으로 연결 완료
-     * 찾은 연결점으로 연결을 완료합니다.
+     * ?�결?�으�??�결 ?�료
+     * 찾�? ?�결?�으�??�결???�료?�니??
      */
     completeConnectionToConnector(targetConnector) {
         if (!this.connectionStartPoint || !targetConnector) return;
@@ -1945,9 +1918,9 @@ class NodeManager {
         const targetNodeId = targetNode.dataset.nodeId;
         const targetConnectorType = targetConnector.classList.contains('node-input') ? 'input' : 'output';
         
-        console.log(`연결 완료: ${this.connectionStartPoint.nodeId}(${this.connectionStartPoint.connectorType}) → ${targetNodeId}(${targetConnectorType})`);
+        log(`?�결 ?�료: ${this.connectionStartPoint.nodeId}(${this.connectionStartPoint.connectorType}) ??${targetNodeId}(${targetConnectorType})`);
         
-        // 연결 생성
+        // ?�결 ?�성
         if (this.connectionStartPoint.connectorType === 'output' && targetConnectorType === 'input') {
             this.createNodeConnection(
                 this.connectionStartPoint.nodeId,
@@ -1964,12 +1937,12 @@ class NodeManager {
             );
         }
         
-        // 연결선 그리기 모드 비활성화
+        // ?�결??그리�?모드 비활?�화
         this.deactivateConnectionDrawingMode();
     }
     
     /**
-     * 연결선 그리기 메시지 표시
+     * ?�결??그리�?메시지 ?�시
      */
     showConnectionDrawingMessage(connectorType) {
         const message = document.createElement('div');
@@ -1987,14 +1960,13 @@ class NodeManager {
             z-index: 1000;
             pointer-events: none;
         `;
-        message.textContent = `${connectorType === 'output' ? '출력' : '입력'} 연결점에서 연결선을 그리는 중... 다른 연결점에 놓으세요.`;
+        message.textContent = `${connectorType === 'output' ? '출력' : '?�력'} ?�결?�에???�결?�을 그리??�?.. ?�른 ?�결?�에 ?�으?�요.`;
         
         document.body.appendChild(message);
     }
     
     /**
-     * 연결선 그리기 메시지 숨기기
-     */
+     * ?�결??그리�?메시지 ?�기�?     */
     hideConnectionDrawingMessage() {
         const message = document.getElementById('connection-drawing-message');
         if (message) {
@@ -2003,25 +1975,25 @@ class NodeManager {
     }
 }
 
-// 전역으로 사용할 수 있도록 export
+// ?�역?�로 ?�용?????�도�?export
 window.NodeManager = NodeManager;
 
-// 페이지 로드 완료 후 노드 매니저 인스턴스 생성
+// ?�이지 로드 ?�료 ???�드 매니?� ?�스?�스 ?�성
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM 로드 완료 - 노드 매니저 인스턴스 생성');
+    log('DOM 로드 ?�료 - ?�드 매니?� ?�스?�스 ?�성');
 window.nodeManager = new NodeManager();
-    console.log('노드 매니저 인스턴스 생성 완료:', window.nodeManager);
+    log('?�드 매니?� ?�스?�스 ?�성 ?�료:', window.nodeManager);
 });
 
-// ==== 노드 타입 레지스트리 (정적) ====
-// 각 노드 타입별로 템플릿/기능을 등록하는 용도
+// ==== ?�드 ?�???��??�트�?(?�적) ====
+// �??�드 ?�?�별�??�플�?기능???�록?�는 ?�도
 NodeManager.nodeTypeDefinitions = {};
 
 /**
- * 정적 타입 등록 함수
- * @param {string} type - 노드 타입 (예: 'action', 'condition', 'loop')
- * @param {Object} definition - 타입 정의 객체
- * @param {Function} definition.renderContent - 노드 innerHTML을 생성하는 함수
+ * ?�적 ?�???�록 ?�수
+ * @param {string} type - ?�드 ?�??(?? 'action', 'condition', 'loop')
+ * @param {Object} definition - ?�???�의 객체
+ * @param {Function} definition.renderContent - ?�드 innerHTML???�성?�는 ?�수
  */
 NodeManager.registerNodeType = function (type, definition) {
     if (!NodeManager.nodeTypeDefinitions) {

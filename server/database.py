@@ -5,7 +5,15 @@ from typing import List, Dict, Optional
 from datetime import datetime
 
 class DatabaseManager:
-    def __init__(self, db_path: str = "workflows.db"):
+    def __init__(self, db_path: str = None):
+        # db_path가 없으면 server/db/workflows.db 사용
+        if db_path is None:
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            db_dir = os.path.join(script_dir, "db")
+            # db 폴더가 없으면 생성
+            if not os.path.exists(db_dir):
+                os.makedirs(db_dir)
+            db_path = os.path.join(db_dir, "workflows.db")
         self.db_path = db_path
         self.init_database()
     
@@ -48,19 +56,6 @@ class DatabaseManager:
                 from_node_id TEXT NOT NULL,
                 to_node_id TEXT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (script_id) REFERENCES scripts (id) ON DELETE CASCADE
-            )
-        ''')
-        
-        # 실행 로그 테이블 생성
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS execution_logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                script_id INTEGER NOT NULL,
-                node_id TEXT,
-                status TEXT NOT NULL,
-                message TEXT,
-                executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (script_id) REFERENCES scripts (id) ON DELETE CASCADE
             )
         ''')
@@ -227,43 +222,5 @@ class DatabaseManager:
         finally:
             conn.close()
     
-    def log_execution(self, script_id: int, node_id: str, status: str, message: str = ""):
-        """실행 로그 기록"""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            INSERT INTO execution_logs (script_id, node_id, status, message)
-            VALUES (?, ?, ?, ?)
-        ''', (script_id, node_id, status, message))
-        
-        conn.commit()
-        conn.close()
-    
-    def get_execution_logs(self, script_id: int, limit: int = 100) -> List[Dict]:
-        """실행 로그 조회"""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            SELECT node_id, status, message, executed_at 
-            FROM execution_logs 
-            WHERE script_id = ? 
-            ORDER BY executed_at DESC 
-            LIMIT ?
-        ''', (script_id, limit))
-        
-        logs = []
-        for row in cursor.fetchall():
-            logs.append({
-                "node_id": row[0],
-                "status": row[1],
-                "message": row[2],
-                "executed_at": row[3]
-            })
-        
-        conn.close()
-        return logs
-
 # 전역 데이터베이스 매니저 인스턴스
 db_manager = DatabaseManager()
