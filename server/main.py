@@ -6,6 +6,7 @@ import uvicorn
 import os
 import re
 from api import action_router, script_router, game_router, node_router
+from log import log_manager 
 
 # cd server
 # python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
@@ -29,6 +30,12 @@ def load_env():
 # 환경 변수 로드
 env_vars = load_env()
 DEV_MODE = env_vars.get('DEV', 'false').lower() == 'true'
+
+# 로거 초기화 (싱글톤 패턴)
+logger = log_manager.logger
+logger.info("=" * 60)
+logger.info("서버 시작")
+logger.info(f"개발 모드: {DEV_MODE}")
 
 app = FastAPI(
     title="자동화 도구",
@@ -55,9 +62,9 @@ app.include_router(node_router)
 ui_path = os.path.join(os.path.dirname(__file__), "..", "UI", "src")
 if os.path.exists(ui_path):
     app.mount("/static", StaticFiles(directory=ui_path), name="static")
-    print(f"정적 파일 서빙 활성화: {ui_path}")
+    logger.info(f"정적 파일 서빙 활성화: {ui_path}")
 else:
-    print("UI 경로를 찾을 수 없습니다. API만 사용 가능합니다.")
+    logger.warning("UI 경로를 찾을 수 없습니다. API만 사용 가능합니다.")
 
 # 기본 라우트 - 웹 UI 제공
 @app.get("/")

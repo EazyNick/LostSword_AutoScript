@@ -9,3 +9,4 @@ pyautogui==0.9.54
 pynput==1.7.6
 requests==2.31.0
 python-dotenv==1.0.0
+colorlog==6.8.0
