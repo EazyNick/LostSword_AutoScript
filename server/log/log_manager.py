@@ -44,16 +44,16 @@ class LogManager:
         LogManager 초기화
         
         Args:
-            directory (str, optional): 로그 파일을 저장할 디렉토리. None이면 server/log 사용
+            directory (str, optional): 로그 파일을 저장할 디렉토리. None이면 server/log/logs 사용
             max_files (int): 유지할 최대 로그 파일 개수 (기본값: 10)
         """
         if not hasattr(self, 'initialized'):  # 이 인스턴스가 초기화되었는지 확인
-            # directory가 지정되지 않으면 server/log 디렉토리 사용
+            # directory가 지정되지 않으면 server/log/logs 디렉토리 사용
             if directory is None:
                 # 현재 파일의 위치가 이미 server/log/log_manager.py이므로
-                # 상위 디렉토리(server/log)를 사용
+                # server/log/logs 디렉토리를 사용
                 current_file_dir = os.path.dirname(os.path.abspath(__file__))
-                self.directory = current_file_dir  # server/log 디렉토리
+                self.directory = os.path.join(current_file_dir, 'logs')  # server/log/logs 디렉토리
             else:
                 self.directory = directory
             

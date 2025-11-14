@@ -96,11 +96,38 @@
     </div>
 
     <!-- 스크립트 로드 -->
+    <!-- 1. 유틸 -->
+    <script src="/static/js/utils/logger.js"></script>
     <script type="module" src="/static/js/utils/modal.js"></script>
-    <script type="module" src="/static/js/components/sidebar.js"></script>
-    <script type="module" src="/static/js/components/connection.js"></script>
-    <script src="/static/js/components/node.js"></script>
     
-    <script src="/static/pages/workflow/workflow.js"></script>
+    <!-- 2. API 유틸리티 (ES6 모듈) -->
+    <script type="module" src="/static/js/api/api.js"></script>
+    <script type="module" src="/static/js/api/scriptapi.js"></script>
+    <script type="module" src="/static/js/api/nodeapi.js"></script>
+
+    <!-- 3. NodeManager가 의존하는 서브 컨트롤러들 -->
+    <script src="/static/js/components/node/node-selection.js"></script>
+    <script type="module" src="/static/js/components/node/node-drag.js"></script>
+    <script src="/static/js/components/node/node-canvas.js"></script>
+    
+    <script type="module" src="/static/js/components/sidebar.js"></script>  
+    <script type="module" src="/static/js/components/connection.js"></script>
+
+    <!-- 4. 연결 핸들러 (NodeManager보다 먼저 로드) -->
+    <script src="/static/js/components/node/node-connection-handler.js"></script>
+
+    <!-- 5. 공통 NodeManager -->
+    <script type="module" src="/static/js/components/node/node.js"></script>
+
+    <!-- 6. 각 노드 타입 정의 (NodeManager.registerNodeType 사용) -->
+    <script src="/static/js/components/node/node-start.js"></script>
+    <script src="/static/js/components/node/node-end.js"></script>
+    <script src="/static/js/components/node/node-action.js"></script>
+    <script src="/static/js/components/node/node-condition.js"></script>
+    <script src="/static/js/components/node/node-loop.js"></script>
+    <script src="/static/js/components/node/node-wait.js"></script>
+
+    <!-- 7. 페이지 전체 로직 (ES6 모듈) -->
+    <script type="module" src="/static/pages/workflow/workflow.js"></script>
 </body>
 </html>

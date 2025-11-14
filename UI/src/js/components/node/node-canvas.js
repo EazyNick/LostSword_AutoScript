@@ -1,5 +1,5 @@
 // node-canvas.js
-// 무한 캔버??/ ?�닝 / �??�당 컨트롤러
+// 무한 캔버스 / 패닝 / 줌 컨트롤러
 
 (function () {
     class NodeCanvasController {
@@ -24,23 +24,23 @@
         }
 
         /**
-         * 캔버??관??모든 ?�벤??바인??
+         * 캔버스 관련 모든 이벤트 바인딩
          */
         bindEvents() {
             const canvas = this.canvas;
             if (!canvas) return;
 
-            // 마우????+ Ctrl : �?/ 그냥 ??: ?�그마식 ?�닝
+            // 마우스 휠 + Ctrl : 줌 / 그냥 휠 : 피그마식 패닝
             canvas.addEventListener('wheel', (e) => this.handleWheel(e), { passive: false });
 
-            // 중간 버튼 ?�래�??�닝
+            // 중간 버튼 드래그 패닝
             canvas.addEventListener('mousedown', (e) => {
                 if (e.button === 1) {
                     e.preventDefault();
                     e.stopPropagation();
                     e.stopImmediatePropagation();
 
-                    log('마우????버튼 ?�름 - ?�닝 ?�작');
+                    log('마우스 중간 버튼 눌림 - 패닝 시작');
                     this.startPan(e);
 
                     const handleMove = (moveEvent) => {
@@ -50,7 +50,7 @@
                     };
 
                     const handleUp = () => {
-                        log('마우????감�? - ?�닝 종료');
+                        log('마우스 버튼 뗌 - 패닝 종료');
                         document.removeEventListener('mousemove', handleMove);
                         document.removeEventListener('mouseup', handleUp);
                         document.removeEventListener('mouseleave', handleUp);
@@ -65,73 +65,74 @@
                 }
             });
 
-            // ?�역 mouseup ?�로???�닝 강제 종료
+            // 전역 mouseup 으로 패닝 강제 종료
             document.addEventListener('mouseup', () => {
                 if (this.isPanning) {
-                    log('?�역 mouseup - ?�닝 강제 종료');
+                    log('전역 mouseup - 패닝 강제 종료');
                     this.endPan();
                 }
             });
 
-            // 컨텍?�트 메뉴 막기
+            // 컨텍스트 메뉴 막기
             canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
-            // ?�커??관�?
+            // 포커스 관련
             canvas.addEventListener('focus', () => {
                 this.nodeManager.isCanvasFocused = true;
-                log('캔버???�커?�됨');
+                log('캔버스 포커스됨');
             });
 
             canvas.addEventListener('blur', () => {
                 this.nodeManager.isCanvasFocused = false;
-                log('캔버???�커???�제??);
+                log('캔버스 포커스 해제');
             });
 
             canvas.addEventListener('mouseenter', () => {
                 canvas.focus();
-                log('마우??진입?�로 캔버???�커???�정');
+                log('마우스 진입으로 캔버스 포커스 지정');
             });
 
             canvas.addEventListener('click', (e) => {
                 canvas.focus();
-                log('=== 캔버???�릭 ?�버�?===');
-                log(`- ?�릭 ?�치: (${e.clientX}, ${e.clientY})`);
-                log(`- 무한 캔버??모드: ${this.nodeManager.isInfiniteCanvas}`);
-                log(`- ?�닝 �? ${this.isPanning}`);
+                log('=== 캔버스 클릭 이벤트 ===');
+                log(`- 클릭 위치: (${e.clientX}, ${e.clientY})`);
+                log(`- 무한 캔버스 모드: ${this.nodeManager.isInfiniteCanvas}`);
+                log(`- 패닝 중 여부: ${this.isPanning}`);
             });
 
-            // auxclick(중간 버튼 ?�릭) ?�전 무시
+            // auxclick(중간 버튼 클릭) 이벤트 무시 (패닝 방해 방지)
             canvas.addEventListener('auxclick', (e) => {
-                log('auxclick ?�벤??무시 (?�닝 방해 방�?):', e.button);
+                log('auxclick 이벤트 무시 (패닝 방해 방지):', e.button);
                 e.preventDefault();
                 e.stopPropagation();
                 e.stopImmediatePropagation();
             });
 
-            // 리사?�즈 ??캔버???�크�?가?�성 보장
+            // 리사이즈 시 캔버스가 항상 스크롤 가능하도록 보장
             window.addEventListener('resize', () => {
                 this.ensureCanvasScrollable();
             });
         }
 
         /**
-         * ???�벤?? Ctrl+??= �? ?�머지 = ?�닝
+         * 휠 이벤트 처리
+         * Ctrl+휠 = 줌 / 그냥 휠 = 패닝
          */
         handleWheel(e) {
-            log('Wheel ?�벤??', {
+            log('Wheel 이벤트:', {
                 ctrlKey: e.ctrlKey,
                 deltaY: e.deltaY,
                 isPanning: this.isPanning
             });
 
-            // ?�닝 중이�?그냥 막기
+            // 패닝 중이면 그냥 막기
             if (this.isPanning) {
                 e.preventDefault();
                 return;
             }
 
             if (e.ctrlKey) {
-                // �?
+                // 줌
                 e.preventDefault();
                 e.stopPropagation();
 
@@ -140,14 +141,14 @@
 
                 this.handleCanvasZoom(e);
             } else {
-                // ?�그마식 ?�닝
+                // 피그마식 패닝
                 e.preventDefault();
                 this.handleWheelPan(e);
             }
         }
 
         /**
-         * ??기반 ?�닝 (?�그�??��???
+         * 휠 기반 패닝 (피그마 스타일)
          */
         handleWheelPan(e) {
             const deltaX = e.deltaX || (e.shiftKey ? e.deltaY : 0);
@@ -176,13 +177,13 @@
 
             if (Math.random() < 0.1) {
                 log(
-                    `?�그�?방식 ???�닝: translate(${Math.round(newX)}, ${Math.round(newY)})`
+                    `피그마 방식 휠 패닝: translate(${Math.round(newX)}, ${Math.round(newY)})`
                 );
             }
         }
 
         /**
-         * ?�닝 ?�작 (중간버튼)
+         * 패닝 시작 (중간 버튼)
          */
         startPan(e) {
             if (this.isPanning) return;
@@ -202,18 +203,18 @@
             this.canvas.classList.add('panning');
             this.canvas.style.cursor = 'grabbing';
 
-            // ?�드 ?�택 ?�제
+            // 노드 선택 해제
             if (typeof this.nodeManager.deselectNode === 'function') {
                 this.nodeManager.deselectNode();
             }
 
             log(
-                `?�그�?방식 ?�닝 ?�작: 마우??${this.panStart.x}, ${this.panStart.y}) Transform(${Math.round(this.panScrollStart.left)}, ${Math.round(this.panScrollStart.top)})`
+                `피그마 방식 패닝 시작: 마우스(${this.panStart.x}, ${this.panStart.y}) Transform(${Math.round(this.panScrollStart.left)}, ${Math.round(this.panScrollStart.top)})`
             );
         }
 
         /**
-         * ?�닝 �?
+         * 패닝 진행
          */
         handlePan(e) {
             if (!this.isPanning) return;
@@ -244,16 +245,16 @@
 
             if (Math.random() < 0.02) {
                 log(
-                    `?�그�?방식 ?�래�??�닝: translate(${Math.round(newX)}, ${Math.round(newY)})`
+                    `피그마 방식 드래그 패닝: translate(${Math.round(newX)}, ${Math.round(newY)})`
                 );
             }
         }
 
         /**
-         * ?�닝 종료
+         * 패닝 종료
          */
         endPan() {
-            log('endPan() ?�출??- ?�재 ?�닝 ?�태:', this.isPanning);
+            log('endPan() 호출 - 현재 패닝 상태:', this.isPanning);
 
             this.isPanning = false;
             this.panStart = { x: 0, y: 0 };
@@ -262,22 +263,22 @@
             this.canvas.classList.remove('panning');
             this.canvas.style.cursor = 'default';
 
-            log('?�닝 모드 종료 ?�료');
+            log('패닝 모드 종료 완료');
         }
 
         /**
-         * Transform ?�데?�트 (translate + scale)
+         * Transform 업데이트 (translate + scale)
          */
         updateCanvasTransform(x, y, scale = 1) {
             if (this.isZooming) {
-                log('updateCanvasTransform: �?중이므�??�행 건너?�');
+                log('updateCanvasTransform: 줌 중이므로 실행 건너뜀');
                 return;
             }
 
             let canvasContent = document.getElementById('canvas-content');
 
             if (!canvasContent) {
-                log('canvas-content ?�음 ???�적 ?�성');
+                log('canvas-content 없음 → 동적 생성');
 
                 const existingNodes = Array.from(this.canvas.children);
 
@@ -297,7 +298,7 @@
                 });
             }
 
-            // scale 기본값이�?기존 scale ?��?
+            // scale 기본값이면 기존 scale 유지
             let currentScale = scale;
             if (scale === 1) {
                 const currentTransform = canvasContent.style.transform;
@@ -305,7 +306,7 @@
                     const scaleMatch = currentTransform.match(/scale\(([^)]+)\)/);
                     if (scaleMatch) {
                         currentScale = parseFloat(scaleMatch[1]) || 1;
-                        log('updateCanvasTransform: 기존 �??��?', currentScale);
+                        log('updateCanvasTransform: 기존 스케일', currentScale);
                     }
                 }
             }
@@ -317,18 +318,18 @@
                 `updateCanvasTransform: translate(${x}, ${y}) scale(${currentScale})`
             );
 
-            // ?�래�?�??�닐 ?�만 ?�결???�체 ?�데?�트
+            // 드래그 중이 아닐 때만 연결선 전체 업데이트
             if (window.connectionManager && !this.nodeManager.isDragging) {
                 window.connectionManager.updateConnections();
             }
         }
 
         /**
-         * 무한 캔버???�크�?보장
+         * 무한 캔버스 모드에서 캔버스 크기 보장
          */
         ensureCanvasScrollable() {
             if (this.nodeManager.isInfiniteCanvas) {
-                log('?�그�?방식 무한 캔버??모드 ?�성??);
+                log('피그마 방식 무한 캔버스 모드 활성화');
 
                 this.canvasTransform = { x: -50000, y: -50000, scale: 1 };
 
@@ -336,7 +337,7 @@
                     let canvasContent = document.getElementById('canvas-content');
 
                     if (!canvasContent) {
-                        log('canvas-content ?�음 ???�적 ?�성');
+                        log('canvas-content 없음 → 동적 생성');
 
                         const existingNodes = Array.from(this.canvas.children);
 
@@ -355,7 +356,7 @@
                             node.style.top = currentTop;
                         });
 
-                        log('canvas-content ?�성 �??�드 ?�동 ?�료');
+                        log('canvas-content 생성 및 노드 이동 완료');
                     }
 
                     const screenCenterX = this.canvas.clientWidth / 2;
@@ -372,10 +373,10 @@
                         const nodeY = screenCenterY - nodeHeight / 2;
 
                         log(
-                            `?�드 ${node.dataset.nodeId} ?�치 조정:`,
+                            `노드 ${node.dataset.nodeId} 위치 조정:`,
                             node.style.left,
                             node.style.top,
-                            '??,
+                            '→',
                             nodeX,
                             nodeY
                         );
@@ -393,14 +394,14 @@
                 return;
             }
 
-            // (무한캔버??모드가 ?�닐 ???�전 방식???�요?�면 ?�기 구현)
+            // (무한 캔버스 모드가 아닐 때 이전 방식이 필요하면 여기에 구현)
         }
 
         /**
-         * Ctrl+??�?
+         * Ctrl+휠 줌 처리
          */
         handleCanvasZoom(e) {
-            log('handleCanvasZoom ?�출??', {
+            log('handleCanvasZoom 호출:', {
                 clientX: e.clientX,
                 clientY: e.clientY,
                 deltaY: e.deltaY
@@ -414,7 +415,7 @@
 
             const canvasContent = document.getElementById('canvas-content');
             if (!canvasContent) {
-                logWarn('canvas-content�?찾을 ???�습?�다.');
+                logWarn('canvas-content 를 찾을 수 없습니다.');
                 this.isZooming = false;
                 return;
             }
@@ -456,19 +457,19 @@
             this.showZoomLevel(newScale);
 
             log(
-                `캔버??�??�벨 변�? ${currentScale.toFixed(
+                `캔버스 줌 레벨 변경: ${currentScale.toFixed(
                     2
-                )}x ??${newScale.toFixed(2)}x`
+                )}x → ${newScale.toFixed(2)}x`
             );
 
             setTimeout(() => {
                 this.isZooming = false;
-                log('�??�료 - ?�래�??�제');
+                log('줌 처리 완료 - 플래그 해제');
             }, 100);
         }
 
         /**
-         * ?�단 �??�벨 ?�시 UI
+         * 간단 줌 레벨 표시 UI
          */
         showZoomLevel(zoomLevel) {
             const existing = document.getElementById('zoom-indicator');

@@ -1,5 +1,5 @@
 // node-selection.js
-// ?�드 ?�택 ?�담 컨트롤러
+// 노드 선택 담당 컨트롤러
 
 (function () {
     class NodeSelectionController {
@@ -11,13 +11,13 @@
         }
 
         /**
-         * ?�드 ?�택
+         * 노드 선택
          * @param {HTMLElement} node
          */
         selectNode(node) {
             const nm = this.nodeManager;
 
-            // 기존 ?�택 ?�제
+            // 기존 선택 해제
             if (nm.selectedNode && nm.selectedNode !== node) {
                 this.deselectNode();
             }
@@ -26,12 +26,12 @@
 
             if (node) {
                 node.classList.add('selected');
-                log('?�드 ?�택??', node.id);
+                log('노드 선택됨:', node.id);
             }
         }
 
         /**
-         * ?�택 ?�제
+         * 선택 해제
          */
         deselectNode() {
             const nm = this.nodeManager;
