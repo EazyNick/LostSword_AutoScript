@@ -2,8 +2,8 @@
 스크립트 관련 API 라우터
 """
 
-from fastapi import APIRouter, HTTPException, Request
-from typing import List
+from fastapi import APIRouter, HTTPException, Request, Body
+from typing import List, Dict, Any
 from models import ScriptCreateRequest, ScriptUpdateRequest, ScriptResponse, NodeExecutionRequest
 from database import db_manager
 from services.action_service import ActionService
@@ -34,7 +34,7 @@ async def get_all_scripts(request: Request):
 
 @router.get("/scripts/{script_id}", response_model=ScriptResponse)
 async def get_script(script_id: int, request: Request):
-    """특정 스크립트 조회"""
+    """특정 스크립트 조회 (노드 및 연결 정보 포함)"""
     client_ip = request.client.host if request.client else "unknown"
     logger.info(f"[API] 스크립트 조회 요청 받음 - 스크립트 ID: {script_id}, 클라이언트 IP: {client_ip}")
     
@@ -45,8 +45,29 @@ async def get_script(script_id: int, request: Request):
             logger.warning(f"[DB 조회] 스크립트를 찾을 수 없음 - 스크립트 ID: {script_id}")
             logger.warning(f"[API] 스크립트를 찾을 수 없음 - 스크립트 ID: {script_id}")
             raise HTTPException(status_code=404, detail="스크립트를 찾을 수 없습니다.")
-        logger.info(f"[DB 조회] 스크립트 조회 완료 - 스크립트 ID: {script_id}, 이름: {script.get('name', 'N/A')}")
-        logger.info(f"[API] 스크립트 조회 성공 - 스크립트 ID: {script_id}, 이름: {script.get('name', 'N/A')}")
+        
+        script_name = script.get('name', 'N/A')
+        nodes_count = len(script.get('nodes', []))
+        connections_count = len(script.get('connections', []))
+        
+        logger.info(f"[DB 조회] 스크립트 조회 완료 - 스크립트 ID: {script_id}, 이름: {script_name}")
+        logger.info(f"[DB 조회] 노드 개수: {nodes_count}개, 연결 개수: {connections_count}개")
+        
+        # 노드별 연결 정보 로그
+        if script.get('nodes'):
+            logger.debug(f"[DB 조회] 노드 목록: {[{'id': n.get('id'), 'type': n.get('type')} for n in script.get('nodes', [])]}")
+            nodes_with_connections = [n for n in script.get('nodes', []) if n.get('connected_to') or n.get('connected_from')]
+            if nodes_with_connections:
+                logger.info(f"[DB 조회] 연결 정보가 있는 노드 개수: {len(nodes_with_connections)}개")
+                for node in nodes_with_connections:
+                    logger.debug(f"[DB 조회] 노드 {node.get('id')}: connected_to={node.get('connected_to')}, connected_from={node.get('connected_from')}")
+        
+        if script.get('connections'):
+            logger.debug(f"[DB 조회] 연결 목록: {[{'from': c.get('from'), 'to': c.get('to')} for c in script.get('connections', [])]}")
+        else:
+            logger.warning(f"[DB 조회] ⚠️ 연결 목록이 비어있습니다.")
+        
+        logger.info(f"[API] 스크립트 조회 성공 - 스크립트 ID: {script_id}, 이름: {script_name}, 노드: {nodes_count}개, 연결: {connections_count}개")
         return script
     except HTTPException:
         raise
@@ -164,6 +185,56 @@ async def delete_script(script_id: int, request: Request):
     except Exception as e:
         logger.error(f"[API] 스크립트 삭제 실패 - 스크립트 ID: {script_id}, 에러: {str(e)}")
         raise HTTPException(status_code=500, detail=f"스크립트 삭제 실패: {str(e)}")
+
+
+@router.put("/nodes/script/{script_id}/batch", response_model=dict)
+async def update_nodes_batch(script_id: int, http_request: Request, request: Dict[str, Any] = Body(...)):
+    """노드 일괄 업데이트 (저장)"""
+    client_ip = http_request.client.host if http_request.client else "unknown"
+    logger.info(f"[API] 노드 일괄 업데이트 요청 받음 - 스크립트 ID: {script_id}, 클라이언트 IP: {client_ip}")
+    
+    try:
+        # 스크립트 존재 확인
+        logger.info(f"[DB 조회] 스크립트 조회 시작 - 스크립트 ID: {script_id}")
+        script = db_manager.get_script(script_id)
+        if not script:
+            logger.warning(f"[DB 조회] 스크립트를 찾을 수 없음 - 스크립트 ID: {script_id}")
+            logger.warning(f"[API] 스크립트를 찾을 수 없음 - 스크립트 ID: {script_id}")
+            raise HTTPException(status_code=404, detail="스크립트를 찾을 수 없습니다.")
+        
+        script_name = script.get('name', 'N/A')
+        logger.info(f"[DB 조회] 스크립트 조회 완료 - 스크립트 ID: {script_id}, 이름: {script_name}")
+        
+        # 요청 데이터 추출
+        nodes = request.get("nodes", [])
+        connections = request.get("connections", [])
+        
+        logger.info(f"[API] 노드 일괄 업데이트 데이터 - 노드 개수: {len(nodes)}개, 연결 개수: {len(connections)}개")
+        logger.debug(f"[API] 노드 목록: {[{'id': n.get('id'), 'type': n.get('type')} for n in nodes]}")
+        logger.debug(f"[API] 연결 목록: {[{'from': c.get('from'), 'to': c.get('to')} for c in connections]}")
+        
+        # 노드와 연결 정보 저장
+        logger.info(f"[DB 저장] 노드 일괄 업데이트 시작 - 스크립트 ID: {script_id}, 노드 개수: {len(nodes)}, 연결 개수: {len(connections)}")
+        success = db_manager.save_script_data(script_id, nodes, connections)
+        
+        if success:
+            logger.info(f"[DB 저장] 노드 일괄 업데이트 완료 - 스크립트 ID: {script_id}")
+            logger.info(f"[API] 노드 일괄 업데이트 성공 - 스크립트 ID: {script_id}, 이름: {script_name}, 노드: {len(nodes)}개, 연결: {len(connections)}개")
+            return {
+                "message": "노드가 성공적으로 저장되었습니다.",
+                "script_id": script_id,
+                "nodes_count": len(nodes),
+                "connections_count": len(connections)
+            }
+        else:
+            logger.error(f"[DB 저장] 노드 일괄 업데이트 실패 - 스크립트 ID: {script_id}")
+            raise HTTPException(status_code=500, detail="노드 저장 실패")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[API] 노드 일괄 업데이트 실패 - 스크립트 ID: {script_id}, 에러: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"노드 저장 실패: {str(e)}")
 
 
 @router.post("/scripts/{script_id}/execute", response_model=dict)

@@ -171,15 +171,17 @@ export class NodeDragController {
      * 연결선 등 관련 컴포넌트 업데이트
      */
     updateRelatedComponents(node) {
-        const nodeId = node.id;
+        const nodeId = node.dataset.nodeId || node.id;
 
         if (!this.nodeManager) return;
 
-        // 드래그 중에는 rAF 기반 업데이트 사용
-        if (typeof this.nodeManager.updateConnectionsDuringDrag === 'function') {
-            this.nodeManager.updateConnectionsDuringDrag(nodeId);
-        } else if (typeof this.nodeManager.updateConnectionsImmediately === 'function') {
-            this.nodeManager.updateConnectionsImmediately(nodeId);
+        // 드래그 중에는 연결선 매니저를 직접 호출하여 실시간 업데이트
+        if (this.nodeManager.connectionManager) {
+            // 특정 노드와 관련된 연결선만 즉시 업데이트
+            this.nodeManager.connectionManager.updateNodeConnectionsImmediately(nodeId);
+        } else if (window.connectionManager) {
+            // 전역 connectionManager가 있으면 사용
+            window.connectionManager.updateNodeConnectionsImmediately(nodeId);
         }
     }
 

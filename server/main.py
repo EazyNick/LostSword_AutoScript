@@ -5,7 +5,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 import uvicorn
 import os
 import re
-from api import action_router, script_router, game_router, node_router
+from api import action_router, script_router, game_router, node_router, config_router
 from log import log_manager 
 
 # cd server
@@ -36,6 +36,11 @@ logger = log_manager.logger
 logger.info("=" * 60)
 logger.info("서버 시작")
 logger.info(f"개발 모드: {DEV_MODE}")
+logger.info(f"환경 변수: {env_vars}")
+if 'DEV' in env_vars:
+    logger.info(f"DEV 환경 변수 값: '{env_vars['DEV']}' (타입: {type(env_vars['DEV'])})")
+else:
+    logger.warning("⚠️ .env 파일에 DEV 변수가 없습니다. 기본값 'false' 사용")
 
 app = FastAPI(
     title="자동화 도구",
@@ -57,6 +62,7 @@ app.include_router(action_router)
 app.include_router(script_router)
 app.include_router(game_router)
 app.include_router(node_router)
+app.include_router(config_router)
 
 # 정적 파일 서빙 설정 (개발 환경)
 ui_path = os.path.join(os.path.dirname(__file__), "..", "UI", "src")
@@ -66,22 +72,17 @@ if os.path.exists(ui_path):
 else:
     logger.warning("UI 경로를 찾을 수 없습니다. API만 사용 가능합니다.")
 
-# 기본 라우트 - 웹 UI 제공
-@app.get("/")
-async def root():
-    ui_file = os.path.join(ui_path, "index.html")
-    if os.path.exists(ui_file):
-        return FileResponse(ui_file)
-    return {"message": "로스트소드 자동화 API 서버가 실행 중입니다."}
-
 # HTML 파일에 환경 변수 주입하는 헬퍼 함수
 def inject_env_to_html(html_content: str) -> str:
     """HTML 내용에 환경 변수를 주입"""
     # <head> 태그 안에 스크립트 추가
+    # DEV_MODE를 boolean으로 주입 (true/false)
+    dev_mode_value = 'true' if DEV_MODE else 'false'
     script_tag = f'''
     <script>
         // 환경 변수 주입 (.env 파일에서 읽은 값)
-        window.DEV_MODE = {str(DEV_MODE).lower()};
+        window.DEV_MODE = {dev_mode_value};
+        console.log('[Server] DEV_MODE 주입됨:', window.DEV_MODE, '(타입:', typeof window.DEV_MODE, ')');
     </script>
     '''
     
@@ -94,7 +95,19 @@ def inject_env_to_html(html_content: str) -> str:
         # head 태그가 없으면 body 앞에 추가
         html_content = html_content.replace('<body>', script_tag + '<body>')
     
+    logger.debug(f"HTML에 DEV_MODE 주입 완료: {dev_mode_value}")
     return html_content
+
+# 기본 라우트 - 웹 UI 제공 (환경 변수 주입)
+@app.get("/")
+async def root():
+    ui_file = os.path.join(ui_path, "index.html")
+    if os.path.exists(ui_file):
+        with open(ui_file, 'r', encoding='utf-8') as f:
+            html_content = f.read()
+        html_content = inject_env_to_html(html_content)
+        return HTMLResponse(content=html_content)
+    return {"message": "로스트소드 자동화 API 서버가 실행 중입니다."}
 
 # 워크플로우 페이지 라우트
 @app.get("/workflow")

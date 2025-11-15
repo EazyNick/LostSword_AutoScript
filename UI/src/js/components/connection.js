@@ -41,6 +41,8 @@ export class ConnectionManager {
      * 무한 캔버스 모드에 맞게 SVG 컨테이너 설정
      */
     initSVG() {
+        const logger = getLogger();
+        
         // SVG 컨테이너 생성
         this.svgContainer = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         this.svgContainer.setAttribute('class', 'connection-svg');
@@ -53,8 +55,15 @@ export class ConnectionManager {
         this.svgContainer.style.zIndex = '1';
         this.svgContainer.style.overflow = 'visible';
         
-        // 캔버스에 SVG 추가
-        this.canvas.appendChild(this.svgContainer);
+        // canvas-content가 있으면 그 안에 추가, 없으면 canvas에 추가
+        const canvasContent = document.getElementById('canvas-content');
+        if (canvasContent) {
+            logger.log('[ConnectionManager] SVG를 canvas-content 안에 추가');
+            canvasContent.appendChild(this.svgContainer);
+        } else {
+            logger.log('[ConnectionManager] SVG를 canvas에 추가 (canvas-content 없음)');
+            this.canvas.appendChild(this.svgContainer);
+        }
         
         // SVG 크기 초기 업데이트
         this.updateSVGSize();
@@ -62,24 +71,32 @@ export class ConnectionManager {
     
     /**
      * SVG 크기 업데이트
-     * 무한 캔버스 모드에서 Transform을 고려해 SVG 크기를 업데이트
+     * canvas-content와 동일한 크기로 설정 (SVG가 canvas-content 안에 있으므로)
      */
     updateSVGSize() {
         if (!this.svgContainer) return;
+        
+        const logger = getLogger();
         
         // 캔버스 콘텐츠 컨테이너 확인
         const canvasContent = document.getElementById('canvas-content');
         
         if (canvasContent) {
-            // Transform 기반 패닝(드래그 방식)
-            // 무한 캔버스에서는 현재 화면 크기만 사용
-            const canvasRect = this.canvas.getBoundingClientRect();
+            // SVG가 canvas-content 안에 있으므로, canvas-content의 크기와 동일하게 설정
+            // canvas-content는 무한 캔버스이므로 충분히 큰 크기로 설정
+            const canvasContentStyle = window.getComputedStyle(canvasContent);
             
-            // SVG 크기를 캔버스 뷰포트 크기에 맞게 설정
-            this.svgContainer.setAttribute('width', canvasRect.width);
-            this.svgContainer.setAttribute('height', canvasRect.height);
-            this.svgContainer.style.width = canvasRect.width + 'px';
-            this.svgContainer.style.height = canvasRect.height + 'px';
+            // canvas-content의 실제 크기 가져오기 (CSS에서 설정된 크기)
+            const width = parseFloat(canvasContentStyle.width) || 100000;
+            const height = parseFloat(canvasContentStyle.height) || 100000;
+            
+            logger.log('[ConnectionManager] SVG 크기 업데이트:', { width, height });
+            
+            // SVG 크기를 canvas-content와 동일하게 설정
+            this.svgContainer.setAttribute('width', width);
+            this.svgContainer.setAttribute('height', height);
+            this.svgContainer.style.width = width + 'px';
+            this.svgContainer.style.height = height + 'px';
         } else {
             // 스크롤 기반 패닝(일반 방식)
             const canvasRect = this.canvas.getBoundingClientRect();
@@ -112,13 +129,16 @@ export class ConnectionManager {
     
     /**
      * 노드 커넥터 클릭 이벤트 바인딩
+     * 중복 등록 방지를 위해 데이터 속성으로 바인딩 여부 확인
      */
     bindNodeConnector(nodeElement) {
+        const logger = getLogger();
         const nodeId = nodeElement.dataset.nodeId;
         
         // 입력 커넥터
         const inputConnector = nodeElement.querySelector('.node-input');
-        if (inputConnector) {
+        if (inputConnector && !inputConnector.dataset.connectionBound) {
+            inputConnector.dataset.connectionBound = 'true';
             inputConnector.addEventListener('click', (e) => {
                 e.stopPropagation();
                 
@@ -132,7 +152,8 @@ export class ConnectionManager {
         
         // 일반 출력 커넥터
         const outputConnector = nodeElement.querySelector('.node-output:not(.true-output):not(.false-output)');
-        if (outputConnector) {
+        if (outputConnector && !outputConnector.dataset.connectionBound) {
+            outputConnector.dataset.connectionBound = 'true';
             outputConnector.addEventListener('click', (e) => {
                 e.stopPropagation();
                 
@@ -148,7 +169,8 @@ export class ConnectionManager {
         const trueOutput = nodeElement.querySelector('.true-output .output-dot');
         const falseOutput = nodeElement.querySelector('.false-output .output-dot');
         
-        if (trueOutput) {
+        if (trueOutput && !trueOutput.dataset.connectionBound) {
+            trueOutput.dataset.connectionBound = 'true';
             trueOutput.addEventListener('click', (e) => {
                 e.stopPropagation();
                 
@@ -159,7 +181,8 @@ export class ConnectionManager {
             });
         }
         
-        if (falseOutput) {
+        if (falseOutput && !falseOutput.dataset.connectionBound) {
+            falseOutput.dataset.connectionBound = 'true';
             falseOutput.addEventListener('click', (e) => {
                 e.stopPropagation();
                 
@@ -183,9 +206,36 @@ export class ConnectionManager {
      * 커넥터 클릭 처리
      */
     handleConnectorClick(nodeElement, connectorType, connectorElement) {
+        const logger = getLogger();
         const nodeId = nodeElement.dataset.nodeId;
         
+        logger.log('[ConnectionManager] 커넥터 클릭:', {
+            nodeId: nodeId,
+            connectorType: connectorType,
+            isConnecting: this.isConnecting,
+            connectionsCount: this.connections.size
+        });
+        
         if (!this.isConnecting) {
+            // 연결 시작 전에 이미 연결되어 있는지 확인
+            const isConnected = this.isConnectorConnected(nodeId, connectorType);
+            
+            logger.log('[ConnectionManager] 커넥터 연결 상태 확인:', {
+                nodeId: nodeId,
+                connectorType: connectorType,
+                isConnected: isConnected,
+                allConnections: Array.from(this.connections.values())
+            });
+            
+            if (isConnected) {
+                logger.log('[ConnectionManager] ⚠️ 이미 연결된 커넥터 클릭 - 연결 시작 차단:', {
+                    nodeId: nodeId,
+                    connectorType: connectorType
+                });
+                // 이미 연결되어 있으면 연결 시작하지 않음
+                return;
+            }
+            
             // 연결 시작 (입력/출력 모두 시작점이 될 수 있음)
             this.startConnection(nodeElement, connectorElement, connectorType);
         } else {
@@ -200,9 +250,146 @@ export class ConnectionManager {
     }
     
     /**
+     * 커넥터가 이미 연결되어 있는지 확인
+     * @param {string} nodeId - 노드 ID
+     * @param {string} connectorType - 커넥터 타입 ('input' 또는 'output')
+     * @returns {boolean} 연결되어 있으면 true
+     */
+    isConnectorConnected(nodeId, connectorType) {
+        const logger = getLogger();
+        
+        // 노드 ID를 문자열로 정규화 (숫자와 문자열 비교 문제 방지)
+        const normalizedNodeId = String(nodeId).trim();
+        
+        logger.log('[ConnectionManager] isConnectorConnected 호출:', {
+            nodeId: normalizedNodeId,
+            connectorType: connectorType,
+            connectionsSize: this.connections ? this.connections.size : 0
+        });
+        
+        // connections가 없거나 비어있으면 연결되지 않음
+        if (!this.connections || this.connections.size === 0) {
+            logger.log('[ConnectionManager] isConnectorConnected: connections가 비어있음');
+            return false;
+        }
+        
+        // 모든 연결 정보 로그 출력 (디버깅용)
+        const allConnections = Array.from(this.connections.entries()).map(([id, conn]) => ({
+            id: id,
+            from: String(conn.from || '').trim(),
+            to: String(conn.to || '').trim()
+        }));
+        
+        logger.log('[ConnectionManager] isConnectorConnected: 모든 연결 정보:', allConnections);
+        
+        // connections Map을 순회하며 해당 노드의 커넥터가 사용되는지 확인
+        for (const [connectionId, connection] of this.connections.entries()) {
+            // 연결 정보의 노드 ID도 문자열로 정규화하여 비교
+            const connectionFrom = String(connection.from || '').trim();
+            const connectionTo = String(connection.to || '').trim();
+            
+            if (connectorType === 'input') {
+                // input 커넥터: 해당 노드가 'to'로 사용되는 연결이 있는지 확인
+                if (connectionTo === normalizedNodeId) {
+                    logger.log('[ConnectionManager] ✅ isConnectorConnected: input 커넥터가 이미 연결됨', {
+                        nodeId: normalizedNodeId,
+                        connectionId: connectionId,
+                        connection: connection,
+                        connectionTo: connectionTo,
+                        match: true
+                    });
+                    return true;
+                }
+            } else if (connectorType === 'output') {
+                // output 커넥터: 해당 노드가 'from'으로 사용되는 연결이 있는지 확인
+                if (connectionFrom === normalizedNodeId) {
+                    logger.log('[ConnectionManager] ✅ isConnectorConnected: output 커넥터가 이미 연결됨', {
+                        nodeId: normalizedNodeId,
+                        connectionId: connectionId,
+                        connection: connection,
+                        connectionFrom: connectionFrom,
+                        match: true
+                    });
+                    return true;
+                }
+            }
+        }
+        
+        // 추가 확인: 실제로 화면에 그려진 연결선도 확인
+        // connectionLines Map에서 해당 노드와 관련된 연결선이 있는지 확인
+        let hasDrawnConnection = false;
+        for (const [connectionId, line] of this.connectionLines.entries()) {
+            const connection = this.connections.get(connectionId);
+            if (connection) {
+                const connectionFrom = String(connection.from || '').trim();
+                const connectionTo = String(connection.to || '').trim();
+                
+                if (connectorType === 'input' && connectionTo === normalizedNodeId) {
+                    hasDrawnConnection = true;
+                    logger.log('[ConnectionManager] ✅ 화면에 그려진 연결선 발견 (input):', {
+                        connectionId: connectionId,
+                        connection: connection
+                    });
+                    break;
+                } else if (connectorType === 'output' && connectionFrom === normalizedNodeId) {
+                    hasDrawnConnection = true;
+                    logger.log('[ConnectionManager] ✅ 화면에 그려진 연결선 발견 (output):', {
+                        connectionId: connectionId,
+                        connection: connection
+                    });
+                    break;
+                }
+            }
+        }
+        
+        if (hasDrawnConnection) {
+            logger.log('[ConnectionManager] ⚠️ connections Map에는 없지만 화면에 연결선이 있음 - 연결된 것으로 간주');
+            return true;
+        }
+        
+        logger.log('[ConnectionManager] ❌ isConnectorConnected: 연결되지 않음', {
+            nodeId: normalizedNodeId,
+            connectorType: connectorType,
+            allConnections: allConnections,
+            searchedFor: connectorType === 'input' ? `to === "${normalizedNodeId}"` : `from === "${normalizedNodeId}"`,
+            connectionLinesCount: this.connectionLines ? this.connectionLines.size : 0
+        });
+        return false;
+    }
+    
+    /**
      * 연결 시작
      */
     startConnection(nodeElement, connectorElement, connectorType) {
+        const logger = getLogger();
+        const nodeId = nodeElement.dataset.nodeId || nodeElement.id;
+        
+        logger.log('[ConnectionManager] ========== 연결 시작 호출 ==========');
+        logger.log('[ConnectionManager] 연결 시작 호출:', {
+            nodeId: nodeId,
+            connectorType: connectorType,
+            connectorElement: connectorElement,
+            connectorClasses: connectorElement.className,
+            nodeElement: nodeElement,
+            nodeStyleLeft: nodeElement.style.left,
+            nodeStyleTop: nodeElement.style.top
+        });
+        
+        // 연결 시작 전에 다시 한 번 확인 (이중 체크)
+        if (this.isConnectorConnected(nodeId, connectorType)) {
+            logger.log('[ConnectionManager] ⚠️ startConnection: 이미 연결된 커넥터 - 연결 시작 차단:', {
+                nodeId: nodeId,
+                connectorType: connectorType
+            });
+            // 이미 연결되어 있으면 연결 시작하지 않음
+            return;
+        }
+        
+        logger.log('[ConnectionManager] 연결 시작 진행:', {
+            nodeId: nodeId,
+            connectorType: connectorType
+        });
+        
         this.isConnecting = true;
         this.startNode = nodeElement;
         this.startConnector = connectorElement;
@@ -211,47 +398,116 @@ export class ConnectionManager {
         // 시작 커넥터 스타일 표시
         connectorElement.classList.add('connecting');
         
+        // 커넥터 위치 미리 계산해서 로그 출력
+        const testPos = this.getConnectorPosition(connectorElement);
+        logger.log('[ConnectionManager] startConnection에서 커넥터 위치 테스트:', {
+            testPos: testPos,
+            nodeId: nodeId,
+            connectorType: connectorType
+        });
+        
         // 임시 연결선 생성
         this.createTempLine();
         
         // 마우스 이동 이벤트 등록
-        this.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
+        const boundHandleMouseMove = this.handleMouseMove.bind(this);
+        this.canvas.addEventListener('mousemove', boundHandleMouseMove);
+        
+        // 이벤트 핸들러 저장 (나중에 제거하기 위해)
+        this._tempMouseMoveHandler = boundHandleMouseMove;
+        
+        logger.log('[ConnectionManager] ========== 연결 시작 완료 ==========');
     }
     
     /**
      * 연결 완료
      */
     completeConnection(targetNodeElement, targetConnectorElement) {
+        const logger = getLogger();
         const startNodeId = this.startNode.dataset.nodeId;
         const targetNodeId = targetNodeElement.dataset.nodeId;
         
+        logger.log('[ConnectionManager] ========== 연결 완료 ==========');
+        logger.log('[ConnectionManager] 연결 완료 호출:', {
+            startNodeId: startNodeId,
+            startConnectorType: this.startConnectorType,
+            targetNodeId: targetNodeId,
+            targetConnectorType: targetConnectorElement.classList.contains('node-input') ? 'input' : 
+                                 targetConnectorElement.classList.contains('node-output') ? 'output' : 'unknown'
+        });
+        
         // 자기 자신으로의 연결 방지
         if (startNodeId === targetNodeId) {
+            logger.warn('[ConnectionManager] 자기 자신으로의 연결 시도 - 취소');
+            this.cancelConnection();
+            return;
+        }
+        
+        // 연결 방향 결정
+        // 출력 -> 입력 방향으로만 연결 가능
+        let fromNodeId, toNodeId;
+        
+        if (this.startConnectorType === 'output' && targetConnectorElement.classList.contains('node-input')) {
+            // 시작: 출력, 타겟: 입력 -> start -> target (정상)
+            fromNodeId = startNodeId;
+            toNodeId = targetNodeId;
+            logger.log('[ConnectionManager] 연결 방향: 출력 -> 입력 (정상)', {
+                from: fromNodeId,
+                to: toNodeId
+            });
+        } else if (this.startConnectorType === 'input' && targetConnectorElement.classList.contains('node-output')) {
+            // 시작: 입력, 타겟: 출력 -> target -> start (반대)
+            fromNodeId = targetNodeId;
+            toNodeId = startNodeId;
+            logger.log('[ConnectionManager] 연결 방향: 입력 -> 출력 (반대로 변환)', {
+                original: { from: startNodeId, to: targetNodeId },
+                corrected: { from: fromNodeId, to: toNodeId }
+            });
+        } else {
+            // 잘못된 연결 타입 조합
+            logger.warn('[ConnectionManager] 잘못된 연결 타입 조합:', {
+                startType: this.startConnectorType,
+                targetType: targetConnectorElement.classList.contains('node-input') ? 'input' : 
+                           targetConnectorElement.classList.contains('node-output') ? 'output' : 'unknown'
+            });
             this.cancelConnection();
             return;
         }
         
         // 중복 연결 방지
-        const connectionId = `${startNodeId}-${targetNodeId}`;
+        const connectionId = `${fromNodeId}-${toNodeId}`;
         if (this.connections.has(connectionId)) {
+            logger.warn('[ConnectionManager] 중복 연결 시도 - 취소:', {
+                connectionId: connectionId
+            });
             this.cancelConnection();
             return;
         }
         
         // 연결 생성
-        this.createConnection(startNodeId, targetNodeId);
+        logger.log('[ConnectionManager] 연결 생성:', {
+            from: fromNodeId,
+            to: toNodeId,
+            connectionId: connectionId
+        });
+        this.createConnection(fromNodeId, toNodeId);
         
         // 연결 완료 처리
         this.finishConnection();
         
         // 도착 커넥터 스타일 표시
         targetConnectorElement.classList.add('connected');
+        
+        logger.log('[ConnectionManager] ========== 연결 완료 성공 ==========');
     }
     
     /**
      * 연결 취소
      */
     cancelConnection() {
+        const logger = getLogger();
+        logger.log('[ConnectionManager] 연결 취소');
+        
         this.isConnecting = false;
         
         // 시작 커넥터 상태 복원
@@ -266,7 +522,10 @@ export class ConnectionManager {
         }
         
         // 마우스 이동 이벤트 제거
-        this.canvas.removeEventListener('mousemove', this.handleMouseMove.bind(this));
+        if (this._tempMouseMoveHandler) {
+            this.canvas.removeEventListener('mousemove', this._tempMouseMoveHandler);
+            this._tempMouseMoveHandler = null;
+        }
         
         this.startNode = null;
         this.startConnector = null;
@@ -291,7 +550,10 @@ export class ConnectionManager {
         }
         
         // 마우스 이동 이벤트 제거
-        this.canvas.removeEventListener('mousemove', this.handleMouseMove.bind(this));
+        if (this._tempMouseMoveHandler) {
+            this.canvas.removeEventListener('mousemove', this._tempMouseMoveHandler);
+            this._tempMouseMoveHandler = null;
+        }
         
         this.startNode = null;
         this.startConnector = null;
@@ -303,74 +565,168 @@ export class ConnectionManager {
      * 임시 연결선을 마우스 위치에 맞게 업데이트
      */
     handleMouseMove(e) {
-        if (!this.tempLine) return;
-        
-        const rect = this.canvas.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-        
-        // Transform 모드에서 마우스 위치 보정
-        const canvasContent = document.getElementById('canvas-content');
-        let actualMouseX = mouseX;
-        let actualMouseY = mouseY;
-        
-        if (canvasContent) {
-            // Transform 기반 패닝(드래그 방식)
-            const transform = canvasContent.style.transform;
-            if (transform && transform !== 'none') {
-                const match = transform.match(/translate\(([^,]+)px,\s*([^)]+)px\)/);
-                if (match) {
-                    const transformX = parseFloat(match[1]);
-                    const transformY = parseFloat(match[2]);
-                    
-                    // 마우스 위치에 Transform 보정 적용
-                    actualMouseX = mouseX - transformX;
-                    actualMouseY = mouseY - transformY;
-                }
-            }
+        if (!this.tempLine || !this.startConnector) {
+            return;
         }
         
-        // 시작 커넥터 좌표
+        const logger = getLogger();
+        
+        // 마우스 위치를 canvas-content 기준 좌표로 변환
+        const canvasContent = document.getElementById('canvas-content');
+        const canvas = this.canvas;
+        
+        if (!canvas) {
+            logger.warn('[ConnectionManager] handleMouseMove: canvas가 없습니다.');
+            return;
+        }
+        
+        let mouseX, mouseY;
+        
+        if (canvasContent) {
+            // canvas-content 기준 좌표 계산
+            const canvasRect = canvas.getBoundingClientRect();
+            const mouseScreenX = e.clientX;
+            const mouseScreenY = e.clientY;
+            
+            // 화면 좌표를 canvas 기준 좌표로 변환
+            const mouseCanvasX = mouseScreenX - canvasRect.left;
+            const mouseCanvasY = mouseScreenY - canvasRect.top;
+            
+            // Transform 정보 가져오기
+            const transform = canvasContent.style.transform || 'translate(0px, 0px) scale(1)';
+            let transformX = 0, transformY = 0, scale = 1;
+            
+            const translateMatch = transform.match(/translate\(([^,]+)px,\s*([^)]+)px\)/);
+            if (translateMatch) {
+                transformX = parseFloat(translateMatch[1]) || 0;
+                transformY = parseFloat(translateMatch[2]) || 0;
+            }
+            
+            const scaleMatch = transform.match(/scale\(([^)]+)\)/);
+            if (scaleMatch) {
+                scale = parseFloat(scaleMatch[1]) || 1;
+            }
+            
+            // canvas-content 기준 좌표로 변환
+            // Transform을 역으로 적용: (mouseCanvas - transform) / scale
+            mouseX = (mouseCanvasX - transformX) / scale;
+            mouseY = (mouseCanvasY - transformY) / scale;
+            
+            logger.log('[ConnectionManager] 마우스 위치 변환:', {
+                screen: { x: mouseScreenX, y: mouseScreenY },
+                canvas: { x: mouseCanvasX, y: mouseCanvasY },
+                transform: { x: transformX, y: transformY, scale: scale },
+                content: { x: mouseX, y: mouseY }
+            });
+        } else {
+            // 스크롤 기반 모드
+            const canvasRect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - canvasRect.left;
+            mouseY = e.clientY - canvasRect.top;
+        }
+        
+        // 시작 커넥터 좌표 (이미 canvas-content 기준)
         const startPos = this.getConnectorPosition(this.startConnector);
         
+        if (!startPos || isNaN(startPos.x) || isNaN(startPos.y)) {
+            logger.warn('[ConnectionManager] 유효하지 않은 시작 커넥터 위치:', startPos);
+            return;
+        }
+        
+        if (isNaN(mouseX) || isNaN(mouseY)) {
+            logger.warn('[ConnectionManager] 유효하지 않은 마우스 위치:', { x: mouseX, y: mouseY });
+            return;
+        }
+        
+        logger.log('[ConnectionManager] 임시 연결선 업데이트:', {
+            start: startPos,
+            end: { x: mouseX, y: mouseY }
+        });
+        
         // 임시 연결선 업데이트
-        this.updateTempLine(startPos.x, startPos.y, actualMouseX, actualMouseY);
+        this.updateTempLine(startPos.x, startPos.y, mouseX, mouseY);
     }
     
     /**
      * 커넥터 위치 계산
-     * 무한 캔버스 모드에서 Transform을 고려해 정확한 위치 계산
+     * canvas-content 기준 좌표로 계산 (SVG가 canvas-content 안에 있으므로)
+     * 서버에서 받은 노드 좌표(style.left, style.top)를 기준으로 계산
      */
     getConnectorPosition(connectorElement) {
+        const logger = getLogger();
+        
         // 캔버스 콘텐츠 컨테이너 확인
         const canvasContent = document.getElementById('canvas-content');
         
         if (canvasContent) {
-            // Transform 기반 패닝(드래그 방식)
-            const transform = canvasContent.style.transform;
-            let transformX = 0, transformY = 0;
-            
-            if (transform && transform !== 'none') {
-                const match = transform.match(/translate\(([^,]+)px,\s*([^)]+)px\)/);
-                if (match) {
-                    transformX = parseFloat(match[1]);
-                    transformY = parseFloat(match[2]);
-                }
+            // 커넥터의 부모 노드 찾기
+            const nodeElement = connectorElement.closest('.workflow-node');
+            if (!nodeElement) {
+                logger.warn('[ConnectionManager] 노드를 찾을 수 없음');
+                return { x: 0, y: 0 };
             }
             
-            // 커넥터의 화면 상 위치 계산
-            const connectorRect = connectorElement.getBoundingClientRect();
-            const canvasRect = this.canvas.getBoundingClientRect();
+            // 노드의 canvas-content 기준 위치 가져오기 (서버에서 받은 좌표)
+            const nodeLeft = parseFloat(nodeElement.style.left) || 0;
+            const nodeTop = parseFloat(nodeElement.style.top) || 0;
             
-            // 캔버스 내 상대 좌표(커넥터 중심 좌표)
-            const relativeX = connectorRect.left - canvasRect.left + connectorRect.width / 2;
-            const relativeY = connectorRect.top - canvasRect.top + connectorRect.height / 2;
+            // 노드의 실제 크기 (렌더링된 크기)
+            // offsetWidth/offsetHeight가 0이면 getBoundingClientRect 사용
+            let nodeWidth = nodeElement.offsetWidth;
+            let nodeHeight = nodeElement.offsetHeight;
             
-            // SVG 좌표계에서 Transform만큼 빼줘야 실제 위치가 맞음
-            const actualX = relativeX - transformX;
-            const actualY = relativeY - transformY;
+            if (nodeWidth === 0 || nodeHeight === 0) {
+                const nodeRect = nodeElement.getBoundingClientRect();
+                nodeWidth = nodeRect.width;
+                nodeHeight = nodeRect.height;
+            }
             
-            return { x: actualX, y: actualY };
+            // 커넥터 타입 확인 (input 또는 output)
+            const isInput = connectorElement.classList.contains('node-input');
+            const isOutput = connectorElement.classList.contains('node-output');
+            
+            // 커넥터의 노드 내부 상대 위치 계산
+            // CSS: input은 left: -6px, output은 right: -6px, 둘 다 top: 50% + translateY(-50%)
+            let connectorOffsetX, connectorOffsetY;
+            
+            if (isInput) {
+                // input 커넥터: 노드 왼쪽 밖 -6px, 세로 중앙
+                // 커넥터 중심이 노드 왼쪽에서 -6px 위치
+                connectorOffsetX = -6;
+                // top: 50% + translateY(-50%) = 노드 세로 중앙
+                connectorOffsetY = nodeHeight / 2;
+            } else if (isOutput) {
+                // output 커넥터: 노드 오른쪽 밖 +6px, 세로 중앙
+                // right: -6px = 노드 오른쪽에서 -6px = 노드 왼쪽에서 nodeWidth + 6px
+                connectorOffsetX = nodeWidth + 6;
+                // top: 50% + translateY(-50%) = 노드 세로 중앙
+                connectorOffsetY = nodeHeight / 2;
+            } else {
+                // 알 수 없는 타입이면 getBoundingClientRect로 실제 위치 계산
+                const connectorRect = connectorElement.getBoundingClientRect();
+                const nodeRect = nodeElement.getBoundingClientRect();
+                
+                // 커넥터 중심의 노드 내부 상대 위치 (노드의 왼쪽 상단 기준)
+                // 화면 좌표 차이를 사용하여 상대 위치 계산
+                connectorOffsetX = (connectorRect.left + connectorRect.width / 2) - nodeRect.left;
+                connectorOffsetY = (connectorRect.top + connectorRect.height / 2) - nodeRect.top;
+            }
+            
+            // canvas-content 기준 절대 위치
+            // 서버 좌표(style.left/top) + 커넥터 상대 위치
+            const absoluteX = nodeLeft + connectorOffsetX;
+            const absoluteY = nodeTop + connectorOffsetY;
+            
+            logger.log('[ConnectionManager] getConnectorPosition:', {
+                nodeId: nodeElement.dataset.nodeId || nodeElement.id,
+                nodeServerPosition: { left: nodeLeft, top: nodeTop },
+                nodeRenderedSize: { width: nodeWidth, height: nodeHeight },
+                connectorType: isInput ? 'input' : (isOutput ? 'output' : 'unknown'),
+                connectorOffset: { x: connectorOffsetX, y: connectorOffsetY },
+                absolutePosition: { x: absoluteX, y: absoluteY }
+            });
+            
+            return { x: absoluteX, y: absoluteY };
         } else {
             // 스크롤 기반 일반 모드
             const rect = connectorElement.getBoundingClientRect();
@@ -380,6 +736,10 @@ export class ConnectionManager {
             const relativeX = rect.left - canvasRect.left + rect.width / 2;
             const relativeY = rect.top - canvasRect.top + rect.height / 2;
             
+            logger.log('[ConnectionManager] getConnectorPosition (scroll mode):', {
+                relative: { x: relativeX, y: relativeY }
+            });
+            
             return { x: relativeX, y: relativeY };
         }
     }
@@ -388,6 +748,55 @@ export class ConnectionManager {
      * 임시 연결선 생성
      */
     createTempLine() {
+        const logger = getLogger();
+        
+        logger.log('[ConnectionManager] ========== createTempLine 시작 ==========');
+        
+        if (!this.startConnector) {
+            logger.warn('[ConnectionManager] createTempLine: startConnector가 없습니다.');
+            return;
+        }
+        
+        if (!this.startNode) {
+            logger.warn('[ConnectionManager] createTempLine: startNode가 없습니다.');
+            return;
+        }
+        
+        const nodeId = this.startNode.dataset.nodeId || this.startNode.id;
+        const connectorType = this.startConnectorType;
+        
+        logger.log('[ConnectionManager] createTempLine: 기본 정보:', {
+            nodeId: nodeId,
+            connectorType: connectorType,
+            startNode: this.startNode,
+            startConnector: this.startConnector,
+            nodeStyleLeft: this.startNode.style.left,
+            nodeStyleTop: this.startNode.style.top,
+            connectorClasses: this.startConnector.className
+        });
+        
+        // 마지막 안전장치: 이미 연결된 커넥터인지 확인
+        if (this.isConnectorConnected(nodeId, connectorType)) {
+            logger.warn('[ConnectionManager] ⚠️ createTempLine: 이미 연결된 커넥터 - 임시 연결선 생성 차단:', {
+                nodeId: nodeId,
+                connectorType: connectorType
+            });
+            // 이미 연결되어 있으면 임시 연결선 생성하지 않음
+            this.cancelConnection();
+            return;
+        }
+        
+        if (!this.svgContainer) {
+            logger.warn('[ConnectionManager] createTempLine: svgContainer가 없습니다.');
+            return;
+        }
+        
+        logger.log('[ConnectionManager] createTempLine: SVG 컨테이너 확인:', {
+            svgContainer: this.svgContainer,
+            svgContainerParent: this.svgContainer.parentElement,
+            svgContainerId: this.svgContainer.id
+        });
+        
         this.tempLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         this.tempLine.setAttribute('stroke', '#ff6b35');
         this.tempLine.setAttribute('stroke-width', '3');
@@ -396,20 +805,78 @@ export class ConnectionManager {
         this.tempLine.style.pointerEvents = 'none';
         
         this.svgContainer.appendChild(this.tempLine);
+        logger.log('[ConnectionManager] createTempLine: SVG path 요소 생성 및 추가 완료');
         
-        // 시작 커넥터의 현재 위치를 기준으로 초기 위치 설정
+        // 즉시 커넥터 위치 계산 (requestAnimationFrame 없이)
+        // 일반 연결선과 동일한 방식으로 계산
+        logger.log('[ConnectionManager] createTempLine: 커넥터 위치 계산 시작');
         const startPos = this.getConnectorPosition(this.startConnector);
+        
+        logger.log('[ConnectionManager] ========== createTempLine: 위치 계산 결과 ==========');
+        logger.log('[ConnectionManager] 임시 연결선 생성 - 위치 계산:', {
+            startConnector: this.startConnector,
+            startNode: this.startNode,
+            startPos: startPos,
+            svgContainer: this.svgContainer,
+            connectorClasses: this.startConnector.className,
+            nodeId: nodeId,
+            nodeStyleLeft: this.startNode.style.left,
+            nodeStyleTop: this.startNode.style.top
+        });
+        
+        if (!startPos || isNaN(startPos.x) || isNaN(startPos.y)) {
+            logger.error('[ConnectionManager] ❌ 유효하지 않은 시작 위치:', startPos);
+            // DOM 업데이트 후 다시 시도
+            requestAnimationFrame(() => {
+                logger.log('[ConnectionManager] createTempLine: 재시도 시작');
+                const retryPos = this.getConnectorPosition(this.startConnector);
+                logger.log('[ConnectionManager] createTempLine: 재시도 위치:', retryPos);
+                if (retryPos && !isNaN(retryPos.x) && !isNaN(retryPos.y)) {
+                    logger.log('[ConnectionManager] ✅ 재시도 후 위치 계산 성공:', retryPos);
+                    this.updateTempLine(retryPos.x, retryPos.y, retryPos.x, retryPos.y);
+                } else {
+                    logger.error('[ConnectionManager] ❌ 재시도 후에도 위치 계산 실패:', retryPos);
+                }
+            });
+            return;
+        }
+        
+        logger.log('[ConnectionManager] ✅ 유효한 시작 위치 확인, 임시 연결선 초기화:', {
+            startPos: startPos,
+            initialPath: `M ${startPos.x} ${startPos.y} C ${startPos.x} ${startPos.y}, ${startPos.x} ${startPos.y}, ${startPos.x} ${startPos.y}`
+        });
         
         // 초기에는 시작점과 같은 위치로 설정 (마우스 이동하면서 업데이트)
         this.updateTempLine(startPos.x, startPos.y, startPos.x, startPos.y);
+        
+        logger.log('[ConnectionManager] ========== createTempLine 완료 ==========');
     }
     
     /**
      * 임시 연결선 업데이트
      */
     updateTempLine(x1, y1, x2, y2) {
+        const logger = getLogger();
+        
+        if (!this.tempLine) {
+            logger.warn('[ConnectionManager] updateTempLine: tempLine이 없습니다.');
+            return;
+        }
+        
+        // 좌표 유효성 체크
+        if (isNaN(x1) || isNaN(y1) || isNaN(x2) || isNaN(y2)) {
+            logger.warn('[ConnectionManager] updateTempLine: 유효하지 않은 좌표:', { x1, y1, x2, y2 });
+            return;
+        }
+        
         const path = this.createCurvedPath(x1, y1, x2, y2);
         this.tempLine.setAttribute('d', path);
+        
+        logger.log('[ConnectionManager] 임시 연결선 경로 업데이트:', {
+            from: { x: x1, y: y1 },
+            to: { x: x2, y: y2 },
+            path: path
+        });
     }
     
     /**
@@ -439,11 +906,6 @@ export class ConnectionManager {
      * 노드 이동/캔버스 변화 시 연결들을 다시 그린다
      */
     updateConnections() {
-        // 노드 드래그 중일 때는 업데이트 건너뛰기 (성능 최적화)
-        if (window.nodeManager && window.nodeManager.isDragging) {
-            return;
-        }
-        
         // 이미 업데이트 중이면 중복 호출 방지
         if (this.isUpdating) {
             return;
@@ -472,7 +934,8 @@ export class ConnectionManager {
         const logger = getLogger();
         
         if (!fromNode || !toNode) {
-            logger.warn('노드를 찾을 수 없습니다:', fromNodeId, toNodeId);
+            logger.warn('[ConnectionManager] 노드를 찾을 수 없습니다:', { fromNodeId, toNodeId });
+            logger.warn('[ConnectionManager] fromNode:', fromNode, 'toNode:', toNode);
             return;
         }
         
@@ -480,19 +943,38 @@ export class ConnectionManager {
         const toConnector = toNode.querySelector('.node-input');
         
         if (!fromConnector || !toConnector) {
-            logger.warn('커넥터를 찾을 수 없습니다:', fromNodeId, toNodeId);
+            logger.warn('[ConnectionManager] 커넥터를 찾을 수 없습니다:', { fromNodeId, toNodeId });
+            logger.warn('[ConnectionManager] fromConnector:', fromConnector, 'toConnector:', toConnector);
             return;
         }
         
         const fromPos = this.getConnectorPosition(fromConnector);
         const toPos = this.getConnectorPosition(toConnector);
         
+        logger.log(`[ConnectionManager] 연결선 그리기: ${fromNodeId} → ${toNodeId}`);
+        logger.log(`[ConnectionManager] fromPos:`, fromPos);
+        logger.log(`[ConnectionManager] toPos:`, toPos);
+        
         // SVG 크기 업데이트 (연결 그리기 전에)
         this.updateSVGSize();
         
         // 좌표 유효성 체크
         if (!fromPos || !toPos || isNaN(fromPos.x) || isNaN(fromPos.y) || isNaN(toPos.x) || isNaN(toPos.y)) {
-            logger.warn('유효하지 않은 연결 좌표:', fromPos, toPos);
+            logger.warn('[ConnectionManager] 유효하지 않은 연결 좌표:', { fromPos, toPos });
+            logger.warn('[ConnectionManager] 노드 위치 확인:', {
+                fromNode: {
+                    id: fromNodeId,
+                    left: fromNode.style.left,
+                    top: fromNode.style.top,
+                    rect: fromNode.getBoundingClientRect()
+                },
+                toNode: {
+                    id: toNodeId,
+                    left: toNode.style.left,
+                    top: toNode.style.top,
+                    rect: toNode.getBoundingClientRect()
+                }
+            });
             return;
         }
         
@@ -684,8 +1166,11 @@ export class ConnectionManager {
     
     /**
      * 특정 노드 관련 연결을 즉시 업데이트
+     * 드래그 중에 실시간으로 연결선을 업데이트하기 위해 사용
      */
     updateNodeConnectionsImmediately(nodeId) {
+        const logger = getLogger();
+        
         // 지연 없이 바로 업데이트
         this.connections.forEach((connection, connectionId) => {
             if (connection.from === nodeId || connection.to === nodeId) {
@@ -697,7 +1182,11 @@ export class ConnectionManager {
                 }
                 
                 // 새로 연결선 그리기
-                this.drawConnection(connection.from, connection.to);
+                try {
+                    this.drawConnection(connection.from, connection.to);
+                } catch (error) {
+                    logger.warn(`[ConnectionManager] 연결선 그리기 실패: ${connectionId}`, error);
+                }
             }
         });
     }

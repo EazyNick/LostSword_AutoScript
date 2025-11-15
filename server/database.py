@@ -43,22 +43,26 @@ class DatabaseManager:
                 position_x REAL NOT NULL,
                 position_y REAL NOT NULL,
                 node_data TEXT NOT NULL,
+                connected_to TEXT DEFAULT '[]',
+                connected_from TEXT DEFAULT '[]',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (script_id) REFERENCES scripts (id) ON DELETE CASCADE
             )
         ''')
         
-        # 연결 테이블 생성 (노드 간 연결)
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS connections (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                script_id INTEGER NOT NULL,
-                from_node_id TEXT NOT NULL,
-                to_node_id TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (script_id) REFERENCES scripts (id) ON DELETE CASCADE
-            )
-        ''')
+        # 기존 테이블에 컬럼이 없으면 추가 (마이그레이션)
+        try:
+            cursor.execute('ALTER TABLE nodes ADD COLUMN connected_to TEXT DEFAULT \'[]\'')
+        except sqlite3.OperationalError:
+            pass  # 컬럼이 이미 존재하면 무시
+        
+        try:
+            cursor.execute('ALTER TABLE nodes ADD COLUMN connected_from TEXT DEFAULT \'[]\'')
+        except sqlite3.OperationalError:
+            pass  # 컬럼이 이미 존재하면 무시
+        
+        # 연결 테이블은 더 이상 사용하지 않음 (nodes 테이블의 connected_to/connected_from 사용)
+        # 기존 connections 테이블이 있다면 삭제하지 않고 그대로 둠 (하위 호환성)
         
         conn.commit()
         conn.close()
@@ -121,9 +125,9 @@ class DatabaseManager:
             conn.close()
             return None
         
-        # 노드들 조회
+        # 노드들 조회 (연결 정보 포함)
         cursor.execute('''
-            SELECT node_id, node_type, position_x, position_y, node_data 
+            SELECT node_id, node_type, position_x, position_y, node_data, connected_to, connected_from 
             FROM nodes 
             WHERE script_id = ? 
             ORDER BY id
@@ -131,26 +135,54 @@ class DatabaseManager:
         
         nodes = []
         for row in cursor.fetchall():
+            # connected_to와 connected_from을 JSON으로 파싱
+            connected_to_raw = row[5] if len(row) > 5 else None
+            connected_from_raw = row[6] if len(row) > 6 else None
+            
+            connected_to = []
+            connected_from = []
+            
+            # connected_to 파싱
+            if connected_to_raw:
+                try:
+                    if isinstance(connected_to_raw, str):
+                        connected_to = json.loads(connected_to_raw) if connected_to_raw.strip() else []
+                    else:
+                        connected_to = connected_to_raw if isinstance(connected_to_raw, list) else []
+                except (json.JSONDecodeError, ValueError) as e:
+                    print(f"Warning: connected_to 파싱 실패 (node_id: {row[0]}): {e}")
+                    connected_to = []
+            
+            # connected_from 파싱
+            if connected_from_raw:
+                try:
+                    if isinstance(connected_from_raw, str):
+                        connected_from = json.loads(connected_from_raw) if connected_from_raw.strip() else []
+                    else:
+                        connected_from = connected_from_raw if isinstance(connected_from_raw, list) else []
+                except (json.JSONDecodeError, ValueError) as e:
+                    print(f"Warning: connected_from 파싱 실패 (node_id: {row[0]}): {e}")
+                    connected_from = []
+            
             nodes.append({
                 "id": row[0],
                 "type": row[1],
                 "position": {"x": row[2], "y": row[3]},
-                "data": json.loads(row[4])
+                "data": json.loads(row[4]),
+                "connected_to": connected_to,
+                "connected_from": connected_from
             })
         
-        # 연결들 조회
-        cursor.execute('''
-            SELECT from_node_id, to_node_id 
-            FROM connections 
-            WHERE script_id = ?
-        ''', (script_id,))
-        
+        # 연결 정보는 nodes 테이블의 connected_to/connected_from에서 생성
+        # 각 노드의 connected_to를 기반으로 connections 배열 생성
         connections = []
-        for row in cursor.fetchall():
-            connections.append({
-                "from": row[0],
-                "to": row[1]
-            })
+        for node in nodes:
+            if node.get("connected_to") and len(node["connected_to"]) > 0:
+                for to_node_id in node["connected_to"]:
+                    connections.append({
+                        "from": node["id"],
+                        "to": to_node_id
+                    })
         
         conn.close()
         
@@ -165,35 +197,62 @@ class DatabaseManager:
         }
     
     def save_script_data(self, script_id: int, nodes: List[Dict], connections: List[Dict]) -> bool:
-        """스크립트의 노드와 연결 정보 저장"""
+        """스크립트의 노드와 연결 정보 저장
+        connections 배열을 기반으로 각 노드의 connected_to/connected_from을 계산하여 저장
+        """
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
         try:
-            # 기존 노드와 연결 삭제
+            # 기존 노드 삭제 (CASCADE로 연결도 자동 삭제됨)
             cursor.execute("DELETE FROM nodes WHERE script_id = ?", (script_id,))
-            cursor.execute("DELETE FROM connections WHERE script_id = ?", (script_id,))
             
-            # 새 노드들 저장
+            # connections 배열을 기반으로 각 노드의 connected_to/connected_from 계산
+            # 노드별 connected_to와 connected_from 맵 생성
+            node_connected_to = {}
+            node_connected_from = {}
+            
+            # 모든 노드 ID 초기화
             for node in nodes:
+                node_id = node["id"]
+                node_connected_to[node_id] = []
+                node_connected_from[node_id] = []
+            
+            # connections 배열을 순회하며 각 노드의 연결 정보 구성
+            for connection in connections:
+                from_node_id = connection.get("from")
+                to_node_id = connection.get("to")
+                
+                if from_node_id and to_node_id:
+                    # from 노드의 connected_to에 to 노드 추가
+                    if from_node_id in node_connected_to:
+                        if to_node_id not in node_connected_to[from_node_id]:
+                            node_connected_to[from_node_id].append(to_node_id)
+                    
+                    # to 노드의 connected_from에 from 노드 추가
+                    if to_node_id in node_connected_from:
+                        if from_node_id not in node_connected_from[to_node_id]:
+                            node_connected_from[to_node_id].append(from_node_id)
+            
+            # 새 노드들 저장 (연결 정보 포함)
+            for node in nodes:
+                node_id = node["id"]
+                connected_to_json = json.dumps(node_connected_to.get(node_id, []), ensure_ascii=False)
+                connected_from_json = json.dumps(node_connected_from.get(node_id, []), ensure_ascii=False)
+                
                 cursor.execute('''
-                    INSERT INTO nodes (script_id, node_id, node_type, position_x, position_y, node_data)
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    INSERT INTO nodes (script_id, node_id, node_type, position_x, position_y, node_data, connected_to, connected_from)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
                     script_id,
-                    node["id"],
+                    node_id,
                     node["type"],
                     node["position"]["x"],
                     node["position"]["y"],
-                    json.dumps(node["data"])
+                    json.dumps(node["data"], ensure_ascii=False),
+                    connected_to_json,
+                    connected_from_json
                 ))
-            
-            # 새 연결들 저장
-            for connection in connections:
-                cursor.execute('''
-                    INSERT INTO connections (script_id, from_node_id, to_node_id)
-                    VALUES (?, ?, ?)
-                ''', (script_id, connection["from"], connection["to"]))
             
             # 업데이트 시간 갱신
             cursor.execute(

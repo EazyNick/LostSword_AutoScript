@@ -8,12 +8,16 @@
     padding: 0 30px;
     border-bottom: 1px solid #4a5568;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    position: relative;
+    z-index: 9999;
 }
 
 .header-left {
     display: flex;
     align-items: center;
     gap: 15px;
+    flex: 0 0 auto;
+    min-width: 200px;
 }
 
 .document-icon {
@@ -28,6 +32,11 @@
 
 .header-center {
     text-align: center;
+    flex: 1 1 auto;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: auto;
 }
 
 .script-title {
@@ -45,6 +54,8 @@
 .header-right {
     display: flex;
     gap: 15px;
+    flex: 0 0 auto;
+    margin-left: auto;
 }
 
 .header-btn {

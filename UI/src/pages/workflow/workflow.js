@@ -15,7 +15,19 @@
 import { getSidebarInstance } from '../../js/components/sidebar.js';
 import { ConnectionManager, setConnectionManager } from '../../js/components/connection.js';
 import { getModalManagerInstance } from '../../js/utils/modal.js';
+import { getToastManagerInstance } from '../../js/utils/toast.js';
 import { NodeAPI } from '../../js/api/nodeapi.js';
+
+/**
+ * 로거 유틸리티 가져오기 (전역 fallback 포함)
+ */
+const getLogger = () => {
+    return {
+        log: window.log || (window.Logger ? window.Logger.log.bind(window.Logger) : console.log),
+        error: window.logError || (window.Logger ? window.Logger.error.bind(window.Logger) : console.error),
+        warn: window.logWarn || (window.Logger ? window.Logger.warn.bind(window.Logger) : console.warn)
+    };
+};
 
 /**
  * 의존성 관리 헬퍼 함수들
@@ -191,10 +203,11 @@ export class WorkflowPage {
     /**
      * 기본 시작/종료 노드 생성
      * 페이지 로드 시 워크플로우 경계 노드를 생성합니다.
+     * 0,0 좌표를 기준으로 배치합니다.
      */
     createDefaultBoundaryNodes() {
-        const baseX = 50000; // 무한 캔버스 기준점
-        const baseY = 50000; // 무한 캔버스 기준점
+        const baseX = 0; // 0,0 좌표를 시작점으로
+        const baseY = 0;
         
         const boundaryNodes = [
             {
@@ -203,7 +216,7 @@ export class WorkflowPage {
                 title: '시작',
                 color: 'blue',
                 x: baseX - 200,
-                y: baseY - 100
+                y: baseY
             },
             {
                 id: 'end',
@@ -211,7 +224,7 @@ export class WorkflowPage {
                 title: '종료',
                 color: 'orange',
                 x: baseX + 200,
-                y: baseY - 100
+                y: baseY
             }
         ];
         
@@ -232,7 +245,97 @@ export class WorkflowPage {
             if (nodeManager && nodeManager.connectionManager) {
                 nodeManager.connectionManager.updateAllConnections();
             }
+            
+            // 기본 노드들이 화면에 보이도록 뷰포트 조정
+            this.fitNodesToView();
         }, 300);
+    }
+    
+    /**
+     * 모든 노드가 화면에 보이도록 뷰포트 조정
+     * 노드들의 bounding box를 계산하여 fit to view
+     */
+    fitNodesToView() {
+        const logger = getLogger();
+        const log = logger.log;
+        
+        log('[WorkflowPage] fitNodesToView() 호출됨');
+        
+        const canvasContent = document.getElementById('canvas-content');
+        const canvas = document.getElementById('workflow-canvas');
+        
+        if (!canvasContent || !canvas) {
+            log('[WorkflowPage] ⚠️ 캔버스 요소를 찾을 수 없음');
+            return;
+        }
+        
+        // 모든 노드 요소 찾기
+        const nodeElements = canvasContent.querySelectorAll('.workflow-node');
+        
+        if (nodeElements.length === 0) {
+            log('[WorkflowPage] 노드가 없어서 뷰포트 조정 건너뜀');
+            return;
+        }
+        
+        // 노드들의 bounding box 계산
+        let minX = Infinity, minY = Infinity;
+        let maxX = -Infinity, maxY = -Infinity;
+        
+        nodeElements.forEach(node => {
+            const left = parseFloat(node.style.left) || 0;
+            const top = parseFloat(node.style.top) || 0;
+            const width = node.offsetWidth || 200; // 기본 노드 너비
+            const height = node.offsetHeight || 80; // 기본 노드 높이
+            
+            const nodeMinX = left;
+            const nodeMinY = top;
+            const nodeMaxX = left + width;
+            const nodeMaxY = top + height;
+            
+            if (nodeMinX < minX) minX = nodeMinX;
+            if (nodeMinY < minY) minY = nodeMinY;
+            if (nodeMaxX > maxX) maxX = nodeMaxX;
+            if (nodeMaxY > maxY) maxY = nodeMaxY;
+        });
+        
+        // 노드들의 중심점과 크기
+        const nodesCenterX = (minX + maxX) / 2;
+        const nodesCenterY = (minY + maxY) / 2;
+        const nodesWidth = maxX - minX;
+        const nodesHeight = maxY - minY;
+        
+        // 화면 크기
+        const canvasRect = canvas.getBoundingClientRect();
+        const screenWidth = canvasRect.width;
+        const screenHeight = canvasRect.height;
+        
+        // 패딩 추가 (노드들이 화면 가장자리에 붙지 않도록)
+        const padding = 50;
+        const paddedWidth = nodesWidth + padding * 2;
+        const paddedHeight = nodesHeight + padding * 2;
+        
+        // 스케일 계산 (모든 노드가 화면에 들어오도록)
+        const scaleX = screenWidth / paddedWidth;
+        const scaleY = screenHeight / paddedHeight;
+        const scale = Math.min(scaleX, scaleY, 1); // 1보다 크게 확대하지 않음
+        
+        // Transform 계산
+        // 노드들의 중심이 화면 중앙에 오도록 Transform 이동
+        const transformX = screenWidth / 2 - nodesCenterX * scale;
+        const transformY = screenHeight / 2 - nodesCenterY * scale;
+        
+        log('[WorkflowPage] 노드 bounding box 계산:');
+        log(`[WorkflowPage] - 노드 범위: (${minX}, ${minY}) ~ (${maxX}, ${maxY})`);
+        log(`[WorkflowPage] - 노드 크기: ${nodesWidth}x${nodesHeight}`);
+        log(`[WorkflowPage] - 노드 중심: (${nodesCenterX}, ${nodesCenterY})`);
+        log(`[WorkflowPage] - 화면 크기: ${screenWidth}x${screenHeight}`);
+        log(`[WorkflowPage] - 계산된 스케일: ${scale}`);
+        log(`[WorkflowPage] - Transform: translate(${transformX}px, ${transformY}px) scale(${scale})`);
+        
+        // Transform 적용
+        canvasContent.style.transform = `translate(${transformX}px, ${transformY}px) scale(${scale})`;
+        
+        log('[WorkflowPage] ✅ 뷰포트 조정 완료 - 모든 노드가 화면에 표시됨');
     }
     
     /**
@@ -320,16 +423,24 @@ export class WorkflowPage {
     /**
      * 워크플로우 저장
      * 현재 워크플로우 상태를 백엔드 API에 저장합니다.
+     * @param {Object} options - 저장 옵션
+     * @param {boolean} options.useToast - Toast 알림 사용 여부 (기본값: false, Alert 사용)
      */
-    async saveWorkflow() {
+    async saveWorkflow(options = {}) {
         const sidebarManager = getSidebarManager();
         const currentScript = sidebarManager ? sidebarManager.getCurrentScript() : null;
         
         const modalManager = getModalManager();
         
         if (!currentScript || !currentScript.id) {
-            if (modalManager) {
-                modalManager.showAlert('저장 실패', '저장할 스크립트가 선택되지 않았습니다.');
+            // Toast 또는 Alert 선택
+            if (options.useToast) {
+                const toastManager = getToastManagerInstance();
+                toastManager.error('저장할 스크립트가 선택되지 않았습니다.');
+            } else {
+                if (modalManager) {
+                    modalManager.showAlert('저장 실패', '저장할 스크립트가 선택되지 않았습니다.');
+                }
             }
             return;
         }
@@ -364,15 +475,34 @@ export class WorkflowPage {
             // 백엔드 API에 저장
             const nodeAPI = getNodeAPI();
             if (nodeAPI) {
-                await nodeAPI.updateNodesBatch(currentScript.id, nodesForAPI, connectionsForAPI);
-                
-                if (modalManager) {
-                    modalManager.showAlert('저장 완료', '워크플로우가 성공적으로 저장되었습니다.');
-                }
-                console.log('워크플로우 저장 완료:', {
+                const logger = getLogger();
+                logger.log('[WorkflowPage] 저장 요청 시작:', {
                     scriptId: currentScript.id,
                     nodeCount: nodes.length,
                     connectionCount: connections.length
+                });
+                logger.log('[WorkflowPage] 저장할 노드 데이터:', nodesForAPI);
+                logger.log('[WorkflowPage] 저장할 연결 데이터:', connectionsForAPI);
+                
+                const response = await nodeAPI.updateNodesBatch(currentScript.id, nodesForAPI, connectionsForAPI);
+                
+                logger.log('[WorkflowPage] 저장 완료 응답:', response);
+                
+                // Toast 또는 Alert 선택
+                if (options.useToast) {
+                    const toastManager = getToastManagerInstance();
+                    toastManager.success('워크플로우가 성공적으로 저장되었습니다.');
+                } else {
+                    if (modalManager) {
+                        modalManager.showAlert('저장 완료', '워크플로우가 성공적으로 저장되었습니다.');
+                    }
+                }
+                
+                logger.log('[WorkflowPage] 워크플로우 저장 완료:', {
+                    scriptId: currentScript.id,
+                    nodeCount: nodes.length,
+                    connectionCount: connections.length,
+                    response: response
                 });
             } else {
                 // API를 사용할 수 없는 경우 로컬 스토리지에 저장 (fallback)
@@ -380,8 +510,15 @@ export class WorkflowPage {
             }
         } catch (error) {
             console.error('워크플로우 저장 실패:', error);
-            if (modalManager) {
-                modalManager.showAlert('저장 실패', `저장 중 오류가 발생했습니다: ${error.message}`);
+            
+            // Toast 또는 Alert 선택
+            if (options.useToast) {
+                const toastManager = getToastManagerInstance();
+                toastManager.error(`저장 중 오류가 발생했습니다: ${error.message}`);
+            } else {
+                if (modalManager) {
+                    modalManager.showAlert('저장 실패', `저장 중 오류가 발생했습니다: ${error.message}`);
+                }
             }
         }
     }
@@ -835,79 +972,249 @@ export class WorkflowPage {
     
     /**
      * 스크립트 데이터 로드
-     * 백엔드 API에서 노드 정보를 가져와서 화면에 표시합니다.
+     * 백엔드 API에서 스크립트 정보(노드 포함)를 가져와서 화면에 표시합니다.
      */
     async loadScriptData(script) {
+        const logger = getLogger();
+        const log = logger.log;
+        const logError = logger.error;
+        
+        log('[WorkflowPage] loadScriptData() 호출됨');
+        log('[WorkflowPage] 로드할 스크립트:', { id: script?.id, name: script?.name });
+        
+        if (!script || !script.id) {
+            logError('[WorkflowPage] ⚠️ 유효하지 않은 스크립트 정보:', script);
+            return;
+        }
+        
         // 연결선 매니저 초기화 확인 및 보장
         this.ensureConnectionManagerInitialized();
         
         const nodeManager = getNodeManager();
+        
         // 기존 노드들 제거
+        log('[WorkflowPage] 기존 노드 제거 시작');
         const existingNodes = document.querySelectorAll('.workflow-node');
+        log(`[WorkflowPage] 제거할 노드 개수: ${existingNodes.length}개`);
         existingNodes.forEach(node => {
             if (nodeManager) {
                 nodeManager.deleteNode(node);
             }
         });
+        log('[WorkflowPage] 기존 노드 제거 완료');
         
         try {
-            const nodeAPI = getNodeAPI();
-            // 백엔드 API에서 노드 정보 가져오기
-            if (nodeAPI && script && script.id) {
-                const response = await nodeAPI.getNodesByScript(script.id);
+            // ScriptAPI를 사용하여 스크립트 정보(노드 포함) 가져오기
+            const { ScriptAPI } = await import('../../js/api/scriptapi.js');
+            
+            if (ScriptAPI && script.id) {
+                log('[WorkflowPage] 서버에 스크립트 정보 요청 전송...');
+                log(`[WorkflowPage] 요청 스크립트 ID: ${script.id}`);
                 
-                console.log('백엔드에서 노드 정보 로드:', response);
+                const response = await ScriptAPI.getScript(script.id);
+                
+                   log('[WorkflowPage] ✅ 서버에서 스크립트 정보 받음:', response);
+                   log(`[WorkflowPage] 스크립트 이름: ${response.name}`);
+                   log(`[WorkflowPage] 노드 개수: ${response.nodes ? response.nodes.length : 0}개`);
+                   
+                   // 노드별 연결 정보 로그
+                   if (response.nodes && response.nodes.length > 0) {
+                       log('[WorkflowPage] 노드별 연결 정보:');
+                       response.nodes.forEach(node => {
+                           const connectedTo = node.connected_to;
+                           const connectedFrom = node.connected_from;
+                           log(`[WorkflowPage] - 노드 ${node.id}:`);
+                           log(`[WorkflowPage]   connected_to 타입: ${typeof connectedTo}, 값: ${JSON.stringify(connectedTo)}`);
+                           log(`[WorkflowPage]   connected_from 타입: ${typeof connectedFrom}, 값: ${JSON.stringify(connectedFrom)}`);
+                           
+                           // connected_to가 문자열인 경우 JSON 파싱 시도
+                           if (typeof connectedTo === 'string') {
+                               try {
+                                   const parsed = JSON.parse(connectedTo);
+                                   log(`[WorkflowPage]   connected_to 파싱 결과: ${JSON.stringify(parsed)}`);
+                               } catch (e) {
+                                   log(`[WorkflowPage]   ⚠️ connected_to 파싱 실패: ${e.message}`);
+                               }
+                           }
+                       });
+                   }
                 
                 const nodes = response.nodes || [];
-                const connections = response.connections || [];
+                
+                // nodes의 connected_to를 기반으로 connections 배열 생성
+                const connections = [];
+                nodes.forEach(node => {
+                    let connectedTo = node.connected_to;
+                    
+                    // connected_to가 문자열인 경우 JSON 파싱
+                    if (typeof connectedTo === 'string') {
+                        try {
+                            connectedTo = JSON.parse(connectedTo);
+                        } catch (e) {
+                            log(`[WorkflowPage] ⚠️ 노드 ${node.id}의 connected_to 파싱 실패: ${e.message}`);
+                            connectedTo = [];
+                        }
+                    }
+                    
+                    // 배열이 아니거나 비어있으면 건너뛰기
+                    if (!Array.isArray(connectedTo) || connectedTo.length === 0) {
+                        return;
+                    }
+                    
+                    // 각 연결에 대해 connections 배열에 추가
+                    connectedTo.forEach(toNodeId => {
+                        if (toNodeId) {
+                            connections.push({
+                                from: node.id,
+                                to: toNodeId
+                            });
+                            log(`[WorkflowPage] 연결 추가: ${node.id} → ${toNodeId}`);
+                        }
+                    });
+                });
+                
+                log(`[WorkflowPage] ✅ 생성된 연결 개수: ${connections.length}개`);
+                if (connections.length > 0) {
+                    log(`[WorkflowPage] 연결 목록:`, connections);
+                } else {
+                    log(`[WorkflowPage] ⚠️ 연결이 없습니다. 노드들의 connected_to를 확인하세요.`);
+                }
                 
                 if (nodes.length > 0) {
+                    log('[WorkflowPage] 노드 데이터가 있음. 화면에 그리기 시작...');
+                    log('[WorkflowPage] 노드 목록:', nodes.map(n => ({ id: n.id, type: n.type })));
+                    
                     // 연결선 매니저가 완전히 초기화될 때까지 대기
                     setTimeout(() => {
-                        // 노드들 생성
-                        nodes.forEach((nodeData) => {
+                        log('[WorkflowPage] 노드 생성 시작');
+                        
+                        // 노드들 생성 (DB에서 불러온 원본 좌표 그대로 사용)
+                        nodes.forEach((nodeData, index) => {
+                            // 원본 좌표 그대로 사용 (오프셋 적용하지 않음)
+                            const originalX = nodeData.position?.x || 0;
+                            const originalY = nodeData.position?.y || 0;
+                            
                             // API 응답 형식을 NodeManager 형식으로 변환
                             const nodeDataForManager = {
                                 id: nodeData.id,
                                 title: nodeData.data?.title || nodeData.id,
                                 type: nodeData.type,
                                 color: nodeData.data?.color || 'blue',
-                                x: nodeData.position?.x || 0,
-                                y: nodeData.position?.y || 0,
+                                x: originalX,
+                                y: originalY,
                                 ...nodeData.data
                             };
+                            
+                            log(`[WorkflowPage] 노드 ${index + 1}/${nodes.length} 생성 중:`, {
+                                id: nodeDataForManager.id,
+                                type: nodeDataForManager.type,
+                                title: nodeDataForManager.title,
+                                position: { x: originalX, y: originalY }
+                            });
                             
                             if (nodeManager) {
                                 nodeManager.createNode(nodeDataForManager);
                             }
                         });
+                        log('[WorkflowPage] 모든 노드 생성 완료');
                         
-                        // 연결들 복원
-                        if (connections.length > 0 && nodeManager && nodeManager.connectionManager) {
-                            // 연결 형식 변환 (API 형식 -> ConnectionManager 형식)
-                            const formattedConnections = connections.map(conn => ({
-                                from: conn.from,
-                                to: conn.to
-                            }));
-                            
-                            nodeManager.connectionManager.setConnections(formattedConnections);
-                        }
+                        // 노드가 DOM에 완전히 렌더링될 때까지 대기
+                        // requestAnimationFrame을 사용하여 브라우저 렌더링 완료 후 실행
+                        requestAnimationFrame(() => {
+                            requestAnimationFrame(() => {
+                                // 연결들 복원
+                                log('[WorkflowPage] 연결선 복원 준비');
+                                log(`[WorkflowPage] connections.length: ${connections.length}`);
+                                log(`[WorkflowPage] nodeManager 존재: ${!!nodeManager}`);
+                                log(`[WorkflowPage] connectionManager 존재: ${!!(nodeManager && nodeManager.connectionManager)}`);
+                                
+                                if (connections.length > 0) {
+                                    if (nodeManager && nodeManager.connectionManager) {
+                                        log('[WorkflowPage] 연결선 복원 시작');
+                                        log(`[WorkflowPage] 복원할 연결 개수: ${connections.length}개`);
+                                        
+                                        // 연결 형식 변환 (API 형식 -> ConnectionManager 형식)
+                                        const formattedConnections = connections.map(conn => ({
+                                            from: conn.from,
+                                            to: conn.to
+                                        }));
+                                        
+                                        log('[WorkflowPage] 연결선 데이터:', formattedConnections);
+                                        
+                                        try {
+                                            nodeManager.connectionManager.setConnections(formattedConnections);
+                                            log('[WorkflowPage] ✅ setConnections 호출 완료');
+                                            
+                                            // 연결선 위치를 다시 업데이트 (노드 위치가 확정된 후)
+                                            setTimeout(() => {
+                                                log('[WorkflowPage] 연결선 위치 재계산 및 업데이트 시작');
+                                                try {
+                                                    nodeManager.connectionManager.updateAllConnections();
+                                                    log('[WorkflowPage] ✅ 연결선 복원 완료');
+                                                } catch (error) {
+                                                    log(`[WorkflowPage] ❌ updateAllConnections 실패: ${error.message}`);
+                                                    console.error(error);
+                                                }
+                                            }, 100);
+                                        } catch (error) {
+                                            log(`[WorkflowPage] ❌ setConnections 실패: ${error.message}`);
+                                            console.error(error);
+                                        }
+                                    } else {
+                                        log('[WorkflowPage] ⚠️ 연결선 매니저가 없습니다.');
+                                        if (!nodeManager) {
+                                            log('[WorkflowPage] ⚠️ nodeManager가 없습니다.');
+                                        } else if (!nodeManager.connectionManager) {
+                                            log('[WorkflowPage] ⚠️ nodeManager.connectionManager가 없습니다.');
+                                        }
+                                    }
+                                } else {
+                                    log('[WorkflowPage] ⚠️ 연결이 없어서 연결선을 그릴 수 없습니다.');
+                                }
+                                
+                                // 모든 노드가 화면에 보이도록 뷰포트 조정
+                                log('[WorkflowPage] 모든 노드가 화면에 보이도록 뷰포트 조정');
+                                this.fitNodesToView();
+                                
+                                // 뷰포트 조정 후 연결선 위치를 다시 한 번 업데이트
+                                setTimeout(() => {
+                                    if (nodeManager && nodeManager.connectionManager && connections.length > 0) {
+                                        log('[WorkflowPage] 뷰포트 조정 후 연결선 위치 최종 업데이트');
+                                        nodeManager.connectionManager.updateAllConnections();
+                                    }
+                                    log('[WorkflowPage] ✅ 스크립트 데이터 로드 및 화면 그리기 완료');
+                                }, 150);
+                            });
+                        });
                     }, 100);
                 } else {
+                    log('[WorkflowPage] 저장된 노드가 없음. 기본 경계 노드 생성');
                     // 저장된 노드가 없는 최초 스크립트라면 경계 노드 자동 생성
                     setTimeout(() => {
                         this.createDefaultBoundaryNodes();
                     }, 50);
+                    
+                    // 기본 노드들이 화면에 보이도록 뷰포트 조정
+                    setTimeout(() => {
+                        this.fitNodesToView();
+                    }, 100);
                 }
             } else {
-                console.warn('NodeAPI를 사용할 수 없거나 script.id가 없습니다. 기본 노드 생성으로 대체합니다.');
+                logError('[WorkflowPage] ⚠️ ScriptAPI를 사용할 수 없거나 script.id가 없습니다.');
+                logError('[WorkflowPage] ScriptAPI:', ScriptAPI);
+                logError('[WorkflowPage] script.id:', script.id);
                 // API를 사용할 수 없는 경우 기본 노드 생성
                 setTimeout(() => {
                     this.createDefaultBoundaryNodes();
                 }, 50);
             }
         } catch (error) {
-            console.error('노드 데이터 로드 실패:', error);
+            logError('[WorkflowPage] ❌ 노드 데이터 로드 실패:', error);
+            logError('[WorkflowPage] 에러 상세:', {
+                name: error.name,
+                message: error.message,
+                stack: error.stack
+            });
             // 에러 발생 시 기본 노드 생성
             setTimeout(() => {
                 this.createDefaultBoundaryNodes();
@@ -952,10 +1259,10 @@ export class WorkflowPage {
             const nodeManager = getNodeManager();
             const modalManager = getModalManager();
             
-            // Ctrl + S: 저장
+            // Ctrl + S: 저장 (Toast 알림 사용)
             if (e.ctrlKey && e.key === 's') {
                 e.preventDefault();
-                this.saveWorkflow();
+                this.saveWorkflow({ useToast: true });
             }
             
             // Ctrl + N: 새 노드 추가

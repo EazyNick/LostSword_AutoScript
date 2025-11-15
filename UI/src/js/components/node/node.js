@@ -386,13 +386,15 @@ export class NodeManager {
      * @param {HTMLElement} nodeElement - 노드 요소
      */
     setupInputConnectorEvents(inputConnector, nodeElement) {
-        // 클릭으로 연결 완료/시작
-        inputConnector.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.handleInputConnectorClick(inputConnector, nodeElement);
-        });
-
-        // 더블클릭으로 해당 커넥터의 연결 모두 삭제
+        // ConnectionManager가 필수로 있어야 함
+        const connectionManager = this.connectionManager || window.connectionManager;
+        if (!connectionManager) {
+            console.error('[NodeManager] ConnectionManager가 없습니다. 입력 커넥터 이벤트를 설정할 수 없습니다.');
+            return;
+        }
+        
+        // ConnectionManager가 있으면 클릭 이벤트는 ConnectionManager가 처리
+        // 여기서는 더블클릭만 처리
         inputConnector.addEventListener('dblclick', (e) => {
             e.stopPropagation();
             this.handleConnectorDoubleClick(inputConnector, nodeElement, 'input');
@@ -423,25 +425,15 @@ export class NodeManager {
      * @param {HTMLElement} nodeElement - 노드 요소
      */
     setupOutputConnectorEvents(outputConnector, nodeElement) {
-        // 클릭으로 연결 모드 토글/완료
-        outputConnector.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (this.isClickConnecting) {
-                // 이미 클릭 연결 모드인 경우: 연결 완료
-                const nodeId = nodeElement.dataset.nodeId;
-                const outputType = outputConnector.classList.contains('true-output')
-                    ? 'true'
-                    : outputConnector.classList.contains('false-output')
-                        ? 'false'
-                        : 'default';
-                this.completeClickConnection(nodeId, outputType);
-            } else {
-                // 클릭 연결 모드가 아닌 경우: 시작
-                this.startClickConnection(outputConnector, nodeElement);
-            }
-        });
-
-        // 더블클릭으로 해당 커넥터 관련 연결 모두 삭제
+        // ConnectionManager가 필수로 있어야 함
+        const connectionManager = this.connectionManager || window.connectionManager;
+        if (!connectionManager) {
+            console.error('[NodeManager] ConnectionManager가 없습니다. 출력 커넥터 이벤트를 설정할 수 없습니다.');
+            return;
+        }
+        
+        // ConnectionManager가 있으면 클릭 이벤트는 ConnectionManager가 처리
+        // 여기서는 더블클릭만 처리
         outputConnector.addEventListener('dblclick', (e) => {
             e.stopPropagation();
             this.handleConnectorDoubleClick(outputConnector, nodeElement, 'output');

@@ -129,52 +129,30 @@ class NodeConnectionHandler {
      * 클릭 연결 시작 (출력 연결점에서)
      */
     startClickConnection(outputConnector, nodeElement) {
-        const nodeId = nodeElement.dataset.nodeId;
-        const outputType = outputConnector.classList.contains('true-output') ? 'true' : 
-                          outputConnector.classList.contains('false-output') ? 'false' : 'default';
+        // ConnectionManager를 필수로 사용
+        const connectionManager = this.nodeManager.connectionManager || window.connectionManager;
+        if (!connectionManager) {
+            console.error('[NodeConnectionHandler] ConnectionManager가 없습니다. 연결을 시작할 수 없습니다.');
+            return;
+        }
         
-        this.isClickConnecting = true;
-        this.clickConnectionStart = {
-            nodeId: nodeId,
-            outputType: outputType,
-            connector: outputConnector,
-            isFromOutput: true
-        };
-        
-        outputConnector.style.backgroundColor = '#FF6B35';
-        outputConnector.style.borderColor = '#FF6B35';
-        outputConnector.style.boxShadow = '0 0 15px rgba(255, 107, 53, 0.8)';
-        
-        const startPos = this.nodeManager.getConnectorPosition(outputConnector);
-        this.createTempConnectionLine(startPos.x, startPos.y);
-        
-        this.showClickConnectionMessage('입력 연결점을 클릭하여 연결하세요');
-        this.nodeManager.activateInputConnectors();
+        // ConnectionManager를 사용하여 연결 시작
+        connectionManager.handleConnectorClick(nodeElement, 'output', outputConnector);
     }
     
     /**
      * 클릭 연결 시작 (입력 연결점에서)
      */
     startClickConnectionFromInput(inputConnector, nodeElement) {
-        const nodeId = nodeElement.dataset.nodeId;
+        // ConnectionManager를 필수로 사용
+        const connectionManager = this.nodeManager.connectionManager || window.connectionManager;
+        if (!connectionManager) {
+            console.error('[NodeConnectionHandler] ConnectionManager가 없습니다. 연결을 시작할 수 없습니다.');
+            return;
+        }
         
-        this.isClickConnecting = true;
-        this.clickConnectionStart = {
-            nodeId: nodeId,
-            outputType: 'input',
-            connector: inputConnector,
-            isFromOutput: false
-        };
-        
-        inputConnector.style.backgroundColor = '#FF6B35';
-        inputConnector.style.borderColor = '#FF6B35';
-        inputConnector.style.boxShadow = '0 0 15px rgba(255, 107, 53, 0.8)';
-        
-        const startPos = this.nodeManager.getConnectorPosition(inputConnector);
-        this.createTempConnectionLine(startPos.x, startPos.y);
-        
-        this.showClickConnectionMessage('출력 연결점을 클릭하여 연결하세요');
-        this.nodeManager.activateOutputConnectors();
+        // ConnectionManager를 사용하여 연결 시작
+        connectionManager.handleConnectorClick(nodeElement, 'input', inputConnector);
     }
     
     /**
