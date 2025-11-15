@@ -66,13 +66,36 @@ export const ScriptAPI = {
      * @returns {Promise<Object>} 생성된 스크립트 정보
      */
     async createScript(name, description = '') {
-        return await apiCall('/api/scripts', {
-            method: 'POST',
-            body: JSON.stringify({
-                name: name,
-                description: description
-            })
-        });
+        const logger = getLogger();
+        logger.log('[ScriptAPI] createScript() 호출됨');
+        logger.log('[ScriptAPI] 요청 데이터:', { name, description });
+        logger.log('[ScriptAPI] API 요청 시작: POST /api/scripts');
+        
+        try {
+            const startTime = performance.now();
+            const result = await apiCall('/api/scripts', {
+                method: 'POST',
+                body: JSON.stringify({
+                    name: name,
+                    description: description
+                })
+            });
+            const endTime = performance.now();
+            
+            logger.log('[ScriptAPI] ✅ API 응답 받음:', result);
+            logger.log(`[ScriptAPI] 응답 시간: ${(endTime - startTime).toFixed(2)}ms`);
+            logger.log(`[ScriptAPI] 생성된 스크립트 ID: ${result.id}`);
+            logger.log(`[ScriptAPI] 생성된 스크립트 이름: ${result.name}`);
+            
+            return result;
+        } catch (error) {
+            logger.error('[ScriptAPI] ❌ API 요청 실패:', error);
+            logger.error('[ScriptAPI] 에러 상세:', {
+                message: error.message,
+                stack: error.stack
+            });
+            throw error;
+        }
     },
 
     /**
@@ -81,9 +104,31 @@ export const ScriptAPI = {
      * @returns {Promise<Object>} 삭제 결과
      */
     async deleteScript(scriptId) {
-        return await apiCall(`/api/scripts/${scriptId}`, {
-            method: 'DELETE'
-        });
+        const logger = getLogger();
+        logger.log('[ScriptAPI] deleteScript() 호출됨');
+        logger.log('[ScriptAPI] 삭제할 스크립트 ID:', scriptId);
+        logger.log('[ScriptAPI] API 요청 시작: DELETE /api/scripts/' + scriptId);
+        
+        try {
+            const startTime = performance.now();
+            const result = await apiCall(`/api/scripts/${scriptId}`, {
+                method: 'DELETE'
+            });
+            const endTime = performance.now();
+            
+            logger.log('[ScriptAPI] ✅ API 응답 받음:', result);
+            logger.log(`[ScriptAPI] 응답 시간: ${(endTime - startTime).toFixed(2)}ms`);
+            logger.log(`[ScriptAPI] 삭제된 스크립트 ID: ${result.id}`);
+            
+            return result;
+        } catch (error) {
+            logger.error('[ScriptAPI] ❌ API 요청 실패:', error);
+            logger.error('[ScriptAPI] 에러 상세:', {
+                message: error.message,
+                stack: error.stack
+            });
+            throw error;
+        }
     }
 };
 

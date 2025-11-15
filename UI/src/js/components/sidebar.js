@@ -213,11 +213,27 @@ export class SidebarManager {
                         <span class="date-text">${script.date}</span>
                     </div>
                 </div>
+                <button class="script-delete-btn" title="스크립트 삭제" data-script-index="${index}">
+                    <span class="delete-icon">🗑️</span>
+                </button>
             `;
             
-            scriptItem.addEventListener('click', () => {
+            // 스크립트 항목 클릭 이벤트 (삭제 버튼 제외)
+            scriptItem.addEventListener('click', (e) => {
+                // 삭제 버튼 클릭 시에는 선택 이벤트 발생하지 않도록
+                if (e.target.closest('.script-delete-btn')) {
+                    return;
+                }
                 log('사이드바 스크립트 클릭됨:', script.name, '인덱스:', index);
                 this.selectScript(index);
+            });
+            
+            // 삭제 버튼 클릭 이벤트
+            const deleteBtn = scriptItem.querySelector('.script-delete-btn');
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); // 스크립트 선택 이벤트 방지
+                log('[Sidebar] 삭제 버튼 클릭됨 - 스크립트:', script.name, '인덱스:', index);
+                this.deleteScript(index);
             });
             
             scriptList.appendChild(scriptItem);
@@ -288,31 +304,59 @@ export class SidebarManager {
     async addScript() {
         const logger = getLogger();
         const log = logger.log;
+        const logError = logger.error;
         const scriptName = document.getElementById('script-name').value;
         const scriptDescription = document.getElementById('script-description').value;
         
         const modalManager = getModalManagerInstance();
         
+        log('[Sidebar] addScript() 호출됨');
+        log('[Sidebar] 입력된 스크립트 이름:', scriptName);
+        log('[Sidebar] 입력된 스크립트 설명:', scriptDescription);
+        
         if (!scriptName.trim()) {
+            log('[Sidebar] ⚠️ 스크립트 이름이 비어있음');
             modalManager.showAlert('오류', '스크립트 이름을 입력해주세요.');
             return;
         }
         
         try {
             if (ScriptAPI) {
+                log('[Sidebar] 서버에 스크립트 생성 요청 전송...');
                 // 서버에 스크립트 생성 요청
                 const result = await ScriptAPI.createScript(scriptName, scriptDescription || '');
-                log('서버에 스크립트 생성됨:', result);
+                log('[Sidebar] ✅ 서버에서 스크립트 생성 성공 응답 받음:', result);
+                log('[Sidebar] 생성된 스크립트 ID:', result.id);
+                log('[Sidebar] 생성된 스크립트 이름:', result.name);
                 
-                // 서버에서 다시 목록을 가져와서 업데이트
-                await this.loadScriptsFromServer();
+                // 클라이언트에서 목록에 추가 (효율적인 방식)
+                log('[Sidebar] 클라이언트에서 스크립트 목록 업데이트 시작');
+                const newScript = {
+                    id: result.id,
+                    name: result.name,
+                    description: result.description || '',
+                    date: this.formatDate(result.updated_at || result.created_at),
+                    active: false
+                };
                 
-                // 새로 생성된 스크립트를 선택
-                const newScriptIndex = this.scripts.findIndex(s => s.id === result.id);
-                if (newScriptIndex >= 0) {
-                    this.selectScript(newScriptIndex);
-                }
+                // 목록 맨 앞에 추가 (최신 스크립트가 위에 오도록)
+                this.scripts.unshift(newScript);
+                log('[Sidebar] 스크립트 목록에 추가됨 - ID:', result.id, '이름:', result.name);
+                
+                // UI 업데이트
+                this.loadScripts();
+                
+                // 새로 생성된 스크립트를 선택 (맨 앞에 추가했으므로 인덱스 0)
+                log('[Sidebar] 새로 생성된 스크립트 선택 - 인덱스: 0');
+                this.selectScript(0);
+                
+                // 헤더 업데이트
+                this.updateHeader();
+                
+                log('[Sidebar] ✅ 스크립트 추가 완료');
+                log('[Sidebar] 현재 스크립트 개수:', this.scripts.length);
             } else {
+                log('[Sidebar] ⚠️ ScriptAPI를 사용할 수 없음. 로컬 폴백 사용');
                 // API가 없을 때의 폴백
                 const newScript = {
                     id: Date.now(),
@@ -328,13 +372,22 @@ export class SidebarManager {
             
             modalManager.close();
         } catch (error) {
-            console.error('스크립트 추가 실패:', error);
+            logError('[Sidebar] ❌ 스크립트 추가 실패:', error);
+            logError('[Sidebar] 에러 상세:', {
+                name: error.name,
+                message: error.message,
+                stack: error.stack
+            });
             modalManager.showAlert('오류', `스크립트 추가 실패: ${error.message}`);
         }
     }
     
     async deleteScript(index) {
-        if (index < 0 || index >= this.scripts.length) return;
+        if (index < 0 || index >= this.scripts.length) {
+            const logger = getLogger();
+            logger.log('[Sidebar] ⚠️ 유효하지 않은 스크립트 인덱스:', index);
+            return;
+        }
         
         const script = this.scripts[index];
         
@@ -343,26 +396,70 @@ export class SidebarManager {
         const logError = logger.error;
         const modalManager = getModalManagerInstance();
         
+        log('[Sidebar] deleteScript() 호출됨');
+        log('[Sidebar] 삭제 대상 스크립트:', { id: script.id, name: script.name, index: index });
+        
+        // 사용자 확인 모달 표시 (사용자 경험 향상)
         modalManager.showConfirm(
             '스크립트 삭제',
-            `"${script.name}" 스크립트를 삭제하시겠습니까?`,
+            `<div style="text-align: center; padding: 10px 0;">
+                <p style="font-size: 16px; margin-bottom: 10px; color: #e2e8f0;">
+                    <strong>"${script.name}"</strong> 스크립트를 삭제하시겠습니까?
+                </p>
+                <p style="font-size: 14px; color: #a0aec0; margin-top: 10px;">
+                    이 작업은 되돌릴 수 없습니다.
+                </p>
+            </div>`,
             async () => {
+                log('[Sidebar] 사용자가 삭제 확인함');
+                
                 try {
                     if (ScriptAPI) {
+                        log('[Sidebar] 서버에 스크립트 삭제 요청 전송...');
                         // 서버에 삭제 요청
-                        await ScriptAPI.deleteScript(script.id);
-                        log('서버에서 스크립트 삭제됨:', script.id);
+                        const result = await ScriptAPI.deleteScript(script.id);
+                        log('[Sidebar] ✅ 서버에서 스크립트 삭제 성공 응답 받음:', result);
                         
-                        // 서버에서 다시 목록을 가져와서 업데이트
-                        await this.loadScriptsFromServer();
+                        // 클라이언트에서 목록에서 삭제 (효율적인 방식)
+                        log('[Sidebar] 클라이언트에서 스크립트 목록 업데이트 시작');
+                        const deletedIndex = this.scripts.findIndex(s => s.id === script.id);
+                        if (deletedIndex >= 0) {
+                            this.scripts.splice(deletedIndex, 1);
+                            log('[Sidebar] 스크립트 목록에서 삭제됨 - 인덱스:', deletedIndex);
+                        }
                         
-                        // 현재 선택된 스크립트가 삭제된 경우 첫 번째 스크립트 선택
+                        // 현재 선택된 스크립트 인덱스 조정
+                        if (this.currentScriptIndex >= deletedIndex && deletedIndex >= 0) {
+                            this.currentScriptIndex = Math.max(0, this.currentScriptIndex - 1);
+                        }
+                        
+                        // UI 업데이트
+                        this.loadScripts();
+                        
+                        // 삭제된 스크립트가 현재 선택된 스크립트였던 경우
                         if (this.scripts.length > 0) {
+                            // 첫 번째 스크립트 선택
+                            log('[Sidebar] 첫 번째 스크립트 선택');
                             this.selectScript(0);
                         } else {
+                            // 스크립트가 모두 삭제된 경우
+                            log('[Sidebar] 모든 스크립트가 삭제됨');
+                            this.currentScriptIndex = -1;
                             this.updateHeader();
+                            // 헤더 초기화
+                            const titleEl = document.querySelector('.script-title');
+                            const descEl = document.querySelector('.script-description');
+                            if (titleEl) titleEl.textContent = '스크립트 없음';
+                            if (descEl) descEl.textContent = '새 스크립트를 추가하세요.';
                         }
+                        
+                        log('[Sidebar] ✅ 스크립트 삭제 완료:', script.name);
+                        log('[Sidebar] 남은 스크립트 개수:', this.scripts.length);
+                        
+                        // 성공 메시지 표시
+                        modalManager.showAlert('삭제 완료', `"${script.name}" 스크립트가 삭제되었습니다.`);
                     } else {
+                        log('[Sidebar] ⚠️ ScriptAPI를 사용할 수 없음. 로컬 폴백 사용');
                         // API가 없을 때의 폴백
                         this.scripts.splice(index, 1);
                         
@@ -374,13 +471,21 @@ export class SidebarManager {
                         this.loadScripts();
                         this.updateHeader();
                         this.dispatchScriptChangeEvent();
+                        
+                        log('[Sidebar] 로컬에서 스크립트 삭제됨:', script.name);
                     }
-                    
-                    log('스크립트 삭제됨:', script.name);
                 } catch (error) {
-                    logError('스크립트 삭제 실패:', error);
-                    modalManager.showAlert('오류', `스크립트 삭제 실패: ${error.message}`);
+                    logError('[Sidebar] ❌ 스크립트 삭제 실패:', error);
+                    logError('[Sidebar] 에러 상세:', {
+                        name: error.name,
+                        message: error.message,
+                        stack: error.stack
+                    });
+                    modalManager.showAlert('삭제 실패', `스크립트 삭제 중 오류가 발생했습니다: ${error.message}`);
                 }
+            },
+            () => {
+                log('[Sidebar] 사용자가 삭제 취소함');
             }
         );
     }
