@@ -1,0 +1,278 @@
+/**
+ * 워크플로우 로드 서비스
+ * 서버에서 워크플로우 데이터를 가져와 화면에 표시하는 로직을 담당합니다.
+ */
+
+import { getDefaultDescription } from '../config/node-defaults.js';
+import { NODE_TYPES } from '../constants/node-types.js';
+import { ScriptAPI } from '../../../js/api/scriptapi.js';
+
+export class WorkflowLoadService {
+    constructor(workflowPage) {
+        this.workflowPage = workflowPage;
+    }
+
+    /**
+     * 스크립트 데이터 로드
+     * @param {Object} script - 스크립트 정보
+     */
+    async load(script) {
+        const logger = this.workflowPage.getLogger();
+        const log = logger.log;
+        const logError = logger.error;
+        
+        log('[WorkflowPage] loadScriptData() 호출됨');
+        log('[WorkflowPage] 로드할 스크립트:', { id: script?.id, name: script?.name });
+        
+        if (!script || !script.id) {
+            logError('[WorkflowPage] ⚠️ 유효하지 않은 스크립트 정보:', script);
+            return;
+        }
+        
+        // 연결선 매니저 초기화 확인
+        this.workflowPage.ensureConnectionManagerInitialized();
+        
+        const nodeManager = this.workflowPage.getNodeManager();
+        
+        // 기존 노드들 제거
+        this.clearExistingNodes(nodeManager);
+        
+        try {
+            if (ScriptAPI && script.id) {
+                const response = await ScriptAPI.getScript(script.id);
+                log('[WorkflowPage] ✅ 서버에서 스크립트 정보 받음:', response);
+                
+                const nodes = response.nodes || [];
+                const connections = this.buildConnectionsFromNodes(nodes);
+                
+                if (nodes.length > 0) {
+                    await this.renderNodes(nodes, connections, nodeManager);
+                } else {
+                    this.workflowPage.createDefaultBoundaryNodes();
+                }
+            } else {
+                logError('[WorkflowPage] ⚠️ ScriptAPI를 사용할 수 없거나 script.id가 없습니다.');
+                this.workflowPage.createDefaultBoundaryNodes();
+            }
+        } catch (error) {
+            logError('[WorkflowPage] ❌ 노드 데이터 로드 실패:', error);
+            this.workflowPage.createDefaultBoundaryNodes();
+        }
+    }
+
+    /**
+     * 기존 노드들 제거
+     */
+    clearExistingNodes(nodeManager) {
+        const logger = this.workflowPage.getLogger();
+        const log = logger.log;
+        
+        log('[WorkflowPage] 기존 노드 제거 시작');
+        const existingNodes = document.querySelectorAll('.workflow-node');
+        log(`[WorkflowPage] 제거할 노드 개수: ${existingNodes.length}개`);
+        
+        existingNodes.forEach(node => {
+            if (nodeManager) {
+                nodeManager.deleteNode(node);
+            }
+        });
+        
+        log('[WorkflowPage] 기존 노드 제거 완료');
+    }
+
+    /**
+     * 노드들의 연결 정보로부터 connections 배열 생성
+     */
+    buildConnectionsFromNodes(nodes) {
+        const logger = this.workflowPage.getLogger();
+        const log = logger.log;
+        
+        const connections = [];
+        
+        nodes.forEach(node => {
+            let connectedTo = node.connected_to;
+            
+            // connected_to가 문자열인 경우 JSON 파싱
+            if (typeof connectedTo === 'string') {
+                try {
+                    connectedTo = JSON.parse(connectedTo);
+                } catch (e) {
+                    log(`[WorkflowPage] ⚠️ 노드 ${node.id}의 connected_to 파싱 실패: ${e.message}`);
+                    connectedTo = [];
+                }
+            }
+            
+            // 배열이 아니거나 비어있으면 건너뛰기
+            if (!Array.isArray(connectedTo) || connectedTo.length === 0) {
+                return;
+            }
+            
+            // 각 연결에 대해 connections 배열에 추가
+            connectedTo.forEach(toNodeId => {
+                if (toNodeId) {
+                    connections.push({
+                        from: node.id,
+                        to: toNodeId
+                    });
+                    log(`[WorkflowPage] 연결 추가: ${node.id} → ${toNodeId}`);
+                }
+            });
+        });
+        
+        log(`[WorkflowPage] ✅ 생성된 연결 개수: ${connections.length}개`);
+        return connections;
+    }
+
+    /**
+     * 노드들을 화면에 렌더링
+     */
+    async renderNodes(nodes, connections, nodeManager) {
+        const logger = this.workflowPage.getLogger();
+        const log = logger.log;
+        
+        log('[WorkflowPage] 노드 데이터가 있음. 화면에 그리기 시작...');
+        log('[WorkflowPage] 노드 목록:', nodes.map(n => ({ id: n.id, type: n.type })));
+        
+        // 연결선 매니저가 완전히 초기화될 때까지 대기
+        setTimeout(() => {
+            log('[WorkflowPage] 노드 생성 시작');
+            
+            // 노드들 생성
+            nodes.forEach((nodeData, index) => {
+                this.createNodeFromServerData(nodeData, nodeManager);
+                
+                log(`[WorkflowPage] 노드 ${index + 1}/${nodes.length} 생성 중:`, {
+                    id: nodeData.id,
+                    type: nodeData.type
+                });
+            });
+            
+            log('[WorkflowPage] 모든 노드 생성 완료');
+            
+            // 노드가 DOM에 완전히 렌더링될 때까지 대기
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    this.restoreConnections(connections, nodeManager);
+                    this.workflowPage.fitNodesToView();
+                    
+                    // 뷰포트 조정 후 연결선 위치를 다시 한 번 업데이트
+                    setTimeout(() => {
+                        if (nodeManager && nodeManager.connectionManager && connections.length > 0) {
+                            log('[WorkflowPage] 뷰포트 조정 후 연결선 위치 최종 업데이트');
+                            nodeManager.connectionManager.updateAllConnections();
+                        }
+                        log('[WorkflowPage] ✅ 스크립트 데이터 로드 및 화면 그리기 완료');
+                    }, 150);
+                });
+            });
+        }, 100);
+    }
+
+    /**
+     * 서버 데이터로부터 노드 생성
+     */
+    createNodeFromServerData(nodeData, nodeManager) {
+        const originalX = nodeData.position?.x || 0;
+        const originalY = nodeData.position?.y || 0;
+        
+        // API 응답 형식을 NodeManager 형식으로 변환
+        const nodeDataForManager = {
+            id: nodeData.id,
+            title: nodeData.data?.title || nodeData.id,
+            type: nodeData.type,
+            color: nodeData.data?.color || 'blue',
+            x: originalX,
+            y: originalY,
+            ...nodeData.data
+        };
+        
+        // parameters 복원
+        if (nodeData.parameters && Object.keys(nodeData.parameters).length > 0) {
+            if (nodeManager && nodeManager.nodeData) {
+                if (!nodeManager.nodeData[nodeData.id]) {
+                    nodeManager.nodeData[nodeData.id] = {};
+                }
+                
+                const nodeType = nodeData.type;
+                if (nodeType === NODE_TYPES.IMAGE_TOUCH && nodeData.parameters.folder_path) {
+                    nodeManager.nodeData[nodeData.id].folder_path = nodeData.parameters.folder_path;
+                    nodeDataForManager.folder_path = nodeData.parameters.folder_path;
+                } else if (nodeType === NODE_TYPES.CONDITION && nodeData.parameters.condition) {
+                    nodeManager.nodeData[nodeData.id].condition = nodeData.parameters.condition;
+                    nodeDataForManager.condition = nodeData.parameters.condition;
+                } else if (nodeType === NODE_TYPES.WAIT && nodeData.parameters.wait_time !== undefined) {
+                    nodeManager.nodeData[nodeData.id].wait_time = nodeData.parameters.wait_time;
+                    nodeDataForManager.wait_time = nodeData.parameters.wait_time;
+                }
+            }
+        }
+        
+        // description 복원
+        if (nodeData.description) {
+            if (nodeManager && nodeManager.nodeData) {
+                if (!nodeManager.nodeData[nodeData.id]) {
+                    nodeManager.nodeData[nodeData.id] = {};
+                }
+                nodeManager.nodeData[nodeData.id].description = nodeData.description;
+                nodeDataForManager.description = nodeData.description;
+            }
+        }
+        
+        // 타입 저장
+        if (nodeManager && nodeManager.nodeData && nodeManager.nodeData[nodeData.id]) {
+            nodeManager.nodeData[nodeData.id].type = nodeData.type;
+        }
+        
+        if (nodeManager) {
+            nodeManager.createNode(nodeDataForManager);
+        }
+    }
+
+    /**
+     * 연결선 복원
+     */
+    restoreConnections(connections, nodeManager) {
+        const logger = this.workflowPage.getLogger();
+        const log = logger.log;
+        
+        log('[WorkflowPage] 연결선 복원 준비');
+        log(`[WorkflowPage] connections.length: ${connections.length}`);
+        
+        if (connections.length > 0) {
+            if (nodeManager && nodeManager.connectionManager) {
+                log('[WorkflowPage] 연결선 복원 시작');
+                
+                const formattedConnections = connections.map(conn => ({
+                    from: conn.from,
+                    to: conn.to
+                }));
+                
+                log('[WorkflowPage] 연결선 데이터:', formattedConnections);
+                
+                try {
+                    nodeManager.connectionManager.setConnections(formattedConnections);
+                    log('[WorkflowPage] ✅ setConnections 호출 완료');
+                    
+                    setTimeout(() => {
+                        log('[WorkflowPage] 연결선 위치 재계산 및 업데이트 시작');
+                        try {
+                            nodeManager.connectionManager.updateAllConnections();
+                            log('[WorkflowPage] ✅ 연결선 복원 완료');
+                        } catch (error) {
+                            log(`[WorkflowPage] ❌ updateAllConnections 실패: ${error.message}`);
+                            console.error(error);
+                        }
+                    }, 100);
+                } catch (error) {
+                    log(`[WorkflowPage] ❌ setConnections 실패: ${error.message}`);
+                    console.error(error);
+                }
+            } else {
+                log('[WorkflowPage] ⚠️ 연결선 매니저가 없습니다.');
+            }
+        } else {
+            log('[WorkflowPage] ⚠️ 연결이 없어서 연결선을 그릴 수 없습니다.');
+        }
+    }
+}
+

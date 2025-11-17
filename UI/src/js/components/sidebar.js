@@ -183,7 +183,21 @@ export class SidebarManager {
     }
     
     loadScripts() {
+        const logger = getLogger();
+        const log = logger.log;
+        const logError = logger.error;
+        
+        log('[Sidebar] loadScripts() 호출됨');
+        log(`[Sidebar] 렌더링할 스크립트 개수: ${this.scripts.length}개`);
+        
         const scriptList = document.querySelector('.script-list');
+        if (!scriptList) {
+            logError('[Sidebar] ❌ .script-list 요소를 찾을 수 없습니다!');
+            logError('[Sidebar] DOM 상태 확인 필요');
+            return;
+        }
+        
+        log('[Sidebar] ✅ .script-list 요소 찾음');
         scriptList.innerHTML = '';
         
         if (this.scripts.length === 0) {
@@ -193,13 +207,13 @@ export class SidebarManager {
             emptyMessage.style.cssText = 'padding: 20px; text-align: center; color: #a0aec0; font-size: 14px;';
             emptyMessage.textContent = '스크립트가 없습니다. + 버튼을 눌러 새 스크립트를 추가하세요.';
             scriptList.appendChild(emptyMessage);
+            log('[Sidebar] 빈 스크립트 목록 메시지 표시');
             return;
         }
         
-        const logger = getLogger();
-        const log = logger.log;
-        
         this.scripts.forEach((script, index) => {
+            log(`[Sidebar] 스크립트 ${index + 1} 렌더링 중: ${script.name}`);
+            
             const scriptItem = document.createElement('div');
             scriptItem.className = `script-item ${script.active ? 'active' : ''}`;
             
@@ -238,6 +252,8 @@ export class SidebarManager {
             
             scriptList.appendChild(scriptItem);
         });
+        
+        log(`[Sidebar] ✅ 스크립트 목록 렌더링 완료: ${this.scripts.length}개 항목`);
     }
     
     selectScript(index) {
@@ -605,14 +621,27 @@ export class SidebarManager {
     }
     
     dispatchScriptChangeEvent() {
+        const logger = getLogger();
+        const log = logger.log;
+        
+        const currentScript = this.getCurrentScript();
+        const previousScript = this.getPreviousScript();
+        
+        log('[Sidebar] dispatchScriptChangeEvent() 호출됨');
+        log('[Sidebar] 현재 스크립트:', currentScript);
+        log('[Sidebar] 이전 스크립트:', previousScript);
+        
         const event = new CustomEvent('scriptChanged', {
             detail: {
-                script: this.getCurrentScript(),
-                previousScript: this.getPreviousScript(),
+                script: currentScript,
+                previousScript: previousScript,
                 index: this.currentScriptIndex
             }
         });
+        
+        log('[Sidebar] scriptChanged 이벤트 dispatch 시작');
         document.dispatchEvent(event);
+        log('[Sidebar] ✅ scriptChanged 이벤트 dispatch 완료');
     }
     
     // 스크립트 데이터 저장/로드
