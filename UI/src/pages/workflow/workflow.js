@@ -222,7 +222,7 @@ export class WorkflowPage {
                 id: 'end',
                 type: 'end',
                 title: '종료',
-                color: 'orange',
+                color: 'gray',
                 x: baseX + 200,
                 y: baseY
             }
@@ -334,6 +334,16 @@ export class WorkflowPage {
         
         // Transform 적용
         canvasContent.style.transform = `translate(${transformX}px, ${transformY}px) scale(${scale})`;
+        
+        // canvasController의 canvasTransform도 동기화
+        const nodeManager = getNodeManager();
+        if (nodeManager && nodeManager.canvasController) {
+            nodeManager.canvasController.canvasTransform = {
+                x: transformX,
+                y: transformY,
+                scale: scale
+            };
+        }
         
         log('[WorkflowPage] ✅ 뷰포트 조정 완료 - 모든 노드가 화면에 표시됨');
     }

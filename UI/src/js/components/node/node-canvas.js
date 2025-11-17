@@ -108,9 +108,9 @@
                 e.stopImmediatePropagation();
             });
 
-            // 리사이즈 시 캔버스가 항상 스크롤 가능하도록 보장
+            // 리사이즈 시 캔버스가 항상 스크롤 가능하도록 보장 (노드 위치는 변경하지 않음)
             window.addEventListener('resize', () => {
-                this.ensureCanvasScrollable();
+                this.ensureCanvasContentExists();
             });
         }
 
@@ -154,24 +154,33 @@
             const deltaX = e.deltaX || (e.shiftKey ? e.deltaY : 0);
             const deltaY = e.deltaY || (e.shiftKey ? 0 : e.deltaY);
 
-            if (!this.canvasTransform) {
-                this.canvasTransform = { x: -50000, y: -50000, scale: 1 };
-            }
-
-            const newX = this.canvasTransform.x + deltaX;
-            const newY = this.canvasTransform.y + deltaY;
-
+            // 실제 DOM의 transform 값을 읽어와서 사용 (동기화 보장)
             const canvasContent = document.getElementById('canvas-content');
-            let currentScale = this.canvasTransform.scale;
+            let currentX = -50000;
+            let currentY = -50000;
+            let currentScale = 1;
+
             if (canvasContent) {
-                const currentTransform = canvasContent.style.transform;
-                if (currentTransform && currentTransform !== 'none') {
-                    const scaleMatch = currentTransform.match(/scale\(([^)]+)\)/);
-                    if (scaleMatch) {
-                        currentScale = parseFloat(scaleMatch[1]) || 1;
-                    }
+                const currentTransform = canvasContent.style.transform || 'translate(-50000px, -50000px) scale(1)';
+                
+                const translateMatch = currentTransform.match(/translate\(([^,]+)px,\s*([^)]+)px\)/);
+                if (translateMatch) {
+                    currentX = parseFloat(translateMatch[1]) || -50000;
+                    currentY = parseFloat(translateMatch[2]) || -50000;
+                }
+
+                const scaleMatch = currentTransform.match(/scale\(([^)]+)\)/);
+                if (scaleMatch) {
+                    currentScale = parseFloat(scaleMatch[1]) || 1;
                 }
             }
+
+            // 실제 DOM 값으로 동기화
+            this.canvasTransform = { x: currentX, y: currentY, scale: currentScale };
+
+            // deltaY 부호를 반전하여 올바른 방향으로 스크롤되도록 수정
+            const newX = currentX + deltaX;
+            const newY = currentY - deltaY;
 
             this.updateCanvasTransform(newX, newY, currentScale);
 
@@ -191,13 +200,33 @@
             this.isPanning = true;
             this.panStart = { x: e.clientX, y: e.clientY };
 
-            if (!this.canvasTransform) {
-                this.canvasTransform = { x: -50000, y: -50000, scale: 1 };
+            // 실제 DOM의 transform 값을 읽어와서 사용 (동기화 보장)
+            const canvasContent = document.getElementById('canvas-content');
+            let currentX = -50000;
+            let currentY = -50000;
+            let currentScale = 1;
+
+            if (canvasContent) {
+                const currentTransform = canvasContent.style.transform || 'translate(-50000px, -50000px) scale(1)';
+                
+                const translateMatch = currentTransform.match(/translate\(([^,]+)px,\s*([^)]+)px\)/);
+                if (translateMatch) {
+                    currentX = parseFloat(translateMatch[1]) || -50000;
+                    currentY = parseFloat(translateMatch[2]) || -50000;
+                }
+
+                const scaleMatch = currentTransform.match(/scale\(([^)]+)\)/);
+                if (scaleMatch) {
+                    currentScale = parseFloat(scaleMatch[1]) || 1;
+                }
             }
 
+            // 실제 DOM 값으로 동기화
+            this.canvasTransform = { x: currentX, y: currentY, scale: currentScale };
+
             this.panScrollStart = {
-                left: this.canvasTransform.x,
-                top: this.canvasTransform.y
+                left: currentX,
+                top: currentY
             };
 
             this.canvas.classList.add('panning');
@@ -222,15 +251,12 @@
             const deltaX = e.clientX - this.panStart.x;
             const deltaY = e.clientY - this.panStart.y;
 
-            if (!this.canvasTransform) {
-                this.canvasTransform = { x: -50000, y: -50000, scale: 1 };
-            }
-
             const newX = this.panScrollStart.left + deltaX;
             const newY = this.panScrollStart.top + deltaY;
 
+            // 실제 DOM의 scale 값을 읽어와서 사용
             const canvasContent = document.getElementById('canvas-content');
-            let currentScale = this.canvasTransform.scale;
+            let currentScale = 1;
             if (canvasContent) {
                 const currentTransform = canvasContent.style.transform;
                 if (currentTransform && currentTransform !== 'none') {
@@ -325,7 +351,47 @@
         }
 
         /**
+         * canvas-content 요소만 확인하고 생성 (노드 위치는 변경하지 않음)
+         * resize 이벤트 등에서 사용
+         */
+        ensureCanvasContentExists() {
+            let canvasContent = document.getElementById('canvas-content');
+
+            if (!canvasContent) {
+                log('canvas-content 없음 → 동적 생성 (resize)');
+
+                const existingNodes = Array.from(this.canvas.children);
+
+                canvasContent = document.createElement('div');
+                canvasContent.id = 'canvas-content';
+                canvasContent.className = 'canvas-content';
+
+                this.canvas.innerHTML = '';
+                this.canvas.appendChild(canvasContent);
+
+                existingNodes.forEach((node) => {
+                    const currentLeft = node.style.left;
+                    const currentTop = node.style.top;
+                    canvasContent.appendChild(node);
+                    node.style.left = currentLeft;
+                    node.style.top = currentTop;
+                });
+
+                // 기존 transform 값 유지
+                if (this.canvasTransform) {
+                    canvasContent.style.transform = `translate(${this.canvasTransform.x}px, ${this.canvasTransform.y}px) scale(${this.canvasTransform.scale})`;
+                } else {
+                    canvasContent.style.transform = 'translate(-50000px, -50000px) scale(1)';
+                    this.canvasTransform = { x: -50000, y: -50000, scale: 1 };
+                }
+
+                log('canvas-content 생성 완료 (기존 transform 유지)');
+            }
+        }
+
+        /**
          * 무한 캔버스 모드에서 캔버스 크기 보장
+         * 초기화 시에만 사용 (노드 위치 재배열 포함)
          */
         ensureCanvasScrollable() {
             if (this.nodeManager.isInfiniteCanvas) {
@@ -359,31 +425,42 @@
                         log('canvas-content 생성 및 노드 이동 완료');
                     }
 
-                    const screenCenterX = this.canvas.clientWidth / 2;
-                    const screenCenterY = this.canvas.clientHeight / 2;
-
+                    // 초기화 시에만 노드 위치 재배열
                     const nodes = canvasContent.querySelectorAll('.workflow-node');
-                    nodes.forEach((node, index) => {
-                        const nodeWidth = 200;
-                        const nodeHeight = 80;
-                        const spacing = 250;
+                    if (nodes.length > 0) {
+                        // 노드가 이미 위치를 가지고 있는지 확인
+                        const firstNode = nodes[0];
+                        const hasExistingPosition = firstNode.style.left && firstNode.style.top && 
+                                                   (parseFloat(firstNode.style.left) !== 0 || parseFloat(firstNode.style.top) !== 0);
+                        
+                        // 노드 위치가 없을 때만 재배열
+                        if (!hasExistingPosition) {
+                            const screenCenterX = this.canvas.clientWidth / 2;
+                            const screenCenterY = this.canvas.clientHeight / 2;
 
-                        const nodeX =
-                            screenCenterX + (index - 1) * spacing - nodeWidth / 2;
-                        const nodeY = screenCenterY - nodeHeight / 2;
+                            nodes.forEach((node, index) => {
+                                const nodeWidth = 200;
+                                const nodeHeight = 80;
+                                const spacing = 250;
 
-                        log(
-                            `노드 ${node.dataset.nodeId} 위치 조정:`,
-                            node.style.left,
-                            node.style.top,
-                            '→',
-                            nodeX,
-                            nodeY
-                        );
+                                const nodeX =
+                                    screenCenterX + (index - 1) * spacing - nodeWidth / 2;
+                                const nodeY = screenCenterY - nodeHeight / 2;
 
-                        node.style.left = nodeX + 'px';
-                        node.style.top = nodeY + 'px';
-                    });
+                                log(
+                                    `노드 ${node.dataset.nodeId} 위치 조정:`,
+                                    node.style.left,
+                                    node.style.top,
+                                    '→',
+                                    nodeX,
+                                    nodeY
+                                );
+
+                                node.style.left = nodeX + 'px';
+                                node.style.top = nodeY + 'px';
+                            });
+                        }
+                    }
 
                     canvasContent.style.transform = 'translate(0px, 0px)';
 
