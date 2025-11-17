@@ -41,6 +41,7 @@ export class NodeManager {
 
         // === 외부 매니저 참조 ===
         this.connectionManager = null;      // 노드 간 연결선 관리 객체
+        this.workflowPage = null;           // WorkflowPage 인스턴스 참조
 
         // 드래그/연결 업데이트 스로틀링 관련 플래그
         this.connectionUpdateScheduled = false;
@@ -259,9 +260,37 @@ export class NodeManager {
             this.selectNode(node);
         });
 
+        // 더블클릭으로 노드 설정 모달 열기
+        node.addEventListener('dblclick', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            this.openNodeSettings(node);
+        });
+
         // 드래그는 드래그 컨트롤러에 위임
         if (this.dragController) {
             this.dragController.attachNode(node);
+        }
+    }
+
+    /**
+     * WorkflowPage 인스턴스 설정
+     * @param {WorkflowPage} workflowPage - WorkflowPage 인스턴스
+     */
+    setWorkflowPage(workflowPage) {
+        this.workflowPage = workflowPage;
+    }
+
+    /**
+     * 노드 설정 모달 열기
+     * @param {HTMLElement} node - 설정할 노드 요소
+     */
+    openNodeSettings(node) {
+        // WorkflowPage의 showNodeSettingsModal 호출
+        if (this.workflowPage && typeof this.workflowPage.showNodeSettingsModal === 'function') {
+            this.workflowPage.showNodeSettingsModal(node);
+        } else {
+            logWarn('WorkflowPage의 showNodeSettingsModal을 찾을 수 없습니다.');
         }
     }
 

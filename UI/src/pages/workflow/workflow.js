@@ -161,7 +161,10 @@ export class WorkflowPage {
             const nodeManager = getNodeManager();
             const sidebarManager = getSidebarManager();
             
-            if (nodeManager) {}
+            if (nodeManager) {
+                // NodeManager에 WorkflowPage 참조 전달 (ES6 모듈 방식)
+                nodeManager.setWorkflowPage(this);
+            }
             
             if (sidebarManager) {
                 // 초기 로드시 현재 스크립트의 워크플로우를 로드하고,
@@ -368,11 +371,20 @@ export class WorkflowPage {
                     <option value="condition">조건 노드</option>
                     <option value="loop">반복 노드</option>
                     <option value="wait">대기 노드</option>
+                    <option value="image-touch">이미지 터치 노드</option>
                 </select>
             </div>
             <div class="form-group">
                 <label for="node-title">노드 제목:</label>
                 <input type="text" id="node-title" placeholder="노드 제목을 입력하세요">
+            </div>
+            <div class="form-group" id="image-touch-settings" style="display: none;">
+                <label for="node-folder-path">이미지 폴더 경로:</label>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="node-folder-path" placeholder="예: C:\\images\\touch" style="flex: 1;">
+                    <button type="button" id="browse-folder-btn" class="btn btn-secondary">폴더 선택</button>
+                </div>
+                <small style="color: #666; font-size: 12px;">이미지 파일 이름 순서대로 화면에서 찾아 터치합니다.</small>
             </div>
             <div class="form-group">
                 <label for="node-color">노드 색상:</label>
@@ -390,6 +402,70 @@ export class WorkflowPage {
         `;
         
         modalManager.show(content);
+        
+        // 노드 타입 변경 시 이미지 터치 설정 표시/숨김
+        const nodeTypeSelect = document.getElementById('node-type');
+        const imageTouchSettings = document.getElementById('image-touch-settings');
+        
+        nodeTypeSelect.addEventListener('change', () => {
+            if (nodeTypeSelect.value === 'image-touch') {
+                imageTouchSettings.style.display = 'block';
+                if (!document.getElementById('node-title').value) {
+                    document.getElementById('node-title').value = '이미지 터치';
+                }
+            } else {
+                imageTouchSettings.style.display = 'none';
+            }
+        });
+        
+        // 폴더 선택 버튼 - 백엔드 API를 통해 폴더 선택 다이얼로그 호출
+        document.getElementById('browse-folder-btn').addEventListener('click', async () => {
+            const btn = document.getElementById('browse-folder-btn');
+            const originalText = btn.textContent;
+            
+            try {
+                btn.disabled = true;
+                btn.textContent = '폴더 선택 중...';
+                
+                // 백엔드 API 호출하여 폴더 선택 다이얼로그 띄우기
+                const response = await fetch('http://localhost:8000/api/folder/select', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.folder_path) {
+                    document.getElementById('node-folder-path').value = data.folder_path;
+                    
+                    // 이미지 개수도 미리 확인
+                    try {
+                        const imageListResponse = await fetch(`http://localhost:8000/api/images/list?folder_path=${encodeURIComponent(data.folder_path)}`);
+                        const imageListData = await imageListResponse.json();
+                        if (imageListData.success) {
+                            const count = imageListData.count || 0;
+                            const infoText = count > 0 ? `${count}개 이미지 파일 발견` : '이미지 파일 없음';
+                            document.getElementById('node-folder-path').title = infoText;
+                        }
+                    } catch (e) {
+                        // 이미지 목록 조회 실패는 무시
+                        console.warn('이미지 목록 조회 실패:', e);
+                    }
+                } else {
+                    if (data.message) {
+                        alert(data.message);
+                    }
+                }
+            } catch (error) {
+                console.error('폴더 선택 실패:', error);
+                alert('폴더 선택에 실패했습니다. 서버가 실행 중인지 확인하세요.');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        });
         
         // 이벤트 리스너 추가
         document.getElementById('add-node-confirm').addEventListener('click', () => {
@@ -419,15 +495,540 @@ export class WorkflowPage {
             y: Math.random() * 300 + 100
         };
         
+        // 이미지 터치 노드인 경우 폴더 경로 추가
+        if (nodeType === 'image-touch') {
+            const folderPath = document.getElementById('node-folder-path').value;
+            if (!folderPath) {
+                alert('이미지 폴더 경로를 입력해주세요.');
+                return;
+            }
+            nodeData.folder_path = folderPath;
+        }
+        
         const nodeManager = getNodeManager();
         if (nodeManager) {
-            nodeManager.createNode(nodeData);
+            const createdNode = nodeManager.createNode(nodeData);
+            
+            // 이미지 터치 노드인 경우 이미지 개수 확인 및 표시
+            if (nodeType === 'image-touch' && nodeData.folder_path) {
+                fetch(`http://localhost:8000/api/images/list?folder_path=${encodeURIComponent(nodeData.folder_path)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success && createdNode) {
+                            const count = data.count || 0;
+                            nodeData.image_count = count;
+                            
+                            // NodeManager의 노드 데이터에도 이미지 개수 저장
+                            if (nodeManager.nodeData && nodeManager.nodeData[nodeData.id]) {
+                                nodeManager.nodeData[nodeData.id].image_count = count;
+                            }
+                            
+                            const infoElement = createdNode.querySelector('.node-info');
+                            if (infoElement) {
+                                infoElement.textContent = `${count}개 이미지`;
+                            } else if (count > 0) {
+                                const contentElement = createdNode.querySelector('.node-content');
+                                if (contentElement) {
+                                    const info = document.createElement('div');
+                                    info.className = 'node-info';
+                                    info.textContent = `${count}개 이미지`;
+                                    contentElement.appendChild(info);
+                                }
+                            }
+                        }
+                    })
+                    .catch(e => {
+                        console.warn('이미지 개수 조회 실패:', e);
+                    });
+            }
         }
         
         const modalManager = getModalManager();
         if (modalManager) {
             modalManager.close();
         }
+    }
+    
+    /**
+     * 노드 설정 모달 표시
+     * 노드를 더블클릭했을 때 호출되는 함수입니다.
+     * @param {HTMLElement} nodeElement - 설정할 노드 요소
+     */
+    showNodeSettingsModal(nodeElement) {
+        const modalManager = getModalManager();
+        if (!modalManager) {
+            console.error('ModalManager를 사용할 수 없습니다.');
+            return;
+        }
+        
+        const logger = getLogger();
+        const log = logger.log;
+        
+        const nodeId = nodeElement.id || nodeElement.dataset.nodeId;
+        const nodeManager = getNodeManager();
+        
+        // 저장된 노드 데이터 가져오기
+        let nodeData = null;
+        if (nodeManager && nodeManager.nodeData && nodeManager.nodeData[nodeId]) {
+            nodeData = nodeManager.nodeData[nodeId];
+        }
+        
+        // 노드 타입 확인
+        const nodeType = nodeData?.type || this.getNodeType(nodeElement);
+        const currentTitle = nodeElement.querySelector('.node-title')?.textContent || '';
+        const currentColor = nodeElement.className.match(/node-(\w+)/)?.[1] || 'blue';
+        
+        log(`[WorkflowPage] 노드 설정 모달 열기: ${nodeId}, 타입: ${nodeType}`);
+        
+        // 노드 타입별 설정 UI 생성
+        let typeSpecificSettings = '';
+        
+        if (nodeType === 'image-touch') {
+            const folderPath = nodeData?.folder_path || '';
+            const imageCount = nodeData?.image_count || 0;
+            const imageCountText = imageCount > 0 ? ` <span style="color: #666; font-weight: normal;">(${imageCount}개 이미지)</span>` : '';
+            typeSpecificSettings = `
+                <div class="form-group">
+                    <label for="edit-node-folder-path">이미지 폴더 경로${imageCountText}:</label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="edit-node-folder-path" value="${this.escapeHtml(folderPath)}" placeholder="예: C:\\images\\touch" style="flex: 1;">
+                        <button type="button" id="edit-browse-folder-btn" class="btn btn-secondary">폴더 선택</button>
+                    </div>
+                    <small style="color: #666; font-size: 12px;">이미지 파일 이름 순서대로 화면에서 찾아 터치합니다.</small>
+                </div>
+            `;
+        } else if (nodeType === 'action') {
+            const description = nodeData?.description || '';
+            typeSpecificSettings = `
+                <div class="form-group">
+                    <label for="edit-node-description">설명:</label>
+                    <textarea id="edit-node-description" rows="3" placeholder="노드에 대한 설명을 입력하세요" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">${this.escapeHtml(description)}</textarea>
+                </div>
+            `;
+        } else if (nodeType === 'condition') {
+            const condition = nodeData?.condition || '';
+            typeSpecificSettings = `
+                <div class="form-group">
+                    <label for="edit-node-condition">조건 설정:</label>
+                    <input type="text" id="edit-node-condition" value="${this.escapeHtml(condition)}" placeholder="조건을 입력하세요" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                </div>
+            `;
+        } else if (nodeType === 'wait') {
+            const waitTime = nodeData?.wait_time || 1;
+            typeSpecificSettings = `
+                <div class="form-group">
+                    <label for="edit-node-wait-time">대기 시간 (초):</label>
+                    <input type="number" id="edit-node-wait-time" value="${waitTime}" min="0" step="0.1" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                </div>
+            `;
+        }
+        
+        const content = `
+            <h3>노드 설정</h3>
+            <div class="form-group">
+                <label for="edit-node-title">노드 제목:</label>
+                <input type="text" id="edit-node-title" value="${this.escapeHtml(currentTitle)}" placeholder="노드 제목을 입력하세요" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+            </div>
+            <div class="form-group">
+                <label for="edit-node-type">노드 타입:</label>
+                <select id="edit-node-type" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    <option value="action" ${nodeType === 'action' ? 'selected' : ''}>액션 노드</option>
+                    <option value="condition" ${nodeType === 'condition' ? 'selected' : ''}>조건 노드</option>
+                    <option value="loop" ${nodeType === 'loop' ? 'selected' : ''}>반복 노드</option>
+                    <option value="wait" ${nodeType === 'wait' ? 'selected' : ''}>대기 노드</option>
+                    <option value="image-touch" ${nodeType === 'image-touch' ? 'selected' : ''}>이미지 터치 노드</option>
+                </select>
+            </div>
+            <div id="edit-node-type-settings">
+                ${typeSpecificSettings}
+            </div>
+            <div class="form-group">
+                <label for="edit-node-description">설명:</label>
+                <textarea id="edit-node-description" rows="3" placeholder="노드에 대한 설명을 입력하세요 (선택사항)" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">${this.escapeHtml(nodeData?.description || '')}</textarea>
+            </div>
+            <div class="form-group">
+                <label for="edit-node-color">노드 색상:</label>
+                <select id="edit-node-color" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    <option value="blue" ${currentColor === 'blue' ? 'selected' : ''}>파란색</option>
+                    <option value="orange" ${currentColor === 'orange' ? 'selected' : ''}>주황색</option>
+                    <option value="green" ${currentColor === 'green' ? 'selected' : ''}>초록색</option>
+                    <option value="purple" ${currentColor === 'purple' ? 'selected' : ''}>보라색</option>
+                    <option value="red" ${currentColor === 'red' ? 'selected' : ''}>빨간색</option>
+                    <option value="gray" ${currentColor === 'gray' ? 'selected' : ''}>회색</option>
+                </select>
+            </div>
+            <div class="form-actions" style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+                <button id="edit-node-save" class="btn btn-primary">저장</button>
+                <button id="edit-node-cancel" class="btn btn-secondary">취소</button>
+            </div>
+        `;
+        
+        modalManager.show(content);
+        
+        // 노드 타입 변경 시 설정 UI 동적 업데이트
+        const nodeTypeSelect = document.getElementById('edit-node-type');
+        const settingsContainer = document.getElementById('edit-node-type-settings');
+        
+        if (nodeTypeSelect && settingsContainer) {
+            const updateTypeSpecificSettings = () => {
+                const selectedType = nodeTypeSelect.value;
+                let newSettings = '';
+                
+                if (selectedType === 'image-touch') {
+                    const folderPath = document.getElementById('edit-node-folder-path')?.value || nodeData?.folder_path || '';
+                    const imageCount = nodeData?.image_count || 0;
+                    const imageCountText = imageCount > 0 ? ` <span style="color: #666; font-weight: normal;">(${imageCount}개 이미지)</span>` : '';
+                    newSettings = `
+                        <div class="form-group">
+                            <label for="edit-node-folder-path">이미지 폴더 경로${imageCountText}:</label>
+                            <div style="display: flex; gap: 8px;">
+                                <input type="text" id="edit-node-folder-path" value="${this.escapeHtml(folderPath)}" placeholder="예: C:\\images\\touch" style="flex: 1;">
+                                <button type="button" id="edit-browse-folder-btn" class="btn btn-secondary">폴더 선택</button>
+                            </div>
+                            <small style="color: #666; font-size: 12px;">이미지 파일 이름 순서대로 화면에서 찾아 터치합니다.</small>
+                        </div>
+                    `;
+                } else if (selectedType === 'condition') {
+                    const currentCondition = document.getElementById('edit-node-condition')?.value || nodeData?.condition || '';
+                    newSettings = `
+                        <div class="form-group">
+                            <label for="edit-node-condition">조건 설정:</label>
+                            <input type="text" id="edit-node-condition" value="${this.escapeHtml(currentCondition)}" placeholder="조건을 입력하세요" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        </div>
+                    `;
+                } else if (selectedType === 'wait') {
+                    const currentWaitTime = document.getElementById('edit-node-wait-time')?.value || nodeData?.wait_time || 1;
+                    newSettings = `
+                        <div class="form-group">
+                            <label for="edit-node-wait-time">대기 시간 (초):</label>
+                            <input type="number" id="edit-node-wait-time" value="${currentWaitTime}" min="0" step="0.1" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        </div>
+                    `;
+                }
+                
+                // 기존 타입별 설정 제거
+                const existingTypeSettings = settingsContainer.querySelectorAll('.form-group');
+                existingTypeSettings.forEach(el => el.remove());
+                
+                // 새로운 설정 추가
+                if (newSettings) {
+                    settingsContainer.insertAdjacentHTML('beforeend', newSettings);
+                    
+                    // 폴더 선택 버튼 이벤트 다시 바인딩 (이미지 터치 노드인 경우)
+                    const newBrowseBtn = document.getElementById('edit-browse-folder-btn');
+                    if (newBrowseBtn) {
+                        // 기존 이벤트 리스너 제거 (있을 경우)
+                        const newBtn = newBrowseBtn.cloneNode(true);
+                        newBrowseBtn.parentNode.replaceChild(newBtn, newBrowseBtn);
+                        
+                        newBtn.addEventListener('click', async () => {
+                            const btn = newBtn;
+                            const originalText = btn.textContent;
+                            
+                            try {
+                                btn.disabled = true;
+                                btn.textContent = '폴더 선택 중...';
+                                
+                                const response = await fetch('http://localhost:8000/api/folder/select', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' }
+                                });
+                                
+                                const data = await response.json();
+                                
+                                if (data.success && data.folder_path) {
+                                    document.getElementById('edit-node-folder-path').value = data.folder_path;
+                                    
+                                    // 이미지 개수 확인 및 표시
+                                    fetch(`http://localhost:8000/api/images/list?folder_path=${encodeURIComponent(data.folder_path)}`)
+                                        .then(response => response.json())
+                                        .then(imageListData => {
+                                            if (imageListData.success) {
+                                                const count = imageListData.count || 0;
+                                                const label = document.querySelector('label[for="edit-node-folder-path"]');
+                                                if (label) {
+                                                    const existingCount = label.querySelector('span');
+                                                    if (existingCount) {
+                                                        existingCount.textContent = ` (${count}개 이미지)`;
+                                                    } else {
+                                                        const countSpan = document.createElement('span');
+                                                        countSpan.style.cssText = 'color: #666; font-weight: normal;';
+                                                        countSpan.textContent = ` (${count}개 이미지)`;
+                                                        label.appendChild(countSpan);
+                                                    }
+                                                }
+                                            }
+                                        })
+                                        .catch(e => console.warn('이미지 개수 조회 실패:', e));
+                                } else if (data.message) {
+                                    alert(data.message);
+                                }
+                            } catch (error) {
+                                console.error('폴더 선택 실패:', error);
+                                alert('폴더 선택에 실패했습니다. 서버가 실행 중인지 확인하세요.');
+                            } finally {
+                                btn.disabled = false;
+                                btn.textContent = originalText;
+                            }
+                        });
+                    }
+                }
+            };
+            
+            nodeTypeSelect.addEventListener('change', updateTypeSpecificSettings);
+        }
+        
+        // 폴더 선택 버튼 (이미지 터치 노드인 경우)
+        const browseBtn = document.getElementById('edit-browse-folder-btn');
+        if (browseBtn) {
+            browseBtn.addEventListener('click', async () => {
+                const btn = browseBtn;
+                const originalText = btn.textContent;
+                
+                try {
+                    btn.disabled = true;
+                    btn.textContent = '폴더 선택 중...';
+                    
+                    const response = await fetch('http://localhost:8000/api/folder/select', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success && data.folder_path) {
+                        document.getElementById('edit-node-folder-path').value = data.folder_path;
+                        
+                        // 이미지 개수 확인 및 표시
+                        fetch(`http://localhost:8000/api/images/list?folder_path=${encodeURIComponent(data.folder_path)}`)
+                            .then(response => response.json())
+                            .then(imageListData => {
+                                if (imageListData.success) {
+                                    const count = imageListData.count || 0;
+                                    const label = document.querySelector('label[for="edit-node-folder-path"]');
+                                    if (label) {
+                                        const existingCount = label.querySelector('span');
+                                        if (existingCount) {
+                                            existingCount.textContent = ` (${count}개 이미지)`;
+                                        } else {
+                                            const countSpan = document.createElement('span');
+                                            countSpan.style.cssText = 'color: #666; font-weight: normal;';
+                                            countSpan.textContent = ` (${count}개 이미지)`;
+                                            label.appendChild(countSpan);
+                                        }
+                                    }
+                                }
+                            })
+                            .catch(e => console.warn('이미지 개수 조회 실패:', e));
+                    } else if (data.message) {
+                        alert(data.message);
+                    }
+                } catch (error) {
+                    console.error('폴더 선택 실패:', error);
+                    alert('폴더 선택에 실패했습니다. 서버가 실행 중인지 확인하세요.');
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                }
+            });
+        }
+        
+        // 저장 버튼
+        document.getElementById('edit-node-save').addEventListener('click', () => {
+            this.updateNode(nodeElement, nodeId);
+        });
+        
+        // 취소 버튼
+        document.getElementById('edit-node-cancel').addEventListener('click', () => {
+            modalManager.close();
+        });
+    }
+    
+    /**
+     * 노드 업데이트
+     * @param {HTMLElement} nodeElement - 업데이트할 노드 요소
+     * @param {string} nodeId - 노드 ID
+     */
+    updateNode(nodeElement, nodeId) {
+        const logger = getLogger();
+        const log = logger.log;
+        const logError = logger.error;
+        
+        const nodeManager = getNodeManager();
+        if (!nodeManager) {
+            logError('NodeManager를 찾을 수 없습니다.');
+            return;
+        }
+        
+        // 폼에서 데이터 가져오기
+        const newTitle = document.getElementById('edit-node-title').value;
+        const newType = document.getElementById('edit-node-type').value;
+        const newColor = document.getElementById('edit-node-color').value;
+        
+        // 노드 위치 가져오기
+        const position = {
+            x: parseFloat(nodeElement.style.left) || 0,
+            y: parseFloat(nodeElement.style.top) || 0
+        };
+        
+        // 노드 데이터 업데이트
+        const updatedNodeData = {
+            id: nodeId,
+            type: newType,
+            title: newTitle,
+            color: newColor,
+            x: position.x,
+            y: position.y
+        };
+        
+        // description 가져오기 (모든 노드 타입에 공통)
+        const description = document.getElementById('edit-node-description')?.value || '';
+        if (description) {
+            updatedNodeData.description = description;
+        }
+        
+        // 타입별 추가 데이터
+        if (newType === 'image-touch') {
+            const folderPath = document.getElementById('edit-node-folder-path')?.value || '';
+            if (folderPath) {
+                updatedNodeData.folder_path = folderPath;
+            }
+        } else if (newType === 'condition') {
+            const condition = document.getElementById('edit-node-condition')?.value || '';
+            if (condition) {
+                updatedNodeData.condition = condition;
+            }
+        } else if (newType === 'wait') {
+            const waitTime = document.getElementById('edit-node-wait-time')?.value || '1';
+            updatedNodeData.wait_time = parseFloat(waitTime) || 1;
+        }
+        
+        // NodeManager의 노드 데이터 업데이트
+        if (nodeManager.nodeData) {
+            if (!nodeManager.nodeData[nodeId]) {
+                nodeManager.nodeData[nodeId] = {};
+            }
+            // description도 저장
+            if (description) {
+                nodeManager.nodeData[nodeId].description = description;
+            } else {
+                // description이 비어있으면 null로 설정
+                nodeManager.nodeData[nodeId].description = null;
+            }
+            // 나머지 데이터 업데이트
+            Object.assign(nodeManager.nodeData[nodeId], updatedNodeData, {
+                updatedAt: new Date().toISOString()
+            });
+        }
+        
+        // 노드 DOM 업데이트
+        // 색상 클래스 업데이트
+        nodeElement.className = nodeElement.className.replace(/node-\w+/g, '');
+        nodeElement.classList.add(`workflow-node`, `node-${newColor}`);
+        
+        // 노드 타입별 콘텐츠 재생성
+        const nodeContent = nodeManager.generateNodeContent(updatedNodeData);
+        
+        // 노드 전체 구조 재생성 (타입이 변경되었을 수 있으므로)
+        const existingInput = nodeElement.querySelector('.node-input');
+        const existingOutput = nodeElement.querySelector('.node-output');
+        const existingSettings = nodeElement.querySelector('.node-settings');
+        
+        // 기존 연결점 정보 저장
+        const inputConnector = existingInput ? existingInput.outerHTML : '<div class="node-input"></div>';
+        let outputConnector = '<div class="node-output"></div>';
+        if (existingOutput) {
+            outputConnector = existingOutput.outerHTML;
+        } else {
+            // 조건 노드인 경우 여러 출력점이 있을 수 있음
+            const outputsContainer = nodeElement.querySelector('.node-outputs');
+            if (outputsContainer) {
+                outputConnector = outputsContainer.outerHTML;
+            }
+        }
+        
+        nodeElement.innerHTML = `
+            ${inputConnector}
+            ${nodeContent}
+            ${outputConnector}
+            ${existingSettings ? existingSettings.outerHTML : `<div class="node-settings" data-node-id="${nodeId}">⚙</div>`}
+        `;
+        
+        // 이벤트 리스너 다시 설정
+        nodeManager.setupNodeEventListeners(nodeElement);
+        if (nodeManager.connectionHandler) {
+            nodeManager.connectionHandler.setupConnectionEvents(nodeElement);
+        }
+        
+        // 드래그 컨트롤러 다시 연결
+        if (nodeManager.dragController) {
+            nodeManager.dragController.attachNode(nodeElement);
+        }
+        
+        // 이미지 터치 노드인 경우 폴더 경로 및 이미지 개수 표시 업데이트
+        if (newType === 'image-touch' && updatedNodeData.folder_path) {
+            // 이미지 개수 확인
+            fetch(`http://localhost:8000/api/images/list?folder_path=${encodeURIComponent(updatedNodeData.folder_path)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const count = data.count || 0;
+                        updatedNodeData.image_count = count;
+                        
+                        // NodeManager의 노드 데이터에도 이미지 개수 저장
+                        if (nodeManager.nodeData && nodeManager.nodeData[nodeId]) {
+                            nodeManager.nodeData[nodeId].image_count = count;
+                        }
+                        
+                        const descriptionElement = nodeElement.querySelector('.node-description');
+                        const infoElement = nodeElement.querySelector('.node-info');
+                        
+                        if (descriptionElement) {
+                            descriptionElement.textContent = updatedNodeData.folder_path;
+                        }
+                        
+                        if (infoElement) {
+                            infoElement.textContent = `${count}개 이미지`;
+                        } else if (count > 0) {
+                            // info 요소가 없으면 추가
+                            const contentElement = nodeElement.querySelector('.node-content');
+                            if (contentElement) {
+                                const info = document.createElement('div');
+                                info.className = 'node-info';
+                                info.textContent = `${count}개 이미지`;
+                                contentElement.appendChild(info);
+                            }
+                        }
+                    }
+                })
+                .catch(e => {
+                    console.warn('이미지 개수 조회 실패:', e);
+                });
+        }
+        
+        log(`[WorkflowPage] 노드 업데이트 완료: ${nodeId}`);
+        
+        // 모달 닫기
+        const modalManager = getModalManager();
+        if (modalManager) {
+            modalManager.close();
+        }
+        
+        // 연결선 업데이트 (노드 크기나 위치가 변경되었을 수 있음)
+        if (window.connectionManager) {
+            setTimeout(() => {
+                window.connectionManager.updateConnections();
+            }, 100);
+        }
+    }
+    
+    /**
+     * HTML 이스케이프 헬퍼
+     */
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
     
     /**
@@ -462,19 +1063,57 @@ export class WorkflowPage {
             const connections = nodeManager ? nodeManager.getAllConnections() : [];
             
             // NodeManager 형식을 API 형식으로 변환
-            const nodesForAPI = nodes.map(node => ({
-                id: node.id,
-                type: node.type,
-                position: {
-                    x: node.x,
-                    y: node.y
-                },
-                data: {
-                    title: node.title,
-                    color: node.color,
-                    ...node
+            const nodesForAPI = nodes.map(node => {
+                // nodeManager.nodeData에서 parameters 추출
+                // parameters에는 노드 실행에 필요한 핵심 매개변수만 포함
+                let parameters = {};
+                if (nodeManager && nodeManager.nodeData && nodeManager.nodeData[node.id]) {
+                    const nodeData = nodeManager.nodeData[node.id];
+                    const nodeType = nodeData.type || node.type;
+                    
+                    // 이미지 터치 노드: 폴더 경로만 필요 (image_count는 표시용이므로 제외)
+                    if (nodeType === 'image-touch') {
+                        if (nodeData.folder_path) {
+                            parameters.folder_path = nodeData.folder_path;
+                        }
+                    }
+                    // 조건 노드: 조건 설정만 필요
+                    else if (nodeType === 'condition') {
+                        if (nodeData.condition) {
+                            parameters.condition = nodeData.condition;
+                        }
+                    }
+                    // 대기 노드: 대기 시간만 필요
+                    else if (nodeType === 'wait') {
+                        if (nodeData.wait_time !== undefined) {
+                            parameters.wait_time = nodeData.wait_time;
+                        }
+                    }
+                    // 다른 노드 타입(start, end, action, loop 등)은 parameters가 필요 없으면 빈 객체
                 }
-            }));
+                
+                // description 추출 (nodeManager.nodeData에서)
+                let description = null;
+                if (nodeManager && nodeManager.nodeData && nodeManager.nodeData[node.id]) {
+                    description = nodeManager.nodeData[node.id].description || null;
+                }
+                
+                return {
+                    id: node.id,
+                    type: node.type,
+                    position: {
+                        x: node.x,
+                        y: node.y
+                    },
+                    data: {
+                        title: node.title,
+                        color: node.color,
+                        ...node
+                    },
+                    parameters: parameters,
+                    description: description
+                };
+            });
             
             // 연결 형식 변환
             const connectionsForAPI = connections.map(conn => ({
@@ -736,9 +1375,17 @@ export class WorkflowPage {
         if (nodeId === 'start') return 'start';
         if (nodeId === 'end') return 'end';
         
+        // 저장된 노드 데이터에서 타입 확인
+        const nodeManager = getNodeManager();
+        if (nodeManager && nodeManager.nodeData && nodeManager.nodeData[nodeId]) {
+            const savedType = nodeManager.nodeData[nodeId].type;
+            if (savedType) return savedType;
+        }
+        
         const title = node.querySelector('.node-title').textContent;
         
         // 노드 제목에 따라 타입 결정
+        if (title.includes('이미지 터치')) return 'image-touch';
         if (title.includes('페이지 이동') || title.includes('이동')) return 'navigate';
         if (title.includes('입력') || title.includes('클릭')) return 'click';
         if (title.includes('확인') || title.includes('조건')) return 'condition';
@@ -755,13 +1402,31 @@ export class WorkflowPage {
      * 노드에서 실행에 필요한 데이터를 추출합니다.
      */
     getNodeData(node) {
+        const nodeId = node.id || node.dataset.nodeId;
         const title = node.querySelector('.node-title').textContent;
+        
+        // 저장된 노드 데이터 확인
+        const nodeManager = getNodeManager();
+        let savedData = null;
+        if (nodeManager && nodeManager.nodeData && nodeManager.nodeData[nodeId]) {
+            savedData = nodeManager.nodeData[nodeId];
+        }
         
         // 노드 타입에 따른 기본 데이터
         const baseData = {
             title: title,
             timestamp: new Date().toISOString()
         };
+        
+        // 이미지 터치 노드인 경우
+        if (title.includes('이미지 터치') || (savedData && savedData.type === 'image-touch')) {
+            const folderPath = savedData?.folder_path || '';
+            return {
+                ...baseData,
+                folder_path: folderPath,
+                type: 'image-touch'
+            };
+        }
         
         // 노드 타입별 특화 데이터
         if (title.includes('페이지 이동')) {
@@ -1115,11 +1780,50 @@ export class WorkflowPage {
                                 ...nodeData.data
                             };
                             
+                            // parameters 복원 (nodeManager.nodeData에 저장)
+                            // parameters에는 노드 실행에 필요한 핵심 매개변수만 포함
+                            if (nodeData.parameters && Object.keys(nodeData.parameters).length > 0) {
+                                if (nodeManager && nodeManager.nodeData) {
+                                    if (!nodeManager.nodeData[nodeData.id]) {
+                                        nodeManager.nodeData[nodeData.id] = {};
+                                    }
+                                    // 타입별로 필요한 매개변수만 복원
+                                    const nodeType = nodeData.type;
+                                    if (nodeType === 'image-touch' && nodeData.parameters.folder_path) {
+                                        nodeManager.nodeData[nodeData.id].folder_path = nodeData.parameters.folder_path;
+                                        nodeDataForManager.folder_path = nodeData.parameters.folder_path;
+                                    } else if (nodeType === 'condition' && nodeData.parameters.condition) {
+                                        nodeManager.nodeData[nodeData.id].condition = nodeData.parameters.condition;
+                                        nodeDataForManager.condition = nodeData.parameters.condition;
+                                    } else if (nodeType === 'wait' && nodeData.parameters.wait_time !== undefined) {
+                                        nodeManager.nodeData[nodeData.id].wait_time = nodeData.parameters.wait_time;
+                                        nodeDataForManager.wait_time = nodeData.parameters.wait_time;
+                                    }
+                                }
+                            }
+                            
+                            // description 복원 (nodeManager.nodeData에 저장)
+                            if (nodeData.description) {
+                                if (nodeManager && nodeManager.nodeData) {
+                                    if (!nodeManager.nodeData[nodeData.id]) {
+                                        nodeManager.nodeData[nodeData.id] = {};
+                                    }
+                                    nodeManager.nodeData[nodeData.id].description = nodeData.description;
+                                    nodeDataForManager.description = nodeData.description;
+                                }
+                            }
+                            
+                            // 타입 저장
+                            if (nodeManager && nodeManager.nodeData && nodeManager.nodeData[nodeData.id]) {
+                                nodeManager.nodeData[nodeData.id].type = nodeData.type;
+                            }
+                            
                             log(`[WorkflowPage] 노드 ${index + 1}/${nodes.length} 생성 중:`, {
                                 id: nodeDataForManager.id,
                                 type: nodeDataForManager.type,
                                 title: nodeDataForManager.title,
-                                position: { x: originalX, y: originalY }
+                                position: { x: originalX, y: originalY },
+                                parameters: nodeData.parameters || {}
                             });
                             
                             if (nodeManager) {

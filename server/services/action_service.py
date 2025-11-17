@@ -14,7 +14,8 @@ class ActionService:
             "battle": self.handle_battle_action,
             "navigate": self.handle_navigate_action,
             "condition": self.handle_condition_action,
-            "action": self.handle_action_action
+            "action": self.handle_action_action,
+            "image-touch": self.handle_image_touch_action
         }
     
     async def process_game_action(self, action_type: str, parameters: dict):
@@ -103,3 +104,84 @@ class ActionService:
         """기본 액션 처리"""
         action_name = parameters.get("action", "unknown")
         return {"action": "action", "name": action_name, "status": "completed"}
+    
+    async def handle_image_touch_action(self, parameters: dict):
+        """이미지 터치 액션 처리"""
+        import os
+        from game_automation.screen_capture import ScreenCapture
+        from game_automation.input_handler import InputHandler
+        
+        folder_path = parameters.get("folder_path", "")
+        if not folder_path:
+            raise ValueError("폴더 경로가 필요합니다.")
+        
+        if not os.path.exists(folder_path):
+            raise ValueError(f"폴더를 찾을 수 없습니다: {folder_path}")
+        
+        # 지원하는 이미지 확장자
+        image_extensions = {'.png', '.jpg', '.jpeg', '.bmp', '.gif', '.tiff', '.webp'}
+        
+        # 이미지 파일 목록 가져오기 (이름 순서대로)
+        image_files = []
+        for filename in os.listdir(folder_path):
+            file_path = os.path.join(folder_path, filename)
+            if os.path.isfile(file_path):
+                _, ext = os.path.splitext(filename.lower())
+                if ext in image_extensions:
+                    image_files.append(file_path)
+        
+        # 파일 이름 순서대로 정렬
+        image_files.sort()
+        
+        if not image_files:
+            return {
+                "action": "image-touch",
+                "status": "no_images",
+                "message": "이미지 파일이 없습니다."
+            }
+        
+        # 화면 캡처 및 입력 핸들러 초기화
+        screen_capture = ScreenCapture()
+        input_handler = InputHandler()
+        
+        results = []
+        for i, image_path in enumerate(image_files):
+            try:
+                # 이미지 찾기
+                location = screen_capture.find_template(image_path, threshold=0.8)
+                
+                if location:
+                    x, y, w, h = location
+                    # 이미지 중심점 클릭
+                    center_x = x + w // 2
+                    center_y = y + h // 2
+                    
+                    # 터치 (클릭)
+                    success = input_handler.click(center_x, center_y)
+                    
+                    results.append({
+                        "image": os.path.basename(image_path),
+                        "found": True,
+                        "position": (center_x, center_y),
+                        "touched": success
+                    })
+                else:
+                    results.append({
+                        "image": os.path.basename(image_path),
+                        "found": False,
+                        "message": "화면에서 이미지를 찾을 수 없습니다."
+                    })
+                    
+            except Exception as e:
+                results.append({
+                    "image": os.path.basename(image_path),
+                    "error": str(e)
+                })
+        
+        return {
+            "action": "image-touch",
+            "folder_path": folder_path,
+            "total_images": len(image_files),
+            "results": results,
+            "status": "completed"
+        }

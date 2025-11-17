@@ -61,6 +61,16 @@ class DatabaseManager:
         except sqlite3.OperationalError:
             pass  # 컬럼이 이미 존재하면 무시
         
+        try:
+            cursor.execute('ALTER TABLE nodes ADD COLUMN parameters TEXT DEFAULT \'{}\'')
+        except sqlite3.OperationalError:
+            pass  # 컬럼이 이미 존재하면 무시
+        
+        try:
+            cursor.execute('ALTER TABLE nodes ADD COLUMN description TEXT DEFAULT NULL')
+        except sqlite3.OperationalError:
+            pass  # 컬럼이 이미 존재하면 무시
+        
         # 연결 테이블은 더 이상 사용하지 않음 (nodes 테이블의 connected_to/connected_from 사용)
         # 기존 connections 테이블이 있다면 삭제하지 않고 그대로 둠 (하위 호환성)
         
@@ -127,7 +137,8 @@ class DatabaseManager:
         
         # 노드들 조회 (연결 정보 포함)
         cursor.execute('''
-            SELECT node_id, node_type, position_x, position_y, node_data, connected_to, connected_from 
+            SELECT node_id, node_type, position_x, position_y, node_data, connected_to, connected_from, 
+                COALESCE(parameters, '{}') as parameters, description
             FROM nodes 
             WHERE script_id = ? 
             ORDER BY id
@@ -138,9 +149,12 @@ class DatabaseManager:
             # connected_to와 connected_from을 JSON으로 파싱
             connected_to_raw = row[5] if len(row) > 5 else None
             connected_from_raw = row[6] if len(row) > 6 else None
+            parameters_raw = row[7] if len(row) > 7 else None
+            description = row[8] if len(row) > 8 else None
             
             connected_to = []
             connected_from = []
+            parameters = {}
             
             # connected_to 파싱
             if connected_to_raw:
@@ -164,13 +178,26 @@ class DatabaseManager:
                     print(f"Warning: connected_from 파싱 실패 (node_id: {row[0]}): {e}")
                     connected_from = []
             
+            # parameters 파싱
+            if parameters_raw:
+                try:
+                    if isinstance(parameters_raw, str):
+                        parameters = json.loads(parameters_raw) if parameters_raw.strip() else {}
+                    else:
+                        parameters = parameters_raw if isinstance(parameters_raw, dict) else {}
+                except (json.JSONDecodeError, ValueError) as e:
+                    print(f"Warning: parameters 파싱 실패 (node_id: {row[0]}): {e}")
+                    parameters = {}
+            
             nodes.append({
                 "id": row[0],
                 "type": row[1],
                 "position": {"x": row[2], "y": row[3]},
                 "data": json.loads(row[4]),
                 "connected_to": connected_to,
-                "connected_from": connected_from
+                "connected_from": connected_from,
+                "parameters": parameters,
+                "description": description
             })
         
         # 연결 정보는 nodes 테이블의 connected_to/connected_from에서 생성
@@ -240,9 +267,16 @@ class DatabaseManager:
                 connected_to_json = json.dumps(node_connected_to.get(node_id, []), ensure_ascii=False)
                 connected_from_json = json.dumps(node_connected_from.get(node_id, []), ensure_ascii=False)
                 
+                # parameters 추출 (없으면 빈 객체)
+                parameters = node.get("parameters", {})
+                parameters_json = json.dumps(parameters, ensure_ascii=False)
+                
+                # description 추출
+                description = node.get("description") or None
+                
                 cursor.execute('''
-                    INSERT INTO nodes (script_id, node_id, node_type, position_x, position_y, node_data, connected_to, connected_from)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO nodes (script_id, node_id, node_type, position_x, position_y, node_data, connected_to, connected_from, parameters, description)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
                     script_id,
                     node_id,
@@ -251,7 +285,9 @@ class DatabaseManager:
                     node["position"]["y"],
                     json.dumps(node["data"], ensure_ascii=False),
                     connected_to_json,
-                    connected_from_json
+                    connected_from_json,
+                    parameters_json,
+                    description
                 ))
             
             # 업데이트 시간 갱신
@@ -281,5 +317,326 @@ class DatabaseManager:
         finally:
             conn.close()
     
+    def seed_example_data(self):
+        """예시 데이터 생성"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        try:
+            # 기존 데이터 확인
+            cursor.execute("SELECT COUNT(*) FROM scripts")
+            existing_count = cursor.fetchone()[0]
+            
+            if existing_count > 0:
+                print(f"이미 {existing_count}개의 스크립트가 존재합니다. 예시 데이터 생성을 건너뜁니다.")
+                conn.close()
+                return
+            
+            print("예시 데이터 생성 시작...")
+            
+            # 스크립트 1: 로그인 테스트
+            cursor.execute(
+                "INSERT INTO scripts (name, description) VALUES (?, ?)",
+                ("로그인 테스트", "사용자 로그인 프로세스 검증")
+            )
+            script1_id = cursor.lastrowid
+            print(f"스크립트 1 생성: ID={script1_id}")
+            
+            # 스크립트 1의 노드들
+            script1_nodes = [
+                {
+                    "node_id": "start",
+                    "node_type": "start",
+                    "position_x": 0.0,
+                    "position_y": 0.0,
+                    "node_data": {"title": "시작", "color": "green"},
+                    "connected_to": ["node1"],
+                    "connected_from": [],
+                    "parameters": {}
+                },
+                {
+                    "node_id": "node1",
+                    "node_type": "action",
+                    "position_x": 300.0,
+                    "position_y": 0.0,
+                    "node_data": {"title": "페이지 이동", "color": "blue", "url": "https://example.com/login"},
+                    "connected_to": ["node2"],
+                    "connected_from": ["start"],
+                    "parameters": {},
+                    "description": "로그인 페이지로 이동"
+                },
+                {
+                    "node_id": "node2",
+                    "node_type": "action",
+                    "position_x": 600.0,
+                    "position_y": 0.0,
+                    "node_data": {"title": "아이디 입력", "color": "blue", "selector": "#username", "value": "testuser"},
+                    "connected_to": ["node3"],
+                    "connected_from": ["node1"],
+                    "parameters": {},
+                    "description": "사용자 아이디 입력"
+                },
+                {
+                    "node_id": "node3",
+                    "node_type": "condition",
+                    "position_x": 300.0,
+                    "position_y": 150.0,
+                    "node_data": {"title": "로그인 성공 확인", "color": "orange"},
+                    "connected_to": ["node4", "node5"],
+                    "connected_from": ["node2"],
+                    "parameters": {"condition": "check_login_success"},
+                    "description": None
+                },
+                {
+                    "node_id": "node4",
+                    "node_type": "action",
+                    "position_x": 900.0,
+                    "position_y": 0.0,
+                    "node_data": {"title": "대시보드 이동", "color": "blue", "url": "https://example.com/dashboard"},
+                    "connected_to": ["end"],
+                    "connected_from": ["node3"],
+                    "parameters": {},
+                    "description": "로그인 성공 시 대시보드로 이동"
+                },
+                {
+                    "node_id": "node5",
+                    "node_type": "action",
+                    "position_x": 1200.0,
+                    "position_y": 0.0,
+                    "node_data": {"title": "에러 처리", "color": "red", "message": "로그인 실패"},
+                    "connected_to": ["end"],
+                    "connected_from": ["node3"],
+                    "parameters": {},
+                    "description": "로그인 실패 시 에러 처리"
+                },
+                {
+                    "node_id": "end",
+                    "node_type": "end",
+                    "position_x": 1500.0,
+                    "position_y": 0.0,
+                    "node_data": {"title": "종료", "color": "gray"},
+                    "connected_to": [],
+                    "connected_from": ["node4", "node5"],
+                    "parameters": {}
+                }
+            ]
+            
+            for node in script1_nodes:
+                cursor.execute('''
+                    INSERT INTO nodes (script_id, node_id, node_type, position_x, position_y, node_data, connected_to, connected_from, parameters, description)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    script1_id,
+                    node["node_id"],
+                    node["node_type"],
+                    node["position_x"],
+                    node["position_y"],
+                    json.dumps(node["node_data"], ensure_ascii=False),
+                    json.dumps(node["connected_to"], ensure_ascii=False),
+                    json.dumps(node["connected_from"], ensure_ascii=False),
+                    json.dumps(node["parameters"], ensure_ascii=False),
+                    node.get("description")
+                ))
+            
+            print(f"스크립트 1에 {len(script1_nodes)}개의 노드 추가 완료")
+            
+            # 스크립트 2: 결제 프로세스 테스트
+            cursor.execute(
+                "INSERT INTO scripts (name, description) VALUES (?, ?)",
+                ("결제 프로세스 테스트", "온라인 결제 과정 검증")
+            )
+            script2_id = cursor.lastrowid
+            print(f"스크립트 2 생성: ID={script2_id}")
+            
+            # 스크립트 2의 노드들
+            script2_nodes = [
+                {
+                    "node_id": "start",
+                    "node_type": "start",
+                    "position_x": 0.0,
+                    "position_y": 0.0,
+                    "node_data": {"title": "시작", "color": "green"},
+                    "connected_to": ["node1"],
+                    "connected_from": [],
+                    "parameters": {}
+                },
+                {
+                    "node_id": "node1",
+                    "node_type": "action",
+                    "position_x": 300.0,
+                    "position_y": 0.0,
+                    "node_data": {"title": "결제 페이지 이동", "color": "blue", "url": "https://example.com/payment"},
+                    "connected_to": ["node2"],
+                    "connected_from": ["start"],
+                    "parameters": {},
+                    "description": "결제 페이지로 이동"
+                },
+                {
+                    "node_id": "node2",
+                    "node_type": "action",
+                    "position_x": 600.0,
+                    "position_y": 0.0,
+                    "node_data": {"title": "결제 정보 입력", "color": "blue", "card_number": "1234-5678-9012-3456"},
+                    "connected_to": ["node3"],
+                    "connected_from": ["node1"],
+                    "parameters": {},
+                    "description": "카드 정보 입력"
+                },
+                {
+                    "node_id": "node3",
+                    "node_type": "wait",
+                    "position_x": 300.0,
+                    "position_y": 150.0,
+                    "node_data": {"title": "결제 처리 대기", "color": "purple"},
+                    "connected_to": ["node4"],
+                    "connected_from": ["node2"],
+                    "parameters": {"wait_time": 3.0}
+                },
+                {
+                    "node_id": "node4",
+                    "node_type": "condition",
+                    "position_x": 900.0,
+                    "position_y": 0.0,
+                    "node_data": {"title": "결제 성공 확인", "color": "orange"},
+                    "connected_to": ["end"],
+                    "connected_from": ["node3"],
+                    "parameters": {"condition": "check_payment_success"}
+                },
+                {
+                    "node_id": "end",
+                    "node_type": "end",
+                    "position_x": 1200.0,
+                    "position_y": 0.0,
+                    "node_data": {"title": "종료", "color": "gray"},
+                    "connected_to": [],
+                    "connected_from": ["node4"],
+                    "parameters": {}
+                }
+            ]
+            
+            for node in script2_nodes:
+                cursor.execute('''
+                    INSERT INTO nodes (script_id, node_id, node_type, position_x, position_y, node_data, connected_to, connected_from, parameters, description)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    script2_id,
+                    node["node_id"],
+                    node["node_type"],
+                    node["position_x"],
+                    node["position_y"],
+                    json.dumps(node["node_data"], ensure_ascii=False),
+                    json.dumps(node["connected_to"], ensure_ascii=False),
+                    json.dumps(node["connected_from"], ensure_ascii=False),
+                    json.dumps(node["parameters"], ensure_ascii=False),
+                    node.get("description")
+                ))
+            
+            print(f"스크립트 2에 {len(script2_nodes)}개의 노드 추가 완료")
+            
+            # 스크립트 3: 이미지 터치 테스트 (새로운 노드 타입 예시)
+            cursor.execute(
+                "INSERT INTO scripts (name, description) VALUES (?, ?)",
+                ("이미지 터치 테스트", "이미지 터치 노드를 사용한 자동화 테스트")
+            )
+            script3_id = cursor.lastrowid
+            print(f"스크립트 3 생성: ID={script3_id}")
+            
+            # 스크립트 3의 노드들
+            script3_nodes = [
+                {
+                    "node_id": "start",
+                    "node_type": "start",
+                    "position_x": 0.0,
+                    "position_y": 0.0,
+                    "node_data": {"title": "시작", "color": "green"},
+                    "connected_to": ["node1"],
+                    "connected_from": [],
+                    "parameters": {}
+                },
+                {
+                    "node_id": "node1",
+                    "node_type": "image-touch",
+                    "position_x": 300.0,
+                    "position_y": 0.0,
+                    "node_data": {"title": "이미지 터치", "color": "blue"},
+                    "connected_to": ["node2"],
+                    "connected_from": ["start"],
+                    "parameters": {
+                        "folder_path": "C:/Users/User/Desktop/images",
+                        "image_count": 5
+                    }
+                },
+                {
+                    "node_id": "node2",
+                    "node_type": "wait",
+                    "position_x": 600.0,
+                    "position_y": 0.0,
+                    "node_data": {"title": "대기", "color": "purple"},
+                    "connected_to": ["end"],
+                    "connected_from": ["node1"],
+                    "parameters": {"wait_time": 2.0}
+                },
+                {
+                    "node_id": "end",
+                    "node_type": "end",
+                    "position_x": 900.0,
+                    "position_y": 0.0,
+                    "node_data": {"title": "종료", "color": "gray"},
+                    "connected_to": [],
+                    "connected_from": ["node2"],
+                    "parameters": {}
+                }
+            ]
+            
+            for node in script3_nodes:
+                cursor.execute('''
+                    INSERT INTO nodes (script_id, node_id, node_type, position_x, position_y, node_data, connected_to, connected_from, parameters, description)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    script3_id,
+                    node["node_id"],
+                    node["node_type"],
+                    node["position_x"],
+                    node["position_y"],
+                    json.dumps(node["node_data"], ensure_ascii=False),
+                    json.dumps(node["connected_to"], ensure_ascii=False),
+                    json.dumps(node["connected_from"], ensure_ascii=False),
+                    json.dumps(node["parameters"], ensure_ascii=False),
+                    node.get("description")
+                ))
+            
+            print(f"스크립트 3에 {len(script3_nodes)}개의 노드 추가 완료")
+            
+            conn.commit()
+            print("✅ 예시 데이터 생성 완료!")
+            print(f"   - 스크립트: 3개")
+            print(f"   - 노드: {len(script1_nodes) + len(script2_nodes) + len(script3_nodes)}개")
+            print(f"   - 데이터베이스 경로: {self.db_path}")
+            
+        except Exception as e:
+            conn.rollback()
+            print(f"❌ 예시 데이터 생성 실패: {e}")
+            raise e
+        finally:
+            conn.close()
+
+
 # 전역 데이터베이스 매니저 인스턴스
 db_manager = DatabaseManager()
+
+
+# 직접 실행 시 예시 데이터 생성
+if __name__ == "__main__":
+    print("=" * 60)
+    print("데이터베이스 초기화 및 예시 데이터 생성")
+    print("=" * 60)
+    
+    # DatabaseManager 인스턴스 생성 (이미 전역 인스턴스가 있지만 새로 생성)
+    db = DatabaseManager()
+    
+    # 예시 데이터 생성
+    db.seed_example_data()
+    
+    print("\n" + "=" * 60)
+    print("완료! 이제 애플리케이션을 실행할 수 있습니다.")
+    print("=" * 60)
