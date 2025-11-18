@@ -6,6 +6,7 @@
 import { getDefaultDescription } from '../config/node-defaults.js';
 import { NODE_TYPES, isBoundaryNode, NODE_TYPE_LABELS } from '../constants/node-types.js';
 import { escapeHtml, getNodeType, getNodeData } from '../utils/node-utils.js';
+import { NodeValidationUtils } from '../utils/node-validation-utils.js';
 
 export class NodeSettingsModal {
     constructor(workflowPage) {
@@ -201,6 +202,27 @@ export class NodeSettingsModal {
      * 노드 타입 변경 처리
      */
     handleTypeChange(selectedType, oldType, nodeData, settingsContainer, descriptionTextarea) {
+        // 시작/종료 노드로 변경하려는 경우 검증
+        const nodeId = nodeData?.id || '';
+        const nodeManager = this.workflowPage.getNodeManager();
+        const validation = NodeValidationUtils.validateNodeTypeChange(selectedType, nodeId, nodeManager);
+        
+        if (!validation.canChange) {
+            const modalManager = this.workflowPage.getModalManager();
+            if (modalManager) {
+                modalManager.showAlert('타입 변경 불가', validation.message);
+            } else {
+                alert(validation.message);
+            }
+            
+            // 원래 타입으로 되돌리기
+            const nodeTypeSelect = document.getElementById('edit-node-type');
+            if (nodeTypeSelect) {
+                nodeTypeSelect.value = oldType;
+            }
+            return;
+        }
+        
         // description 업데이트
         if (descriptionTextarea) {
             const currentDesc = descriptionTextarea.value.trim();

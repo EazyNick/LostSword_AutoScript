@@ -5,7 +5,7 @@
 from fastapi import APIRouter, HTTPException, Request, Body
 from typing import List, Dict, Any
 from models import ScriptCreateRequest, ScriptUpdateRequest, ScriptResponse, NodeExecutionRequest
-from database import db_manager
+from db.database import db_manager
 from services.action_service import ActionService
 from log import log_manager
 

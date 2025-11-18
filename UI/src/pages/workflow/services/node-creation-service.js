@@ -73,35 +73,74 @@ export class NodeCreationService {
      * 기본 경계 노드 생성
      */
     createDefaultBoundaryNodes() {
+        const nodeManager = this.workflowPage.getNodeManager();
+        if (!nodeManager) {
+            console.error('NodeManager를 찾을 수 없습니다.');
+            return;
+        }
+        
+        // 이미 start/end 노드가 있는지 확인
+        const nodeElements = nodeManager.nodes ? nodeManager.nodes.map(n => n.element) : [];
+        const nodeData = nodeManager.nodeData || {};
+        
+        const hasStartNode = nodeElements.some(nodeElement => {
+            const nodeId = nodeElement.id || nodeElement.dataset?.nodeId;
+            return nodeId === 'start' || 
+                   nodeData[nodeId]?.type === 'start' ||
+                   nodeElement.querySelector('.node-title')?.textContent?.includes('시작');
+        });
+        
+        const hasEndNode = nodeElements.some(nodeElement => {
+            const nodeId = nodeElement.id || nodeElement.dataset?.nodeId;
+            return nodeId === 'end' || 
+                   nodeData[nodeId]?.type === 'end' ||
+                   nodeElement.querySelector('.node-title')?.textContent?.includes('종료');
+        });
+        
+        const logger = this.workflowPage.getLogger();
+        const log = logger.log;
+        log(`[NodeCreationService] 기본 경계 노드 생성 시도 - start 존재: ${hasStartNode}, end 존재: ${hasEndNode}`);
+        
         const baseX = 0;
         const baseY = 0;
         
-        const boundaryNodes = [
-            {
+        const boundaryNodes = [];
+        
+        // start 노드가 없을 때만 추가
+        if (!hasStartNode) {
+            boundaryNodes.push({
                 id: 'start',
                 type: 'start',
                 title: '시작',
                 color: 'green',
                 x: baseX - 200,
                 y: baseY
-            },
-            {
+            });
+        }
+        
+        // end 노드가 없을 때만 추가
+        if (!hasEndNode) {
+            boundaryNodes.push({
                 id: 'end',
                 type: 'end',
                 title: '종료',
                 color: 'gray',
                 x: baseX + 200,
                 y: baseY
-            }
-        ];
+            });
+        }
         
-        const nodeManager = this.workflowPage.getNodeManager();
+        if (boundaryNodes.length === 0) {
+            log('[NodeCreationService] 이미 경계 노드가 존재하여 기본 경계 노드를 생성하지 않습니다.');
+            return;
+        }
+        
+        log(`[NodeCreationService] ${boundaryNodes.length}개의 경계 노드 생성 중...`);
         
         boundaryNodes.forEach(nodeData => {
             try {
-                if (nodeManager) {
-                    nodeManager.createNode(nodeData);
-                }
+                nodeManager.createNode(nodeData);
+                log(`[NodeCreationService] 경계 노드 생성 완료: ${nodeData.id}`);
             } catch (error) {
                 console.error('노드 생성 실패:', error);
             }

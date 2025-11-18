@@ -92,6 +92,7 @@ export class WorkflowPage {
         this.setupEventListeners();
         this.setupComponentEventListeners();
         this.setupComponentIntegration();
+        this.setupKeyboardShortcuts();
         this.createInitialNodes();
     }
     
@@ -380,13 +381,18 @@ export class WorkflowPage {
      * 키보드 단축키 설정
      */
     setupKeyboardShortcuts() {
+        // capture 단계에서 이벤트를 처리하여 기본 동작을 먼저 막음
         document.addEventListener('keydown', (e) => {
             const nodeManager = getNodeManager();
             const modalManager = getModalManager();
             
-            if (e.ctrlKey && e.key === 's') {
+            // Ctrl+S 또는 Cmd+S (Mac) - 워크플로우 저장
+            if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
                 e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
                 this.saveWorkflow({ useToast: true });
+                return false;
             }
             
             if (e.ctrlKey && e.key === 'n') {

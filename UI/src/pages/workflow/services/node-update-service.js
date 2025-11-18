@@ -4,6 +4,7 @@
  */
 
 import { NODE_TYPES } from '../constants/node-types.js';
+import { NodeValidationUtils } from '../utils/node-validation-utils.js';
 
 export class NodeUpdateService {
     constructor(workflowPage) {
@@ -65,7 +66,27 @@ export class NodeUpdateService {
             ? (nodeManager.nodeData[nodeId].type || nodeElement.dataset.nodeType)
             : nodeElement.dataset.nodeType;
         const isStartOrEnd = currentType === 'start' || currentType === 'end';
-        const newType = isStartOrEnd ? currentType : (document.getElementById('edit-node-type')?.value || currentType);
+        let newType = isStartOrEnd ? currentType : (document.getElementById('edit-node-type')?.value || currentType);
+        
+        // 노드 타입 변경 시 검증 (시작/종료 노드로 변경하려는 경우)
+        if (!isStartOrEnd && newType !== currentType) {
+            const validation = NodeValidationUtils.validateNodeTypeChange(newType, nodeId, nodeManager);
+            if (!validation.canChange) {
+                const modalManager = this.workflowPage.getModalManager();
+                if (modalManager) {
+                    modalManager.showAlert('타입 변경 불가', validation.message);
+                } else {
+                    alert(validation.message);
+                }
+                // 원래 타입으로 되돌리기
+                const nodeTypeSelect = document.getElementById('edit-node-type');
+                if (nodeTypeSelect) {
+                    nodeTypeSelect.value = currentType;
+                }
+                newType = currentType; // 원래 타입 유지
+            }
+        }
+        
         const newColor = document.getElementById('edit-node-color').value;
         
         const position = {

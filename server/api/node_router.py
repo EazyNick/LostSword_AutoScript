@@ -4,7 +4,7 @@
 
 from fastapi import APIRouter, HTTPException
 from typing import List, Optional
-from database import db_manager
+from db.database import db_manager
 import json
 
 router = APIRouter(prefix="/api/nodes", tags=["nodes"])

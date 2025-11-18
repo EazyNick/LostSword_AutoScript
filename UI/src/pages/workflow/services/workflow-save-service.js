@@ -113,7 +113,8 @@ export class WorkflowSaveService {
     prepareConnectionsForAPI(connections) {
         return connections.map(conn => ({
             from: conn.from || conn.fromNodeId,
-            to: conn.to || conn.toNodeId
+            to: conn.to || conn.toNodeId,
+            outputType: conn.outputType || null  // 조건 노드의 경우 'true' 또는 'false'
         }));
     }
 

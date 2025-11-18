@@ -10,7 +10,7 @@ from datetime import datetime
 
 # database.py의 DatabaseManager를 사용하기 위해 경로 추가
 sys.path.insert(0, os.path.dirname(__file__))
-from database import DatabaseManager
+from db.database import DatabaseManager
 
 def seed_database(db_path=None):
     """데이터베이스에 샘플 데이터 추가"""

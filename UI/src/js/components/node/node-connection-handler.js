@@ -403,6 +403,13 @@ class NodeConnectionHandler {
         const startNodeId = this.dragConnectionStart.nodeId;
         const outputType = this.dragConnectionStart.outputType;
         
+        // 연결 유효성 검증
+        const isValid = this.nodeManager.validateConnection(startNodeId, targetNodeId, outputType, 'input');
+        if (!isValid) {
+            this.cleanupDragConnection();
+            return;
+        }
+        
         this.nodeManager.createNodeConnection(startNodeId, targetNodeId, outputType, 'input');
         this.cleanupDragConnection();
     }
@@ -536,7 +543,18 @@ class NodeConnectionHandler {
         const nodeId = nodeElement.dataset.nodeId;
         
         try {
-            const connections = this.nodeManager.findConnectionsByNode(nodeId, connectorType);
+            // 출력 타입 감지 (조건 노드의 경우)
+            let outputType = null;
+            if (connectorType === 'output' && connector) {
+                if (connector.classList.contains('true-output') || connector.closest('.true-output')) {
+                    outputType = 'true';
+                } else if (connector.classList.contains('false-output') || connector.closest('.false-output')) {
+                    outputType = 'false';
+                }
+            }
+            
+            // 연결 목록 조회 (조건 노드의 경우 outputType 고려)
+            const connections = this.nodeManager.findConnectionsByNode(nodeId, connectorType, outputType);
             
             if (connections.length === 0) {
                 this.nodeManager.showConnectorTooltip(connector, '연결된 선이 없습니다');

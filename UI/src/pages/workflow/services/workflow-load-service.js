@@ -43,11 +43,29 @@ export class WorkflowLoadService {
                 log('[WorkflowPage] ✅ 서버에서 스크립트 정보 받음:', response);
                 
                 const nodes = response.nodes || [];
-                const connections = this.buildConnectionsFromNodes(nodes);
+                // 서버에서 connections 배열을 직접 받거나, 없으면 노드의 connected_to에서 생성
+                let connections = response.connections || [];
+                
+                // connections가 없으면 노드의 connected_to에서 생성 (하위 호환성)
+                if (connections.length === 0) {
+                    connections = this.buildConnectionsFromNodes(nodes);
+                }
+                
+                log(`[WorkflowPage] 서버에서 받은 노드 개수: ${nodes.length}개`);
+                log(`[WorkflowPage] 연결 개수: ${connections.length}개`);
+                log(`[WorkflowPage] 연결 정보:`, connections);
                 
                 if (nodes.length > 0) {
+                    // 서버에서 불러온 노드에 start/end가 포함되어 있는지 확인
+                    const hasStartNode = nodes.some(n => (n.id === 'start' || n.type === 'start'));
+                    const hasEndNode = nodes.some(n => (n.id === 'end' || n.type === 'end'));
+                    
+                    log(`[WorkflowPage] 서버 노드 확인 - start: ${hasStartNode}, end: ${hasEndNode}`);
+                    
                     await this.renderNodes(nodes, connections, nodeManager);
                 } else {
+                    // 노드가 없을 때만 기본 경계 노드 생성
+                    log('[WorkflowPage] 노드가 없어 기본 경계 노드 생성');
                     this.workflowPage.createDefaultBoundaryNodes();
                 }
             } else {
@@ -62,22 +80,62 @@ export class WorkflowLoadService {
 
     /**
      * 기존 노드들 제거
+     * 스크립트 전환 시 또는 초기 로드 시 호출됩니다.
+     * 스크립트 전환 시이므로 시작/종료 노드도 포함하여 모든 노드를 강제 삭제합니다.
      */
     clearExistingNodes(nodeManager) {
         const logger = this.workflowPage.getLogger();
         const log = logger.log;
         
         log('[WorkflowPage] 기존 노드 제거 시작');
+        
+        if (!nodeManager) {
+            log('[WorkflowPage] ⚠️ NodeManager를 찾을 수 없습니다.');
+            return;
+        }
+        
+        // nodeManager의 nodes 배열에서 제거 (스크립트 전환 시이므로 강제 삭제)
+        if (nodeManager.nodes && nodeManager.nodes.length > 0) {
+            const nodesToDelete = [...nodeManager.nodes]; // 복사본 생성
+            log(`[WorkflowPage] NodeManager에서 제거할 노드 개수: ${nodesToDelete.length}개`);
+            
+            nodesToDelete.forEach(nodeObj => {
+                if (nodeObj && nodeObj.element) {
+                    try {
+                        // 스크립트 전환 시이므로 시작/종료 노드도 강제 삭제
+                        nodeManager.deleteNode(nodeObj.element, true);
+                    } catch (error) {
+                        log(`[WorkflowPage] 노드 삭제 중 오류: ${error}`);
+                    }
+                }
+            });
+        }
+        
+        // DOM에서도 직접 제거 (혹시 남아있는 경우)
         const existingNodes = document.querySelectorAll('.workflow-node');
-        log(`[WorkflowPage] 제거할 노드 개수: ${existingNodes.length}개`);
+        if (existingNodes.length > 0) {
+            log(`[WorkflowPage] DOM에서 추가로 제거할 노드 개수: ${existingNodes.length}개`);
+            existingNodes.forEach(node => {
+                try {
+                    if (nodeManager) {
+                        // 스크립트 전환 시이므로 시작/종료 노드도 강제 삭제
+                        nodeManager.deleteNode(node, true);
+                    } else {
+                        node.remove();
+                    }
+                } catch (error) {
+                    log(`[WorkflowPage] DOM 노드 삭제 중 오류: ${error}`);
+                }
+            });
+        }
         
-        existingNodes.forEach(node => {
-            if (nodeManager) {
-                nodeManager.deleteNode(node);
-            }
-        });
+        // nodeData도 초기화
+        if (nodeManager.nodeData) {
+            nodeManager.nodeData = {};
+            log('[WorkflowPage] nodeData 초기화 완료');
+        }
         
-        log('[WorkflowPage] 기존 노드 제거 완료');
+        log('[WorkflowPage] ✅ 기존 노드 제거 완료');
     }
 
     /**
@@ -108,13 +166,28 @@ export class WorkflowLoadService {
             }
             
             // 각 연결에 대해 connections 배열에 추가
-            connectedTo.forEach(toNodeId => {
-                if (toNodeId) {
+            // 새로운 형식: {"to": "node_id", "outputType": "true"/"false"/null}
+            // 기존 형식: "node_id" (문자열)
+            connectedTo.forEach(connItem => {
+                if (!connItem) return;
+                
+                // 새로운 형식 (객체)
+                if (typeof connItem === 'object' && connItem.to) {
                     connections.push({
                         from: node.id,
-                        to: toNodeId
+                        to: connItem.to,
+                        outputType: connItem.outputType || null
                     });
-                    log(`[WorkflowPage] 연결 추가: ${node.id} → ${toNodeId}`);
+                    log(`[WorkflowPage] 연결 추가: ${node.id} → ${connItem.to} (outputType: ${connItem.outputType || 'null'})`);
+                }
+                // 기존 형식 (문자열) - 하위 호환성
+                else if (typeof connItem === 'string') {
+                    connections.push({
+                        from: node.id,
+                        to: connItem,
+                        outputType: null
+                    });
+                    log(`[WorkflowPage] 연결 추가: ${node.id} → ${connItem}`);
                 }
             });
         });
@@ -244,7 +317,8 @@ export class WorkflowLoadService {
                 
                 const formattedConnections = connections.map(conn => ({
                     from: conn.from,
-                    to: conn.to
+                    to: conn.to,
+                    outputType: conn.outputType || null  // 조건 노드의 출력 타입 복원
                 }));
                 
                 log('[WorkflowPage] 연결선 데이터:', formattedConnections);

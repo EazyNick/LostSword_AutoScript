@@ -350,6 +350,7 @@
 }
 
 /* 조건 노드 출력점 스타일 */
+/* 조건 노드 출력 컨테이너 - workflow.css에서 더 상세한 스타일 정의됨 */
 .node-outputs {
     position: absolute;
     right: -6px;
@@ -502,6 +503,34 @@
     stroke: #FF3B30;
     stroke-width: 3;
     filter: drop-shadow(0 0 4px rgba(255, 59, 48, 0.6));
+}
+
+/* 조건 노드 True 연결선 (초록색) */
+.connection-line.connection-true,
+.connection-line[data-output-type="true"] {
+    stroke: #22c55e;
+    stroke-width: 2.5;
+}
+
+.connection-line.connection-true:hover,
+.connection-line[data-output-type="true"]:hover {
+    stroke: #16a34a;
+    stroke-width: 3.5;
+    filter: drop-shadow(0 0 6px rgba(34, 197, 94, 0.6));
+}
+
+/* 조건 노드 False 연결선 (빨간색) */
+.connection-line.connection-false,
+.connection-line[data-output-type="false"] {
+    stroke: #ef4444;
+    stroke-width: 2.5;
+}
+
+.connection-line.connection-false:hover,
+.connection-line[data-output-type="false"]:hover {
+    stroke: #dc2626;
+    stroke-width: 3.5;
+    filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.6));
 }
 
 /* 연결선 선택 상태 */

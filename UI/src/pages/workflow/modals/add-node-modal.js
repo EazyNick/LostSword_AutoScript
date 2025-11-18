@@ -5,6 +5,7 @@
 
 import { NODE_TYPES, NODE_TYPE_LABELS } from '../constants/node-types.js';
 import { getDefaultTitle, getDefaultColor } from '../config/node-defaults.js';
+import { NodeValidationUtils } from '../utils/node-validation-utils.js';
 
 export class AddNodeModal {
     constructor(workflowPage) {
@@ -171,6 +172,20 @@ export class AddNodeModal {
      */
     handleAddNode() {
         const nodeType = document.getElementById('node-type').value;
+        const nodeManager = this.workflowPage.getNodeManager();
+        
+        // 시작/종료 노드 개수 검증
+        const validation = NodeValidationUtils.validateBoundaryNodeCount(nodeType, nodeManager);
+        if (!validation.canAdd) {
+            const modalManager = this.workflowPage.getModalManager();
+            if (modalManager) {
+                modalManager.showAlert('노드 추가 불가', validation.message);
+            } else {
+                alert(validation.message);
+            }
+            return;
+        }
+        
         let nodeTitle = document.getElementById('node-title').value;
         let nodeColor = document.getElementById('node-color').value;
 
