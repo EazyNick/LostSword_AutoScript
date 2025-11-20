@@ -6,6 +6,7 @@
 import { NODE_TYPES, NODE_TYPE_LABELS } from '../constants/node-types.js';
 import { getDefaultTitle, getDefaultColor } from '../config/node-defaults.js';
 import { NodeValidationUtils } from '../utils/node-validation-utils.js';
+import { getNodeRegistry } from '../services/node-registry.js';
 
 export class AddNodeModal {
     constructor(workflowPage) {
@@ -32,8 +33,17 @@ export class AddNodeModal {
      * 모달 HTML 콘텐츠 생성
      */
     generateModalContent() {
+        const registry = getNodeRegistry();
         const nodeTypeOptions = Object.entries(NODE_TYPE_LABELS)
-            .map(([value, label]) => `<option value="${value}">${label}</option>`)
+            .map(([value, label]) => {
+                const config = registry.getConfig(value);
+                // 경계 노드는 선택 목록에서 제외 (자동 생성되므로)
+                if (config && config.isBoundary) {
+                    return '';
+                }
+                return `<option value="${value}">${label}</option>`;
+            })
+            .filter(opt => opt !== '')
             .join('');
 
         return `
@@ -48,13 +58,8 @@ export class AddNodeModal {
                 <label for="node-title">노드 제목:</label>
                 <input type="text" id="node-title" placeholder="노드 제목을 입력하세요">
             </div>
-            <div class="form-group" id="image-touch-settings" style="display: none;">
-                <label for="node-folder-path">이미지 폴더 경로:</label>
-                <div style="display: flex; gap: 8px;">
-                    <input type="text" id="node-folder-path" placeholder="예: C:\\images\\touch" style="flex: 1;">
-                    <button type="button" id="browse-folder-btn" class="btn btn-secondary">폴더 선택</button>
-                </div>
-                <small style="color: #666; font-size: 12px;">이미지 파일 이름 순서대로 화면에서 찾아 터치합니다.</small>
+            <div class="form-group" id="node-custom-settings" style="display: none;">
+                <!-- 동적으로 생성되는 노드별 특수 설정 영역 -->
             </div>
             <div class="form-group">
                 <label for="node-color">노드 색상:</label>
@@ -78,28 +83,56 @@ export class AddNodeModal {
     setupEventListeners() {
         const modalManager = this.workflowPage.getModalManager();
         const nodeTypeSelect = document.getElementById('node-type');
-        const imageTouchSettings = document.getElementById('image-touch-settings');
+        const customSettings = document.getElementById('node-custom-settings');
+        const registry = getNodeRegistry();
 
-        // 노드 타입 변경 시 이미지 터치 설정 표시/숨김
-        if (nodeTypeSelect && imageTouchSettings) {
-            nodeTypeSelect.addEventListener('change', () => {
-                if (nodeTypeSelect.value === NODE_TYPES.IMAGE_TOUCH) {
-                    imageTouchSettings.style.display = 'block';
-                    const titleInput = document.getElementById('node-title');
-                    if (titleInput && !titleInput.value) {
-                        titleInput.value = getDefaultTitle(NODE_TYPES.IMAGE_TOUCH);
+        // 노드 타입 변경 시 특수 설정 표시/숨김
+        if (nodeTypeSelect && customSettings) {
+            const updateCustomSettings = () => {
+                const selectedType = nodeTypeSelect.value;
+                const config = registry.getConfig(selectedType);
+                
+                if (config && config.requiresFolderPath) {
+                    // 폴더 경로가 필요한 노드 (예: image-touch)
+                    customSettings.innerHTML = `
+                        <label for="node-folder-path">이미지 폴더 경로:</label>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text" id="node-folder-path" placeholder="예: C:\\images\\touch" style="flex: 1;">
+                            <button type="button" id="browse-folder-btn" class="btn btn-secondary">폴더 선택</button>
+                        </div>
+                        <small style="color: #666; font-size: 12px;">이미지 파일 이름 순서대로 화면에서 찾아 터치합니다.</small>
+                    `;
+                    customSettings.style.display = 'block';
+                    
+                    // 폴더 선택 버튼 이벤트 리스너 재설정
+                    const browseBtn = document.getElementById('browse-folder-btn');
+                    if (browseBtn) {
+                        browseBtn.addEventListener('click', () => this.handleFolderSelection());
                     }
                 } else {
-                    imageTouchSettings.style.display = 'none';
+                    customSettings.innerHTML = '';
+                    customSettings.style.display = 'none';
                 }
-            });
+                
+                // 기본 제목 설정
+                const titleInput = document.getElementById('node-title');
+                if (titleInput && !titleInput.value && config) {
+                    titleInput.value = config.title || getDefaultTitle(selectedType);
+                }
+                
+                // 기본 색상 설정
+                const colorSelect = document.getElementById('node-color');
+                if (colorSelect && config) {
+                    colorSelect.value = config.color || 'blue';
+                }
+            };
+            
+            nodeTypeSelect.addEventListener('change', updateCustomSettings);
+            // 초기 설정
+            updateCustomSettings();
         }
 
-        // 폴더 선택 버튼
-        const browseBtn = document.getElementById('browse-folder-btn');
-        if (browseBtn) {
-            browseBtn.addEventListener('click', () => this.handleFolderSelection());
-        }
+        // 폴더 선택 버튼은 동적으로 생성되므로 updateCustomSettings에서 처리됨
 
         // 확인 버튼
         const confirmBtn = document.getElementById('add-node-confirm');
@@ -210,14 +243,19 @@ export class AddNodeModal {
             y: Math.random() * 300 + 100
         };
 
-        // 이미지 터치 노드인 경우 폴더 경로 추가
-        if (nodeType === NODE_TYPES.IMAGE_TOUCH) {
-            const folderPath = document.getElementById('node-folder-path').value;
-            if (!folderPath) {
-                alert('이미지 폴더 경로를 입력해주세요.');
-                return;
+        // 설정 파일에서 특수 설정 확인
+        const registry = getNodeRegistry();
+        const config = registry.getConfig(nodeType);
+        if (config && config.requiresFolderPath) {
+            const folderPathInput = document.getElementById('node-folder-path');
+            if (folderPathInput) {
+                const folderPath = folderPathInput.value;
+                if (!folderPath) {
+                    alert('이미지 폴더 경로를 입력해주세요.');
+                    return;
+                }
+                nodeData.folder_path = folderPath;
             }
-            nodeData.folder_path = folderPath;
         }
 
         // WorkflowPage의 createNodeFromData 메서드 호출

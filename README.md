@@ -161,6 +161,17 @@ POST /api/execute-nodes
 - **loop**: 반복 실행
 - **custom**: 커스텀 액션
 
+## 문서
+
+### 사용자 가이드
+- **[데이터베이스 사용 가이드](docs/database.md)**: 데이터베이스 사용 및 샘플 데이터 삽입 방법
+
+### 개발자 가이드
+- **[개발자 가이드](docs/dev/development.md)**: 개발 환경 설정, 서버 실행, 배포 방법
+- **[노드 추가 가이드](docs/dev/node.md)**: 새로운 노드 타입을 추가하는 방법에 대한 상세 가이드
+- **[환경 변수 설정](docs/dev/environment.md)**: 개발/프로덕션 모드 환경 변수 설정
+- **[워크플로우 구조](docs/dev/workflow-structure.md)**: 워크플로우 페이지 코드 구조 설명
+
 ## 개발 가이드
 
 ### 새로운 액션 타입 추가
@@ -171,9 +182,14 @@ POST /api/execute-nodes
 
 ### 새로운 노드 타입 추가
 
-1. `NodeType` 열거형에 새 타입 추가
-2. `WorkflowEngine`에 핸들러 구현
-3. UI에서 노드 생성 및 편집 기능 추가
+새로운 노드 타입을 추가하는 방법은 **[노드 추가 가이드](docs/dev/node.md)**를 참고하세요.
+
+간단히 요약하면:
+1. `UI/src/pages/workflow/config/nodes.config.js` 파일에 노드 정보 추가
+2. `UI/src/js/components/node/` 디렉토리에 노드 기능 구현 파일 생성 (`node-{노드이름}.js`)
+3. 서버 측(`server/game_automation/workflow_engine.py`)에서 노드 실행 로직 구현
+
+자세한 내용은 [노드 추가 가이드](docs/dev/node.md)를 확인하세요.
 
 ## 라이선스
 

@@ -24,6 +24,7 @@ import { NodeCreationService } from './services/node-creation-service.js';
 import { ViewportUtils } from './utils/viewport-utils.js';
 import { StorageUtils } from './utils/storage-utils.js';
 import { getNodeType, getNodeData, escapeHtml } from './utils/node-utils.js';
+import { getNodeRegistry } from './services/node-registry.js';
 
 /**
  * 로거 유틸리티 가져오기 (전역 fallback 포함)
@@ -80,7 +81,10 @@ export class WorkflowPage {
     /**
      * 초기화 메서드
      */
-    init() {
+    async init() {
+        // 노드 레지스트리 초기화 및 노드 스크립트 동적 로드
+        await this.loadNodeScripts();
+        
         this.addNodeModal = new AddNodeModal(this);
         this.nodeSettingsModal = new NodeSettingsModal(this);
         this.saveService = new WorkflowSaveService(this);
@@ -94,6 +98,41 @@ export class WorkflowPage {
         this.setupComponentIntegration();
         this.setupKeyboardShortcuts();
         this.createInitialNodes();
+    }
+    
+    /**
+     * 노드 스크립트 동적 로드
+     * NodeManager가 로드된 후에 실행되어야 함
+     */
+    async loadNodeScripts() {
+        const logger = getLogger();
+        const log = logger.log;
+        
+        // NodeManager가 로드될 때까지 대기
+        const waitForNodeManager = () => {
+            return new Promise((resolve) => {
+                const check = () => {
+                    if (window.NodeManager) {
+                        log('[WorkflowPage] NodeManager 로드 완료, 노드 스크립트 로드 시작');
+                        resolve();
+                    } else {
+                        setTimeout(check, 50);
+                    }
+                };
+                check();
+            });
+        };
+        
+        await waitForNodeManager();
+        
+        // 노드 레지스트리를 사용하여 모든 노드 스크립트 로드
+        const registry = getNodeRegistry();
+        try {
+            await registry.loadAllNodeScripts();
+            log('[WorkflowPage] 모든 노드 스크립트 로드 완료');
+        } catch (error) {
+            logger.error('[WorkflowPage] 노드 스크립트 로드 중 오류:', error);
+        }
     }
     
     /**

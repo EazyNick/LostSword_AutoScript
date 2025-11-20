@@ -1,37 +1,25 @@
 /**
  * 노드 기본 설정 데이터
- * 노드 타입별 기본 설명, 색상 등을 정의합니다.
+ * nodes.config.js에서 동적으로 생성됩니다.
  */
 
-export const NODE_DEFAULT_DESCRIPTIONS = {
-    'start': '워크플로우의 시작점입니다.',
-    'end': '워크플로우의 종료점입니다.',
-    'action': '액션을 수행하는 노드입니다.',
-    'condition': '조건을 확인하는 노드입니다.',
-    'loop': '반복 작업을 수행하는 노드입니다.',
-    'wait': '일정 시간 대기하는 노드입니다.',
-    'image-touch': '이미지를 찾아 터치하는 노드입니다.'
-};
+import { NODES_CONFIG, getAllNodeTypes, getNodeConfig } from './nodes.config.js';
 
-export const NODE_DEFAULT_COLORS = {
-    'start': 'green',
-    'end': 'gray',
-    'action': 'blue',
-    'condition': 'orange',
-    'loop': 'purple',
-    'wait': 'purple',
-    'image-touch': 'blue'
-};
+// 설정 파일에서 동적으로 기본값 생성
+const nodeTypes = getAllNodeTypes();
 
-export const NODE_DEFAULT_TITLES = {
-    'start': '시작',
-    'end': '종료',
-    'action': '액션 노드',
-    'condition': '조건 노드',
-    'loop': '반복 노드',
-    'wait': '대기 노드',
-    'image-touch': '이미지 터치'
-};
+export const NODE_DEFAULT_DESCRIPTIONS = {};
+export const NODE_DEFAULT_COLORS = {};
+export const NODE_DEFAULT_TITLES = {};
+
+nodeTypes.forEach(type => {
+    const config = getNodeConfig(type);
+    if (config) {
+        NODE_DEFAULT_DESCRIPTIONS[type] = config.description || '노드에 대한 설명을 입력하세요.';
+        NODE_DEFAULT_COLORS[type] = config.color || 'blue';
+        NODE_DEFAULT_TITLES[type] = config.title || `${type} 노드`;
+    }
+});
 
 /**
  * 노드 타입별 기본 설명 가져오기
