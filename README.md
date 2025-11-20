@@ -53,22 +53,6 @@ LostSword_AutoScript/
 
 ## 설치 및 실행
 
-### 사용자용 배포 (추천)
-
-1. **개발자 배포**:
-   ```bash
-   # 개발자가 사용자용 패키지 생성
-   deploy-for-users.bat
-   ```
-
-2. **사용자 사용**:
-   ```bash
-   # 배포된 폴더에서
-   start-server.bat
-   ```
-
-3. **웹 브라우저에서 `http://localhost:8000` 접속**
-
 ### 개발자용 설치
 
 1. **가상환경 생성**:
@@ -85,10 +69,6 @@ LostSword_AutoScript/
 
 3. **서버 실행**:
    ```bash
-   # 개발용
-   start-server-simple.bat
-   
-   # 또는 수동으로
    cd server
    python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
    ```

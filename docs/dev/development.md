@@ -41,93 +41,23 @@ cp env.example .env
 
 ## 🚀 개발용 서버 실행
 
-### 방법 1: 배치 파일 사용 (추천)
-```bash
-# 프로젝트 루트에서
-start-server-simple.bat
-```
-
-### 방법 2: 직접 명령어 실행
+### 개발 모드 (자동 재시작)
 ```bash
 # 가상환경 활성화 후
 cd server
 python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### 방법 3: 개발 모드 (자동 재시작)
-```bash
-# 코드 변경 시 자동으로 서버 재시작
-python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
-
-### 방법 4: 프로덕션 모드 (배포용)
+### 프로덕션 모드 (배포용)
 ```bash
 # 자동 재시작 없이 실행
+cd server
 python -m uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
 ## 📦 배포
 
-### 1. 사용자용 배포 패키지 생성
-```bash
-# 프로젝트 루트에서
-deploy-for-users.bat
-```
-
-이 명령어는 다음을 수행합니다:
-- `LostSword_Automation` 폴더 생성
-- 서버 코드 복사
-- UI 코드 복사  
-- **개발 완료된 가상환경(`venv/`) 복사** ← 사용자가 Python 설치 불필요
-- 사용자용 실행 스크립트 복사
-
-**중요**: 배포 전에 가상환경에 모든 필요한 패키지가 설치되어 있는지 확인하세요.
-
-### 배포 과정 상세 설명
-
-1. **개발 완료 후 배포 준비**:
-   ```bash
-   # 가상환경 활성화
-   venv\Scripts\activate
-   
-   # 모든 패키지가 설치되어 있는지 확인
-   pip list
-   
-   # requirements.txt와 일치하는지 확인
-   pip check
-   ```
-
-2. **배포 실행**:
-   ```bash
-   # 배포 패키지 생성
-   deploy-for-users.bat
-   ```
-
-3. **배포된 패키지 검증**:
-   ```bash
-   # 배포된 폴더로 이동
-   cd LostSword_Automation
-   
-   # 가상환경이 제대로 복사되었는지 확인
-   dir venv\Scripts\
-   
-   # 서버 실행 테스트
-   start-server.bat
-   ```
-
-### 2. 배포된 패키지 구조
-```
-LostSword_Automation/
-├── server/           # FastAPI 서버
-├── ui/              # 웹 UI
-├── venv/            # 가상환경 (Python 포함)
-└── start-server.bat # 사용자용 실행 스크립트
-```
-
-### 3. 사용자 배포 방법
-1. `deploy-for-users.bat` 실행
-2. 생성된 `LostSword_Automation` 폴더를 사용자에게 전달
-3. 사용자는 `start-server.bat` 실행 후 브라우저에서 `http://localhost:8000` 접속
+배포 관련 스크립트는 추후 개발 완료 후 추가 예정입니다.
 
 ## 🔧 유용한 명령어들
 
