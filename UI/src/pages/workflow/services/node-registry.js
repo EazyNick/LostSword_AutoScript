@@ -25,6 +25,10 @@ export class NodeRegistry {
 
     /**
      * 특정 노드 타입의 스크립트 로드
+     * 
+     * 서버에서 정적 파일이 /static 경로로 마운트되어 있으므로,
+     * 절대 경로를 사용하여 페이지 위치에 관계없이 올바른 경로로 요청합니다.
+     * 
      * @param {string} nodeType - 노드 타입
      * @returns {Promise<void>}
      */
@@ -40,22 +44,28 @@ export class NodeRegistry {
             return;
         }
 
-        const scriptPath = `../../js/components/node/${config.script}`;
+        // 절대 경로 사용: 서버에서 /static으로 마운트된 정적 파일 경로
+        // 상대 경로를 사용하면 페이지 위치(/workflow 등)에 따라 경로가 달라져서 404 에러 발생
+        const scriptPath = `/static/js/components/node/${config.script}`;
         
         return new Promise((resolve, reject) => {
             // 동적 스크립트 로드
             const script = document.createElement('script');
             script.src = scriptPath;
+            script.type = 'module'; // ES6 모듈로 로드
+            
             script.onload = () => {
                 this.loadedScripts.add(config.script);
-                console.log(`[NodeRegistry] 노드 스크립트 로드 완료: ${config.script}`);
+                console.log(`[NodeRegistry] 노드 스크립트 로드 완료: ${config.script} (경로: ${scriptPath})`);
                 resolve();
             };
-            script.onerror = () => {
-                console.error(`[NodeRegistry] 노드 스크립트 로드 실패: ${config.script}`);
+            
+            script.onerror = (error) => {
+                console.error(`[NodeRegistry] 노드 스크립트 로드 실패: ${config.script} (경로: ${scriptPath})`, error);
                 // 스크립트가 없어도 계속 진행 (사용자가 아직 만들지 않은 경우)
                 resolve();
             };
+            
             document.head.appendChild(script);
         });
     }

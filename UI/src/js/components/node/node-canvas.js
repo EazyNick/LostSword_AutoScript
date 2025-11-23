@@ -14,6 +14,9 @@
             this.panStart = { x: 0, y: 0 };
             this.panScrollStart = { left: 0, top: 0 };
 
+            // 성능 최적화: canvasTransform 객체를 메모리에 유지하여 DOM 파싱 최소화
+            // 이전에는 매번 DOM에서 transform 스타일을 읽고 정규식으로 파싱했지만,
+            // 이제는 메모리 객체를 사용하여 성능이 크게 향상됨
             this.canvasTransform = {
                 x: -50000,
                 y: -50000,
@@ -21,6 +24,14 @@
             };
 
             this.isZooming = false;
+
+            // 성능 최적화: requestAnimationFrame을 사용한 패닝 업데이트 스로틀링
+            this.panRafId = null;
+            this.pendingPanPosition = null;
+
+            // 성능 최적화: 연결선 업데이트 스로틀링
+            this.lastConnectionUpdateTime = 0;
+            this.CONNECTION_UPDATE_INTERVAL = 16; // 약 60fps
         }
 
         /**
@@ -45,7 +56,16 @@
 
                     const handleMove = (moveEvent) => {
                         if (this.isPanning) {
-                            this.handlePan(moveEvent);
+                            // 성능 최적화: 마우스 위치를 저장하고 requestAnimationFrame으로 업데이트
+                            this.pendingPanPosition = { x: moveEvent.clientX, y: moveEvent.clientY };
+                            
+                            // requestAnimationFrame이 이미 예약되지 않았을 때만 예약
+                            if (this.panRafId === null) {
+                                this.panRafId = requestAnimationFrame(() => {
+                                    this.handlePan();
+                                    this.panRafId = null;
+                                });
+                            }
                         }
                     };
 
@@ -149,39 +169,24 @@
 
         /**
          * 휠 기반 패닝 (피그마 스타일)
+         * 성능 최적화: canvasTransform 객체를 직접 사용하여 DOM 파싱 제거
          */
         handleWheelPan(e) {
             const deltaX = e.deltaX || (e.shiftKey ? e.deltaY : 0);
             const deltaY = e.deltaY || (e.shiftKey ? 0 : e.deltaY);
 
-            // 실제 DOM의 transform 값을 읽어와서 사용 (동기화 보장)
-            const canvasContent = document.getElementById('canvas-content');
-            let currentX = -50000;
-            let currentY = -50000;
-            let currentScale = 1;
-
-            if (canvasContent) {
-                const currentTransform = canvasContent.style.transform || 'translate(-50000px, -50000px) scale(1)';
-                
-                const translateMatch = currentTransform.match(/translate\(([^,]+)px,\s*([^)]+)px\)/);
-                if (translateMatch) {
-                    currentX = parseFloat(translateMatch[1]) || -50000;
-                    currentY = parseFloat(translateMatch[2]) || -50000;
-                }
-
-                const scaleMatch = currentTransform.match(/scale\(([^)]+)\)/);
-                if (scaleMatch) {
-                    currentScale = parseFloat(scaleMatch[1]) || 1;
-                }
-            }
-
-            // 실제 DOM 값으로 동기화
-            this.canvasTransform = { x: currentX, y: currentY, scale: currentScale };
+            // 성능 최적화: 메모리의 canvasTransform 객체 사용 (DOM 파싱 제거)
+            // 이전에는 매번 DOM에서 transform 스타일을 읽고 정규식으로 파싱했지만,
+            // 이제는 메모리 객체를 사용하여 성능이 크게 향상됨
+            const currentX = this.canvasTransform.x;
+            const currentY = this.canvasTransform.y;
+            const currentScale = this.canvasTransform.scale;
 
             // deltaY 부호를 반전하여 올바른 방향으로 스크롤되도록 수정
             const newX = currentX + deltaX;
             const newY = currentY - deltaY;
 
+            // Transform 업데이트 (메모리 객체도 함께 업데이트)
             this.updateCanvasTransform(newX, newY, currentScale);
 
             if (Math.random() < 0.1) {
@@ -193,6 +198,7 @@
 
         /**
          * 패닝 시작 (중간 버튼)
+         * 성능 최적화: canvasTransform 객체를 직접 사용하여 DOM 파싱 제거
          */
         startPan(e) {
             if (this.isPanning) return;
@@ -200,33 +206,15 @@
             this.isPanning = true;
             this.panStart = { x: e.clientX, y: e.clientY };
 
-            // 실제 DOM의 transform 값을 읽어와서 사용 (동기화 보장)
-            const canvasContent = document.getElementById('canvas-content');
-            let currentX = -50000;
-            let currentY = -50000;
-            let currentScale = 1;
+            // 성능 최적화: 메모리의 canvasTransform 객체 사용 (DOM 파싱 제거)
+            // 패닝 시작 시에만 한 번 동기화하고, 이후에는 메모리 객체를 사용
+            this.syncCanvasTransformFromDOM();
 
-            if (canvasContent) {
-                const currentTransform = canvasContent.style.transform || 'translate(-50000px, -50000px) scale(1)';
-                
-                const translateMatch = currentTransform.match(/translate\(([^,]+)px,\s*([^)]+)px\)/);
-                if (translateMatch) {
-                    currentX = parseFloat(translateMatch[1]) || -50000;
-                    currentY = parseFloat(translateMatch[2]) || -50000;
-                }
-
-                const scaleMatch = currentTransform.match(/scale\(([^)]+)\)/);
-                if (scaleMatch) {
-                    currentScale = parseFloat(scaleMatch[1]) || 1;
-                }
-            }
-
-            // 실제 DOM 값으로 동기화
-            this.canvasTransform = { x: currentX, y: currentY, scale: currentScale };
-
+            // 패닝 시작 시점의 transform 위치 저장
+            // 이 위치를 기준으로 마우스 이동량만큼 더해서 새 위치를 계산
             this.panScrollStart = {
-                left: currentX,
-                top: currentY
+                left: this.canvasTransform.x,
+                top: this.canvasTransform.y
             };
 
             this.canvas.classList.add('panning');
@@ -243,30 +231,58 @@
         }
 
         /**
-         * 패닝 진행
+         * DOM에서 canvasTransform 동기화 (필요할 때만 호출)
+         * 성능 최적화: DOM 파싱을 최소화하기 위해 필요한 경우에만 호출
          */
-        handlePan(e) {
-            if (!this.isPanning) return;
+        syncCanvasTransformFromDOM() {
+            const canvasContent = document.getElementById('canvas-content');
+            if (!canvasContent) {
+                // canvas-content가 없으면 기본값 사용
+                this.canvasTransform = { x: -50000, y: -50000, scale: 1 };
+                return;
+            }
 
-            const deltaX = e.clientX - this.panStart.x;
-            const deltaY = e.clientY - this.panStart.y;
+            const currentTransform = canvasContent.style.transform || 'translate(-50000px, -50000px) scale(1)';
+            
+            let currentX = -50000;
+            let currentY = -50000;
+            let currentScale = 1;
 
+            const translateMatch = currentTransform.match(/translate\(([^,]+)px,\s*([^)]+)px\)/);
+            if (translateMatch) {
+                currentX = parseFloat(translateMatch[1]) || -50000;
+                currentY = parseFloat(translateMatch[2]) || -50000;
+            }
+
+            const scaleMatch = currentTransform.match(/scale\(([^)]+)\)/);
+            if (scaleMatch) {
+                currentScale = parseFloat(scaleMatch[1]) || 1;
+            }
+
+            // 메모리 객체 업데이트
+            this.canvasTransform = { x: currentX, y: currentY, scale: currentScale };
+        }
+
+        /**
+         * 패닝 진행 (requestAnimationFrame 콜백)
+         * 성능 최적화: requestAnimationFrame을 통해 호출되므로 브라우저 렌더링 주기에 맞춰 실행됨
+         * 또한 canvasTransform 객체를 직접 사용하여 DOM 파싱 제거
+         */
+        handlePan() {
+            if (!this.isPanning || !this.pendingPanPosition) return;
+
+            // 저장된 마우스 위치 사용
+            const deltaX = this.pendingPanPosition.x - this.panStart.x;
+            const deltaY = this.pendingPanPosition.y - this.panStart.y;
+
+            // 패닝 시작 위치 + 마우스 이동량 = 새 위치
             const newX = this.panScrollStart.left + deltaX;
             const newY = this.panScrollStart.top + deltaY;
 
-            // 실제 DOM의 scale 값을 읽어와서 사용
-            const canvasContent = document.getElementById('canvas-content');
-            let currentScale = 1;
-            if (canvasContent) {
-                const currentTransform = canvasContent.style.transform;
-                if (currentTransform && currentTransform !== 'none') {
-                    const scaleMatch = currentTransform.match(/scale\(([^)]+)\)/);
-                    if (scaleMatch) {
-                        currentScale = parseFloat(scaleMatch[1]) || 1;
-                    }
-                }
-            }
+            // 성능 최적화: 메모리의 canvasTransform 객체에서 scale 가져오기 (DOM 파싱 제거)
+            const currentScale = this.canvasTransform.scale;
 
+            // Transform 업데이트 (메모리 객체도 함께 업데이트)
             this.updateCanvasTransform(newX, newY, currentScale);
 
             if (Math.random() < 0.02) {
@@ -282,9 +298,16 @@
         endPan() {
             log('endPan() 호출 - 현재 패닝 상태:', this.isPanning);
 
+            // requestAnimationFrame 취소
+            if (this.panRafId !== null) {
+                cancelAnimationFrame(this.panRafId);
+                this.panRafId = null;
+            }
+
             this.isPanning = false;
             this.panStart = { x: 0, y: 0 };
             this.panScrollStart = { left: 0, top: 0 };
+            this.pendingPanPosition = null;
 
             this.canvas.classList.remove('panning');
             this.canvas.style.cursor = 'default';
@@ -294,6 +317,8 @@
 
         /**
          * Transform 업데이트 (translate + scale)
+         * 성능 최적화: 메모리 객체(canvasTransform)를 먼저 업데이트하고 DOM에 반영
+         * 연결선 업데이트도 스로틀링하여 성능 향상
          */
         updateCanvasTransform(x, y, scale = 1) {
             if (this.isZooming) {
@@ -324,29 +349,32 @@
                 });
             }
 
-            // scale 기본값이면 기존 scale 유지
+            // scale 기본값이면 메모리 객체의 기존 scale 유지 (DOM 파싱 제거)
             let currentScale = scale;
             if (scale === 1) {
-                const currentTransform = canvasContent.style.transform;
-                if (currentTransform && currentTransform !== 'none') {
-                    const scaleMatch = currentTransform.match(/scale\(([^)]+)\)/);
-                    if (scaleMatch) {
-                        currentScale = parseFloat(scaleMatch[1]) || 1;
-                        log('updateCanvasTransform: 기존 스케일', currentScale);
-                    }
-                }
+                // 메모리 객체에서 scale 가져오기 (DOM 파싱 제거)
+                currentScale = this.canvasTransform.scale;
             }
 
+            // 성능 최적화: 메모리 객체 먼저 업데이트
             this.canvasTransform = { x, y, scale: currentScale };
+            
+            // DOM에 반영
             canvasContent.style.transform = `translate(${x}px, ${y}px) scale(${currentScale})`;
 
             log(
                 `updateCanvasTransform: translate(${x}, ${y}) scale(${currentScale})`
             );
 
-            // 드래그 중이 아닐 때만 연결선 전체 업데이트
+            // 성능 최적화: 연결선 업데이트 스로틀링
+            // 드래그 중이 아닐 때만 연결선 업데이트
             if (window.connectionManager && !this.nodeManager.isDragging) {
-                window.connectionManager.updateConnections();
+                const now = Date.now();
+                // 마지막 업데이트로부터 일정 시간이 지났을 때만 업데이트
+                if (now - this.lastConnectionUpdateTime >= this.CONNECTION_UPDATE_INTERVAL) {
+                    window.connectionManager.updateConnections();
+                    this.lastConnectionUpdateTime = now;
+                }
             }
         }
 
@@ -476,6 +504,7 @@
 
         /**
          * Ctrl+휠 줌 처리
+         * 성능 최적화: canvasTransform 객체를 직접 사용하여 DOM 파싱 제거
          */
         handleCanvasZoom(e) {
             log('handleCanvasZoom 호출:', {
@@ -497,38 +526,26 @@
                 return;
             }
 
-            const transform =
-                canvasContent.style.transform ||
-                'translate(-50000px, -50000px) scale(1)';
+            // 성능 최적화: 메모리의 canvasTransform 객체 사용 (DOM 파싱 제거)
+            const currentX = this.canvasTransform.x;
+            const currentY = this.canvasTransform.y;
+            const currentScale = this.canvasTransform.scale;
 
-            let currentX = -50000,
-                currentY = -50000,
-                currentScale = 1;
-
-            const translateMatch = transform.match(
-                /translate\(([^,]+)px,\s*([^)]+)px\)/
-            );
-            if (translateMatch) {
-                currentX = parseFloat(translateMatch[1]) || -50000;
-                currentY = parseFloat(translateMatch[2]) || -50000;
-            }
-
-            const scaleMatch = transform.match(/scale\(([^)]+)\)/);
-            if (scaleMatch) {
-                currentScale = parseFloat(scaleMatch[1]) || 1;
-            }
-
+            // 줌 팩터 계산 (휠 위로 = 확대, 아래로 = 축소)
             const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
             const newScale = Math.max(0.1, Math.min(5, currentScale * zoomFactor));
 
+            // 마우스 위치를 중심으로 줌하기 위한 계산
+            // 줌 비율을 사용하여 translate 값을 조정
             const zoomRatio = newScale / currentScale;
-
             const newX = mouseX - (mouseX - currentX) * zoomRatio;
             const newY = mouseY - (mouseY - currentY) * zoomRatio;
 
+            // DOM에 반영
             const newTransform = `translate(${newX}px, ${newY}px) scale(${newScale})`;
             canvasContent.style.transform = newTransform;
 
+            // 메모리 객체도 업데이트
             this.canvasTransform = { x: newX, y: newY, scale: newScale };
 
             this.showZoomLevel(newScale);
