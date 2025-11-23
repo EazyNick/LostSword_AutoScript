@@ -4,6 +4,9 @@ from typing import Tuple, Optional
 from pynput import mouse, keyboard
 from pynput.mouse import Button, Listener as MouseListener
 from pynput.keyboard import Key, Listener as KeyboardListener
+from log import log_manager
+
+logger = log_manager.logger
 
 class InputHandler:
     """게임 입력 처리 클래스"""
@@ -37,7 +40,7 @@ class InputHandler:
             self.last_click_position = (x, y)
             return True
         except Exception as e:
-            print(f"클릭 실패: {e}")
+            logger.error(f"클릭 실패: {e}")
             return False
     
     def double_click(self, x: int, y: int) -> bool:
@@ -64,7 +67,7 @@ class InputHandler:
             pyautogui.drag(end_x - start_x, end_y - start_y, duration=duration, button='left')
             return True
         except Exception as e:
-            print(f"드래그 실패: {e}")
+            logger.error(f"드래그 실패: {e}")
             return False
     
     def type_text(self, text: str, interval: float = 0.1) -> bool:
@@ -82,7 +85,7 @@ class InputHandler:
             pyautogui.typewrite(text, interval=interval)
             return True
         except Exception as e:
-            print(f"텍스트 입력 실패: {e}")
+            logger.error(f"텍스트 입력 실패: {e}")
             return False
     
     def press_key(self, key: str, presses: int = 1, interval: float = 0.1) -> bool:
@@ -102,7 +105,7 @@ class InputHandler:
             self.last_key_press = key
             return True
         except Exception as e:
-            print(f"키 입력 실패: {e}")
+            logger.error(f"키 입력 실패: {e}")
             return False
     
     def key_combination(self, *keys) -> bool:
@@ -119,7 +122,7 @@ class InputHandler:
             pyautogui.hotkey(*keys)
             return True
         except Exception as e:
-            print(f"키 조합 입력 실패: {e}")
+            logger.error(f"키 조합 입력 실패: {e}")
             return False
     
     def scroll(self, x: int, y: int, clicks: int = 3, direction: str = 'up') -> bool:
@@ -139,7 +142,7 @@ class InputHandler:
             pyautogui.scroll(scroll_direction * clicks, x=x, y=y)
             return True
         except Exception as e:
-            print(f"스크롤 실패: {e}")
+            logger.error(f"스크롤 실패: {e}")
             return False
     
     def move_mouse(self, x: int, y: int, duration: float = 0.5) -> bool:
@@ -157,7 +160,7 @@ class InputHandler:
             pyautogui.moveTo(x, y, duration=duration)
             return True
         except Exception as e:
-            print(f"마우스 이동 실패: {e}")
+            logger.error(f"마우스 이동 실패: {e}")
             return False
     
     def get_mouse_position(self) -> Tuple[int, int]:
@@ -168,13 +171,13 @@ class InputHandler:
         """입력 모니터링을 시작합니다."""
         def on_click(x, y, button, pressed):
             if pressed:
-                print(f"마우스 클릭 감지: ({x}, {y}) - {button}")
+                logger.debug(f"마우스 클릭 감지: ({x}, {y}) - {button}")
         
         def on_press(key):
             try:
-                print(f"키 입력 감지: {key.char}")
+                logger.debug(f"키 입력 감지: {key.char}")
             except AttributeError:
-                print(f"특수 키 입력 감지: {key}")
+                logger.debug(f"특수 키 입력 감지: {key}")
         
         self.mouse_listener = MouseListener(on_click=on_click)
         self.keyboard_listener = KeyboardListener(on_press=on_press)

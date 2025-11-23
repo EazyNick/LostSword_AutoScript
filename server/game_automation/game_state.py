@@ -1,6 +1,9 @@
 from typing import Dict, Any, Optional
 import time
 import json
+from log import log_manager
+
+logger = log_manager.logger
 
 class GameState:
     """게임 상태 관리 클래스"""
@@ -162,7 +165,7 @@ class GameState:
                 json.dump(self.state, f, ensure_ascii=False, indent=2)
             return True
         except Exception as e:
-            print(f"상태 저장 실패: {e}")
+            logger.error(f"상태 저장 실패: {e}")
             return False
     
     def load_state_from_file(self, filename: str) -> bool:
@@ -173,7 +176,7 @@ class GameState:
                 self.state.update(loaded_state)
             return True
         except Exception as e:
-            print(f"상태 로드 실패: {e}")
+            logger.error(f"상태 로드 실패: {e}")
             return False
     
     def is_game_running(self) -> bool:
