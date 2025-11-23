@@ -924,13 +924,27 @@ export class ConnectionManager {
             return;
         }
         
+        // 화면 포커스 노드의 입력 커넥터에서 시작하는 경우 마우스 커서 위치(끝점) 보정
+        let adjustedMouseX = mouseX;
+        if (this.startConnector && this.startConnector.classList.contains('node-input')) {
+            const startNode = this.startConnector.closest('.workflow-node');
+            if (startNode) {
+                const nodeType = startNode.dataset.nodeType || '';
+                if (nodeType === 'process-focus') {
+                    // 화면 포커스 노드의 입력 커넥터: 마우스 커서 x좌표를 -5만큼 조정 (하드코딩)
+                    adjustedMouseX = mouseX - -10;
+                }
+            }
+        }
+        
         logger.log('[ConnectionManager] 임시 연결선 업데이트:', {
             start: startPos,
-            end: { x: mouseX, y: mouseY }
+            end: { x: adjustedMouseX, y: mouseY },
+            originalMouse: { x: mouseX, y: mouseY }
         });
         
-        // 임시 연결선 업데이트
-        this.updateTempLine(startPos.x, startPos.y, mouseX, mouseY);
+        // 임시 연결선 업데이트 (보정된 마우스 위치 사용)
+        this.updateTempLine(startPos.x, startPos.y, adjustedMouseX, mouseY);
     }
     
     /**

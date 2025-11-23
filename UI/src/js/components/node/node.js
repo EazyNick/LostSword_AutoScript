@@ -262,6 +262,15 @@ export class NodeManager {
 
         // 더블클릭으로 노드 설정 모달 열기
         node.addEventListener('dblclick', (e) => {
+            // 입력/출력 커넥터를 더블클릭한 경우 노드 설정 모달을 열지 않음
+            const target = e.target;
+            if (target.classList.contains('node-input') || 
+                target.classList.contains('node-output') ||
+                target.closest('.node-input') ||
+                target.closest('.node-output')) {
+                return; // 커넥터의 더블클릭 이벤트가 처리하도록 함
+            }
+            
             e.stopPropagation();
             e.preventDefault();
             this.openNodeSettings(node);
@@ -1876,14 +1885,26 @@ export class NodeManager {
      * 현재 모든 노드 데이터 반환
      */
     getAllNodes() {
-        return this.nodes.map(n => ({
-            id: n.data.id,
-            title: n.data.title,
-            type: n.data.type,
-            color: n.data.color,
-            x: parseInt(n.element.style.left, 10),
-            y: parseInt(n.element.style.top, 10)
-        }));
+        return this.nodes.map(n => {
+            const nodeId = n.data.id;
+            const nodeElement = n.element;
+            
+            // DOM에서 최신 제목 가져오기
+            const titleElement = nodeElement.querySelector('.node-title');
+            const latestTitle = titleElement ? titleElement.textContent.trim() : null;
+            
+            // nodeData에서 최신 정보 가져오기 (업데이트된 색상, 타입 등)
+            const latestData = this.nodeData && this.nodeData[nodeId] ? this.nodeData[nodeId] : {};
+            
+            return {
+                id: nodeId,
+                title: latestTitle || latestData.title || n.data.title, // DOM 제목 우선 사용
+                type: latestData.type || n.data.type,
+                color: latestData.color || n.data.color, // 최신 색상 우선 사용
+                x: parseInt(nodeElement.style.left, 10),
+                y: parseInt(nodeElement.style.top, 10)
+            };
+        });
     }
 
     /**
