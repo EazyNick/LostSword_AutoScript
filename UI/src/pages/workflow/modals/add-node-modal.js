@@ -4,7 +4,7 @@
  */
 
 import { NODE_TYPES, NODE_TYPE_LABELS } from '../constants/node-types.js';
-import { getDefaultTitle, getDefaultColor } from '../config/node-defaults.js';
+import { getDefaultTitle, getDefaultColor, getDefaultDescription } from '../config/node-defaults.js';
 import { NodeValidationUtils } from '../utils/node-validation-utils.js';
 import { getNodeRegistry } from '../services/node-registry.js';
 
@@ -57,6 +57,10 @@ export class AddNodeModal {
             <div class="form-group">
                 <label for="node-title">노드 제목:</label>
                 <input type="text" id="node-title" placeholder="노드 제목을 입력하세요">
+            </div>
+            <div class="form-group">
+                <label for="node-description">설명:</label>
+                <textarea id="node-description" rows="3" placeholder="노드에 대한 설명을 입력하세요 (선택사항)" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"></textarea>
             </div>
             <div class="form-group" id="node-custom-settings" style="display: none;">
                 <!-- 동적으로 생성되는 노드별 특수 설정 영역 -->
@@ -173,10 +177,24 @@ export class AddNodeModal {
                     customSettings.style.display = 'none';
                 }
                 
-                // 기본 제목 설정
+                // 기본 제목 설정 (nodes.config.js의 title 사용)
                 const titleInput = document.getElementById('node-title');
-                if (titleInput && !titleInput.value && config) {
+                if (titleInput && config) {
+                    // 노드 타입 변경 시 항상 nodes.config.js의 title로 초기화
                     titleInput.value = config.title || getDefaultTitle(selectedType);
+                } else if (titleInput) {
+                    // config가 없어도 기본값 설정
+                    titleInput.value = getDefaultTitle(selectedType);
+                }
+                
+                // 기본 설명 설정 (nodes.config.js의 description 사용)
+                const descriptionInput = document.getElementById('node-description');
+                if (descriptionInput && config) {
+                    // 노드 타입 변경 시 항상 nodes.config.js의 description으로 초기화
+                    descriptionInput.value = config.description || getDefaultDescription(selectedType);
+                } else if (descriptionInput) {
+                    // config가 없어도 기본값 설정
+                    descriptionInput.value = getDefaultDescription(selectedType);
                 }
                 
                 // 기본 색상 설정
@@ -262,7 +280,7 @@ export class AddNodeModal {
     /**
      * 노드 추가 처리
      */
-    handleAddNode() {
+    async handleAddNode() {
         const nodeType = document.getElementById('node-type').value;
         const nodeManager = this.workflowPage.getNodeManager();
         
@@ -278,18 +296,31 @@ export class AddNodeModal {
             return;
         }
         
-        let nodeTitle = document.getElementById('node-title').value;
+        let nodeTitle = document.getElementById('node-title').value.trim();
+        let nodeDescription = document.getElementById('node-description').value.trim();
         let nodeColor = document.getElementById('node-color').value;
 
-        // 시작/종료 노드는 기본 색상과 제목 설정
+        // nodes.config.js에서 기본 제목 가져오기
+        const registry = getNodeRegistry();
+        const config = registry.getConfig(nodeType);
+        const defaultTitle = config?.title || getDefaultTitle(nodeType);
+        const defaultDescription = config?.description || getDefaultDescription(nodeType);
+        
+        // 제목이 비어있으면 nodes.config.js의 title 사용
+        if (!nodeTitle) {
+            nodeTitle = defaultTitle;
+        }
+        
+        // 설명이 비어있으면 nodes.config.js의 description 사용
+        if (!nodeDescription) {
+            nodeDescription = defaultDescription;
+        }
+
+        // 시작/종료 노드는 기본 색상 설정
         if (nodeType === NODE_TYPES.START) {
-            if (!nodeTitle) nodeTitle = getDefaultTitle(NODE_TYPES.START);
             if (!nodeColor || nodeColor === 'blue') nodeColor = getDefaultColor(NODE_TYPES.START);
         } else if (nodeType === NODE_TYPES.END) {
-            if (!nodeTitle) nodeTitle = getDefaultTitle(NODE_TYPES.END);
             if (!nodeColor || nodeColor === 'blue') nodeColor = getDefaultColor(NODE_TYPES.END);
-        } else {
-            if (!nodeTitle) nodeTitle = getDefaultTitle(nodeType);
         }
 
         const nodeData = {
@@ -297,14 +328,13 @@ export class AddNodeModal {
                 (nodeType === NODE_TYPES.END ? 'end' : `node_${Date.now()}`),
             type: nodeType,
             title: nodeTitle,
+            description: nodeDescription,
             color: nodeColor,
             x: Math.random() * 400 + 100,
             y: Math.random() * 300 + 100
         };
 
-        // 설정 파일에서 특수 설정 확인
-        const registry = getNodeRegistry();
-        const config = registry.getConfig(nodeType);
+        // 설정 파일에서 특수 설정 확인 (위에서 이미 선언된 registry와 config 재사용)
         if (config && config.requiresFolderPath) {
             const folderPathInput = document.getElementById('node-folder-path');
             if (folderPathInput) {
@@ -345,6 +375,14 @@ export class AddNodeModal {
         const modalManager = this.workflowPage.getModalManager();
         if (modalManager) {
             modalManager.close();
+        }
+
+        // 노드 생성 후 자동 저장
+        try {
+            await this.workflowPage.saveWorkflow({ useToast: true });
+        } catch (error) {
+            console.error('노드 생성 후 자동 저장 실패:', error);
+            // 저장 실패해도 노드는 생성되었으므로 사용자에게 알리지 않음
         }
     }
 
