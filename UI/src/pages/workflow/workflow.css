@@ -489,21 +489,42 @@
 }
 
 /* 실패한 노드 */
-.workflow-node.failed {
+.workflow-node.failed,
+.workflow-node.error {
     border-color: #e74c3c;                     /* 빨간색 테두리 */
     box-shadow: 0 0 15px rgba(231, 76, 60, 0.5); /* 빨간색 발광 효과 */
+    animation: pulse-error 0.5s infinite;       /* 빠른 깜빡임 애니메이션 */
 }
 
-/* 실행 중 노드 펄스 애니메이션 */
+/* 실행 중 노드 펄스 애니메이션 (깜빡깜빡) */
 @keyframes pulse-executing {
     0% {
         box-shadow: 0 0 15px rgba(255, 107, 53, 0.5); /* 기본 발광 */
+        border-color: #ff6b35;
     }
     50% {
-        box-shadow: 0 0 20px rgba(255, 107, 53, 0.8); /* 강한 발광 */
+        box-shadow: 0 0 25px rgba(255, 107, 53, 1); /* 강한 발광 */
+        border-color: #ff8c5a;
     }
     100% {
         box-shadow: 0 0 15px rgba(255, 107, 53, 0.5); /* 기본 발광 */
+        border-color: #ff6b35;
+    }
+}
+
+/* 에러 노드 깜빡임 애니메이션 */
+@keyframes pulse-error {
+    0% {
+        box-shadow: 0 0 15px rgba(231, 76, 60, 0.5);
+        border-color: #e74c3c;
+    }
+    50% {
+        box-shadow: 0 0 25px rgba(231, 76, 60, 1);
+        border-color: #c0392b;
+    }
+    100% {
+        box-shadow: 0 0 15px rgba(231, 76, 60, 0.5);
+        border-color: #e74c3c;
     }
 }
 

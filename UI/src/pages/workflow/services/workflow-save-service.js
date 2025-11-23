@@ -80,6 +80,20 @@ export class WorkflowSaveService {
                     if (nodeData.wait_time !== undefined) {
                         parameters.wait_time = nodeData.wait_time;
                     }
+                } else if (nodeType === 'process-focus') {
+                    // 프로세스 포커스 노드: 프로세스 정보 저장
+                    if (nodeData.process_id !== undefined) {
+                        parameters.process_id = nodeData.process_id;
+                    }
+                    if (nodeData.hwnd !== undefined) {
+                        parameters.hwnd = nodeData.hwnd;
+                    }
+                    if (nodeData.process_name) {
+                        parameters.process_name = nodeData.process_name;
+                    }
+                    if (nodeData.window_title) {
+                        parameters.window_title = nodeData.window_title;
+                    }
                 }
             }
 

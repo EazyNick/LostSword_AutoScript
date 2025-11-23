@@ -123,6 +123,24 @@ export class NodeUpdateService {
         } else if (newType === NODE_TYPES.WAIT) {
             const waitTime = document.getElementById('edit-node-wait-time')?.value || '1';
             updatedNodeData.wait_time = parseFloat(waitTime) || 1;
+        } else if (newType === 'process-focus') {
+            const processId = document.getElementById('edit-node-process-id')?.value || '';
+            const hwnd = document.getElementById('edit-node-process-hwnd')?.value || '';
+            const processName = document.getElementById('edit-node-process-name')?.value || '';
+            const windowTitle = document.getElementById('edit-node-window-title')?.value || '';
+            
+            if (processId) {
+                updatedNodeData.process_id = parseInt(processId);
+            }
+            if (hwnd) {
+                updatedNodeData.hwnd = parseInt(hwnd);
+            }
+            if (processName) {
+                updatedNodeData.process_name = processName;
+            }
+            if (windowTitle) {
+                updatedNodeData.window_title = windowTitle;
+            }
         }
         
         return updatedNodeData;

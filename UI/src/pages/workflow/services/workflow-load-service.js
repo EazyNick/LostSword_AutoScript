@@ -210,41 +210,44 @@ export class WorkflowLoadService {
         setTimeout(() => {
             log('[WorkflowPage] 노드 생성 시작');
             
-            // 노드들 생성
-            nodes.forEach((nodeData, index) => {
-                this.createNodeFromServerData(nodeData, nodeManager);
-                
-                log(`[WorkflowPage] 노드 ${index + 1}/${nodes.length} 생성 중:`, {
-                    id: nodeData.id,
-                    type: nodeData.type
-                });
-            });
-            
-            log('[WorkflowPage] 모든 노드 생성 완료');
-            
-            // 노드가 DOM에 완전히 렌더링될 때까지 대기
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                    this.restoreConnections(connections, nodeManager);
-                    this.workflowPage.fitNodesToView();
+            // 노드들 생성 (비동기 처리)
+            (async () => {
+                for (let index = 0; index < nodes.length; index++) {
+                    const nodeData = nodes[index];
+                    await this.createNodeFromServerData(nodeData, nodeManager);
                     
-                    // 뷰포트 조정 후 연결선 위치를 다시 한 번 업데이트
-                    setTimeout(() => {
-                        if (nodeManager && nodeManager.connectionManager && connections.length > 0) {
-                            log('[WorkflowPage] 뷰포트 조정 후 연결선 위치 최종 업데이트');
-                            nodeManager.connectionManager.updateAllConnections();
-                        }
-                        log('[WorkflowPage] ✅ 스크립트 데이터 로드 및 화면 그리기 완료');
-                    }, 150);
+                    log(`[WorkflowPage] 노드 ${index + 1}/${nodes.length} 생성 중:`, {
+                        id: nodeData.id,
+                        type: nodeData.type
+                    });
+                }
+                
+                log('[WorkflowPage] 모든 노드 생성 완료');
+                
+                // 노드가 DOM에 완전히 렌더링될 때까지 대기
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        this.restoreConnections(connections, nodeManager);
+                        this.workflowPage.fitNodesToView();
+                        
+                        // 뷰포트 조정 후 연결선 위치를 다시 한 번 업데이트
+                        setTimeout(() => {
+                            if (nodeManager && nodeManager.connectionManager && connections.length > 0) {
+                                log('[WorkflowPage] 뷰포트 조정 후 연결선 위치 최종 업데이트');
+                                nodeManager.connectionManager.updateAllConnections();
+                            }
+                            log('[WorkflowPage] ✅ 스크립트 데이터 로드 및 화면 그리기 완료');
+                        }, 150);
+                    });
                 });
-            });
+            })();
         }, 100);
     }
 
     /**
      * 서버 데이터로부터 노드 생성
      */
-    createNodeFromServerData(nodeData, nodeManager) {
+    async createNodeFromServerData(nodeData, nodeManager) {
         const originalX = nodeData.position?.x || 0;
         const originalY = nodeData.position?.y || 0;
         
@@ -276,6 +279,9 @@ export class WorkflowLoadService {
                 } else if (nodeType === NODE_TYPES.WAIT && nodeData.parameters.wait_time !== undefined) {
                     nodeManager.nodeData[nodeData.id].wait_time = nodeData.parameters.wait_time;
                     nodeDataForManager.wait_time = nodeData.parameters.wait_time;
+                } else if (nodeType === 'process-focus') {
+                    // 프로세스 포커스 노드: 프로세스 정보 복원 (비동기로 검증)
+                    await this.restoreProcessFocusNode(nodeData, nodeManager, nodeDataForManager);
                 }
             }
         }
@@ -298,6 +304,42 @@ export class WorkflowLoadService {
         
         if (nodeManager) {
             nodeManager.createNode(nodeDataForManager);
+            
+            // 프로세스 포커스 노드인 경우, 노드 생성 후 내용 업데이트
+            if (nodeData.type === 'process-focus' && nodeManager.nodeData[nodeData.id]) {
+                const processData = nodeManager.nodeData[nodeData.id];
+                if (processData.process_name || processData.process_id) {
+                    // 노드가 생성된 후 내용 업데이트
+                    setTimeout(() => {
+                        const nodeElement = document.getElementById(nodeData.id) || 
+                                          document.querySelector(`[data-node-id="${nodeData.id}"]`);
+                        if (nodeElement && nodeManager.generateNodeContent) {
+                            const updatedContent = nodeManager.generateNodeContent({
+                                ...nodeDataForManager,
+                                ...processData
+                            });
+                            const contentElement = nodeElement.querySelector('.node-content');
+                            if (contentElement) {
+                                const inputConnector = nodeElement.querySelector('.node-input')?.outerHTML || '<div class="node-input"></div>';
+                                const outputConnector = nodeElement.querySelector('.node-output')?.outerHTML || '<div class="node-output"></div>';
+                                const settingsBtn = nodeElement.querySelector('.node-settings')?.outerHTML || `<div class="node-settings" data-node-id="${nodeData.id}">⚙</div>`;
+                                
+                                nodeElement.innerHTML = `
+                                    ${inputConnector}
+                                    ${updatedContent}
+                                    ${outputConnector}
+                                    ${settingsBtn}
+                                `;
+                                
+                                // 이벤트 리스너 재설정
+                                if (nodeManager.setupNodeEventListeners) {
+                                    nodeManager.setupNodeEventListeners(nodeElement);
+                                }
+                            }
+                        }
+                    }, 100);
+                }
+            }
         }
     }
 
@@ -346,6 +388,95 @@ export class WorkflowLoadService {
             }
         } else {
             log('[WorkflowPage] ⚠️ 연결이 없어서 연결선을 그릴 수 없습니다.');
+        }
+    }
+
+    /**
+     * 프로세스 포커스 노드 복원 및 검증
+     * 저장된 프로세스가 현재 프로세스 목록에 있는지 확인하고, 없으면 선택 안된 상태로 처리
+     */
+    async restoreProcessFocusNode(nodeData, nodeManager, nodeDataForManager) {
+        const logger = this.workflowPage.getLogger();
+        const log = logger.log;
+        
+        const params = nodeData.parameters || {};
+        const savedProcessId = params.process_id;
+        const savedHwnd = params.hwnd;
+        const savedProcessName = params.process_name;
+        const savedWindowTitle = params.window_title;
+        
+        // 프로세스 정보가 없으면 저장하지 않음
+        if (!savedProcessId && !savedHwnd) {
+            log(`[WorkflowPage] 프로세스 포커스 노드 ${nodeData.id}: 저장된 프로세스 정보 없음`);
+            return;
+        }
+        
+        try {
+            // 현재 프로세스 목록 가져오기
+            const response = await fetch('http://localhost:8000/api/processes/list');
+            const result = await response.json();
+            
+            if (!result.success || !result.processes) {
+                log(`[WorkflowPage] 프로세스 목록 조회 실패, 프로세스 정보 저장 안 함`);
+                return;
+            }
+            
+            // 저장된 프로세스가 현재 목록에 있는지 확인
+            let foundProcess = null;
+            let foundWindow = null;
+            
+            for (const process of result.processes) {
+                // process_id로 매칭
+                if (savedProcessId && process.process_id === savedProcessId) {
+                    // hwnd로도 매칭 확인
+                    if (savedHwnd) {
+                        foundWindow = process.windows.find(w => w.hwnd === savedHwnd);
+                        if (foundWindow) {
+                            foundProcess = process;
+                            break;
+                        }
+                    } else {
+                        // hwnd가 없으면 프로세스명과 창 제목으로 매칭
+                        if (savedProcessName && savedWindowTitle) {
+                            foundWindow = process.windows.find(w => 
+                                w.title === savedWindowTitle
+                            );
+                            if (foundWindow) {
+                                foundProcess = process;
+                                break;
+                            }
+                        } else {
+                            // 첫 번째 창 사용
+                            if (process.windows && process.windows.length > 0) {
+                                foundProcess = process;
+                                foundWindow = process.windows[0];
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            if (foundProcess && foundWindow) {
+                // 프로세스를 찾았으면 정보 저장
+                nodeManager.nodeData[nodeData.id].process_id = foundProcess.process_id;
+                nodeManager.nodeData[nodeData.id].hwnd = foundWindow.hwnd;
+                nodeManager.nodeData[nodeData.id].process_name = foundProcess.process_name;
+                nodeManager.nodeData[nodeData.id].window_title = foundWindow.title;
+                
+                nodeDataForManager.process_id = foundProcess.process_id;
+                nodeDataForManager.hwnd = foundWindow.hwnd;
+                nodeDataForManager.process_name = foundProcess.process_name;
+                nodeDataForManager.window_title = foundWindow.title;
+                
+                log(`[WorkflowPage] 프로세스 포커스 노드 ${nodeData.id}: 프로세스 복원 성공 - ${foundProcess.process_name} (${foundWindow.title})`);
+            } else {
+                // 프로세스를 찾지 못했으면 선택 안된 상태로 처리
+                log(`[WorkflowPage] 프로세스 포커스 노드 ${nodeData.id}: 저장된 프로세스를 찾을 수 없음 (${savedProcessName || savedProcessId}), 선택 안된 상태로 처리`);
+                // 프로세스 정보는 저장하지 않음 (선택 안된 상태)
+            }
+        } catch (error) {
+            log(`[WorkflowPage] 프로세스 목록 조회 중 오류: ${error.message}, 프로세스 정보 저장 안 함`);
         }
     }
 }

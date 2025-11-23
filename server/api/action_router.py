@@ -162,3 +162,152 @@ async def get_image_list(folder_path: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"이미지 목록 조회 실패: {str(e)}")
+
+
+@router.get("/processes/list")
+async def get_process_list():
+    """
+    화면에 보이는 프로세스 목록을 가져옵니다.
+    백그라운드 프로세스는 제외하고 실제 창이 있는 프로세스만 반환합니다.
+    """
+    try:
+        import win32gui
+        import win32process
+        import psutil
+        
+        processes = []
+        process_dict = {}  # 중복 제거용 (같은 프로세스 이름의 여러 창)
+        
+        def enum_window_callback(hwnd, extra):
+            """창 열거 콜백 함수"""
+            if win32gui.IsWindowVisible(hwnd):
+                window_text = win32gui.GetWindowText(hwnd)
+                # 빈 창 제목 제외
+                if window_text:
+                    try:
+                        # 프로세스 ID 가져오기
+                        _, pid = win32process.GetWindowThreadProcessId(hwnd)
+                        
+                        # 프로세스 정보 가져오기
+                        try:
+                            proc = psutil.Process(pid)
+                            process_name = proc.name()
+                            exe_path = proc.exe() if hasattr(proc, 'exe') else None
+                            
+                            # 중복 제거: 같은 프로세스 이름이면 창 제목만 추가
+                            if process_name not in process_dict:
+                                process_dict[process_name] = {
+                                    "process_name": process_name,
+                                    "process_id": pid,
+                                    "exe_path": exe_path,
+                                    "windows": [],
+                                    "hwnd": hwnd  # 첫 번째 창 핸들 저장
+                                }
+                            
+                            # 창 정보 추가
+                            process_dict[process_name]["windows"].append({
+                                "title": window_text,
+                                "hwnd": hwnd
+                            })
+                        except (psutil.NoSuchProcess, psutil.AccessDenied):
+                            # 프로세스가 종료되었거나 접근 권한이 없는 경우 무시
+                            pass
+                    except Exception:
+                        # 창 정보를 가져올 수 없는 경우 무시
+                        pass
+        
+        # 모든 창 열거
+        win32gui.EnumWindows(enum_window_callback, None)
+        
+        # 딕셔너리를 리스트로 변환
+        for process_name, process_info in process_dict.items():
+            processes.append({
+                "process_name": process_info["process_name"],
+                "process_id": process_info["process_id"],
+                "exe_path": process_info["exe_path"],
+                "window_count": len(process_info["windows"]),
+                "windows": process_info["windows"],
+                "hwnd": process_info["hwnd"]  # 포커스용 핸들
+            })
+        
+        # 프로세스 이름으로 정렬
+        processes.sort(key=lambda x: x["process_name"].lower())
+        
+        return {
+            "success": True,
+            "count": len(processes),
+            "processes": processes
+        }
+        
+    except ImportError:
+        raise HTTPException(
+            status_code=500, 
+            detail="Windows 전용 기능입니다. pywin32와 psutil 패키지가 필요합니다."
+        )
+    except Exception as e:
+        import traceback
+        print(f"[ERROR] 프로세스 목록 조회 실패: {e}")
+        print(f"[ERROR] 스택 트레이스: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"프로세스 목록 조회 실패: {str(e)}")
+
+
+@router.post("/processes/focus")
+async def focus_process(request: dict):
+    """
+    선택한 프로세스에 포커스를 줍니다.
+    """
+    try:
+        import win32gui
+        
+        process_id = request.get("process_id")
+        hwnd = request.get("hwnd")
+        
+        if not process_id and not hwnd:
+            raise HTTPException(status_code=400, detail="process_id 또는 hwnd가 필요합니다.")
+        
+        # hwnd가 있으면 직접 사용, 없으면 process_id로 찾기
+        if hwnd:
+            target_hwnd = hwnd
+        else:
+            # process_id로 창 핸들 찾기
+            import win32process
+            target_hwnd = None
+            
+            def find_window_callback(hwnd, extra):
+                nonlocal target_hwnd
+                if win32gui.IsWindowVisible(hwnd):
+                    _, pid = win32process.GetWindowThreadProcessId(hwnd)
+                    if pid == process_id:
+                        target_hwnd = hwnd
+                        return False  # 찾았으면 중단
+                return True
+            
+            win32gui.EnumWindows(find_window_callback, None)
+            
+            if not target_hwnd:
+                raise HTTPException(status_code=404, detail=f"프로세스 ID {process_id}에 해당하는 창을 찾을 수 없습니다.")
+        
+        # 창을 최상단으로 가져오기
+        win32gui.ShowWindow(target_hwnd, 9)  # SW_RESTORE = 9
+        win32gui.SetForegroundWindow(target_hwnd)
+        win32gui.BringWindowToTop(target_hwnd)
+        
+        return {
+            "success": True,
+            "message": f"프로세스에 포커스를 주었습니다.",
+            "process_id": process_id,
+            "hwnd": target_hwnd
+        }
+        
+    except ImportError:
+        raise HTTPException(
+            status_code=500, 
+            detail="Windows 전용 기능입니다. pywin32 패키지가 필요합니다."
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print(f"[ERROR] 프로세스 포커스 실패: {e}")
+        print(f"[ERROR] 스택 트레이스: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"프로세스 포커스 실패: {str(e)}")

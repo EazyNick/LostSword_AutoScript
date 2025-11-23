@@ -10,3 +10,6 @@ pynput==1.7.6
 requests==2.31.0
 python-dotenv==1.0.0
 colorlog==6.8.0
+pywin32==306
+psutil==5.9.6
+pygetwindow==0.0.9

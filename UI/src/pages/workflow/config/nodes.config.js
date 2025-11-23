@@ -84,6 +84,15 @@ export const NODES_CONFIG = {
         category: 'action',
         // 특수 설정: 이미지 터치 노드는 추가 설정이 필요함
         requiresFolderPath: true
+    },
+    'process-focus': {
+        label: '화면 포커스',
+        title: '화면 포커스',
+        description: '선택한 프로세스의 창을 화면 최상단에 포커스합니다.',
+        color: 'green',
+        script: 'node-process-focus.js',
+        isBoundary: false,
+        category: 'action'
     }
 };
 

@@ -95,6 +95,27 @@ export class NodeSettingsModal {
                     <input type="number" id="edit-node-wait-time" value="${waitTime}" min="0" step="0.1" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
                 </div>
             `;
+        } else if (nodeType === 'process-focus') {
+            const processName = nodeData?.process_name || '';
+            const windowTitle = nodeData?.window_title || '';
+            const processId = nodeData?.process_id || '';
+            const hwnd = nodeData?.hwnd || '';
+            return `
+                <div class="form-group">
+                    <label for="edit-node-process-select">프로세스 선택:</label>
+                    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                        <select id="edit-node-process-select" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <option value="">프로세스를 선택하세요</option>
+                        </select>
+                        <button type="button" id="edit-refresh-processes-btn" class="btn btn-secondary">새로고침</button>
+                    </div>
+                    <input type="hidden" id="edit-node-process-id" value="${processId}">
+                    <input type="hidden" id="edit-node-process-hwnd" value="${hwnd}">
+                    <input type="hidden" id="edit-node-process-name" value="${escapeHtml(processName)}">
+                    <input type="hidden" id="edit-node-window-title" value="${escapeHtml(windowTitle)}">
+                    <small style="color: #666; font-size: 12px;">화면에 보이는 프로세스만 표시됩니다. 선택한 프로세스가 실행 시 화면 최상단에 포커스됩니다.</small>
+                </div>
+            `;
         }
         return '';
     }
@@ -179,6 +200,11 @@ export class NodeSettingsModal {
             browseBtn.addEventListener('click', () => this.handleFolderSelection());
         }
 
+        // 프로세스 선택 관련
+        if (nodeType === 'process-focus') {
+            this.setupProcessSelection(nodeData);
+        }
+
         // 저장 버튼
         const saveBtn = document.getElementById('edit-node-save');
         if (saveBtn) {
@@ -252,6 +278,11 @@ export class NodeSettingsModal {
                 newBrowseBtn.parentNode.replaceChild(newBtn, newBrowseBtn);
                 newBtn.addEventListener('click', () => this.handleFolderSelection());
             }
+
+            // 프로세스 선택 설정
+            if (selectedType === 'process-focus') {
+                this.setupProcessSelection(nodeData);
+            }
         }
     }
 
@@ -317,6 +348,99 @@ export class NodeSettingsModal {
             }
         } catch (e) {
             console.warn('이미지 개수 조회 실패:', e);
+        }
+    }
+
+    /**
+     * 프로세스 선택 설정
+     */
+    async setupProcessSelection(nodeData) {
+        const processSelect = document.getElementById('edit-node-process-select');
+        const refreshBtn = document.getElementById('edit-refresh-processes-btn');
+        
+        if (!processSelect || !refreshBtn) return;
+
+        // 프로세스 목록 로드
+        await this.loadProcessList(processSelect, nodeData);
+
+        // 새로고침 버튼 이벤트
+        refreshBtn.addEventListener('click', async () => {
+            refreshBtn.disabled = true;
+            refreshBtn.textContent = '새로고침 중...';
+            try {
+                await this.loadProcessList(processSelect, nodeData);
+            } finally {
+                refreshBtn.disabled = false;
+                refreshBtn.textContent = '새로고침';
+            }
+        });
+
+        // 프로세스 선택 이벤트
+        processSelect.addEventListener('change', (e) => {
+            const selectedValue = e.target.value;
+            if (selectedValue) {
+                const [processId, hwnd] = selectedValue.split('|');
+                const option = e.target.options[e.target.selectedIndex];
+                const processName = option.dataset.processName || '';
+                const windowTitle = option.dataset.windowTitle || '';
+
+                document.getElementById('edit-node-process-id').value = processId;
+                document.getElementById('edit-node-process-hwnd').value = hwnd;
+                document.getElementById('edit-node-process-name').value = processName;
+                document.getElementById('edit-node-window-title').value = windowTitle;
+            } else {
+                document.getElementById('edit-node-process-id').value = '';
+                document.getElementById('edit-node-process-hwnd').value = '';
+                document.getElementById('edit-node-process-name').value = '';
+                document.getElementById('edit-node-window-title').value = '';
+            }
+        });
+    }
+
+    /**
+     * 프로세스 목록 로드
+     */
+    async loadProcessList(selectElement, nodeData) {
+        try {
+            const response = await fetch('http://localhost:8000/api/processes/list');
+            const data = await response.json();
+
+            if (data.success && data.processes) {
+                // 기존 옵션 제거 (첫 번째 옵션 제외)
+                while (selectElement.options.length > 1) {
+                    selectElement.remove(1);
+                }
+
+                // 프로세스 목록 추가
+                data.processes.forEach(process => {
+                    process.windows.forEach((window, index) => {
+                        const option = document.createElement('option');
+                        const value = `${process.process_id}|${window.hwnd}`;
+                        option.value = value;
+                        option.dataset.processName = process.process_name;
+                        option.dataset.windowTitle = window.title;
+                        
+                        // 표시 텍스트: 프로세스명 - 창제목 (여러 창이면 인덱스 표시)
+                        const displayText = process.window_count > 1 
+                            ? `${process.process_name} - ${window.title} (${index + 1})`
+                            : `${process.process_name} - ${window.title}`;
+                        option.textContent = displayText;
+
+                        // 현재 선택된 프로세스와 일치하면 선택
+                        if (nodeData?.process_id == process.process_id && 
+                            nodeData?.hwnd == window.hwnd) {
+                            option.selected = true;
+                        }
+
+                        selectElement.appendChild(option);
+                    });
+                });
+            } else {
+                console.error('프로세스 목록 로드 실패:', data);
+            }
+        } catch (error) {
+            console.error('프로세스 목록 로드 중 오류:', error);
+            alert('프로세스 목록을 불러오는데 실패했습니다. 서버가 실행 중인지 확인하세요.');
         }
     }
 }

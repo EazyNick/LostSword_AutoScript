@@ -107,7 +107,66 @@ export class AddNodeModal {
                     // 폴더 선택 버튼 이벤트 리스너 재설정
                     const browseBtn = document.getElementById('browse-folder-btn');
                     if (browseBtn) {
-                        browseBtn.addEventListener('click', () => this.handleFolderSelection());
+                        const newBtn = browseBtn.cloneNode(true);
+                        browseBtn.parentNode.replaceChild(newBtn, browseBtn);
+                        newBtn.addEventListener('click', () => this.handleFolderSelection());
+                    }
+                } else if (selectedType === 'process-focus') {
+                    // 프로세스 포커스 노드: 프로세스 선택 UI
+                    customSettings.innerHTML = `
+                        <label for="node-process-select">프로세스 선택:</label>
+                        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                            <select id="node-process-select" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                <option value="">프로세스를 선택하세요</option>
+                            </select>
+                            <button type="button" id="refresh-processes-btn" class="btn btn-secondary">새로고침</button>
+                        </div>
+                        <input type="hidden" id="node-process-id">
+                        <input type="hidden" id="node-process-hwnd">
+                        <input type="hidden" id="node-process-name">
+                        <input type="hidden" id="node-window-title">
+                        <small style="color: #666; font-size: 12px;">화면에 보이는 프로세스만 표시됩니다. 선택한 프로세스가 실행 시 화면 최상단에 포커스됩니다.</small>
+                    `;
+                    customSettings.style.display = 'block';
+                    
+                    // 프로세스 목록 로드
+                    this.loadProcessListForAddModal();
+                    
+                    // 새로고침 버튼 이벤트
+                    const refreshBtn = document.getElementById('refresh-processes-btn');
+                    if (refreshBtn) {
+                        refreshBtn.addEventListener('click', () => {
+                            refreshBtn.disabled = true;
+                            refreshBtn.textContent = '새로고침 중...';
+                            this.loadProcessListForAddModal().finally(() => {
+                                refreshBtn.disabled = false;
+                                refreshBtn.textContent = '새로고침';
+                            });
+                        });
+                    }
+                    
+                    // 프로세스 선택 이벤트
+                    const processSelect = document.getElementById('node-process-select');
+                    if (processSelect) {
+                        processSelect.addEventListener('change', (e) => {
+                            const selectedValue = e.target.value;
+                            if (selectedValue) {
+                                const [processId, hwnd] = selectedValue.split('|');
+                                const option = e.target.options[e.target.selectedIndex];
+                                const processName = option.dataset.processName || '';
+                                const windowTitle = option.dataset.windowTitle || '';
+
+                                document.getElementById('node-process-id').value = processId;
+                                document.getElementById('node-process-hwnd').value = hwnd;
+                                document.getElementById('node-process-name').value = processName;
+                                document.getElementById('node-window-title').value = windowTitle;
+                            } else {
+                                document.getElementById('node-process-id').value = '';
+                                document.getElementById('node-process-hwnd').value = '';
+                                document.getElementById('node-process-name').value = '';
+                                document.getElementById('node-window-title').value = '';
+                            }
+                        });
                     }
                 } else {
                     customSettings.innerHTML = '';
@@ -256,6 +315,28 @@ export class AddNodeModal {
                 }
                 nodeData.folder_path = folderPath;
             }
+        } else if (nodeType === 'process-focus') {
+            // 프로세스 포커스 노드: 프로세스 정보 추가
+            const processId = document.getElementById('node-process-id')?.value;
+            const hwnd = document.getElementById('node-process-hwnd')?.value;
+            const processName = document.getElementById('node-process-name')?.value;
+            const windowTitle = document.getElementById('node-window-title')?.value;
+            
+            if (!processId) {
+                alert('프로세스를 선택해주세요.');
+                return;
+            }
+            
+            nodeData.process_id = parseInt(processId);
+            if (hwnd) {
+                nodeData.hwnd = parseInt(hwnd);
+            }
+            if (processName) {
+                nodeData.process_name = processName;
+            }
+            if (windowTitle) {
+                nodeData.window_title = windowTitle;
+            }
         }
 
         // WorkflowPage의 createNodeFromData 메서드 호출
@@ -264,6 +345,50 @@ export class AddNodeModal {
         const modalManager = this.workflowPage.getModalManager();
         if (modalManager) {
             modalManager.close();
+        }
+    }
+
+    /**
+     * 노드 추가 모달용 프로세스 목록 로드
+     */
+    async loadProcessListForAddModal() {
+        const selectElement = document.getElementById('node-process-select');
+        if (!selectElement) return;
+
+        try {
+            const response = await fetch('http://localhost:8000/api/processes/list');
+            const data = await response.json();
+
+            if (data.success && data.processes) {
+                // 기존 옵션 제거 (첫 번째 옵션 제외)
+                while (selectElement.options.length > 1) {
+                    selectElement.remove(1);
+                }
+
+                // 프로세스 목록 추가
+                data.processes.forEach(process => {
+                    process.windows.forEach((window, index) => {
+                        const option = document.createElement('option');
+                        const value = `${process.process_id}|${window.hwnd}`;
+                        option.value = value;
+                        option.dataset.processName = process.process_name;
+                        option.dataset.windowTitle = window.title;
+                        
+                        // 표시 텍스트: 프로세스명 - 창제목 (여러 창이면 인덱스 표시)
+                        const displayText = process.window_count > 1 
+                            ? `${process.process_name} - ${window.title} (${index + 1})`
+                            : `${process.process_name} - ${window.title}`;
+                        option.textContent = displayText;
+
+                        selectElement.appendChild(option);
+                    });
+                });
+            } else {
+                console.error('프로세스 목록 로드 실패:', data);
+            }
+        } catch (error) {
+            console.error('프로세스 목록 로드 중 오류:', error);
+            alert('프로세스 목록을 불러오는데 실패했습니다. 서버가 실행 중인지 확인하세요.');
         }
     }
 }
