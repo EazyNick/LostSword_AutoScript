@@ -267,6 +267,16 @@ export class NodeManager {
             this.openNodeSettings(node);
         });
 
+        // 설정 톱니바퀴 아이콘 클릭 시 노드 설정 모달 열기
+        const settingsBtn = node.querySelector('.node-settings');
+        if (settingsBtn) {
+            settingsBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                this.openNodeSettings(node);
+            });
+        }
+
         // 드래그는 드래그 컨트롤러에 위임
         if (this.dragController) {
             this.dragController.attachNode(node);
