@@ -59,6 +59,10 @@ export class SidebarManager {
         // 이전에 선택했던 스크립트 정보 저장 (변경 감지 등에 사용)
         this.previousScript = null; // 이전 스크립트 정보 저장
         
+        // 전체 스크립트 실행 중 플래그 초기화
+        this.isRunningAllScripts = false;
+        this.isCancelled = false; // 실행 취소 플래그
+        
         // DOM 로드 상태에 따라 초기화 시점 결정
         // document.readyState가 'loading'이면 아직 DOM이 로드 중이므로
         // DOMContentLoaded 이벤트를 기다린 후 init() 호출
@@ -180,6 +184,10 @@ export class SidebarManager {
         document.querySelector('.add-script-btn').addEventListener('click', () => {
             this.showAddScriptModal();
         });
+        
+        // 모든 스크립트 실행 버튼은 workflow.js에서 등록하므로 여기서는 제거
+        // (헤더의 버튼은 workflow.js에서, 사이드바의 버튼이 있다면 여기서 등록)
+        // 현재는 헤더에만 버튼이 있으므로 여기서는 등록하지 않음
     }
     
     loadScripts() {
@@ -659,6 +667,313 @@ export class SidebarManager {
             } catch (error) {
                 console.error('스크립트 로드 실패:', error);
             }
+        }
+    }
+
+    /**
+     * 모든 스크립트를 순차적으로 실행
+     * 최상단 스크립트부터 차례대로 하나씩 실행합니다.
+     * 각 스크립트를 선택하고, 기존 실행 방식대로 노드 하나씩 서버에 요청을 보냅니다.
+     */
+    async runAllScripts() {
+        const logger = getLogger();
+        const log = logger.log;
+        const logError = logger.error;
+        const logWarn = logger.warn;
+        
+        log('[Sidebar] runAllScripts() 호출됨');
+        
+        if (this.scripts.length === 0) {
+            logWarn('[Sidebar] 실행할 스크립트가 없습니다.');
+            const modalManager = getModalManagerInstance();
+            if (modalManager) {
+                modalManager.showAlert('알림', '실행할 스크립트가 없습니다.');
+            }
+            return;
+        }
+
+        // 실행 중 플래그 설정 (중복 실행 방지 / 취소 처리)
+        if (this.isRunningAllScripts === true) {
+            // 실행 중인 경우 취소 처리
+            log('[Sidebar] 실행 취소 요청');
+            this.cancelExecution();
+            return;
+        }
+        
+        this.isRunningAllScripts = true;
+        this.isCancelled = false; // 취소 플래그 초기화
+
+        // 버튼 상태 설정 (다른 버튼 비활성화, 실행 중인 버튼 활성화)
+        this.setButtonsState('running', 'run-all-scripts-btn');
+
+        // 스크립트 개수 기준 카운터 (try-catch 블록 밖에서 선언)
+        let successCount = 0;
+        let failCount = 0;
+        let cancelledCount = 0;
+        const totalCount = this.scripts.length;
+
+        // WorkflowPage 인스턴스 가져오기 (finally 블록에서도 접근 가능하도록 밖에서 정의)
+        const getWorkflowPage = () => {
+            // window에서 직접 접근 시도
+            if (window.workflowPage) {
+                return window.workflowPage;
+            }
+            // 모듈에서 가져오기 시도
+            if (window.getWorkflowPageInstance) {
+                return window.getWorkflowPageInstance();
+            }
+            return null;
+        };
+
+        try {
+            const modalManager = getModalManagerInstance();
+
+            log(`[Sidebar] 총 ${totalCount}개 스크립트 실행 시작`);
+
+            // 최상단 스크립트부터 순차적으로 실행
+            for (let i = 0; i < this.scripts.length; i++) {
+                // 취소 플래그 체크
+                if (this.isCancelled) {
+                    log('[Sidebar] 실행이 취소되었습니다.');
+                    // 남은 스크립트 개수를 중단 개수로 계산
+                    cancelledCount = totalCount - successCount - failCount;
+                    if (modalManager) {
+                        modalManager.showAlert(
+                            '실행 취소',
+                            `실행이 취소되었습니다.\n\n성공 스크립트: ${successCount}개\n실패 스크립트: ${failCount}개\n중단 스크립트: ${cancelledCount}개`
+                        );
+                    }
+                    break;
+                }
+                
+                const script = this.scripts[i];
+                log(`[Sidebar] 스크립트 ${i + 1}/${this.scripts.length} 실행 중: ${script.name} (ID: ${script.id})`);
+
+                try {
+                    // 1. 스크립트 선택 (포커스)
+                    log(`[Sidebar] 스크립트 "${script.name}" 선택 중...`);
+                    this.selectScript(i);
+                    
+                    // 2. 스크립트 로드 완료 대기 (노드들이 화면에 렌더링될 때까지)
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                    // 3. WorkflowPage 인스턴스 가져오기
+                    const workflowPage = getWorkflowPage();
+                    if (!workflowPage || !workflowPage.executionService) {
+                        logWarn(`[Sidebar] WorkflowPage 또는 ExecutionService를 찾을 수 없습니다. 스크립트 "${script.name}" 건너뜀.`);
+                        failCount++;
+                        continue;
+                    }
+
+                    // 4. 현재 화면의 노드들이 있는지 확인
+                    const nodes = document.querySelectorAll('.workflow-node');
+                    if (nodes.length === 0) {
+                        logWarn(`[Sidebar] 스크립트 "${script.name}"에 실행할 노드가 없습니다.`);
+                        // 노드가 없는 스크립트는 성공으로 카운트 (스크립트 단위로 카운트)
+                        successCount++;
+                        continue;
+                    }
+
+                    log(`[Sidebar] 스크립트 "${script.name}" 실행 시작 - 노드 개수: ${nodes.length}개`);
+
+                    // 5. 기존 실행 방식 사용 (노드 하나씩 서버에 요청)
+                    try {
+                        // 취소 플래그와 전체 실행 플래그를 executionService에 전달
+                        workflowPage.executionService.isCancelled = this.isCancelled;
+                        workflowPage.executionService.isRunningAllScripts = true; // 전체 스크립트 실행 중임을 표시
+                        await workflowPage.executionService.execute();
+                        
+                        // 취소되었는지 확인
+                        if (this.isCancelled || workflowPage.executionService.isCancelled) {
+                            log('[Sidebar] 실행이 취소되었습니다.');
+                            // 남은 스크립트 개수를 중단 개수로 계산 (현재 스크립트는 성공으로 카운트하지 않음)
+                            cancelledCount = totalCount - successCount - failCount;
+                            break;
+                        }
+                        
+                        successCount++;
+                        log(`[Sidebar] ✅ 스크립트 "${script.name}" 실행 완료`);
+                    } catch (execError) {
+                        failCount++;
+                        logError(`[Sidebar] ❌ 스크립트 "${script.name}" 실행 중 오류 발생:`, execError);
+                        logError('[Sidebar] 에러 상세:', {
+                            name: execError.name,
+                            message: execError.message,
+                            stack: execError.stack
+                        });
+                        
+                        // 에러 발생 시 모든 실행 중단
+                        const errorMessage = execError.message || '알 수 없는 오류';
+                        if (modalManager) {
+                            modalManager.showAlert(
+                                '실행 중단',
+                                `스크립트 "${script.name}" 실행 중 오류가 발생하여 모든 실행이 중단되었습니다.\n\n오류: ${errorMessage}`
+                            );
+                        }
+                        
+                        // 모든 실행 중단
+                        throw execError;
+                    }
+
+                    // 스크립트 간 대기 시간 (선택적, 필요시 조정)
+                    if (i < this.scripts.length - 1) {
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    }
+
+                } catch (error) {
+                    failCount++;
+                    logError(`[Sidebar] ❌ 스크립트 "${script.name}" 처리 중 오류 발생:`, error);
+                    logError('[Sidebar] 에러 상세:', {
+                        name: error.name,
+                        message: error.message,
+                        stack: error.stack
+                    });
+                    
+                    // 에러 발생 시 모든 실행 중단
+                    const errorMessage = error.message || '알 수 없는 오류';
+                    if (modalManager) {
+                        modalManager.showAlert(
+                            '실행 중단',
+                            `스크립트 "${script.name}" 처리 중 오류가 발생하여 모든 실행이 중단되었습니다.\n\n오류: ${errorMessage}`
+                        );
+                    }
+                    
+                    // 모든 실행 중단
+                    throw error;
+                }
+            }
+
+            // 중단된 스크립트 개수 계산 (취소되지 않았으면 0)
+            if (!this.isCancelled) {
+                cancelledCount = totalCount - successCount - failCount;
+            }
+            
+            log(`[Sidebar] 모든 스크립트 실행 완료 - 성공: ${successCount}개, 실패: ${failCount}개, 중단: ${cancelledCount}개`);
+
+            // 실행 결과 알림 (0개여도 모두 표시, 스크립트 개수 기준)
+            if (modalManager) {
+                const statusMessage = this.isCancelled ? '실행이 취소되었습니다.' : '모든 스크립트 실행이 완료되었습니다.';
+                modalManager.showAlert(
+                    this.isCancelled ? '실행 취소' : '실행 완료',
+                    `${statusMessage}\n\n성공 스크립트: ${successCount}개\n실패 스크립트: ${failCount}개\n중단 스크립트: ${cancelledCount}개`
+                );
+            }
+
+        } catch (error) {
+            logError('[Sidebar] ❌ 모든 스크립트 실행 중 오류 발생:', error);
+            logError('[Sidebar] 에러 상세:', {
+                name: error.name,
+                message: error.message,
+                stack: error.stack
+            });
+            
+            // 중단된 스크립트 개수 계산
+            cancelledCount = totalCount - successCount - failCount;
+            
+            const modalManager = getModalManagerInstance();
+            if (modalManager) {
+                modalManager.showAlert(
+                    '실행 중단',
+                    `스크립트 실행 중 오류가 발생하여 실행이 중단되었습니다.\n\n성공 스크립트: ${successCount}개\n실패 스크립트: ${failCount}개\n중단 스크립트: ${cancelledCount}개\n\n오류: ${error.message}`
+                );
+            }
+        } finally {
+            // 실행 중 플래그 해제
+            this.isRunningAllScripts = false;
+            this.isCancelled = false;
+            
+            // executionService의 전체 실행 플래그도 초기화
+            const workflowPage = getWorkflowPage();
+            if (workflowPage && workflowPage.executionService) {
+                workflowPage.executionService.isRunningAllScripts = false;
+            }
+
+            // 버튼 상태 복원
+            this.setButtonsState('idle');
+        }
+    }
+    
+    /**
+     * 실행 취소
+     */
+    cancelExecution() {
+        const logger = getLogger();
+        logger.log('[Sidebar] 실행 취소 요청');
+        this.isCancelled = true;
+        
+        // WorkflowPage의 executionService도 취소
+        const getWorkflowPage = () => {
+            if (window.workflowPage) {
+                return window.workflowPage;
+            }
+            if (window.getWorkflowPageInstance) {
+                return window.getWorkflowPageInstance();
+            }
+            return null;
+        };
+        
+        const workflowPage = getWorkflowPage();
+        if (workflowPage && workflowPage.executionService) {
+            workflowPage.executionService.cancel();
+        }
+    }
+    
+    /**
+     * 버튼 상태 설정
+     * @param {string} state - 'idle' | 'running'
+     * @param {string} activeButton - 실행 중인 버튼 클래스 ('run-btn' | 'run-all-scripts-btn')
+     */
+    setButtonsState(state, activeButton = null) {
+        const buttons = {
+            save: document.querySelector('.save-btn'),
+            addNode: document.querySelector('.add-node-btn'),
+            run: document.querySelector('.run-btn'),
+            runAll: document.querySelector('.run-all-scripts-btn')
+        };
+        
+        if (state === 'running') {
+            // 모든 버튼 비활성화
+            Object.values(buttons).forEach(btn => {
+                if (btn) {
+                    btn.disabled = true;
+                    btn.style.opacity = '0.5';
+                    btn.style.cursor = 'not-allowed';
+                    btn.classList.remove('executing');
+                }
+            });
+            
+            // 실행 중인 버튼만 활성화 및 실행 중 스타일 적용
+            const activeBtn = activeButton === 'run-btn' ? buttons.run : buttons.runAll;
+            if (activeBtn) {
+                activeBtn.disabled = false;
+                activeBtn.style.opacity = '1';
+                activeBtn.style.cursor = 'pointer';
+                activeBtn.classList.add('executing');
+                
+                // 버튼 텍스트 변경
+                const btnText = activeBtn.querySelector('.btn-text');
+                if (btnText) {
+                    activeBtn.dataset.originalText = btnText.textContent;
+                    btnText.textContent = '취소';
+                }
+            }
+        } else {
+            // 모든 버튼 활성화
+            Object.values(buttons).forEach(btn => {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                    btn.style.cursor = 'pointer';
+                    btn.classList.remove('executing');
+                    
+                    // 버튼 텍스트 복원
+                    const btnText = btn.querySelector('.btn-text');
+                    if (btnText && btn.dataset.originalText) {
+                        btnText.textContent = btn.dataset.originalText;
+                        delete btn.dataset.originalText;
+                    }
+                }
+            });
         }
     }
 }

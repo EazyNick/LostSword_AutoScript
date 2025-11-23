@@ -176,6 +176,46 @@ export const ScriptAPI = {
             });
             throw error;
         }
+    },
+
+    /**
+     * 스크립트 실행
+     * @param {number} scriptId - 스크립트 ID
+     * @param {Array} nodes - 실행할 노드 배열
+     * @returns {Promise<Object>} 실행 결과
+     */
+    async executeScript(scriptId, nodes) {
+        const logger = getLogger();
+        logger.log('[ScriptAPI] executeScript() 호출됨');
+        logger.log('[ScriptAPI] 실행할 스크립트 ID:', scriptId);
+        logger.log('[ScriptAPI] 노드 개수:', nodes.length);
+        logger.log('[ScriptAPI] API 요청 시작: POST /api/scripts/' + scriptId + '/execute');
+        
+        try {
+            const startTime = performance.now();
+            const result = await apiCall(`/api/scripts/${scriptId}/execute`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    nodes: nodes,
+                    execution_mode: 'sequential'
+                })
+            });
+            const endTime = performance.now();
+            
+            logger.log('[ScriptAPI] ✅ API 응답 받음:', result);
+            logger.log(`[ScriptAPI] 응답 시간: ${(endTime - startTime).toFixed(2)}ms`);
+            logger.log(`[ScriptAPI] 실행 성공: ${result.success}`);
+            logger.log(`[ScriptAPI] 실행 결과 개수: ${result.results ? result.results.length : 0}개`);
+            
+            return result;
+        } catch (error) {
+            logger.error('[ScriptAPI] ❌ API 요청 실패:', error);
+            logger.error('[ScriptAPI] 에러 상세:', {
+                message: error.message,
+                stack: error.stack
+            });
+            throw error;
+        }
     }
 };
 

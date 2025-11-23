@@ -101,6 +101,69 @@
     transform: translateY(-2px);
 }
 
+.run-all-scripts-btn {
+    background-color: #ed8936;
+    color: #ffffff;
+    padding: 10px 30px;
+    min-width: 140px;
+}
+
+.run-all-scripts-btn:hover {
+    background-color: #dd6b20;
+    transform: translateY(-2px);
+}
+
+.run-all-scripts-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* 실행 중 버튼 스타일 */
+.header-btn.executing {
+    position: relative;
+    background-color: #f6ad55 !important;
+    animation: pulse-executing 1.5s ease-in-out infinite;
+    cursor: pointer !important;
+}
+
+.header-btn.executing::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes pulse-executing {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(246, 173, 85, 0.7);
+    }
+    50% {
+        box-shadow: 0 0 0 8px rgba(246, 173, 85, 0);
+    }
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.run-btn.executing {
+    background-color: #48bb78 !important;
+}
+
+.run-all-scripts-btn.executing {
+    background-color: #f6ad55 !important;
+}
+
 .btn-icon {
     font-size: 16px;
 }

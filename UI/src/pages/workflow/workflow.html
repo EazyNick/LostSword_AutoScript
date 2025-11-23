@@ -39,6 +39,12 @@
             
             <!-- 헤더 오른쪽: 액션 버튼들 -->
             <div class="header-right">
+                <!-- 전체 스크립트 실행 버튼: 모든 스크립트를 순차적으로 실행 -->
+                <button class="header-btn run-all-scripts-btn" title="모든 스크립트 실행">
+                    <span class="btn-icon">▶▶</span>
+                    <span class="btn-text">전체 실행</span>
+                </button>
+                
                 <!-- 저장 버튼: 현재 워크플로우를 로컬 스토리지에 저장 -->
                 <button class="header-btn save-btn">
                     <span class="btn-icon">💾</span>
@@ -71,8 +77,10 @@
                 <!-- 사이드바 헤더 -->
                 <div class="sidebar-header">
                     <h2>테스트 스크립트</h2>
-                    <!-- 새 스크립트 추가 버튼 -->
-                    <button class="add-script-btn">+</button>
+                    <div class="sidebar-header-buttons">
+                        <!-- 새 스크립트 추가 버튼 -->
+                        <button class="add-script-btn">+</button>
+                    </div>
                 </div>
                 
                 <!-- 스크립트 목록 (동적으로 로드됨) -->

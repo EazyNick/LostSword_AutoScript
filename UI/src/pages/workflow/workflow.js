@@ -142,6 +142,18 @@ export class WorkflowPage {
         document.querySelector('.save-btn')?.addEventListener('click', () => this.saveWorkflow());
         document.querySelector('.add-node-btn')?.addEventListener('click', () => this.showAddNodeModal());
         document.querySelector('.run-btn')?.addEventListener('click', () => this.runWorkflow());
+        
+        // 전체 스크립트 실행 버튼 (헤더에 있는 버튼)
+        const runAllBtn = document.querySelector('.header-right .run-all-scripts-btn');
+        if (runAllBtn) {
+            runAllBtn.addEventListener('click', async () => {
+                const sidebarManager = this.getSidebarManager();
+                if (sidebarManager && typeof sidebarManager.runAllScripts === 'function') {
+                    // runAllScripts() 내부에서 중복 실행 방지 체크를 하므로 여기서는 체크하지 않음
+                    await sidebarManager.runAllScripts();
+                }
+            });
+        }
     }
     
     /**
@@ -273,7 +285,80 @@ export class WorkflowPage {
      */
     async runWorkflow() {
         if (this.executionService) {
-            return this.executionService.execute();
+            // 실행 중인 경우 취소
+            if (this.executionService.isExecuting) {
+                this.executionService.cancel();
+                return;
+            }
+            
+            // 다른 버튼들 비활성화 및 실행 버튼 활성화
+            this.setButtonsState('running', 'run-btn');
+            
+            try {
+                await this.executionService.execute();
+            } finally {
+                // 버튼 상태 복원
+                this.setButtonsState('idle');
+            }
+        }
+    }
+    
+    /**
+     * 버튼 상태 설정
+     * @param {string} state - 'idle' | 'running'
+     * @param {string} activeButton - 실행 중인 버튼 클래스 ('run-btn' | 'run-all-scripts-btn')
+     */
+    setButtonsState(state, activeButton = null) {
+        const buttons = {
+            save: document.querySelector('.save-btn'),
+            addNode: document.querySelector('.add-node-btn'),
+            run: document.querySelector('.run-btn'),
+            runAll: document.querySelector('.run-all-scripts-btn')
+        };
+        
+        if (state === 'running') {
+            // 모든 버튼 비활성화
+            Object.values(buttons).forEach(btn => {
+                if (btn) {
+                    btn.disabled = true;
+                    btn.style.opacity = '0.5';
+                    btn.style.cursor = 'not-allowed';
+                    btn.classList.remove('executing');
+                }
+            });
+            
+            // 실행 중인 버튼만 활성화 및 실행 중 스타일 적용
+            if (activeButton && buttons[activeButton === 'run-btn' ? 'run' : 'runAll']) {
+                const activeBtn = buttons[activeButton === 'run-btn' ? 'run' : 'runAll'];
+                activeBtn.disabled = false;
+                activeBtn.style.opacity = '1';
+                activeBtn.style.cursor = 'pointer';
+                activeBtn.classList.add('executing');
+                
+                // 버튼 텍스트 변경
+                const btnText = activeBtn.querySelector('.btn-text');
+                if (btnText) {
+                    activeBtn.dataset.originalText = btnText.textContent;
+                    btnText.textContent = '취소';
+                }
+            }
+        } else {
+            // 모든 버튼 활성화
+            Object.values(buttons).forEach(btn => {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                    btn.style.cursor = 'pointer';
+                    btn.classList.remove('executing');
+                    
+                    // 버튼 텍스트 복원
+                    const btnText = btn.querySelector('.btn-text');
+                    if (btnText && btn.dataset.originalText) {
+                        btnText.textContent = btn.dataset.originalText;
+                        delete btn.dataset.originalText;
+                    }
+                }
+            });
         }
     }
     
@@ -485,6 +570,7 @@ export function initializeWorkflowPage(options = {}) {
     workflowPage.setupKeyboardShortcuts();
     
     workflowPageInstance = workflowPage;
+    window.workflowPage = workflowPage; // 전역 접근을 위해 window에 노출
     
     if (options.onReady) {
         options.onReady(workflowPage);

@@ -21,7 +21,14 @@
     color: #e2e8f0;
 }
 
-.add-script-btn {
+.sidebar-header-buttons {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.add-script-btn,
+.run-all-scripts-btn {
     width: 40px;
     height: 40px;
     background-color: #3182ce;
@@ -32,11 +39,22 @@
     font-weight: bold;
     cursor: pointer;
     transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.add-script-btn:hover {
+.add-script-btn:hover,
+.run-all-scripts-btn:hover {
     background-color: #2c5282;
     transform: scale(1.05);
+}
+
+.add-script-btn:disabled,
+.run-all-scripts-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
 }
 
 .script-list {

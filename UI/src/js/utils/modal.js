@@ -1,5 +1,9 @@
 /**
  * 모달 유틸리티 클래스
+ * 모달 창 (Modal)
+화면 중앙에 표시되는 팝업
+배경이 어둡게 처리되어 뒤 콘텐츠가 비활성화됨
+사용자가 확인 버튼을 눌러야 닫힘
  * ES6 모듈 방식으로 작성됨
  */
 
@@ -92,9 +96,11 @@ export class ModalManager {
     }
     
     showAlert(title, message, onOk = null) {
+        // 줄바꿈 문자(\n)를 <br> 태그로 변환
+        const formattedMessage = message.replace(/\n/g, '<br>');
         const content = `
             <h3>${title}</h3>
-            <p>${message}</p>
+            <p>${formattedMessage}</p>
             <div class="form-actions">
                 <button id="ok-btn" class="btn btn-primary">확인</button>
             </div>
