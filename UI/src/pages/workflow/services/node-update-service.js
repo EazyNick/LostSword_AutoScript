@@ -209,6 +209,9 @@ export class NodeUpdateService {
             nodeManager.connectionHandler.setupConnectionEvents(nodeElement);
         }
         
+        // ConnectionManager에 노드 커넥터 다시 바인딩
+        nodeManager.registerNodeWithConnectionManager(nodeElement);
+        
         // 드래그 컨트롤러 다시 연결
         if (nodeManager.dragController) {
             nodeManager.dragController.attachNode(nodeElement);

@@ -28,7 +28,7 @@ export class ConnectionManager {
         this.startNode = null;
         this.startConnector = null;
         this.startConnectorType = null;     // 연결 시작 커넥터 타입
-        this.startConnectorType = null;     // (중복 선언이지만 그대로 유지)
+        this.startOutputType = null;        // 조건 노드의 출력 타입
         this.tempLine = null;
         this.tempConnection = null;         // 롱터치용 임시 연결 라인
         
@@ -135,90 +135,169 @@ export class ConnectionManager {
         const logger = getLogger();
         const nodeId = nodeElement.dataset.nodeId;
         
+        if (!nodeElement) {
+            logger.warn('[ConnectionManager] bindNodeConnector: nodeElement가 없습니다.');
+            return;
+        }
+        
+        logger.log('[ConnectionManager] bindNodeConnector 호출:', {
+            nodeId: nodeId,
+            hasInput: !!nodeElement.querySelector('.node-input'),
+            hasOutput: !!nodeElement.querySelector('.node-output')
+        });
+        
         // 입력 커넥터
         const inputConnector = nodeElement.querySelector('.node-input');
-        if (inputConnector && !inputConnector.dataset.connectionBound) {
-            inputConnector.dataset.connectionBound = 'true';
-            inputConnector.addEventListener('click', (e) => {
+        if (inputConnector) {
+            // 기존 이벤트 리스너 제거 (중복 방지)
+            const newInputConnector = inputConnector.cloneNode(true);
+            inputConnector.parentNode.replaceChild(newInputConnector, inputConnector);
+            
+            // 클릭 이벤트 (연결 시작/완료)
+            newInputConnector.addEventListener('click', (e) => {
                 e.stopPropagation();
                 
                 // 패닝 중일 때는 연결 시작 방지
                 if (this.isPanning()) {
                     return;
                 }
-                this.handleConnectorClick(nodeElement, 'input', inputConnector);
+                logger.log('[ConnectionManager] 입력 커넥터 클릭:', nodeId);
+                this.handleConnectorClick(nodeElement, 'input', newInputConnector);
             });
+            
+            // 더블클릭 이벤트 (연결 삭제)
+            newInputConnector.addEventListener('dblclick', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                
+                if (this.isPanning()) {
+                    return;
+                }
+                
+                logger.log('[ConnectionManager] 입력 커넥터 더블클릭:', nodeId);
+                // NodeManager의 handleConnectorDoubleClick 호출
+                if (window.nodeManager && typeof window.nodeManager.handleConnectorDoubleClick === 'function') {
+                    window.nodeManager.handleConnectorDoubleClick(newInputConnector, nodeElement, 'input');
+                }
+            });
+            
+            logger.log('[ConnectionManager] 입력 커넥터 바인딩 완료:', nodeId);
+        } else {
+            logger.warn('[ConnectionManager] 입력 커넥터를 찾을 수 없습니다:', nodeId);
         }
         
         // 일반 출력 커넥터
         const outputConnector = nodeElement.querySelector('.node-output:not(.true-output):not(.false-output)');
-        if (outputConnector && !outputConnector.dataset.connectionBound) {
-            outputConnector.dataset.connectionBound = 'true';
-            outputConnector.addEventListener('click', (e) => {
+        if (outputConnector) {
+            // 기존 이벤트 리스너 제거 (중복 방지)
+            const newOutputConnector = outputConnector.cloneNode(true);
+            outputConnector.parentNode.replaceChild(newOutputConnector, outputConnector);
+            
+            // 클릭 이벤트 (연결 시작/완료)
+            newOutputConnector.addEventListener('click', (e) => {
                 e.stopPropagation();
                 
                 // 패닝 중일 때는 연결 시작 방지
                 if (this.isPanning()) {
                     return;
                 }
-                this.handleConnectorClick(nodeElement, 'output', outputConnector);
+                logger.log('[ConnectionManager] 출력 커넥터 클릭:', nodeId);
+                this.handleConnectorClick(nodeElement, 'output', newOutputConnector);
             });
+            
+            // 더블클릭 이벤트 (연결 삭제)
+            newOutputConnector.addEventListener('dblclick', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                
+                if (this.isPanning()) {
+                    return;
+                }
+                
+                logger.log('[ConnectionManager] 출력 커넥터 더블클릭:', nodeId);
+                // NodeManager의 handleConnectorDoubleClick 호출
+                if (window.nodeManager && typeof window.nodeManager.handleConnectorDoubleClick === 'function') {
+                    window.nodeManager.handleConnectorDoubleClick(newOutputConnector, nodeElement, 'output');
+                }
+            });
+            
+            logger.log('[ConnectionManager] 출력 커넥터 바인딩 완료:', nodeId);
+        } else {
+            logger.warn('[ConnectionManager] 출력 커넥터를 찾을 수 없습니다:', nodeId);
         }
         
         // 조건 노드용 True/False 출력 커넥터
         const trueOutput = nodeElement.querySelector('.true-output .output-dot');
         const falseOutput = nodeElement.querySelector('.false-output .output-dot');
         
-        if (trueOutput && !trueOutput.dataset.connectionBound) {
-            trueOutput.dataset.connectionBound = 'true';
-            trueOutput.addEventListener('click', (e) => {
+        if (trueOutput) {
+            // 기존 이벤트 리스너 제거 (중복 방지)
+            const newTrueOutput = trueOutput.cloneNode(true);
+            trueOutput.parentNode.replaceChild(newTrueOutput, trueOutput);
+            
+            // 클릭 이벤트 (연결 시작/완료)
+            newTrueOutput.addEventListener('click', (e) => {
                 e.stopPropagation();
                 
                 if (this.isPanning()) {
                     return;
                 }
-                this.handleConnectorClick(nodeElement, 'output', trueOutput);
+                logger.log('[ConnectionManager] True 출력 커넥터 클릭:', nodeId);
+                this.handleConnectorClick(nodeElement, 'output', newTrueOutput);
             });
             
-            // 더블클릭 이벤트 추가 (연결 삭제)
-            trueOutput.addEventListener('dblclick', (e) => {
+            // 더블클릭 이벤트 (연결 삭제)
+            newTrueOutput.addEventListener('dblclick', (e) => {
                 e.stopPropagation();
+                e.preventDefault();
                 
                 if (this.isPanning()) {
                     return;
                 }
                 
+                logger.log('[ConnectionManager] True 출력 커넥터 더블클릭:', nodeId);
                 // NodeManager의 handleConnectorDoubleClick 호출
                 if (window.nodeManager && typeof window.nodeManager.handleConnectorDoubleClick === 'function') {
-                    window.nodeManager.handleConnectorDoubleClick(trueOutput, nodeElement, 'output');
+                    window.nodeManager.handleConnectorDoubleClick(newTrueOutput, nodeElement, 'output');
                 }
             });
+            
+            logger.log('[ConnectionManager] True 출력 커넥터 바인딩 완료:', nodeId);
         }
         
-        if (falseOutput && !falseOutput.dataset.connectionBound) {
-            falseOutput.dataset.connectionBound = 'true';
-            falseOutput.addEventListener('click', (e) => {
+        if (falseOutput) {
+            // 기존 이벤트 리스너 제거 (중복 방지)
+            const newFalseOutput = falseOutput.cloneNode(true);
+            falseOutput.parentNode.replaceChild(newFalseOutput, falseOutput);
+            
+            // 클릭 이벤트 (연결 시작/완료)
+            newFalseOutput.addEventListener('click', (e) => {
                 e.stopPropagation();
                 
                 if (this.isPanning()) {
                     return;
                 }
-                this.handleConnectorClick(nodeElement, 'output', falseOutput);
+                logger.log('[ConnectionManager] False 출력 커넥터 클릭:', nodeId);
+                this.handleConnectorClick(nodeElement, 'output', newFalseOutput);
             });
             
-            // 더블클릭 이벤트 추가 (연결 삭제)
-            falseOutput.addEventListener('dblclick', (e) => {
+            // 더블클릭 이벤트 (연결 삭제)
+            newFalseOutput.addEventListener('dblclick', (e) => {
                 e.stopPropagation();
+                e.preventDefault();
                 
                 if (this.isPanning()) {
                     return;
                 }
                 
+                logger.log('[ConnectionManager] False 출력 커넥터 더블클릭:', nodeId);
                 // NodeManager의 handleConnectorDoubleClick 호출
                 if (window.nodeManager && typeof window.nodeManager.handleConnectorDoubleClick === 'function') {
-                    window.nodeManager.handleConnectorDoubleClick(falseOutput, nodeElement, 'output');
+                    window.nodeManager.handleConnectorDoubleClick(newFalseOutput, nodeElement, 'output');
                 }
             });
+            
+            logger.log('[ConnectionManager] False 출력 커넥터 바인딩 완료:', nodeId);
         }
     }
     
@@ -245,8 +324,8 @@ export class ConnectionManager {
         });
         
         if (!this.isConnecting) {
+            // 연결 모드가 아닐 때: 연결 시작
             // 출력 타입 감지 (조건 노드의 경우)
-            // .output-dot이 클릭된 경우 부모 요소(.true-output 또는 .false-output)를 확인
             let outputType = null;
             if (connectorType === 'output' && connectorElement) {
                 if (connectorElement.classList.contains('true-output') || 
@@ -256,27 +335,6 @@ export class ConnectionManager {
                            connectorElement.closest('.false-output')) {
                     outputType = 'false';
                 }
-            }
-            
-            // 연결 시작 전에 이미 연결되어 있는지 확인 (조건 노드의 경우 outputType 고려)
-            const isConnected = this.isConnectorConnected(nodeId, connectorType, outputType);
-            
-            logger.log('[ConnectionManager] 커넥터 연결 상태 확인:', {
-                nodeId: nodeId,
-                connectorType: connectorType,
-                outputType: outputType,
-                isConnected: isConnected,
-                allConnections: Array.from(this.connections.values())
-            });
-            
-            if (isConnected) {
-                logger.log('[ConnectionManager] ⚠️ 이미 연결된 커넥터 클릭 - 연결 시작 차단:', {
-                    nodeId: nodeId,
-                    connectorType: connectorType,
-                    outputType: outputType
-                });
-                // 이미 연결되어 있으면 연결 시작하지 않음
-                return;
             }
             
             // 조건 노드의 경우 .output-dot을 찾아서 사용
@@ -298,13 +356,25 @@ export class ConnectionManager {
             }
             
             // 연결 시작 (입력/출력 모두 시작점이 될 수 있음)
+            // 이미 연결된 커넥터도 클릭하면 연결 모드 시작 가능
             this.startConnection(nodeElement, actualConnector, connectorType);
         } else {
-            // 연결 완료 (다른 타입의 커넥터 + 다른 노드일 때만)
+            // 연결 모드 중일 때
+            // 같은 커넥터를 다시 클릭하면 연결 취소
+            if (this.startNode === nodeElement && 
+                this.startConnectorType === connectorType &&
+                this.startConnector === connectorElement) {
+                logger.log('[ConnectionManager] 같은 커넥터 클릭 - 연결 취소');
+                this.cancelConnection();
+                return;
+            }
+            
+            // 다른 타입의 커넥터 + 다른 노드일 때: 연결 완료
             if (this.startConnectorType !== connectorType && this.startNode !== nodeElement) {
                 this.completeConnection(nodeElement, connectorElement);
             } else {
                 // 같은 타입이거나 같은 노드면 연결 취소
+                logger.log('[ConnectionManager] 잘못된 연결 시도 - 연결 취소');
                 this.cancelConnection();
             }
         }
@@ -483,20 +553,10 @@ export class ConnectionManager {
             }
         }
         
-        // 연결 시작 전에 다시 한 번 확인 (이중 체크) - 조건 노드의 경우 outputType 고려
-        if (this.isConnectorConnected(nodeId, connectorType, outputType)) {
-            logger.log('[ConnectionManager] ⚠️ startConnection: 이미 연결된 커넥터 - 연결 시작 차단:', {
-                nodeId: nodeId,
-                connectorType: connectorType,
-                outputType: outputType
-            });
-            // 이미 연결되어 있으면 연결 시작하지 않음
-            return;
-        }
-        
         logger.log('[ConnectionManager] 연결 시작 진행:', {
             nodeId: nodeId,
-            connectorType: connectorType
+            connectorType: connectorType,
+            outputType: outputType
         });
         
         this.isConnecting = true;
@@ -585,15 +645,27 @@ export class ConnectionManager {
             return;
         }
         
-        // 중복 연결 방지
+        // 기존 연결 확인 및 삭제 (덮어쓰기)
         const connectionId = `${fromNodeId}-${toNodeId}`;
         if (this.connections.has(connectionId)) {
-            logger.warn('[ConnectionManager] 중복 연결 시도 - 취소:', {
+            logger.log('[ConnectionManager] 기존 연결 발견 - 덮어쓰기:', {
                 connectionId: connectionId
             });
-            this.cancelConnection();
-            return;
+            this.deleteConnection(connectionId);
         }
+        
+        // 입력 커넥터에 기존 연결이 있으면 삭제 (입력은 하나만 연결 가능)
+        const existingInputConnections = Array.from(this.connections.values()).filter(
+            conn => conn.to === toNodeId
+        );
+        existingInputConnections.forEach(conn => {
+            logger.log('[ConnectionManager] 입력 커넥터 기존 연결 삭제:', {
+                connectionId: conn.id || `${conn.from}-${conn.to}`,
+                from: conn.from,
+                to: conn.to
+            });
+            this.deleteConnection(conn.id || `${conn.from}-${conn.to}`);
+        });
         
         // 출력 타입 감지 (조건 노드의 경우) - 검증 전에 먼저 감지
         // .output-dot이 클릭된 경우 부모 요소(.true-output 또는 .false-output)를 확인
@@ -657,35 +729,39 @@ export class ConnectionManager {
             });
             
             // 조건 노드는 출력 연결 개수 제한 없음 (각 outputType별로 독립적)
-            // 조건 노드가 아니고 이미 출력 연결이 있는 경우 (1개 이상이면 차단)
+            // 조건 노드가 아니고 이미 출력 연결이 있는 경우: 기존 연결 삭제 (덮어쓰기)
             if (!isConditionNode && existingOutputConnections.length >= 1) {
-                logger.warn('[ConnectionManager] 조건 노드가 아닌 노드는 출력을 최대 1개만 연결할 수 있습니다:', {
+                logger.log('[ConnectionManager] 조건 노드가 아닌 노드의 기존 출력 연결 삭제:', {
                     nodeId: fromNodeId,
                     nodeType: nodeType || 'undefined',
                     existingConnections: existingOutputConnections.length,
                     existingConnectionsList: existingOutputConnections.map(c => `${c.from} → ${c.to}`)
                 });
                 
-                // 사용자에게 알림 표시
-                if (window.ModalManager) {
-                    const modalManager = window.ModalManager.getInstance();
-                    if (modalManager) {
-                        modalManager.showAlert('연결 불가', '조건 노드가 아닌 노드는 출력을 최대 1개만 연결할 수 있습니다.');
-                    }
-                }
-                
-                this.cancelConnection();
-                return;
+                // 기존 출력 연결 삭제
+                existingOutputConnections.forEach(conn => {
+                    const connId = conn.id || `${conn.from}-${conn.to}`;
+                    logger.log('[ConnectionManager] 출력 커넥터 기존 연결 삭제:', {
+                        connectionId: connId,
+                        from: conn.from,
+                        to: conn.to
+                    });
+                    this.deleteConnection(connId);
+                });
             }
         } else {
-            // 노드 요소를 찾을 수 없어도 기존 연결이 있으면 차단 (조건 노드가 아닐 가능성이 높음)
+            // 노드 요소를 찾을 수 없어도 기존 연결이 있으면 삭제
             if (existingOutputConnections.length >= 1) {
-                logger.warn('[ConnectionManager] 노드 요소를 찾을 수 없지만 기존 연결이 있어 차단:', {
+                logger.log('[ConnectionManager] 노드 요소를 찾을 수 없지만 기존 연결 삭제:', {
                     fromNodeId: fromNodeId,
                     existingConnections: existingOutputConnections.length
                 });
-                this.cancelConnection();
-                return;
+                
+                // 기존 출력 연결 삭제
+                existingOutputConnections.forEach(conn => {
+                    const connId = conn.id || `${conn.from}-${conn.to}`;
+                    this.deleteConnection(connId);
+                });
             }
         }
         
@@ -721,12 +797,6 @@ export class ConnectionManager {
             this.startConnector.classList.remove('connecting');
         }
         
-        // 연결 시작 정보 초기화
-        this.startNode = null;
-        this.startConnector = null;
-        this.startConnectorType = null;
-        this.startOutputType = null;
-        
         // 임시 연결선 제거
         if (this.tempLine) {
             this.tempLine.remove();
@@ -739,9 +809,11 @@ export class ConnectionManager {
             this._tempMouseMoveHandler = null;
         }
         
+        // 연결 시작 정보 초기화
         this.startNode = null;
         this.startConnector = null;
         this.startConnectorType = null;
+        this.startOutputType = null;
     }
     
     /**
@@ -1025,18 +1097,6 @@ export class ConnectionManager {
             connectorClasses: this.startConnector.className
         });
         
-        // 마지막 안전장치: 이미 연결된 커넥터인지 확인 (조건 노드의 경우 outputType 고려)
-        if (this.isConnectorConnected(nodeId, connectorType, outputType)) {
-            logger.warn('[ConnectionManager] ⚠️ createTempLine: 이미 연결된 커넥터 - 임시 연결선 생성 차단:', {
-                nodeId: nodeId,
-                connectorType: connectorType,
-                outputType: outputType
-            });
-            // 이미 연결되어 있으면 임시 연결선 생성하지 않음
-            this.cancelConnection();
-            return;
-        }
-        
         if (!this.svgContainer) {
             logger.warn('[ConnectionManager] createTempLine: svgContainer가 없습니다.');
             return;
@@ -1143,6 +1203,25 @@ export class ConnectionManager {
         const logger = getLogger();
         const connectionId = `${fromNodeId}-${toNodeId}`;
         
+        // 입력 커넥터에 기존 연결이 있으면 삭제 (입력은 하나만 연결 가능)
+        const existingInputConnections = Array.from(this.connections.values()).filter(
+            conn => conn.to === toNodeId
+        );
+        
+        if (existingInputConnections.length > 0) {
+            logger.log('[ConnectionManager] createConnection: 입력 커넥터 기존 연결 삭제:', {
+                toNodeId: toNodeId,
+                existingConnections: existingInputConnections.length,
+                existingConnectionsList: existingInputConnections.map(c => `${c.from} → ${c.to}`)
+            });
+            
+            // 기존 입력 연결 삭제
+            existingInputConnections.forEach(conn => {
+                const connId = conn.id || `${conn.from}-${conn.to}`;
+                this.deleteConnection(connId);
+            });
+        }
+        
         // 출력 연결 개수 검증 (조건 노드 제외) - createConnection에서도 재검증
         // 조건 노드의 경우, 같은 outputType을 가진 연결만 카운트
         const fromNodeElement = document.querySelector(`[data-node-id="${fromNodeId}"]`);
@@ -1179,33 +1258,34 @@ export class ConnectionManager {
             });
             
             // 조건 노드는 출력 연결 개수 제한 없음 (각 outputType별로 독립적)
-            // 조건 노드가 아니고 이미 출력 연결이 있는 경우 (1개 이상이면 차단)
+            // 조건 노드가 아니고 이미 출력 연결이 있는 경우: 기존 연결 삭제 (덮어쓰기)
             if (!isConditionNode && existingOutputConnections.length >= 1) {
-                logger.warn('[ConnectionManager] createConnection: 조건 노드가 아닌 노드는 출력을 최대 1개만 연결할 수 있습니다:', {
+                logger.log('[ConnectionManager] createConnection: 조건 노드가 아닌 노드의 기존 출력 연결 삭제:', {
                     nodeId: fromNodeId,
                     nodeType: nodeType || 'undefined',
                     existingConnections: existingOutputConnections.length,
                     existingConnectionsList: existingOutputConnections.map(c => `${c.from} → ${c.to}`)
                 });
                 
-                // 사용자에게 알림 표시
-                if (window.ModalManager) {
-                    const modalManager = window.ModalManager.getInstance();
-                    if (modalManager) {
-                        modalManager.showAlert('연결 불가', '조건 노드가 아닌 노드는 출력을 최대 1개만 연결할 수 있습니다.');
-                    }
-                }
-                
-                return; // 연결 생성 차단
+                // 기존 출력 연결 삭제
+                existingOutputConnections.forEach(conn => {
+                    const connId = conn.id || `${conn.from}-${conn.to}`;
+                    this.deleteConnection(connId);
+                });
             }
         } else {
-            // 노드 요소를 찾을 수 없어도 기존 연결이 있으면 차단 (조건 노드가 아닐 가능성이 높음)
+            // 노드 요소를 찾을 수 없어도 기존 연결이 있으면 삭제
             if (existingOutputConnections.length >= 1) {
-                logger.warn('[ConnectionManager] createConnection: 노드 요소를 찾을 수 없지만 기존 연결이 있어 차단:', {
+                logger.log('[ConnectionManager] createConnection: 노드 요소를 찾을 수 없지만 기존 연결 삭제:', {
                     fromNodeId: fromNodeId,
                     existingConnections: existingOutputConnections.length
                 });
-                return; // 연결 생성 차단
+                
+                // 기존 출력 연결 삭제
+                existingOutputConnections.forEach(conn => {
+                    const connId = conn.id || `${conn.from}-${conn.to}`;
+                    this.deleteConnection(connId);
+                });
             }
         }
         

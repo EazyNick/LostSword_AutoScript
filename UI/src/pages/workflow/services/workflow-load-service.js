@@ -226,19 +226,17 @@ export class WorkflowLoadService {
                 
                 // 노드가 DOM에 완전히 렌더링될 때까지 대기
                 requestAnimationFrame(() => {
-                    requestAnimationFrame(() => {
-                        this.restoreConnections(connections, nodeManager);
-                        this.workflowPage.fitNodesToView();
-                        
-                        // 뷰포트 조정 후 연결선 위치를 다시 한 번 업데이트
-                        setTimeout(() => {
-                            if (nodeManager && nodeManager.connectionManager && connections.length > 0) {
-                                log('[WorkflowPage] 뷰포트 조정 후 연결선 위치 최종 업데이트');
-                                nodeManager.connectionManager.updateAllConnections();
-                            }
-                            log('[WorkflowPage] ✅ 스크립트 데이터 로드 및 화면 그리기 완료');
-                        }, 150);
-                    });
+                    this.restoreConnections(connections, nodeManager);
+                    this.workflowPage.fitNodesToView();
+                    
+                    // 뷰포트 조정 후 연결선 위치를 다시 한 번 업데이트
+                    setTimeout(() => {
+                        if (nodeManager && nodeManager.connectionManager && connections.length > 0) {
+                            log('[WorkflowPage] 뷰포트 조정 후 연결선 위치 최종 업데이트');
+                            nodeManager.connectionManager.updateAllConnections();
+                        }
+                        log('[WorkflowPage] ✅ 스크립트 데이터 로드 및 화면 그리기 완료');
+                    }, 150);
                 });
             })();
         }, 100);
@@ -314,27 +312,28 @@ export class WorkflowLoadService {
                         const nodeElement = document.getElementById(nodeData.id) || 
                                           document.querySelector(`[data-node-id="${nodeData.id}"]`);
                         if (nodeElement && nodeManager.generateNodeContent) {
+                            // generateNodeContent는 전체 HTML(커넥터 포함)을 반환하므로 그대로 사용
                             const updatedContent = nodeManager.generateNodeContent({
                                 ...nodeDataForManager,
                                 ...processData
                             });
-                            const contentElement = nodeElement.querySelector('.node-content');
-                            if (contentElement) {
-                                const inputConnector = nodeElement.querySelector('.node-input')?.outerHTML || '<div class="node-input"></div>';
-                                const outputConnector = nodeElement.querySelector('.node-output')?.outerHTML || '<div class="node-output"></div>';
-                                const settingsBtn = nodeElement.querySelector('.node-settings')?.outerHTML || `<div class="node-settings" data-node-id="${nodeData.id}">⚙</div>`;
-                                
-                                nodeElement.innerHTML = `
-                                    ${inputConnector}
-                                    ${updatedContent}
-                                    ${outputConnector}
-                                    ${settingsBtn}
-                                `;
-                                
-                                // 이벤트 리스너 재설정
-                                if (nodeManager.setupNodeEventListeners) {
-                                    nodeManager.setupNodeEventListeners(nodeElement);
-                                }
+                            
+                            // 전체 innerHTML 업데이트
+                            nodeElement.innerHTML = updatedContent;
+                            
+                            // 이벤트 리스너 재설정
+                            if (nodeManager.setupNodeEventListeners) {
+                                nodeManager.setupNodeEventListeners(nodeElement);
+                            }
+                            
+                            // ConnectionManager에 노드 커넥터 다시 바인딩
+                            if (nodeManager.registerNodeWithConnectionManager) {
+                                nodeManager.registerNodeWithConnectionManager(nodeElement);
+                            }
+                            
+                            // 드래그 컨트롤러 다시 연결
+                            if (nodeManager.dragController) {
+                                nodeManager.dragController.attachNode(nodeElement);
                             }
                         }
                     }, 100);

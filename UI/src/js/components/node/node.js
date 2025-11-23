@@ -351,6 +351,9 @@ export class NodeManager {
                 element: nodeElement
             });
 
+            // 8. ConnectionManager에 노드 커넥터 바인딩
+            this.registerNodeWithConnectionManager(nodeElement);
+
             log(`노드 생성 완료: ${nodeData.id} (${nodeData.title})`);
             return nodeElement;
 
@@ -1486,6 +1489,27 @@ export class NodeManager {
             }
         }
 
+        // 입력 커넥터 다중 연결 방지 검증
+        if (toOutputType === 'input') {
+            const existingInputConnections = this.findConnectionsByNode(toNodeId, 'input');
+            if (existingInputConnections.length > 0) {
+                logWarn('이미 연결된 입력 커넥터입니다. 입력 커넥터는 하나의 연결만 허용됩니다.', {
+                    toNodeId: toNodeId,
+                    existingConnections: existingInputConnections.length,
+                    existingConnectionIds: existingInputConnections.map(c => c.id)
+                });
+                
+                // 사용자에게 알림 표시
+                if (window.ModalManager) {
+                    const modalManager = window.ModalManager.getInstance();
+                    if (modalManager) {
+                        modalManager.showAlert('연결 불가', '이미 연결된 입력 커넥터입니다. 입력 커넥터는 하나의 연결만 허용됩니다.');
+                    }
+                }
+                return;
+            }
+        }
+
         // 출력 연결 개수 검증 (조건 노드 제외)
         // 조건 노드의 경우 출력 타입 추출
         const outputType = fromOutputType === 'true' || fromOutputType === 'false' ? fromOutputType : null;
@@ -1766,20 +1790,28 @@ export class NodeManager {
     }
 
     /**
-     * 연결 관리자에 노드 등록 (지연 초기화용)
+     * 연결 관리자에 노드 등록
      */
     registerNodeWithConnectionManager(nodeElement) {
-        setTimeout(() => {
-            if (this.connectionManager) {
-                this.connectionManager.bindNodeConnector(nodeElement);
-            } else if (window.ConnectionManager) {
+        if (!nodeElement) {
+            return;
+        }
+        
+        // ConnectionManager 초기화
+        if (!this.connectionManager) {
+            if (window.ConnectionManager) {
                 this.connectionManager = new window.ConnectionManager(this.canvas);
                 if (window.setConnectionManager) {
                     window.setConnectionManager(this.connectionManager);
                 }
-                this.connectionManager.bindNodeConnector(nodeElement);
+            } else {
+                logWarn('[NodeManager] ConnectionManager를 찾을 수 없습니다.');
+                return;
             }
-        }, 50);
+        }
+        
+        // 즉시 커넥터 바인딩
+        this.connectionManager.bindNodeConnector(nodeElement);
     }
 
     /**
@@ -2205,7 +2237,7 @@ NodeManager.nodeTypeDefinitions = {};
 
 /**
  * 노드 타입 등록 함수
- * @param {string} type - 노드 타입(예: 'action', 'condition', 'loop')
+ * @param {string} type - 노드 타입(예: 'action', 'condition')
  * @param {Object} definition - 타입 정의 객체
  * @param {Function} definition.renderContent - 노드 innerHTML을 생성하는 함수
  */
