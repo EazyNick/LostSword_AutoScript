@@ -117,6 +117,12 @@ export class SidebarManager {
                     active: index === 0 // 첫 번째 스크립트를 기본 선택
                 }));
                 
+                // 저장된 순서 적용
+                const savedOrder = this.loadScriptOrder();
+                if (savedOrder) {
+                    this.applyScriptOrder(savedOrder);
+                }
+                
                 // 첫 번째 스크립트가 있으면 활성화
                 if (this.scripts.length > 0) {
                     this.currentScriptIndex = 0;
@@ -224,8 +230,11 @@ export class SidebarManager {
             
             const scriptItem = document.createElement('div');
             scriptItem.className = `script-item ${script.active ? 'active' : ''}`;
+            scriptItem.draggable = true;
+            scriptItem.dataset.scriptIndex = index;
             
             scriptItem.innerHTML = `
+                <div class="script-drag-handle">⋮⋮</div>
                 <div class="script-icon">📄</div>
                 <div class="script-info">
                     <div class="script-name">${script.name}</div>
@@ -240,10 +249,13 @@ export class SidebarManager {
                 </button>
             `;
             
+            // 드래그 앤 드롭 이벤트 핸들러
+            this.setupDragAndDrop(scriptItem, index);
+            
             // 스크립트 항목 클릭 이벤트 (삭제 버튼 제외)
             scriptItem.addEventListener('click', (e) => {
-                // 삭제 버튼 클릭 시에는 선택 이벤트 발생하지 않도록
-                if (e.target.closest('.script-delete-btn')) {
+                // 삭제 버튼이나 드래그 핸들 클릭 시에는 선택 이벤트 발생하지 않도록
+                if (e.target.closest('.script-delete-btn') || e.target.closest('.script-drag-handle')) {
                     return;
                 }
                 log('사이드바 스크립트 클릭됨:', script.name, '인덱스:', index);
@@ -262,6 +274,200 @@ export class SidebarManager {
         });
         
         log(`[Sidebar] ✅ 스크립트 목록 렌더링 완료: ${this.scripts.length}개 항목`);
+    }
+    
+    /**
+     * 드래그 앤 드롭 기능 설정
+     */
+    setupDragAndDrop(scriptItem, index) {
+        const logger = getLogger();
+        const log = logger.log;
+        
+        // 드래그 시작
+        scriptItem.addEventListener('dragstart', (e) => {
+            scriptItem.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', index.toString());
+            log(`[Sidebar] 드래그 시작 - 인덱스: ${index}`);
+        });
+        
+        // 드래그 종료
+        scriptItem.addEventListener('dragend', (e) => {
+            scriptItem.classList.remove('dragging');
+            // 모든 드롭 인디케이터 제거
+            document.querySelectorAll('.script-item').forEach(item => {
+                item.classList.remove('drag-over-top', 'drag-over-bottom');
+            });
+            log(`[Sidebar] 드래그 종료 - 인덱스: ${index}`);
+        });
+        
+        // 드래그 오버 (다른 항목 위로 이동)
+        scriptItem.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            
+            const draggingItem = document.querySelector('.script-item.dragging');
+            if (draggingItem && draggingItem !== scriptItem) {
+                const rect = scriptItem.getBoundingClientRect();
+                const y = e.clientY - rect.top;
+                
+                // 항목의 중간 지점을 기준으로 위/아래 결정
+                if (y < rect.height / 2) {
+                    scriptItem.classList.add('drag-over-top');
+                    scriptItem.classList.remove('drag-over-bottom');
+                } else {
+                    scriptItem.classList.add('drag-over-bottom');
+                    scriptItem.classList.remove('drag-over-top');
+                }
+            }
+        });
+        
+        // 드래그 리브 (항목에서 벗어남)
+        scriptItem.addEventListener('dragleave', (e) => {
+            scriptItem.classList.remove('drag-over-top', 'drag-over-bottom');
+        });
+        
+        // 드롭
+        scriptItem.addEventListener('drop', (e) => {
+            e.preventDefault();
+            scriptItem.classList.remove('drag-over-top', 'drag-over-bottom');
+            
+            const draggingIndex = parseInt(e.dataTransfer.getData('text/plain'));
+            const rect = scriptItem.getBoundingClientRect();
+            const y = e.clientY - rect.top;
+            
+            // 드롭 위치에 따라 인덱스 결정
+            let dropIndex = index;
+            if (y < rect.height / 2) {
+                // 위쪽에 드롭
+                dropIndex = index;
+            } else {
+                // 아래쪽에 드롭
+                dropIndex = index + 1;
+            }
+            
+            if (draggingIndex !== dropIndex && draggingIndex !== dropIndex - 1) {
+                log(`[Sidebar] 드롭 - 드래그 인덱스: ${draggingIndex}, 드롭 인덱스: ${dropIndex}`);
+                this.reorderScripts(draggingIndex, dropIndex);
+            }
+        });
+    }
+    
+    /**
+     * 스크립트 순서 변경
+     */
+    reorderScripts(fromIndex, toIndex) {
+        const logger = getLogger();
+        const log = logger.log;
+        
+        // 인덱스 범위 확인
+        if (fromIndex < 0 || fromIndex >= this.scripts.length || 
+            toIndex < 0 || toIndex > this.scripts.length) {
+            log(`[Sidebar] ⚠️ 유효하지 않은 인덱스 - fromIndex: ${fromIndex}, toIndex: ${toIndex}`);
+            return;
+        }
+        
+        // 같은 위치면 변경하지 않음
+        if (fromIndex === toIndex) {
+            return;
+        }
+        
+        log(`[Sidebar] 스크립트 순서 변경 - ${fromIndex} -> ${toIndex}`);
+        
+        // 배열에서 항목 이동
+        const [movedScript] = this.scripts.splice(fromIndex, 1);
+        
+        // toIndex가 배열 길이를 초과하지 않도록 조정
+        const adjustedToIndex = Math.min(toIndex, this.scripts.length);
+        this.scripts.splice(adjustedToIndex, 0, movedScript);
+        
+        // 현재 선택된 스크립트 인덱스 업데이트
+        if (this.currentScriptIndex === fromIndex) {
+            // 이동한 스크립트가 현재 선택된 스크립트인 경우
+            this.currentScriptIndex = adjustedToIndex;
+        } else if (fromIndex < adjustedToIndex) {
+            // 아래로 이동한 경우
+            if (this.currentScriptIndex > fromIndex && this.currentScriptIndex <= adjustedToIndex) {
+                this.currentScriptIndex--;
+            }
+        } else {
+            // 위로 이동한 경우
+            if (this.currentScriptIndex >= adjustedToIndex && this.currentScriptIndex < fromIndex) {
+                this.currentScriptIndex++;
+            }
+        }
+        
+        // UI 업데이트
+        this.loadScripts();
+        
+        // 순서 저장
+        this.saveScriptOrder();
+        
+        log(`[Sidebar] ✅ 스크립트 순서 변경 완료`);
+    }
+    
+    /**
+     * 스크립트 순서를 로컬 스토리지에 저장
+     */
+    saveScriptOrder() {
+        const order = this.scripts.map(script => script.id);
+        localStorage.setItem('script-order', JSON.stringify(order));
+        const logger = getLogger();
+        logger.log('[Sidebar] 스크립트 순서 저장됨:', order);
+    }
+    
+    /**
+     * 로컬 스토리지에서 스크립트 순서 로드
+     */
+    loadScriptOrder() {
+        const savedOrder = localStorage.getItem('script-order');
+        if (!savedOrder) {
+            return null;
+        }
+        
+        try {
+            return JSON.parse(savedOrder);
+        } catch (error) {
+            console.error('스크립트 순서 로드 실패:', error);
+            return null;
+        }
+    }
+    
+    /**
+     * 저장된 순서대로 스크립트 배열 재정렬
+     */
+    applyScriptOrder(savedOrder) {
+        if (!savedOrder || savedOrder.length === 0) {
+            return;
+        }
+        
+        const logger = getLogger();
+        const log = logger.log;
+        
+        // ID를 키로 하는 맵 생성
+        const scriptMap = new Map(this.scripts.map(script => [script.id, script]));
+        
+        // 저장된 순서대로 재정렬
+        const orderedScripts = [];
+        const usedIds = new Set();
+        
+        // 저장된 순서대로 추가
+        for (const id of savedOrder) {
+            if (scriptMap.has(id)) {
+                orderedScripts.push(scriptMap.get(id));
+                usedIds.add(id);
+            }
+        }
+        
+        // 저장된 순서에 없는 새 스크립트들을 끝에 추가
+        for (const script of this.scripts) {
+            if (!usedIds.has(script.id)) {
+                orderedScripts.push(script);
+            }
+        }
+        
+        this.scripts = orderedScripts;
+        log('[Sidebar] 저장된 순서 적용 완료');
     }
     
     selectScript(index) {
@@ -367,6 +573,9 @@ export class SidebarManager {
                 this.scripts.unshift(newScript);
                 log('[Sidebar] 스크립트 목록에 추가됨 - ID:', result.id, '이름:', result.name);
                 
+                // 순서 저장
+                this.saveScriptOrder();
+                
                 // UI 업데이트
                 this.loadScripts();
                 
@@ -456,6 +665,9 @@ export class SidebarManager {
                         if (this.currentScriptIndex >= deletedIndex && deletedIndex >= 0) {
                             this.currentScriptIndex = Math.max(0, this.currentScriptIndex - 1);
                         }
+                        
+                        // 순서 저장
+                        this.saveScriptOrder();
                         
                         // UI 업데이트
                         this.loadScripts();
