@@ -87,6 +87,9 @@
                 <div class="script-list">
                     <!-- 스크립트 목록은 sidebar.js에서 동적으로 생성됩니다 -->
                 </div>
+                
+                <!-- 사이드바 리사이즈 핸들: 경계선을 드래그하여 사이드바 크기 조절 -->
+                <div class="sidebar-resize-handle" id="sidebar-resize-handle"></div>
             </aside>
 
             <!-- ========================================== -->
@@ -198,6 +201,7 @@
     <script type="module" src="../../js/api/api.js"></script>
     <script type="module" src="../../js/api/scriptapi.js"></script>
     <script type="module" src="../../js/api/nodeapi.js"></script>
+    <script type="module" src="../../js/api/user-settings-api.js"></script>
 
     <!-- 3. NodeManager가 의존하는 서브 컨트롤러들 -->
     <script src="../../js/components/node/node-selection.js"></script>

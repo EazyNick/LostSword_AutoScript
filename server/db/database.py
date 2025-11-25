@@ -68,11 +68,84 @@ class DatabaseManager:
         except sqlite3.OperationalError:
             pass  # 컬럼이 이미 존재하면 무시
         
+        # 사용자 설정 테이블 생성
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS user_settings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                setting_key TEXT NOT NULL UNIQUE,
+                setting_value TEXT NOT NULL,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
         # 연결 테이블은 더 이상 사용하지 않음 (nodes 테이블의 connected_to/connected_from 사용)
         # 기존 connections 테이블이 있다면 삭제하지 않고 그대로 둠 (하위 호환성)
         
         conn.commit()
         conn.close()
+    
+    def get_user_setting(self, setting_key: str, default_value: str = None) -> Optional[str]:
+        """사용자 설정 조회"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute(
+            "SELECT setting_value FROM user_settings WHERE setting_key = ?",
+            (setting_key,)
+        )
+        result = cursor.fetchone()
+        conn.close()
+        
+        if result:
+            return result[0]
+        return default_value
+    
+    def save_user_setting(self, setting_key: str, setting_value: str) -> bool:
+        """사용자 설정 저장"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        try:
+            cursor.execute('''
+                INSERT INTO user_settings (setting_key, setting_value, updated_at)
+                VALUES (?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(setting_key) DO UPDATE SET
+                    setting_value = excluded.setting_value,
+                    updated_at = CURRENT_TIMESTAMP
+            ''', (setting_key, setting_value))
+            conn.commit()
+            return True
+        except Exception as e:
+            conn.rollback()
+            raise e
+        finally:
+            conn.close()
+    
+    def get_all_user_settings(self) -> Dict[str, str]:
+        """모든 사용자 설정 조회"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT setting_key, setting_value FROM user_settings")
+        results = cursor.fetchall()
+        conn.close()
+        
+        return {key: value for key, value in results}
+    
+    def delete_user_setting(self, setting_key: str) -> bool:
+        """사용자 설정 삭제"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        try:
+            cursor.execute("DELETE FROM user_settings WHERE setting_key = ?", (setting_key,))
+            conn.commit()
+            return cursor.rowcount > 0
+        except Exception as e:
+            conn.rollback()
+            raise e
+        finally:
+            conn.close()
     
     def create_script(self, name: str, description: str = "") -> int:
         """새 스크립트 생성"""

@@ -5,10 +5,14 @@
 /* 사이드바 컨테이너: 왼쪽에 위치한 스크립트 목록 영역 */
 .sidebar {
     width: 350px;
+    min-width: 250px;
+    max-width: 600px;
     background-color: #2d3748;
     border-right: 1px solid #4a5568;
     display: flex;
     flex-direction: column;
+    position: relative;
+    flex-shrink: 0;
 }
 
 /* 사이드바 헤더: 상단에 위치한 "테스트 스크립트" 제목과 추가 버튼 영역 */
@@ -253,6 +257,66 @@
 /* 삭제 버튼 호버 시 삭제 아이콘 색상 복원: 마우스를 올리면 아이콘 색상이 선명해짐 */
 .script-delete-btn:hover .delete-icon {
     filter: grayscale(0);
+}
+
+/* ========================================== */
+/* 사이드바 리사이즈 핸들 */
+/* ========================================== */
+
+/* 사이드바 리사이즈 핸들: 경계선을 드래그하여 사이드바 크기를 조절할 수 있는 영역 */
+.sidebar-resize-handle {
+    position: absolute;
+    top: 0;
+    right: -4px;
+    width: 8px;
+    height: 100%;
+    cursor: col-resize;
+    background-color: rgba(49, 130, 206, 0);
+    z-index: 10001;
+    transition: background-color 0.2s ease;
+    pointer-events: auto;
+    touch-action: none;
+}
+
+/* 사이드바 리사이즈 핸들 호버 효과: 마우스를 올렸을 때 배경색 표시 */
+.sidebar-resize-handle:hover {
+    background-color: rgba(49, 130, 206, 0.2);
+    width: 8px;
+}
+
+/* 사이드바 리사이즈 핸들 활성 상태: 드래그 중일 때 */
+.sidebar-resize-handle:active {
+    background-color: rgba(49, 130, 206, 0.4);
+    width: 8px;
+}
+
+/* 리사이즈 핸들 위에 경계선 표시: 핸들 중앙에 세로선 표시 */
+.sidebar-resize-handle::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 1px;
+    height: 100%;
+    background-color: #4a5568;
+    pointer-events: none;
+}
+
+/* 리사이즈 핸들 호버 시 경계선 강조: 마우스를 올리면 파란색으로 변경 */
+.sidebar-resize-handle:hover::before {
+    background-color: #3182ce;
+    width: 2px;
+}
+
+/* 사이드바 리사이즈 중 상태: 드래그 중일 때 사용자 선택 방지 */
+.sidebar.resizing {
+    user-select: none;
+}
+
+/* 사이드바 리사이즈 중 핸들 스타일: 드래그 중일 때 핸들 배경색 강조 */
+.sidebar.resizing .sidebar-resize-handle {
+    background-color: rgba(49, 130, 206, 0.5);
 }
 
 /* ========================================== */

@@ -6,6 +6,7 @@
  * 명시적 의존성 관리
  */
 import { ScriptAPI } from '../api/scriptapi.js';
+import { UserSettingsAPI } from '../api/user-settings-api.js';
 import { getModalManagerInstance } from '../utils/modal.js';
 
 /**
@@ -117,8 +118,8 @@ export class SidebarManager {
                     active: index === 0 // 첫 번째 스크립트를 기본 선택
                 }));
                 
-                // 저장된 순서 적용
-                const savedOrder = this.loadScriptOrder();
+                // 저장된 순서 적용 (비동기)
+                const savedOrder = await this.loadScriptOrder();
                 if (savedOrder) {
                     this.applyScriptOrder(savedOrder);
                 }
@@ -191,9 +192,228 @@ export class SidebarManager {
             this.showAddScriptModal();
         });
         
+        // 사이드바 리사이즈 핸들 설정
+        this.setupResizeHandle();
+        
+        // 저장된 사이드바 너비 로드
+        this.loadSidebarWidth();
+        
         // 모든 스크립트 실행 버튼은 workflow.js에서 등록하므로 여기서는 제거
         // (헤더의 버튼은 workflow.js에서, 사이드바의 버튼이 있다면 여기서 등록)
         // 현재는 헤더에만 버튼이 있으므로 여기서는 등록하지 않음
+    }
+    
+    /**
+     * 사이드바 리사이즈 핸들 설정
+     */
+    setupResizeHandle() {
+        const sidebar = document.querySelector('.sidebar');
+        const resizeHandle = document.getElementById('sidebar-resize-handle');
+        
+        const logger = getLogger();
+        const log = logger.log;
+        const logError = logger.error;
+        
+        if (!sidebar) {
+            logError('[Sidebar] 사이드바 요소를 찾을 수 없습니다.');
+            return;
+        }
+        
+        if (!resizeHandle) {
+            // 리사이즈 핸들이 없으면 동적으로 생성 (정상적인 경우)
+            log('[Sidebar] 리사이즈 핸들 요소를 찾을 수 없음, 동적 생성 시작');
+            const handle = document.createElement('div');
+            handle.className = 'sidebar-resize-handle';
+            handle.id = 'sidebar-resize-handle';
+            sidebar.appendChild(handle);
+            log('[Sidebar] 리사이즈 핸들 동적 생성 완료');
+        }
+        
+        const finalHandle = document.getElementById('sidebar-resize-handle');
+        if (!finalHandle) {
+            logError('[Sidebar] 리사이즈 핸들 설정 실패');
+            return;
+        }
+        
+        // 리사이즈 핸들이 항상 최상위에 오도록 z-index 설정
+        finalHandle.style.zIndex = '10001';
+        log('[Sidebar] 리사이즈 핸들 설정 시작');
+        
+        let isResizing = false;
+        let startX = 0;
+        let startWidth = 0;
+        
+        // 마우스 다운 이벤트
+        finalHandle.addEventListener('mousedown', (e) => {
+            log('[Sidebar] 리사이즈 핸들 마우스 다운');
+            isResizing = true;
+            startX = e.clientX;
+            startWidth = sidebar.offsetWidth;
+            sidebar.classList.add('resizing');
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+            
+            // 워크플로우 캔버스의 커서 스타일 임시 제거 및 이벤트 차단
+            const workflowCanvas = document.querySelector('.workflow-canvas');
+            const workflowArea = document.querySelector('.workflow-area');
+            if (workflowCanvas) {
+                workflowCanvas.style.cursor = 'col-resize';
+                workflowCanvas.style.pointerEvents = 'none';
+            }
+            if (workflowArea) {
+                workflowArea.style.pointerEvents = 'none';
+            }
+            
+            e.preventDefault();
+            e.stopPropagation();
+        });
+        
+        // 마우스 이동 이벤트
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+            
+            const diff = e.clientX - startX;
+            let newWidth = startWidth + diff;
+            
+            // 최소/최대 너비 제한
+            const minWidth = 250;
+            const maxWidth = 600;
+            newWidth = Math.max(minWidth, Math.min(maxWidth, newWidth));
+            
+            sidebar.style.width = `${newWidth}px`;
+            
+            e.preventDefault();
+        });
+        
+        // 마우스 업 이벤트
+        document.addEventListener('mouseup', () => {
+            if (isResizing) {
+                isResizing = false;
+                sidebar.classList.remove('resizing');
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+                
+                // 워크플로우 캔버스의 커서 스타일 및 이벤트 복원
+                const workflowCanvas = document.querySelector('.workflow-canvas');
+                const workflowArea = document.querySelector('.workflow-area');
+                if (workflowCanvas) {
+                    workflowCanvas.style.cursor = '';
+                    workflowCanvas.style.pointerEvents = '';
+                }
+                if (workflowArea) {
+                    workflowArea.style.pointerEvents = '';
+                }
+                
+                // 너비 저장 (비동기)
+                log(`[Sidebar] 사이드바 너비 저장 시작: ${sidebar.offsetWidth}px`);
+                this.saveSidebarWidth(sidebar.offsetWidth).catch(error => {
+                    const logger = getLogger();
+                    logger.error('[Sidebar] 사이드바 너비 저장 중 에러:', error);
+                });
+            }
+        });
+        
+        // 리사이즈 핸들 위에서 col-resize 커서 표시 및 캔버스 이벤트 차단
+        finalHandle.addEventListener('mouseenter', () => {
+            log('[Sidebar] 리사이즈 핸들 마우스 진입');
+            if (!isResizing) {
+                const workflowCanvas = document.querySelector('.workflow-canvas');
+                const workflowArea = document.querySelector('.workflow-area');
+                if (workflowCanvas) {
+                    workflowCanvas.style.pointerEvents = 'none';
+                }
+                if (workflowArea) {
+                    workflowArea.style.pointerEvents = 'none';
+                }
+            }
+        });
+        
+        finalHandle.addEventListener('mouseleave', () => {
+            log('[Sidebar] 리사이즈 핸들 마우스 이탈');
+            if (!isResizing) {
+                const workflowCanvas = document.querySelector('.workflow-canvas');
+                const workflowArea = document.querySelector('.workflow-area');
+                if (workflowCanvas) {
+                    workflowCanvas.style.pointerEvents = '';
+                }
+                if (workflowArea) {
+                    workflowArea.style.pointerEvents = '';
+                }
+            }
+        });
+        
+        log('[Sidebar] 리사이즈 핸들 설정 완료');
+    }
+    
+    /**
+     * 사이드바 너비를 서버에 저장
+     */
+    async saveSidebarWidth(width) {
+        const logger = getLogger();
+        const log = logger.log;
+        const logError = logger.error;
+        
+        try {
+            // 서버에 저장 시도
+            if (UserSettingsAPI) {
+                await UserSettingsAPI.saveSetting('sidebar-width', width.toString());
+                log(`[Sidebar] 사이드바 너비 서버에 저장됨: ${width}px`);
+            } else {
+                // 폴백: 로컬 스토리지에 저장
+                localStorage.setItem('sidebar-width', width.toString());
+                log(`[Sidebar] 사이드바 너비 로컬 스토리지에 저장됨: ${width}px`);
+            }
+        } catch (error) {
+            logError('[Sidebar] 서버 저장 실패, 로컬 스토리지에 저장:', error);
+            // 서버 저장 실패 시 로컬 스토리지에 저장 (폴백)
+            localStorage.setItem('sidebar-width', width.toString());
+        }
+    }
+    
+    /**
+     * 서버에서 사이드바 너비 로드
+     */
+    async loadSidebarWidth() {
+        const logger = getLogger();
+        const log = logger.log;
+        const logError = logger.error;
+        
+        try {
+            let savedWidth = null;
+            
+            // 서버에서 로드 시도
+            if (UserSettingsAPI) {
+                try {
+                    savedWidth = await UserSettingsAPI.getSetting('sidebar-width');
+                    if (savedWidth) {
+                        log(`[Sidebar] 사이드바 너비 서버에서 로드됨: ${savedWidth}px`);
+                    }
+                } catch (error) {
+                    log('[Sidebar] 서버에서 설정을 찾을 수 없음, 로컬 스토리지 확인');
+                }
+            }
+            
+            // 서버에 없으면 로컬 스토리지에서 로드
+            if (!savedWidth) {
+                savedWidth = localStorage.getItem('sidebar-width');
+                if (savedWidth) {
+                    log(`[Sidebar] 사이드바 너비 로컬 스토리지에서 로드됨: ${savedWidth}px`);
+                }
+            }
+            
+            if (savedWidth) {
+                const width = parseInt(savedWidth);
+                if (width && width >= 250 && width <= 600) {
+                    const sidebar = document.querySelector('.sidebar');
+                    if (sidebar) {
+                        sidebar.style.width = `${width}px`;
+                        log(`[Sidebar] 사이드바 너비 적용됨: ${width}px`);
+                    }
+                }
+            }
+        } catch (error) {
+            logError('[Sidebar] 사이드바 너비 로드 실패:', error);
+        }
     }
     
     loadScripts() {
@@ -400,35 +620,78 @@ export class SidebarManager {
         // UI 업데이트
         this.loadScripts();
         
-        // 순서 저장
-        this.saveScriptOrder();
+        // 순서 저장 (비동기)
+        this.saveScriptOrder().catch(error => {
+            const logger = getLogger();
+            logger.error('[Sidebar] 스크립트 순서 저장 실패:', error);
+        });
         
         log(`[Sidebar] ✅ 스크립트 순서 변경 완료`);
     }
     
     /**
-     * 스크립트 순서를 로컬 스토리지에 저장
+     * 스크립트 순서를 서버에 저장
      */
-    saveScriptOrder() {
-        const order = this.scripts.map(script => script.id);
-        localStorage.setItem('script-order', JSON.stringify(order));
+    async saveScriptOrder() {
         const logger = getLogger();
-        logger.log('[Sidebar] 스크립트 순서 저장됨:', order);
+        const log = logger.log;
+        const logError = logger.error;
+        
+        const order = this.scripts.map(script => script.id);
+        
+        try {
+            // 서버에 저장 시도
+            if (UserSettingsAPI) {
+                await UserSettingsAPI.saveSetting('script-order', JSON.stringify(order));
+                log('[Sidebar] 스크립트 순서 서버에 저장됨:', order);
+            } else {
+                // 폴백: 로컬 스토리지에 저장
+                localStorage.setItem('script-order', JSON.stringify(order));
+                log('[Sidebar] 스크립트 순서 로컬 스토리지에 저장됨:', order);
+            }
+        } catch (error) {
+            logError('[Sidebar] 서버 저장 실패, 로컬 스토리지에 저장:', error);
+            // 서버 저장 실패 시 로컬 스토리지에 저장 (폴백)
+            localStorage.setItem('script-order', JSON.stringify(order));
+        }
     }
     
     /**
-     * 로컬 스토리지에서 스크립트 순서 로드
+     * 서버에서 스크립트 순서 로드
      */
-    loadScriptOrder() {
-        const savedOrder = localStorage.getItem('script-order');
-        if (!savedOrder) {
-            return null;
-        }
+    async loadScriptOrder() {
+        const logger = getLogger();
+        const log = logger.log;
+        const logError = logger.error;
         
         try {
-            return JSON.parse(savedOrder);
+            let savedOrder = null;
+            
+            // 서버에서 로드 시도
+            if (UserSettingsAPI) {
+                try {
+                    const orderStr = await UserSettingsAPI.getSetting('script-order');
+                    if (orderStr) {
+                        savedOrder = JSON.parse(orderStr);
+                        log('[Sidebar] 스크립트 순서 서버에서 로드됨:', savedOrder);
+                    }
+                } catch (error) {
+                    log('[Sidebar] 서버에서 설정을 찾을 수 없음, 로컬 스토리지 확인');
+                }
+            }
+            
+            // 서버에 없으면 로컬 스토리지에서 로드
+            if (!savedOrder) {
+                const orderStr = localStorage.getItem('script-order');
+                if (orderStr) {
+                    savedOrder = JSON.parse(orderStr);
+                    log('[Sidebar] 스크립트 순서 로컬 스토리지에서 로드됨:', savedOrder);
+                }
+            }
+            
+            return savedOrder;
         } catch (error) {
-            console.error('스크립트 순서 로드 실패:', error);
+            logError('[Sidebar] 스크립트 순서 로드 실패:', error);
             return null;
         }
     }
@@ -573,8 +836,10 @@ export class SidebarManager {
                 this.scripts.unshift(newScript);
                 log('[Sidebar] 스크립트 목록에 추가됨 - ID:', result.id, '이름:', result.name);
                 
-                // 순서 저장
-                this.saveScriptOrder();
+                // 순서 저장 (비동기)
+                this.saveScriptOrder().catch(error => {
+                    logger.error('[Sidebar] 스크립트 순서 저장 실패:', error);
+                });
                 
                 // UI 업데이트
                 this.loadScripts();
@@ -666,8 +931,10 @@ export class SidebarManager {
                             this.currentScriptIndex = Math.max(0, this.currentScriptIndex - 1);
                         }
                         
-                        // 순서 저장
-                        this.saveScriptOrder();
+                        // 순서 저장 (비동기)
+                        this.saveScriptOrder().catch(error => {
+                            logger.error('[Sidebar] 스크립트 순서 저장 실패:', error);
+                        });
                         
                         // UI 업데이트
                         this.loadScripts();
