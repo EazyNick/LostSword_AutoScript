@@ -6,7 +6,8 @@ import uvicorn
 import os
 import re
 from api import action_router, script_router, game_router, node_router, config_router
-from log import log_manager 
+from log import log_manager
+from db.database import db_manager 
 
 # cd server
 # python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
@@ -42,11 +43,42 @@ if 'DEV' in env_vars:
 else:
     logger.warning("⚠️ .env 파일에 DEV 변수가 없습니다. 기본값 'false' 사용")
 
+# 데이터베이스 초기화 및 기본 데이터 생성
+def initialize_database():
+    """데이터베이스가 없으면 생성하고 기본 데이터 삽입"""
+    db_path = db_manager.connection.db_path
+    
+    # 데이터베이스 파일이 존재하는지 확인
+    if not os.path.exists(db_path):
+        logger.info(f"데이터베이스 파일이 없습니다. 생성 중... ({db_path})")
+        try:
+            # 데이터베이스 초기화 (테이블 생성)
+            db_manager.init_database()
+            logger.info("✅ 데이터베이스 테이블 생성 완료")
+            
+            # 기본 데이터 삽입 (logger 전달)
+            db_manager.seed_example_data(logger=logger)
+            logger.info("✅ 기본 데이터 삽입 완료")
+        except Exception as e:
+            logger.error(f"❌ 데이터베이스 초기화 실패: {e}")
+            raise e
+    else:
+        logger.info(f"기존 데이터베이스 파일 발견: {db_path}")
+        # 기존 데이터베이스는 그대로 사용 (마이그레이션은 자동으로 처리됨)
+
 app = FastAPI(
     title="자동화 도구",
     description="자동화를 위한 API 서버",
     version="1.0.0"
 )
+
+# 서버 시작 시 데이터베이스 초기화
+@app.on_event("startup")
+async def startup_event():
+    """서버 시작 시 실행되는 이벤트 핸들러"""
+    logger.info("서버 시작 이벤트 실행 중...")
+    initialize_database()
+    logger.info("서버 시작 이벤트 완료")
 
 # CORS 설정
 app.add_middleware(
