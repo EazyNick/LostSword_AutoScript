@@ -1,449 +1,120 @@
-import sqlite3
-import json
+"""통합 데이터베이스 관리자 모듈"""
 import os
+import sys
 from typing import List, Dict, Optional
-from datetime import datetime
+
+# 직접 실행 시와 모듈로 import 시 모두 지원
+try:
+    from .connection import DatabaseConnection
+    from .table_manager import TableManager
+    from .user_settings_repository import UserSettingsRepository
+    from .script_repository import ScriptRepository
+    from .node_repository import NodeRepository
+except ImportError:
+    # 직접 실행 시 절대 import 사용
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from db.connection import DatabaseConnection
+    from db.table_manager import TableManager
+    from db.user_settings_repository import UserSettingsRepository
+    from db.script_repository import ScriptRepository
+    from db.node_repository import NodeRepository
+
 
 class DatabaseManager:
-    def __init__(self, db_path: str = None):
-        # db_path가 없으면 server/db/workflows.db 사용
-        if db_path is None:
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-            # 이미 db 폴더 안에 있으므로 workflows.db는 현재 디렉토리에 있음
-            db_path = os.path.join(script_dir, "workflows.db")
-        self.db_path = db_path
+    """통합 데이터베이스 관리자 클래스"""
+    
+    def __init__(self, db_path: Optional[str] = None):
+        """
+        DatabaseManager 초기화
+        
+        Args:
+            db_path: 데이터베이스 파일 경로. None이면 기본 경로 사용
+        """
+        # 연결 관리
+        self.connection = DatabaseConnection(db_path)
+        
+        # 테이블 관리
+        self.table_manager = TableManager(self.connection)
+        
+        # 리포지토리들
+        self.user_settings = UserSettingsRepository(self.connection)
+        self.scripts = ScriptRepository(self.connection)
+        self.nodes = NodeRepository(self.connection)
+        
+        # 데이터베이스 초기화
         self.init_database()
     
     def init_database(self):
         """데이터베이스 초기화"""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        # 스크립트 테이블 생성
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS scripts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL UNIQUE,
-                description TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        
-        # 노드 테이블 생성
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS nodes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                script_id INTEGER NOT NULL,
-                node_id TEXT NOT NULL,
-                node_type TEXT NOT NULL,
-                position_x REAL NOT NULL,
-                position_y REAL NOT NULL,
-                node_data TEXT NOT NULL,
-                connected_to TEXT DEFAULT '[]',
-                connected_from TEXT DEFAULT '[]',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (script_id) REFERENCES scripts (id) ON DELETE CASCADE
-            )
-        ''')
-        
-        # 기존 테이블에 컬럼이 없으면 추가 (마이그레이션)
-        try:
-            cursor.execute('ALTER TABLE nodes ADD COLUMN connected_to TEXT DEFAULT \'[]\'')
-        except sqlite3.OperationalError:
-            pass  # 컬럼이 이미 존재하면 무시
-        
-        try:
-            cursor.execute('ALTER TABLE nodes ADD COLUMN connected_from TEXT DEFAULT \'[]\'')
-        except sqlite3.OperationalError:
-            pass  # 컬럼이 이미 존재하면 무시
-        
-        try:
-            cursor.execute('ALTER TABLE nodes ADD COLUMN parameters TEXT DEFAULT \'{}\'')
-        except sqlite3.OperationalError:
-            pass  # 컬럼이 이미 존재하면 무시
-        
-        try:
-            cursor.execute('ALTER TABLE nodes ADD COLUMN description TEXT DEFAULT NULL')
-        except sqlite3.OperationalError:
-            pass  # 컬럼이 이미 존재하면 무시
-        
-        # 연결 테이블은 더 이상 사용하지 않음 (nodes 테이블의 connected_to/connected_from 사용)
-        # 기존 connections 테이블이 있다면 삭제하지 않고 그대로 둠 (하위 호환성)
-        
-        conn.commit()
-        conn.close()
+        self.table_manager.initialize()
     
+    # 사용자 설정 메서드들 (기존 API 호환성 유지)
+    def get_user_setting(self, setting_key: str, default_value: Optional[str] = None) -> Optional[str]:
+        """사용자 설정 조회"""
+        return self.user_settings.get_setting(setting_key, default_value)
+    
+    def save_user_setting(self, setting_key: str, setting_value: str) -> bool:
+        """사용자 설정 저장"""
+        return self.user_settings.save_setting(setting_key, setting_value)
+    
+    def get_all_user_settings(self) -> Dict[str, str]:
+        """모든 사용자 설정 조회"""
+        return self.user_settings.get_all_settings()
+    
+    def delete_user_setting(self, setting_key: str) -> bool:
+        """사용자 설정 삭제"""
+        return self.user_settings.delete_setting(setting_key)
+    
+    # 스크립트 메서드들 (기존 API 호환성 유지)
     def create_script(self, name: str, description: str = "") -> int:
         """새 스크립트 생성"""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        try:
-            cursor.execute(
-                "INSERT INTO scripts (name, description) VALUES (?, ?)",
-                (name, description)
-            )
-            script_id = cursor.lastrowid
-            conn.commit()
-            return script_id
-        except sqlite3.IntegrityError:
-            raise ValueError(f"스크립트 '{name}'이 이미 존재합니다.")
-        finally:
-            conn.close()
+        return self.scripts.create_script(name, description)
     
     def get_all_scripts(self) -> List[Dict]:
         """모든 스크립트 목록 조회"""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            SELECT id, name, description, created_at, updated_at 
-            FROM scripts 
-            ORDER BY updated_at DESC
-        ''')
-        
-        scripts = []
-        for row in cursor.fetchall():
-            scripts.append({
-                "id": row[0],
-                "name": row[1],
-                "description": row[2],
-                "created_at": row[3],
-                "updated_at": row[4]
-            })
-        
-        conn.close()
-        return scripts
+        return self.scripts.get_all_scripts()
     
     def get_script(self, script_id: int) -> Optional[Dict]:
-        """특정 스크립트 조회"""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        # 스크립트 정보 조회
-        cursor.execute(
-            "SELECT id, name, description, created_at, updated_at FROM scripts WHERE id = ?",
-            (script_id,)
-        )
-        script_row = cursor.fetchone()
-        
-        if not script_row:
-            conn.close()
+        """특정 스크립트 조회 (노드 및 연결 정보 포함)"""
+        # 기본 스크립트 정보 조회
+        script_info = self.scripts.get_script(script_id)
+        if not script_info:
             return None
         
-        # 노드들 조회 (연결 정보 포함)
-        cursor.execute('''
-            SELECT id, node_id, node_type, position_x, position_y, node_data, connected_to, connected_from, 
-                COALESCE(parameters, '{}') as parameters, description
-            FROM nodes 
-            WHERE script_id = ? 
-            ORDER BY id
-        ''', (script_id,))
+        # 노드 정보 조회
+        nodes = self.nodes.get_nodes_by_script_id(script_id)
         
-        nodes = []
-        for row in cursor.fetchall():
-            # SELECT 순서: id(0), node_id(1), node_type(2), position_x(3), position_y(4), 
-            #              node_data(5), connected_to(6), connected_from(7), parameters(8), description(9)
-            # connected_to와 connected_from을 JSON으로 파싱
-            connected_to_raw = row[6] if len(row) > 6 else None
-            connected_from_raw = row[7] if len(row) > 7 else None
-            parameters_raw = row[8] if len(row) > 8 else None
-            description = row[9] if len(row) > 9 else None
-            
-            connected_to = []
-            connected_from = []
-            parameters = {}
-            
-            # connected_to 파싱 (새로운 형식: 객체 리스트 또는 기존 문자열 리스트 지원)
-            if connected_to_raw:
-                try:
-                    if isinstance(connected_to_raw, str):
-                        parsed = json.loads(connected_to_raw) if connected_to_raw.strip() else []
-                    else:
-                        parsed = connected_to_raw if isinstance(connected_to_raw, list) else []
-                    
-                    # 파싱된 데이터를 그대로 사용 (객체 형태 또는 문자열 형태 모두 지원)
-                    connected_to = parsed
-                except (json.JSONDecodeError, ValueError) as e:
-                    print(f"Warning: connected_to 파싱 실패 (node_id: {row[1]}): {e}")
-                    connected_to = []
-            
-            # connected_from 파싱
-            if connected_from_raw:
-                try:
-                    if isinstance(connected_from_raw, str):
-                        connected_from = json.loads(connected_from_raw) if connected_from_raw.strip() else []
-                    else:
-                        connected_from = connected_from_raw if isinstance(connected_from_raw, list) else []
-                except (json.JSONDecodeError, ValueError) as e:
-                    print(f"Warning: connected_from 파싱 실패 (node_id: {row[1]}): {e}")
-                    connected_from = []
-            
-            # parameters 파싱
-            if parameters_raw:
-                try:
-                    if isinstance(parameters_raw, str):
-                        parameters = json.loads(parameters_raw) if parameters_raw.strip() else {}
-                    else:
-                        parameters = parameters_raw if isinstance(parameters_raw, dict) else {}
-                except (json.JSONDecodeError, ValueError) as e:
-                    print(f"Warning: parameters 파싱 실패 (node_id: {row[1]}): {e}")
-                    parameters = {}
-            
-            db_id = row[0]
-            node_id = row[1]
-            
-            nodes.append({
-                "id": node_id,
-                "type": row[2],
-                "position": {"x": row[3], "y": row[4]},
-                "data": json.loads(row[5]),
-                "connected_to": connected_to,
-                "connected_from": connected_from,
-                "parameters": parameters,
-                "description": description,
-                "_db_id": db_id  # 내부적으로 DB id 저장
-            })
+        # 중복 경계 노드 정리
+        nodes = self.nodes.cleanup_duplicate_boundary_nodes(script_id, nodes)
         
-        # start/end 노드 중복 검사 및 정리
-        self._cleanup_duplicate_boundary_nodes(conn, cursor, script_id, nodes)
-        
-        # 연결 정보는 nodes 테이블의 connected_to/connected_from에서 생성
-        # 각 노드의 connected_to를 기반으로 connections 배열 생성 (outputType 포함)
-        connections = []
-        for node in nodes:
-            connected_to_list = node.get("connected_to", [])
-            # connected_to가 리스트인지 확인
-            if isinstance(connected_to_list, list) and len(connected_to_list) > 0:
-                for conn_item in connected_to_list:
-                    # 새로운 형식: 객체 형태 {"to": "node_id", "outputType": "true"/"false"/null}
-                    if isinstance(conn_item, dict):
-                        to_node_id = conn_item.get("to")
-                        output_type = conn_item.get("outputType")
-                        if to_node_id:
-                            connections.append({
-                                "from": node["id"],
-                                "to": to_node_id,
-                                "outputType": output_type
-                            })
-                    # 기존 형식: 문자열 형태 (하위 호환성)
-                    elif isinstance(conn_item, str):
-                        connections.append({
-                            "from": node["id"],
-                            "to": conn_item,
-                            "outputType": None
-                        })
-            # connected_to가 딕셔너리인 경우 (잘못된 데이터) 무시
-            elif isinstance(connected_to_list, dict):
-                print(f"Warning: 노드 {node['id']}의 connected_to가 딕셔너리입니다. 무시합니다.")
-        
-        conn.close()
+        # 연결 정보 생성
+        connections = self.nodes.build_connections_from_nodes(nodes)
         
         return {
-            "id": script_row[0],
-            "name": script_row[1],
-            "description": script_row[2],
-            "created_at": script_row[3],
-            "updated_at": script_row[4],
+            **script_info,
             "nodes": nodes,
             "connections": connections
         }
     
     def save_script_data(self, script_id: int, nodes: List[Dict], connections: List[Dict]) -> bool:
-        """스크립트의 노드와 연결 정보 저장
-        connections 배열을 기반으로 각 노드의 connected_to/connected_from을 계산하여 저장
-        조건 노드가 아닌 노드는 출력을 최대 1개만 연결할 수 있도록 검증합니다.
-        """
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
+        """스크립트의 노드와 연결 정보 저장"""
+        # 노드 저장
+        success = self.nodes.save_nodes(script_id, nodes, connections)
         
-        try:
-            # 연결 개수 검증: 조건 노드가 아닌 노드는 출력을 최대 1개만 연결 가능
-            node_output_count = {}
-            node_type_map = {node["id"]: node.get("type") for node in nodes}
-            
-            for connection in connections:
-                from_node_id = connection.get("from")
-                if from_node_id:
-                    node_type = node_type_map.get(from_node_id)
-                    # 조건 노드가 아닌 경우
-                    if node_type and node_type != "condition":
-                        if from_node_id not in node_output_count:
-                            node_output_count[from_node_id] = 0
-                        node_output_count[from_node_id] += 1
-                        
-                        # 출력 연결이 2개 이상이면 에러
-                        if node_output_count[from_node_id] > 1:
-                            raise ValueError(
-                                f"노드 '{from_node_id}' (타입: {node_type})의 출력이 {node_output_count[from_node_id]}개 연결되어 있습니다. "
-                                "조건 노드가 아닌 노드는 출력을 최대 1개만 연결할 수 있습니다."
-                            )
-            
-            # 기존 노드 삭제 (CASCADE로 연결도 자동 삭제됨)
-            cursor.execute("DELETE FROM nodes WHERE script_id = ?", (script_id,))
-            
-            # connections 배열을 기반으로 각 노드의 connected_to/connected_from 계산
-            # 노드별 connected_to와 connected_from 맵 생성
-            node_connected_to = {}
-            node_connected_from = {}
-            
-            # 모든 노드 ID 초기화
-            for node in nodes:
-                node_id = node["id"]
-                node_connected_to[node_id] = []
-                node_connected_from[node_id] = []
-            
-            # connections 배열을 순회하며 각 노드의 연결 정보 구성
-            # 조건 노드의 경우 outputType 정보도 함께 저장
-            for connection in connections:
-                from_node_id = connection.get("from")
-                to_node_id = connection.get("to")
-                output_type = connection.get("outputType")  # 'true', 'false', 또는 null
-                
-                if from_node_id and to_node_id:
-                    # from 노드의 connected_to에 연결 정보 추가 (outputType 포함)
-                    if from_node_id in node_connected_to:
-                        # 중복 체크: 같은 to_node_id가 이미 있는지 확인
-                        existing_conn = next(
-                            (conn for conn in node_connected_to[from_node_id] 
-                             if (isinstance(conn, dict) and conn.get("to") == to_node_id) or 
-                                (isinstance(conn, str) and conn == to_node_id)),
-                            None
-                        )
-                        if not existing_conn:
-                            # 연결 정보를 객체 형태로 저장 (outputType 포함)
-                            node_connected_to[from_node_id].append({
-                                "to": to_node_id,
-                                "outputType": output_type
-                            })
-                    
-                    # to 노드의 connected_from에 from 노드 추가
-                    if to_node_id in node_connected_from:
-                        if from_node_id not in node_connected_from[to_node_id]:
-                            node_connected_from[to_node_id].append(from_node_id)
-            
-            # 새 노드들 저장 (연결 정보 포함)
-            for node in nodes:
-                node_id = node["id"]
-                connected_to_json = json.dumps(node_connected_to.get(node_id, []), ensure_ascii=False)
-                connected_from_json = json.dumps(node_connected_from.get(node_id, []), ensure_ascii=False)
-                
-                # parameters 추출 (없으면 빈 객체)
-                parameters = node.get("parameters", {})
-                parameters_json = json.dumps(parameters, ensure_ascii=False)
-                
-                # description 추출
-                description = node.get("description") or None
-                
-                cursor.execute('''
-                    INSERT INTO nodes (script_id, node_id, node_type, position_x, position_y, node_data, connected_to, connected_from, parameters, description)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (
-                    script_id,
-                    node_id,
-                    node["type"],
-                    node["position"]["x"],
-                    node["position"]["y"],
-                    json.dumps(node["data"], ensure_ascii=False),
-                    connected_to_json,
-                    connected_from_json,
-                    parameters_json,
-                    description
-                ))
-            
+        if success:
             # 업데이트 시간 갱신
-            cursor.execute(
-                "UPDATE scripts SET updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                (script_id,)
-            )
-            
-            conn.commit()
-            return True
-            
-        except Exception as e:
-            conn.rollback()
-            raise e
-        finally:
-            conn.close()
-    
-    def _cleanup_duplicate_boundary_nodes(self, conn, cursor, script_id: int, nodes: List[Dict]):
-        """start/end 노드가 각각 2개 이상이면 1개만 남기고 나머지 삭제
+            self.scripts.update_script_timestamp(script_id)
         
-        Args:
-            conn: 데이터베이스 연결 객체
-            cursor: 데이터베이스 커서 객체
-            script_id: 스크립트 ID
-            nodes: 노드 목록 (in-place로 수정됨)
-        """
-        # start 노드와 end 노드 필터링
-        start_nodes = [n for n in nodes if n.get("type") == "start" or n.get("id") == "start"]
-        end_nodes = [n for n in nodes if n.get("type") == "end" or n.get("id") == "end"]
-        
-        # start 노드가 2개 이상이면 1개만 남기고 나머지 삭제
-        if len(start_nodes) > 1:
-            # DB id 기준으로 정렬 (가장 오래된 것 = id가 가장 작은 것)
-            start_nodes.sort(key=lambda n: n.get("_db_id", 0))
-            nodes_to_delete = start_nodes[1:]  # 첫 번째를 제외한 나머지
-            
-            for node in nodes_to_delete:
-                db_id = node.get("_db_id")
-                node_id = node.get("id")
-                
-                if db_id:
-                    # DB에서 삭제 (DB id로 삭제)
-                    cursor.execute(
-                        "DELETE FROM nodes WHERE id = ?",
-                        (db_id,)
-                    )
-                    # nodes 리스트에서도 제거
-                    nodes[:] = [n for n in nodes if n.get("_db_id") != db_id]
-            
-            conn.commit()
-            print(f"[DB 정리] start 노드 중복 제거: {len(nodes_to_delete)}개 삭제, 1개 유지")
-        
-        # end 노드가 2개 이상이면 1개만 남기고 나머지 삭제
-        if len(end_nodes) > 1:
-            # DB id 기준으로 정렬 (가장 오래된 것 = id가 가장 작은 것)
-            end_nodes.sort(key=lambda n: n.get("_db_id", 0))
-            nodes_to_delete = end_nodes[1:]  # 첫 번째를 제외한 나머지
-            
-            for node in nodes_to_delete:
-                db_id = node.get("_db_id")
-                node_id = node.get("id")
-                
-                if db_id:
-                    # DB에서 삭제 (DB id로 삭제)
-                    cursor.execute(
-                        "DELETE FROM nodes WHERE id = ?",
-                        (db_id,)
-                    )
-                    # nodes 리스트에서도 제거
-                    nodes[:] = [n for n in nodes if n.get("_db_id") != db_id]
-            
-            conn.commit()
-            print(f"[DB 정리] end 노드 중복 제거: {len(nodes_to_delete)}개 삭제, 1개 유지")
-        
-        # _db_id 필드 제거 (응답에 포함하지 않음)
-        for node in nodes:
-            node.pop("_db_id", None)
+        return success
     
     def delete_script(self, script_id: int) -> bool:
         """스크립트 삭제"""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        try:
-            cursor.execute("DELETE FROM scripts WHERE id = ?", (script_id,))
-            conn.commit()
-            return cursor.rowcount > 0
-        finally:
-            conn.close()
+        return self.scripts.delete_script(script_id)
     
     def seed_example_data(self):
         """예시 데이터 생성"""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
+        conn = self.connection.get_connection()
+        cursor = self.connection.get_cursor(conn)
         
         try:
             # 기존 데이터 확인
@@ -458,292 +129,207 @@ class DatabaseManager:
             print("예시 데이터 생성 시작...")
             
             # 스크립트 1: 로그인 테스트
-            cursor.execute(
-                "INSERT INTO scripts (name, description) VALUES (?, ?)",
-                ("로그인 테스트", "사용자 로그인 프로세스 검증")
-            )
-            script1_id = cursor.lastrowid
+            script1_id = self.scripts.create_script("로그인 테스트", "사용자 로그인 프로세스 검증")
             print(f"스크립트 1 생성: ID={script1_id}")
             
-            # 스크립트 1의 노드들
             script1_nodes = [
                 {
-                    "node_id": "start",
-                    "node_type": "start",
-                    "position_x": 0.0,
-                    "position_y": 0.0,
-                    "node_data": {"title": "시작", "color": "green"},
-                    "connected_to": ["node1"],
-                    "connected_from": [],
-                    "parameters": {}
+                    "id": "start",
+                    "type": "start",
+                    "position": {"x": 0.0, "y": 0.0},
+                    "data": {"title": "시작", "color": "green"},
+                    "parameters": {},
+                    "description": None
                 },
                 {
-                    "node_id": "node1",
-                    "node_type": "action",
-                    "position_x": 300.0,
-                    "position_y": 0.0,
-                    "node_data": {"title": "페이지 이동", "color": "blue", "url": "https://example.com/login"},
-                    "connected_to": ["node2"],
-                    "connected_from": ["start"],
+                    "id": "node1",
+                    "type": "action",
+                    "position": {"x": 300.0, "y": 0.0},
+                    "data": {"title": "페이지 이동", "color": "blue", "url": "https://example.com/login"},
                     "parameters": {},
                     "description": "로그인 페이지로 이동"
                 },
                 {
-                    "node_id": "node2",
-                    "node_type": "action",
-                    "position_x": 600.0,
-                    "position_y": 0.0,
-                    "node_data": {"title": "아이디 입력", "color": "blue", "selector": "#username", "value": "testuser"},
-                    "connected_to": ["node3"],
-                    "connected_from": ["node1"],
+                    "id": "node2",
+                    "type": "action",
+                    "position": {"x": 600.0, "y": 0.0},
+                    "data": {"title": "아이디 입력", "color": "blue", "selector": "#username", "value": "testuser"},
                     "parameters": {},
                     "description": "사용자 아이디 입력"
                 },
                 {
-                    "node_id": "node3",
-                    "node_type": "condition",
-                    "position_x": 300.0,
-                    "position_y": 150.0,
-                    "node_data": {"title": "로그인 성공 확인", "color": "orange"},
-                    "connected_to": [
-                        {"to": "node4", "outputType": "true"},
-                        {"to": "node5", "outputType": "false"}
-                    ],
-                    "connected_from": ["node2"],
+                    "id": "node3",
+                    "type": "condition",
+                    "position": {"x": 300.0, "y": 150.0},
+                    "data": {"title": "로그인 성공 확인", "color": "orange"},
                     "parameters": {"condition": "check_login_success"},
                     "description": "로그인 성공 여부 확인"
                 },
                 {
-                    "node_id": "node4",
-                    "node_type": "action",
-                    "position_x": 900.0,
-                    "position_y": 0.0,
-                    "node_data": {"title": "대시보드 이동", "color": "blue", "url": "https://example.com/dashboard"},
-                    "connected_to": ["end"],
-                    "connected_from": ["node3"],
+                    "id": "node4",
+                    "type": "action",
+                    "position": {"x": 900.0, "y": 0.0},
+                    "data": {"title": "대시보드 이동", "color": "blue", "url": "https://example.com/dashboard"},
                     "parameters": {},
                     "description": "로그인 성공 시 대시보드로 이동"
                 },
                 {
-                    "node_id": "node5",
-                    "node_type": "action",
-                    "position_x": 1200.0,
-                    "position_y": 0.0,
-                    "node_data": {"title": "에러 처리", "color": "red", "message": "로그인 실패"},
-                    "connected_to": ["end"],
-                    "connected_from": ["node3"],
+                    "id": "node5",
+                    "type": "action",
+                    "position": {"x": 1200.0, "y": 0.0},
+                    "data": {"title": "에러 처리", "color": "red", "message": "로그인 실패"},
                     "parameters": {},
                     "description": "로그인 실패 시 에러 처리"
                 },
                 {
-                    "node_id": "end",
-                    "node_type": "end",
-                    "position_x": 1500.0,
-                    "position_y": 0.0,
-                    "node_data": {"title": "종료", "color": "gray"},
-                    "connected_to": [],
-                    "connected_from": ["node4", "node5"],
+                    "id": "end",
+                    "type": "end",
+                    "position": {"x": 1500.0, "y": 0.0},
+                    "data": {"title": "종료", "color": "gray"},
                     "parameters": {}
                 }
             ]
             
-            for node in script1_nodes:
-                cursor.execute('''
-                    INSERT INTO nodes (script_id, node_id, node_type, position_x, position_y, node_data, connected_to, connected_from, parameters, description)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (
-                    script1_id,
-                    node["node_id"],
-                    node["node_type"],
-                    node["position_x"],
-                    node["position_y"],
-                    json.dumps(node["node_data"], ensure_ascii=False),
-                    json.dumps(node["connected_to"], ensure_ascii=False),
-                    json.dumps(node["connected_from"], ensure_ascii=False),
-                    json.dumps(node["parameters"], ensure_ascii=False),
-                    node.get("description")
-                ))
+            script1_connections = [
+                {"from": "start", "to": "node1", "outputType": None},
+                {"from": "node1", "to": "node2", "outputType": None},
+                {"from": "node2", "to": "node3", "outputType": None},
+                {"from": "node3", "to": "node4", "outputType": "true"},
+                {"from": "node3", "to": "node5", "outputType": "false"},
+                {"from": "node4", "to": "end", "outputType": None},
+                {"from": "node5", "to": "end", "outputType": None}
+            ]
             
+            self.nodes.save_nodes(script1_id, script1_nodes, script1_connections)
+            self.scripts.update_script_timestamp(script1_id)
             print(f"스크립트 1에 {len(script1_nodes)}개의 노드 추가 완료")
             
             # 스크립트 2: 결제 프로세스 테스트
-            cursor.execute(
-                "INSERT INTO scripts (name, description) VALUES (?, ?)",
-                ("결제 프로세스 테스트", "온라인 결제 과정 검증")
-            )
-            script2_id = cursor.lastrowid
+            script2_id = self.scripts.create_script("결제 프로세스 테스트", "온라인 결제 과정 검증")
             print(f"스크립트 2 생성: ID={script2_id}")
             
-            # 스크립트 2의 노드들
             script2_nodes = [
                 {
-                    "node_id": "start",
-                    "node_type": "start",
-                    "position_x": 0.0,
-                    "position_y": 0.0,
-                    "node_data": {"title": "시작", "color": "green"},
-                    "connected_to": ["node1"],
-                    "connected_from": [],
+                    "id": "start",
+                    "type": "start",
+                    "position": {"x": 0.0, "y": 0.0},
+                    "data": {"title": "시작", "color": "green"},
                     "parameters": {}
                 },
                 {
-                    "node_id": "node1",
-                    "node_type": "action",
-                    "position_x": 300.0,
-                    "position_y": 0.0,
-                    "node_data": {"title": "결제 페이지 이동", "color": "blue", "url": "https://example.com/payment"},
-                    "connected_to": ["node2"],
-                    "connected_from": ["start"],
+                    "id": "node1",
+                    "type": "action",
+                    "position": {"x": 300.0, "y": 0.0},
+                    "data": {"title": "결제 페이지 이동", "color": "blue", "url": "https://example.com/payment"},
                     "parameters": {},
                     "description": "결제 페이지로 이동"
                 },
                 {
-                    "node_id": "node2",
-                    "node_type": "action",
-                    "position_x": 600.0,
-                    "position_y": 0.0,
-                    "node_data": {"title": "결제 정보 입력", "color": "blue", "card_number": "1234-5678-9012-3456"},
-                    "connected_to": ["node3"],
-                    "connected_from": ["node1"],
+                    "id": "node2",
+                    "type": "action",
+                    "position": {"x": 600.0, "y": 0.0},
+                    "data": {"title": "결제 정보 입력", "color": "blue", "card_number": "1234-5678-9012-3456"},
                     "parameters": {},
                     "description": "카드 정보 입력"
                 },
                 {
-                    "node_id": "node3",
-                    "node_type": "wait",
-                    "position_x": 300.0,
-                    "position_y": 150.0,
-                    "node_data": {"title": "결제 처리 대기", "color": "purple"},
-                    "connected_to": ["node4"],
-                    "connected_from": ["node2"],
+                    "id": "node3",
+                    "type": "wait",
+                    "position": {"x": 300.0, "y": 150.0},
+                    "data": {"title": "결제 처리 대기", "color": "purple"},
                     "parameters": {"wait_time": 3.0}
                 },
                 {
-                    "node_id": "node4",
-                    "node_type": "condition",
-                    "position_x": 900.0,
-                    "position_y": 0.0,
-                    "node_data": {"title": "결제 성공 확인", "color": "orange"},
-                    "connected_to": [
-                        {"to": "end", "outputType": "true"}
-                    ],
-                    "connected_from": ["node3"],
+                    "id": "node4",
+                    "type": "condition",
+                    "position": {"x": 900.0, "y": 0.0},
+                    "data": {"title": "결제 성공 확인", "color": "orange"},
                     "parameters": {"condition": "check_payment_success"},
                     "description": "결제 성공 여부 확인"
                 },
                 {
-                    "node_id": "end",
-                    "node_type": "end",
-                    "position_x": 1200.0,
-                    "position_y": 0.0,
-                    "node_data": {"title": "종료", "color": "gray"},
-                    "connected_to": [],
-                    "connected_from": ["node4"],
+                    "id": "end",
+                    "type": "end",
+                    "position": {"x": 1200.0, "y": 0.0},
+                    "data": {"title": "종료", "color": "gray"},
                     "parameters": {}
                 }
             ]
             
-            for node in script2_nodes:
-                cursor.execute('''
-                    INSERT INTO nodes (script_id, node_id, node_type, position_x, position_y, node_data, connected_to, connected_from, parameters, description)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (
-                    script2_id,
-                    node["node_id"],
-                    node["node_type"],
-                    node["position_x"],
-                    node["position_y"],
-                    json.dumps(node["node_data"], ensure_ascii=False),
-                    json.dumps(node["connected_to"], ensure_ascii=False),
-                    json.dumps(node["connected_from"], ensure_ascii=False),
-                    json.dumps(node["parameters"], ensure_ascii=False),
-                    node.get("description")
-                ))
+            script2_connections = [
+                {"from": "start", "to": "node1", "outputType": None},
+                {"from": "node1", "to": "node2", "outputType": None},
+                {"from": "node2", "to": "node3", "outputType": None},
+                {"from": "node3", "to": "node4", "outputType": None},
+                {"from": "node4", "to": "end", "outputType": "true"}
+            ]
             
+            self.nodes.save_nodes(script2_id, script2_nodes, script2_connections)
+            self.scripts.update_script_timestamp(script2_id)
             print(f"스크립트 2에 {len(script2_nodes)}개의 노드 추가 완료")
             
-            # 스크립트 3: 이미지 터치 테스트 (새로운 노드 타입 예시)
-            cursor.execute(
-                "INSERT INTO scripts (name, description) VALUES (?, ?)",
-                ("이미지 터치 테스트", "이미지 터치 노드를 사용한 자동화 테스트")
-            )
-            script3_id = cursor.lastrowid
+            # 스크립트 3: 이미지 터치 테스트
+            script3_id = self.scripts.create_script("이미지 터치 테스트", "이미지 터치 노드를 사용한 자동화 테스트")
             print(f"스크립트 3 생성: ID={script3_id}")
             
-            # 스크립트 3의 노드들
             script3_nodes = [
                 {
-                    "node_id": "start",
-                    "node_type": "start",
-                    "position_x": 0.0,
-                    "position_y": 0.0,
-                    "node_data": {"title": "시작", "color": "green"},
-                    "connected_to": ["node1"],
-                    "connected_from": [],
+                    "id": "start",
+                    "type": "start",
+                    "position": {"x": 0.0, "y": 0.0},
+                    "data": {"title": "시작", "color": "green"},
                     "parameters": {}
                 },
                 {
-                    "node_id": "node1",
-                    "node_type": "image-touch",
-                    "position_x": 300.0,
-                    "position_y": 0.0,
-                    "node_data": {"title": "이미지 터치", "color": "blue"},
-                    "connected_to": ["node2"],
-                    "connected_from": ["start"],
+                    "id": "node1",
+                    "type": "image-touch",
+                    "position": {"x": 300.0, "y": 0.0},
+                    "data": {"title": "이미지 터치", "color": "blue"},
                     "parameters": {
                         "folder_path": "C:/Users/User/Desktop/images",
                         "image_count": 5
                     }
                 },
                 {
-                    "node_id": "node2",
-                    "node_type": "wait",
-                    "position_x": 600.0,
-                    "position_y": 0.0,
-                    "node_data": {"title": "대기", "color": "purple"},
-                    "connected_to": ["end"],
-                    "connected_from": ["node1"],
+                    "id": "node2",
+                    "type": "wait",
+                    "position": {"x": 600.0, "y": 0.0},
+                    "data": {"title": "대기", "color": "purple"},
                     "parameters": {"wait_time": 2.0}
                 },
                 {
-                    "node_id": "end",
-                    "node_type": "end",
-                    "position_x": 900.0,
-                    "position_y": 0.0,
-                    "node_data": {"title": "종료", "color": "gray"},
-                    "connected_to": [],
-                    "connected_from": ["node2"],
+                    "id": "end",
+                    "type": "end",
+                    "position": {"x": 900.0, "y": 0.0},
+                    "data": {"title": "종료", "color": "gray"},
                     "parameters": {}
                 }
             ]
             
-            for node in script3_nodes:
-                cursor.execute('''
-                    INSERT INTO nodes (script_id, node_id, node_type, position_x, position_y, node_data, connected_to, connected_from, parameters, description)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (
-                    script3_id,
-                    node["node_id"],
-                    node["node_type"],
-                    node["position_x"],
-                    node["position_y"],
-                    json.dumps(node["node_data"], ensure_ascii=False),
-                    json.dumps(node["connected_to"], ensure_ascii=False),
-                    json.dumps(node["connected_from"], ensure_ascii=False),
-                    json.dumps(node["parameters"], ensure_ascii=False),
-                    node.get("description")
-                ))
+            script3_connections = [
+                {"from": "start", "to": "node1", "outputType": None},
+                {"from": "node1", "to": "node2", "outputType": None},
+                {"from": "node2", "to": "end", "outputType": None}
+            ]
             
+            self.nodes.save_nodes(script3_id, script3_nodes, script3_connections)
+            self.scripts.update_script_timestamp(script3_id)
             print(f"스크립트 3에 {len(script3_nodes)}개의 노드 추가 완료")
             
-            conn.commit()
+            # 사용자 설정 예시 데이터 추가
+            self.user_settings.save_setting("theme", "dark")
+            self.user_settings.save_setting("language", "ko")
+            self.user_settings.save_setting("auto_save", "true")
+            print("사용자 설정 예시 데이터 추가 완료")
+            
+            total_nodes = len(script1_nodes) + len(script2_nodes) + len(script3_nodes)
             print("✅ 예시 데이터 생성 완료!")
             print(f"   - 스크립트: 3개")
-            print(f"   - 노드: {len(script1_nodes) + len(script2_nodes) + len(script3_nodes)}개")
-            print(f"   - 데이터베이스 경로: {self.db_path}")
+            print(f"   - 노드: {total_nodes}개")
+            print(f"   - 사용자 설정: 3개")
+            print(f"   - 데이터베이스 경로: {self.connection.db_path}")
             
         except Exception as e:
-            conn.rollback()
             print(f"❌ 예시 데이터 생성 실패: {e}")
             raise e
         finally:
@@ -754,19 +340,144 @@ class DatabaseManager:
 db_manager = DatabaseManager()
 
 
-# 직접 실행 시 예시 데이터 생성
+# ============================================================================
+# 테스트 코드
+# ============================================================================
+# DatabaseManager 클래스의 통합 기능을 테스트합니다.
+# 
+# 테스트 항목:
+# 1. DatabaseManager 초기화 (모든 리포지토리 통합)
+# 2. 테이블 생성 확인 (scripts, nodes, user_settings)
+# 3. 예시 데이터 생성 (3개 스크립트, 17개 노드, 3개 사용자 설정)
+# 4. 데이터 검증 (스크립트, 노드, 연결 정보 확인)
+# 5. 사용자 설정 CRUD 테스트
+# 6. 스크립트 CRUD 테스트
+# 7. 노드 저장 및 조회 테스트
+# 8. 통합 기능 테스트 (모든 모듈이 함께 작동하는지 확인)
+# ============================================================================
 if __name__ == "__main__":
     print("=" * 60)
-    print("데이터베이스 초기화 및 예시 데이터 생성")
+    print("데이터베이스 초기화 및 테스트")
     print("=" * 60)
     
-    # DatabaseManager 인스턴스 생성 (이미 전역 인스턴스가 있지만 새로 생성)
-    db = DatabaseManager()
+    # 테스트용 데이터베이스 경로 설정
+    test_db_path = os.path.join(os.path.dirname(__file__), "test_workflows.db")
+    
+    # 기존 테스트 DB가 있으면 삭제
+    if os.path.exists(test_db_path):
+        os.remove(test_db_path)
+        print(f"기존 테스트 데이터베이스 삭제: {test_db_path}")
+    
+    # DatabaseManager 인스턴스 생성
+    print("\n[1] DatabaseManager 초기화 중...")
+    db = DatabaseManager(test_db_path)
+    print("✅ 데이터베이스 초기화 완료")
+    
+    # 테이블 생성 확인
+    print("\n[2] 테이블 생성 확인 중...")
+    conn = db.connection.get_connection()
+    cursor = db.connection.get_cursor(conn)
+    try:
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        tables = [row[0] for row in cursor.fetchall()]
+        print(f"✅ 생성된 테이블: {', '.join(tables)}")
+    finally:
+        conn.close()
     
     # 예시 데이터 생성
+    print("\n[3] 예시 데이터 생성 중...")
     db.seed_example_data()
     
+    # 데이터 검증
+    print("\n[4] 데이터 검증 중...")
+    
+    # 스크립트 목록 확인
+    scripts = db.get_all_scripts()
+    print(f"✅ 스크립트 개수: {len(scripts)}개")
+    for script in scripts:
+        print(f"   - ID: {script['id']}, 이름: {script['name']}, 설명: {script['description']}")
+    
+    # 각 스크립트의 노드 확인
+    for script in scripts:
+        script_data = db.get_script(script['id'])
+        if script_data:
+            print(f"\n   스크립트 '{script['name']}':")
+            print(f"   - 노드 개수: {len(script_data['nodes'])}개")
+            print(f"   - 연결 개수: {len(script_data['connections'])}개")
+            for node in script_data['nodes']:
+                print(f"     * {node['id']} ({node['type']}): {node.get('description', '설명 없음')}")
+    
+    # 사용자 설정 확인
+    settings = db.get_all_user_settings()
+    print(f"\n✅ 사용자 설정 개수: {len(settings)}개")
+    for key, value in settings.items():
+        print(f"   - {key}: {value}")
+    
+    # 개별 설정 조회 테스트
+    print("\n[5] 개별 설정 조회 테스트...")
+    theme = db.get_user_setting("theme", "light")
+    print(f"✅ 테마 설정: {theme}")
+    
+    # 설정 저장 테스트
+    print("\n[6] 설정 저장 테스트...")
+    db.save_user_setting("test_key", "test_value")
+    test_value = db.get_user_setting("test_key")
+    print(f"✅ 테스트 설정 저장 및 조회: {test_value}")
+    
+    # 설정 삭제 테스트
+    print("\n[7] 설정 삭제 테스트...")
+    deleted = db.delete_user_setting("test_key")
+    print(f"✅ 테스트 설정 삭제: {deleted}")
+    
+    # 스크립트 생성 테스트
+    print("\n[8] 스크립트 생성 테스트...")
+    new_script_id = db.create_script("테스트 스크립트", "테스트용 스크립트입니다")
+    print(f"✅ 새 스크립트 생성: ID={new_script_id}")
+    
+    # 노드 저장 테스트
+    print("\n[9] 노드 저장 테스트...")
+    test_nodes = [
+        {
+            "id": "start",
+            "type": "start",
+            "position": {"x": 0.0, "y": 0.0},
+            "data": {"title": "시작", "color": "green"},
+            "parameters": {}
+        },
+        {
+            "id": "test_node",
+            "type": "action",
+            "position": {"x": 300.0, "y": 0.0},
+            "data": {"title": "테스트 액션", "color": "blue"},
+            "parameters": {},
+            "description": "테스트용 노드"
+        },
+        {
+            "id": "end",
+            "type": "end",
+            "position": {"x": 600.0, "y": 0.0},
+            "data": {"title": "종료", "color": "gray"},
+            "parameters": {}
+        }
+    ]
+    
+    test_connections = [
+        {"from": "start", "to": "test_node", "outputType": None},
+        {"from": "test_node", "to": "end", "outputType": None}
+    ]
+    
+    db.save_script_data(new_script_id, test_nodes, test_connections)
+    print(f"✅ 노드 저장 완료: {len(test_nodes)}개 노드, {len(test_connections)}개 연결")
+    
+    # 저장된 스크립트 조회 테스트
+    print("\n[10] 저장된 스크립트 조회 테스트...")
+    saved_script = db.get_script(new_script_id)
+    if saved_script:
+        print(f"✅ 스크립트 조회 성공: {saved_script['name']}")
+        print(f"   - 노드 개수: {len(saved_script['nodes'])}개")
+        print(f"   - 연결 개수: {len(saved_script['connections'])}개")
+    
     print("\n" + "=" * 60)
-    print("완료! 이제 애플리케이션을 실행할 수 있습니다.")
+    print("✅ 모든 테스트 완료!")
+    print(f"테스트 데이터베이스 경로: {test_db_path}")
     print("=" * 60)
-

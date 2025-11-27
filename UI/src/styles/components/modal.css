@@ -58,6 +58,12 @@
     font-weight: 600;
 }
 
+.modal-content p {
+    color: #e2e8f0;
+    line-height: 1.6;
+    white-space: pre-line; /* 줄바꿈 문자(\n)를 실제 줄바꿈으로 표시 */
+}
+
 /* 모달 내부 폼 스타일 */
 .modal .form-group {
     margin-bottom: 1.5rem;

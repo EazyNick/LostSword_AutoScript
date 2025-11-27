@@ -1,12 +1,21 @@
+/* ========================================== */
 /* 사이드바 컴포넌트 스타일 */
+/* ========================================== */
+
+/* 사이드바 컨테이너: 왼쪽에 위치한 스크립트 목록 영역 */
 .sidebar {
-    width: 300px;
+    width: 350px;
+    min-width: 250px;
+    max-width: 600px;
     background-color: #2d3748;
     border-right: 1px solid #4a5568;
     display: flex;
     flex-direction: column;
+    position: relative;
+    flex-shrink: 0;
 }
 
+/* 사이드바 헤더: 상단에 위치한 "테스트 스크립트" 제목과 추가 버튼 영역 */
 .sidebar-header {
     padding: 25px 20px;
     border-bottom: 1px solid #4a5568;
@@ -15,13 +24,24 @@
     align-items: center;
 }
 
+/* 사이드바 헤더 제목: "테스트 스크립트" 텍스트 */
 .sidebar-header h2 {
     font-size: 18px;
     font-weight: 600;
     color: #e2e8f0;
 }
 
-.add-script-btn {
+/* 사이드바 헤더 버튼 컨테이너: 추가 버튼을 감싸는 영역 */
+.sidebar-header-buttons {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+/* 사이드바 추가 버튼: 새 스크립트를 추가하는 "+" 버튼 */
+.add-script-btn,
+/* 전체 실행 버튼: 모든 스크립트를 실행하는 버튼 */
+.run-all-scripts-btn {
     width: 40px;
     height: 40px;
     background-color: #3182ce;
@@ -32,23 +52,39 @@
     font-weight: bold;
     cursor: pointer;
     transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.add-script-btn:hover {
+/* 사이드바 버튼 호버 효과: 마우스를 올렸을 때 */
+.add-script-btn:hover,
+.run-all-scripts-btn:hover {
     background-color: #2c5282;
     transform: scale(1.05);
 }
 
+/* 사이드바 버튼 비활성화 상태: 사용할 수 없을 때 */
+.add-script-btn:disabled,
+.run-all-scripts-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* 스크립트 목록 컨테이너: 스크립트 항목들이 표시되는 스크롤 가능한 영역 */
 .script-list {
     flex: 1;
     padding: 20px;
     overflow-y: auto;
 }
 
+/* 스크립트 항목: 각 스크립트를 나타내는 카드 형태의 항목 */
 .script-item {
     background-color: #1a202c;
     border-radius: 12px;
     padding: 20px;
+    padding-left: 20px;
     margin-bottom: 15px;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -57,28 +93,88 @@
     gap: 15px;
     align-items: flex-start;
     position: relative;
+    user-select: none;
 }
 
+/* 스크립트 항목 드래그 중 상태: 드래그하고 있을 때 반투명하게 표시 */
+.script-item.dragging {
+    opacity: 0.5;
+    cursor: grabbing;
+}
+
+/* 스크립트 항목 드래그 오버 상단: 다른 항목 위쪽에 드롭할 위치 표시 */
+.script-item.drag-over-top {
+    border-top: 3px solid #3182ce;
+    padding-top: 25px;
+    margin-top: 8px;
+    transform: translateY(8px);
+    transition: transform 0.2s ease, padding 0.2s ease, margin 0.2s ease;
+}
+
+/* 스크립트 항목 드래그 오버 하단: 다른 항목 아래쪽에 드롭할 위치 표시 */
+.script-item.drag-over-bottom {
+    border-bottom: 3px solid #3182ce;
+    padding-bottom: 25px;
+    margin-bottom: 8px;
+    transform: translateY(-8px);
+    transition: transform 0.2s ease, padding 0.2s ease, margin 0.2s ease;
+}
+
+/* 스크립트 드래그 핸들: 스크립트를 드래그할 수 있는 점 6개(⋮⋮) 아이콘 */
+.script-drag-handle {
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #718096;
+    font-size: 12px;
+    cursor: grab;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    user-select: none;
+    line-height: 1;
+    padding: 0;
+    z-index: 10;
+    pointer-events: auto;
+}
+
+/* 스크립트 항목 호버 시 드래그 핸들 표시: 마우스를 올리면 드래그 핸들이 나타남 */
+.script-item:hover .script-drag-handle {
+    opacity: 0.6;
+}
+
+/* 스크립트 드래그 핸들 활성 상태: 드래그 중이거나 클릭했을 때 */
+.script-item.dragging .script-drag-handle,
+.script-drag-handle:active {
+    cursor: grabbing;
+    opacity: 1;
+}
+
+/* 스크립트 항목 호버 효과: 마우스를 올렸을 때 배경색 변경 및 살짝 위로 이동 */
 .script-item:hover {
     background-color: #2d3748;
     transform: translateY(-2px);
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
 }
 
+/* 스크립트 항목 활성 상태: 현재 선택된 스크립트 */
 .script-item.active {
     border-color: #3182ce;
     background-color: #2d3748;
 }
 
+/* 스크립트 아이콘: 각 스크립트 항목 왼쪽에 표시되는 문서 아이콘(📄) */
 .script-icon {
     font-size: 24px;
     margin-top: 2px;
 }
 
+/* 스크립트 정보 컨테이너: 스크립트 이름, 설명, 날짜를 포함하는 영역 */
 .script-info {
     flex: 1;
 }
 
+/* 스크립트 이름: 스크립트의 제목 텍스트 */
 .script-name {
     font-size: 16px;
     font-weight: 600;
@@ -86,6 +182,7 @@
     margin-bottom: 5px;
 }
 
+/* 스크립트 설명: 스크립트의 설명 텍스트 */
 .script-desc {
     font-size: 14px;
     color: #a0aec0;
@@ -93,22 +190,29 @@
     line-height: 1.4;
 }
 
+/* 스크립트 날짜 컨테이너: 날짜 아이콘과 날짜 텍스트를 포함하는 영역 */
 .script-date {
     display: flex;
     align-items: center;
     gap: 5px;
 }
 
+/* 날짜 아이콘: 날짜 앞에 표시되는 시계 아이콘(🕐) */
 .date-icon {
     font-size: 12px;
 }
 
+/* 날짜 텍스트: 스크립트의 수정/생성 날짜 */
 .date-text {
     font-size: 12px;
     color: #718096;
 }
 
+/* ========================================== */
 /* 스크립트 삭제 버튼 */
+/* ========================================== */
+
+/* 스크립트 삭제 버튼: 각 스크립트 항목 오른쪽 상단에 위치한 삭제 버튼 */
 .script-delete-btn {
     position: absolute;
     top: 15px;
@@ -127,55 +231,130 @@
     padding: 0;
 }
 
+/* 스크립트 항목 호버 시 삭제 버튼 표시: 마우스를 올리면 삭제 버튼이 나타남 */
 .script-item:hover .script-delete-btn {
     opacity: 1;
 }
 
+/* 스크립트 삭제 버튼 호버 효과: 마우스를 올렸을 때 배경색 변경 및 확대 */
 .script-delete-btn:hover {
     background-color: rgba(239, 68, 68, 0.2);
     transform: scale(1.1);
 }
 
+/* 스크립트 삭제 버튼 클릭 효과: 클릭했을 때 살짝 축소 */
 .script-delete-btn:active {
     transform: scale(0.95);
 }
 
+/* 삭제 아이콘: 삭제 버튼 안에 표시되는 휴지통 아이콘(🗑️) */
 .delete-icon {
     font-size: 16px;
     filter: grayscale(0.3);
     transition: filter 0.2s ease;
 }
 
+/* 삭제 버튼 호버 시 삭제 아이콘 색상 복원: 마우스를 올리면 아이콘 색상이 선명해짐 */
 .script-delete-btn:hover .delete-icon {
     filter: grayscale(0);
 }
 
+/* ========================================== */
+/* 사이드바 리사이즈 핸들 */
+/* ========================================== */
+
+/* 사이드바 리사이즈 핸들: 경계선을 드래그하여 사이드바 크기를 조절할 수 있는 영역 */
+.sidebar-resize-handle {
+    position: absolute;
+    top: 0;
+    right: -4px;
+    width: 8px;
+    height: 100%;
+    cursor: col-resize;
+    background-color: rgba(49, 130, 206, 0);
+    z-index: 10001;
+    transition: background-color 0.2s ease;
+    pointer-events: auto;
+    touch-action: none;
+}
+
+/* 사이드바 리사이즈 핸들 호버 효과: 마우스를 올렸을 때 배경색 표시 */
+.sidebar-resize-handle:hover {
+    background-color: rgba(49, 130, 206, 0.2);
+    width: 8px;
+}
+
+/* 사이드바 리사이즈 핸들 활성 상태: 드래그 중일 때 */
+.sidebar-resize-handle:active {
+    background-color: rgba(49, 130, 206, 0.4);
+    width: 8px;
+}
+
+/* 리사이즈 핸들 위에 경계선 표시: 핸들 중앙에 세로선 표시 */
+.sidebar-resize-handle::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 1px;
+    height: 100%;
+    background-color: #4a5568;
+    pointer-events: none;
+}
+
+/* 리사이즈 핸들 호버 시 경계선 강조: 마우스를 올리면 파란색으로 변경 */
+.sidebar-resize-handle:hover::before {
+    background-color: #3182ce;
+    width: 2px;
+}
+
+/* 사이드바 리사이즈 중 상태: 드래그 중일 때 사용자 선택 방지 */
+.sidebar.resizing {
+    user-select: none;
+}
+
+/* 사이드바 리사이즈 중 핸들 스타일: 드래그 중일 때 핸들 배경색 강조 */
+.sidebar.resizing .sidebar-resize-handle {
+    background-color: rgba(49, 130, 206, 0.5);
+}
+
+/* ========================================== */
 /* 반응형 사이드바 */
+/* ========================================== */
+
+/* 중간 크기 화면 (1200px 이하): 사이드바 너비 조정 */
 @media (max-width: 1200px) {
     .sidebar {
-        width: 250px;
+        width: 350px;
     }
 }
 
+/* 작은 화면 (768px 이하): 모바일 환경을 위한 반응형 스타일 */
 @media (max-width: 768px) {
+    /* 모바일에서 사이드바 전체 너비 사용 */
     .sidebar {
         width: 100%;
         height: 200px;
     }
     
+    /* 모바일에서 스크립트 목록 패딩 축소 */
     .script-list {
         padding: 15px;
     }
     
+    /* 모바일에서 스크립트 항목 패딩 및 마진 축소 */
     .script-item {
         padding: 15px;
         margin-bottom: 10px;
     }
     
+    /* 모바일에서 스크립트 이름 폰트 크기 축소 */
     .script-name {
         font-size: 14px;
     }
     
+    /* 모바일에서 스크립트 설명 폰트 크기 축소 */
     .script-desc {
         font-size: 12px;
     }

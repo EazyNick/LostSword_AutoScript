@@ -924,13 +924,38 @@ export class ConnectionManager {
             return;
         }
         
+        // 모든 노드의 임시 연결선에서 마우스 커서 위치(끝점) 보정
+        // x좌표를 +10만큼 조정 (하드코딩)
+        // 
+        // 용어 설명:
+        // - canvas: 워크플로우 캔버스 컨테이너 (workflow-canvas)
+        // - canvas-content: canvas 안에 있는 div 요소로, 노드들이 배치되는 실제 컨텐츠 영역
+        //   transform(translate, scale)이 적용되어 무한 캔버스와 줌 기능을 구현함
+        // - SVG: Scalable Vector Graphics, 연결선을 그리기 위한 벡터 그래픽 요소
+        //   SVG는 canvas-content 안에 배치되어 있어서 canvas-content의 좌표계를 사용함
+        //
+        // 원인:
+        // - 실제 연결선은 getConnectorPosition()으로 두 커넥터 위치를 모두 계산하므로 정확함
+        // - 임시 연결선은 시작 커넥터는 getConnectorPosition()을 사용하지만, 마우스 위치는 직접 계산함
+        // - 마우스 위치 변환 공식: mouseX = (mouseCanvasX - transformX) / scale
+        //   * mouseCanvasX: 마우스 화면 좌표에서 canvas의 왼쪽 상단을 뺀 값 (canvas 기준 좌표)
+        //   * transformX: canvas-content에 적용된 translate X 값
+        //   * scale: canvas-content에 적용된 scale 값
+        //   * 계산 과정: canvas 좌표에서 transform의 translate를 빼고, scale로 나눠서 canvas-content 로컬 좌표로 변환
+        // - 이 변환 과정에서 canvas와 canvas-content의 좌표계 차이로 인해 약 10픽셀 정도의 오차 발생
+        // - canvas-content에 transform이 적용되어 있고, SVG가 canvas-content 안에 있어서
+        //   좌표 변환 시 미세한 오차가 발생하는 것으로 추정됨
+        // - 실제 연결선은 두 커넥터 모두 같은 방식(getConnectorPosition)으로 계산하므로 오차가 없음
+        const adjustedMouseX = mouseX - -10; // mouseX + 10과 동일
+        
         logger.log('[ConnectionManager] 임시 연결선 업데이트:', {
             start: startPos,
-            end: { x: mouseX, y: mouseY }
+            end: { x: adjustedMouseX, y: mouseY },
+            originalMouse: { x: mouseX, y: mouseY }
         });
         
-        // 임시 연결선 업데이트
-        this.updateTempLine(startPos.x, startPos.y, mouseX, mouseY);
+        // 임시 연결선 업데이트 (보정된 마우스 위치 사용)
+        this.updateTempLine(startPos.x, startPos.y, adjustedMouseX, mouseY);
     }
     
     /**

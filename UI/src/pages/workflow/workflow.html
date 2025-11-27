@@ -39,6 +39,12 @@
             
             <!-- 헤더 오른쪽: 액션 버튼들 -->
             <div class="header-right">
+                <!-- 전체 스크립트 실행 버튼: 모든 스크립트를 순차적으로 실행 -->
+                <button class="header-btn run-all-scripts-btn" title="모든 스크립트 실행">
+                    <span class="btn-icon">▶▶</span>
+                    <span class="btn-text">전체 실행</span>
+                </button>
+                
                 <!-- 저장 버튼: 현재 워크플로우를 로컬 스토리지에 저장 -->
                 <button class="header-btn save-btn">
                     <span class="btn-icon">💾</span>
@@ -71,14 +77,19 @@
                 <!-- 사이드바 헤더 -->
                 <div class="sidebar-header">
                     <h2>테스트 스크립트</h2>
-                    <!-- 새 스크립트 추가 버튼 -->
-                    <button class="add-script-btn">+</button>
+                    <div class="sidebar-header-buttons">
+                        <!-- 새 스크립트 추가 버튼 -->
+                        <button class="add-script-btn">+</button>
+                    </div>
                 </div>
                 
                 <!-- 스크립트 목록 (동적으로 로드됨) -->
                 <div class="script-list">
                     <!-- 스크립트 목록은 sidebar.js에서 동적으로 생성됩니다 -->
                 </div>
+                
+                <!-- 사이드바 리사이즈 핸들: 경계선을 드래그하여 사이드바 크기 조절 -->
+                <div class="sidebar-resize-handle" id="sidebar-resize-handle"></div>
             </aside>
 
             <!-- ========================================== -->
@@ -190,6 +201,7 @@
     <script type="module" src="../../js/api/api.js"></script>
     <script type="module" src="../../js/api/scriptapi.js"></script>
     <script type="module" src="../../js/api/nodeapi.js"></script>
+    <script type="module" src="../../js/api/user-settings-api.js"></script>
 
     <!-- 3. NodeManager가 의존하는 서브 컨트롤러들 -->
     <script src="../../js/components/node/node-selection.js"></script>

@@ -6,6 +6,7 @@
  * 명시적 의존성 관리
  */
 import { ScriptAPI } from '../api/scriptapi.js';
+import { UserSettingsAPI } from '../api/user-settings-api.js';
 import { getModalManagerInstance } from '../utils/modal.js';
 
 /**
@@ -58,6 +59,10 @@ export class SidebarManager {
         
         // 이전에 선택했던 스크립트 정보 저장 (변경 감지 등에 사용)
         this.previousScript = null; // 이전 스크립트 정보 저장
+        
+        // 전체 스크립트 실행 중 플래그 초기화
+        this.isRunningAllScripts = false;
+        this.isCancelled = false; // 실행 취소 플래그
         
         // DOM 로드 상태에 따라 초기화 시점 결정
         // document.readyState가 'loading'이면 아직 DOM이 로드 중이므로
@@ -112,6 +117,12 @@ export class SidebarManager {
                     date: this.formatDate(script.updated_at || script.created_at),
                     active: index === 0 // 첫 번째 스크립트를 기본 선택
                 }));
+                
+                // 저장된 순서 적용 (비동기)
+                const savedOrder = await this.loadScriptOrder();
+                if (savedOrder) {
+                    this.applyScriptOrder(savedOrder);
+                }
                 
                 // 첫 번째 스크립트가 있으면 활성화
                 if (this.scripts.length > 0) {
@@ -180,6 +191,229 @@ export class SidebarManager {
         document.querySelector('.add-script-btn').addEventListener('click', () => {
             this.showAddScriptModal();
         });
+        
+        // 사이드바 리사이즈 핸들 설정
+        this.setupResizeHandle();
+        
+        // 저장된 사이드바 너비 로드
+        this.loadSidebarWidth();
+        
+        // 모든 스크립트 실행 버튼은 workflow.js에서 등록하므로 여기서는 제거
+        // (헤더의 버튼은 workflow.js에서, 사이드바의 버튼이 있다면 여기서 등록)
+        // 현재는 헤더에만 버튼이 있으므로 여기서는 등록하지 않음
+    }
+    
+    /**
+     * 사이드바 리사이즈 핸들 설정
+     */
+    setupResizeHandle() {
+        const sidebar = document.querySelector('.sidebar');
+        const resizeHandle = document.getElementById('sidebar-resize-handle');
+        
+        const logger = getLogger();
+        const log = logger.log;
+        const logError = logger.error;
+        
+        if (!sidebar) {
+            logError('[Sidebar] 사이드바 요소를 찾을 수 없습니다.');
+            return;
+        }
+        
+        if (!resizeHandle) {
+            // 리사이즈 핸들이 없으면 동적으로 생성 (정상적인 경우)
+            log('[Sidebar] 리사이즈 핸들 요소를 찾을 수 없음, 동적 생성 시작');
+            const handle = document.createElement('div');
+            handle.className = 'sidebar-resize-handle';
+            handle.id = 'sidebar-resize-handle';
+            sidebar.appendChild(handle);
+            log('[Sidebar] 리사이즈 핸들 동적 생성 완료');
+        }
+        
+        const finalHandle = document.getElementById('sidebar-resize-handle');
+        if (!finalHandle) {
+            logError('[Sidebar] 리사이즈 핸들 설정 실패');
+            return;
+        }
+        
+        // 리사이즈 핸들이 항상 최상위에 오도록 z-index 설정
+        finalHandle.style.zIndex = '10001';
+        log('[Sidebar] 리사이즈 핸들 설정 시작');
+        
+        let isResizing = false;
+        let startX = 0;
+        let startWidth = 0;
+        
+        // 마우스 다운 이벤트
+        finalHandle.addEventListener('mousedown', (e) => {
+            log('[Sidebar] 리사이즈 핸들 마우스 다운');
+            isResizing = true;
+            startX = e.clientX;
+            startWidth = sidebar.offsetWidth;
+            sidebar.classList.add('resizing');
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+            
+            // 워크플로우 캔버스의 커서 스타일 임시 제거 및 이벤트 차단
+            const workflowCanvas = document.querySelector('.workflow-canvas');
+            const workflowArea = document.querySelector('.workflow-area');
+            if (workflowCanvas) {
+                workflowCanvas.style.cursor = 'col-resize';
+                workflowCanvas.style.pointerEvents = 'none';
+            }
+            if (workflowArea) {
+                workflowArea.style.pointerEvents = 'none';
+            }
+            
+            e.preventDefault();
+            e.stopPropagation();
+        });
+        
+        // 마우스 이동 이벤트
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+            
+            const diff = e.clientX - startX;
+            let newWidth = startWidth + diff;
+            
+            // 최소/최대 너비 제한
+            const minWidth = 250;
+            const maxWidth = 600;
+            newWidth = Math.max(minWidth, Math.min(maxWidth, newWidth));
+            
+            sidebar.style.width = `${newWidth}px`;
+            
+            e.preventDefault();
+        });
+        
+        // 마우스 업 이벤트
+        document.addEventListener('mouseup', () => {
+            if (isResizing) {
+                isResizing = false;
+                sidebar.classList.remove('resizing');
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+                
+                // 워크플로우 캔버스의 커서 스타일 및 이벤트 복원
+                const workflowCanvas = document.querySelector('.workflow-canvas');
+                const workflowArea = document.querySelector('.workflow-area');
+                if (workflowCanvas) {
+                    workflowCanvas.style.cursor = '';
+                    workflowCanvas.style.pointerEvents = '';
+                }
+                if (workflowArea) {
+                    workflowArea.style.pointerEvents = '';
+                }
+                
+                // 너비 저장 (비동기)
+                log(`[Sidebar] 사이드바 너비 저장 시작: ${sidebar.offsetWidth}px`);
+                this.saveSidebarWidth(sidebar.offsetWidth).catch(error => {
+                    const logger = getLogger();
+                    logger.error('[Sidebar] 사이드바 너비 저장 중 에러:', error);
+                });
+            }
+        });
+        
+        // 리사이즈 핸들 위에서 col-resize 커서 표시 및 캔버스 이벤트 차단
+        finalHandle.addEventListener('mouseenter', () => {
+            log('[Sidebar] 리사이즈 핸들 마우스 진입');
+            if (!isResizing) {
+                const workflowCanvas = document.querySelector('.workflow-canvas');
+                const workflowArea = document.querySelector('.workflow-area');
+                if (workflowCanvas) {
+                    workflowCanvas.style.pointerEvents = 'none';
+                }
+                if (workflowArea) {
+                    workflowArea.style.pointerEvents = 'none';
+                }
+            }
+        });
+        
+        finalHandle.addEventListener('mouseleave', () => {
+            log('[Sidebar] 리사이즈 핸들 마우스 이탈');
+            if (!isResizing) {
+                const workflowCanvas = document.querySelector('.workflow-canvas');
+                const workflowArea = document.querySelector('.workflow-area');
+                if (workflowCanvas) {
+                    workflowCanvas.style.pointerEvents = '';
+                }
+                if (workflowArea) {
+                    workflowArea.style.pointerEvents = '';
+                }
+            }
+        });
+        
+        log('[Sidebar] 리사이즈 핸들 설정 완료');
+    }
+    
+    /**
+     * 사이드바 너비를 서버에 저장
+     */
+    async saveSidebarWidth(width) {
+        const logger = getLogger();
+        const log = logger.log;
+        const logError = logger.error;
+        
+        try {
+            // 서버에 저장 시도
+            if (UserSettingsAPI) {
+                await UserSettingsAPI.saveSetting('sidebar-width', width.toString());
+                log(`[Sidebar] 사이드바 너비 서버에 저장됨: ${width}px`);
+            } else {
+                // 폴백: 로컬 스토리지에 저장
+                localStorage.setItem('sidebar-width', width.toString());
+                log(`[Sidebar] 사이드바 너비 로컬 스토리지에 저장됨: ${width}px`);
+            }
+        } catch (error) {
+            logError('[Sidebar] 서버 저장 실패, 로컬 스토리지에 저장:', error);
+            // 서버 저장 실패 시 로컬 스토리지에 저장 (폴백)
+            localStorage.setItem('sidebar-width', width.toString());
+        }
+    }
+    
+    /**
+     * 서버에서 사이드바 너비 로드
+     */
+    async loadSidebarWidth() {
+        const logger = getLogger();
+        const log = logger.log;
+        const logError = logger.error;
+        
+        try {
+            let savedWidth = null;
+            
+            // 서버에서 로드 시도
+            if (UserSettingsAPI) {
+                try {
+                    savedWidth = await UserSettingsAPI.getSetting('sidebar-width');
+                    if (savedWidth) {
+                        log(`[Sidebar] 사이드바 너비 서버에서 로드됨: ${savedWidth}px`);
+                    }
+                } catch (error) {
+                    log('[Sidebar] 서버에서 설정을 찾을 수 없음, 로컬 스토리지 확인');
+                }
+            }
+            
+            // 서버에 없으면 로컬 스토리지에서 로드
+            if (!savedWidth) {
+                savedWidth = localStorage.getItem('sidebar-width');
+                if (savedWidth) {
+                    log(`[Sidebar] 사이드바 너비 로컬 스토리지에서 로드됨: ${savedWidth}px`);
+                }
+            }
+            
+            if (savedWidth) {
+                const width = parseInt(savedWidth);
+                if (width && width >= 250 && width <= 600) {
+                    const sidebar = document.querySelector('.sidebar');
+                    if (sidebar) {
+                        sidebar.style.width = `${width}px`;
+                        log(`[Sidebar] 사이드바 너비 적용됨: ${width}px`);
+                    }
+                }
+            }
+        } catch (error) {
+            logError('[Sidebar] 사이드바 너비 로드 실패:', error);
+        }
     }
     
     loadScripts() {
@@ -216,8 +450,11 @@ export class SidebarManager {
             
             const scriptItem = document.createElement('div');
             scriptItem.className = `script-item ${script.active ? 'active' : ''}`;
+            scriptItem.draggable = true;
+            scriptItem.dataset.scriptIndex = index;
             
             scriptItem.innerHTML = `
+                <div class="script-drag-handle">⋮⋮</div>
                 <div class="script-icon">📄</div>
                 <div class="script-info">
                     <div class="script-name">${script.name}</div>
@@ -232,10 +469,13 @@ export class SidebarManager {
                 </button>
             `;
             
+            // 드래그 앤 드롭 이벤트 핸들러
+            this.setupDragAndDrop(scriptItem, index);
+            
             // 스크립트 항목 클릭 이벤트 (삭제 버튼 제외)
             scriptItem.addEventListener('click', (e) => {
-                // 삭제 버튼 클릭 시에는 선택 이벤트 발생하지 않도록
-                if (e.target.closest('.script-delete-btn')) {
+                // 삭제 버튼이나 드래그 핸들 클릭 시에는 선택 이벤트 발생하지 않도록
+                if (e.target.closest('.script-delete-btn') || e.target.closest('.script-drag-handle')) {
                     return;
                 }
                 log('사이드바 스크립트 클릭됨:', script.name, '인덱스:', index);
@@ -254,6 +494,243 @@ export class SidebarManager {
         });
         
         log(`[Sidebar] ✅ 스크립트 목록 렌더링 완료: ${this.scripts.length}개 항목`);
+    }
+    
+    /**
+     * 드래그 앤 드롭 기능 설정
+     */
+    setupDragAndDrop(scriptItem, index) {
+        const logger = getLogger();
+        const log = logger.log;
+        
+        // 드래그 시작
+        scriptItem.addEventListener('dragstart', (e) => {
+            scriptItem.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', index.toString());
+            log(`[Sidebar] 드래그 시작 - 인덱스: ${index}`);
+        });
+        
+        // 드래그 종료
+        scriptItem.addEventListener('dragend', (e) => {
+            scriptItem.classList.remove('dragging');
+            // 모든 드롭 인디케이터 제거
+            document.querySelectorAll('.script-item').forEach(item => {
+                item.classList.remove('drag-over-top', 'drag-over-bottom');
+            });
+            log(`[Sidebar] 드래그 종료 - 인덱스: ${index}`);
+        });
+        
+        // 드래그 오버 (다른 항목 위로 이동)
+        scriptItem.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            
+            const draggingItem = document.querySelector('.script-item.dragging');
+            if (draggingItem && draggingItem !== scriptItem) {
+                const rect = scriptItem.getBoundingClientRect();
+                const y = e.clientY - rect.top;
+                
+                // 항목의 중간 지점을 기준으로 위/아래 결정
+                if (y < rect.height / 2) {
+                    scriptItem.classList.add('drag-over-top');
+                    scriptItem.classList.remove('drag-over-bottom');
+                } else {
+                    scriptItem.classList.add('drag-over-bottom');
+                    scriptItem.classList.remove('drag-over-top');
+                }
+            }
+        });
+        
+        // 드래그 리브 (항목에서 벗어남)
+        scriptItem.addEventListener('dragleave', (e) => {
+            scriptItem.classList.remove('drag-over-top', 'drag-over-bottom');
+        });
+        
+        // 드롭
+        scriptItem.addEventListener('drop', (e) => {
+            e.preventDefault();
+            scriptItem.classList.remove('drag-over-top', 'drag-over-bottom');
+            
+            const draggingIndex = parseInt(e.dataTransfer.getData('text/plain'));
+            const rect = scriptItem.getBoundingClientRect();
+            const y = e.clientY - rect.top;
+            
+            // 드롭 위치에 따라 인덱스 결정
+            let dropIndex = index;
+            if (y < rect.height / 2) {
+                // 위쪽에 드롭
+                dropIndex = index;
+            } else {
+                // 아래쪽에 드롭
+                dropIndex = index + 1;
+            }
+            
+            if (draggingIndex !== dropIndex && draggingIndex !== dropIndex - 1) {
+                log(`[Sidebar] 드롭 - 드래그 인덱스: ${draggingIndex}, 드롭 인덱스: ${dropIndex}`);
+                this.reorderScripts(draggingIndex, dropIndex);
+            }
+        });
+    }
+    
+    /**
+     * 스크립트 순서 변경
+     */
+    reorderScripts(fromIndex, toIndex) {
+        const logger = getLogger();
+        const log = logger.log;
+        
+        // 인덱스 범위 확인
+        if (fromIndex < 0 || fromIndex >= this.scripts.length || 
+            toIndex < 0 || toIndex > this.scripts.length) {
+            log(`[Sidebar] ⚠️ 유효하지 않은 인덱스 - fromIndex: ${fromIndex}, toIndex: ${toIndex}`);
+            return;
+        }
+        
+        // 같은 위치면 변경하지 않음
+        if (fromIndex === toIndex) {
+            return;
+        }
+        
+        log(`[Sidebar] 스크립트 순서 변경 - ${fromIndex} -> ${toIndex}`);
+        
+        // 배열에서 항목 이동
+        const [movedScript] = this.scripts.splice(fromIndex, 1);
+        
+        // toIndex가 배열 길이를 초과하지 않도록 조정
+        const adjustedToIndex = Math.min(toIndex, this.scripts.length);
+        this.scripts.splice(adjustedToIndex, 0, movedScript);
+        
+        // 현재 선택된 스크립트 인덱스 업데이트
+        if (this.currentScriptIndex === fromIndex) {
+            // 이동한 스크립트가 현재 선택된 스크립트인 경우
+            this.currentScriptIndex = adjustedToIndex;
+        } else if (fromIndex < adjustedToIndex) {
+            // 아래로 이동한 경우
+            if (this.currentScriptIndex > fromIndex && this.currentScriptIndex <= adjustedToIndex) {
+                this.currentScriptIndex--;
+            }
+        } else {
+            // 위로 이동한 경우
+            if (this.currentScriptIndex >= adjustedToIndex && this.currentScriptIndex < fromIndex) {
+                this.currentScriptIndex++;
+            }
+        }
+        
+        // UI 업데이트
+        this.loadScripts();
+        
+        // 순서 저장 (비동기)
+        this.saveScriptOrder().catch(error => {
+            const logger = getLogger();
+            logger.error('[Sidebar] 스크립트 순서 저장 실패:', error);
+        });
+        
+        log(`[Sidebar] ✅ 스크립트 순서 변경 완료`);
+    }
+    
+    /**
+     * 스크립트 순서를 서버에 저장
+     */
+    async saveScriptOrder() {
+        const logger = getLogger();
+        const log = logger.log;
+        const logError = logger.error;
+        
+        const order = this.scripts.map(script => script.id);
+        
+        try {
+            // 서버에 저장 시도
+            if (UserSettingsAPI) {
+                await UserSettingsAPI.saveSetting('script-order', JSON.stringify(order));
+                log('[Sidebar] 스크립트 순서 서버에 저장됨:', order);
+            } else {
+                // 폴백: 로컬 스토리지에 저장
+                localStorage.setItem('script-order', JSON.stringify(order));
+                log('[Sidebar] 스크립트 순서 로컬 스토리지에 저장됨:', order);
+            }
+        } catch (error) {
+            logError('[Sidebar] 서버 저장 실패, 로컬 스토리지에 저장:', error);
+            // 서버 저장 실패 시 로컬 스토리지에 저장 (폴백)
+            localStorage.setItem('script-order', JSON.stringify(order));
+        }
+    }
+    
+    /**
+     * 서버에서 스크립트 순서 로드
+     */
+    async loadScriptOrder() {
+        const logger = getLogger();
+        const log = logger.log;
+        const logError = logger.error;
+        
+        try {
+            let savedOrder = null;
+            
+            // 서버에서 로드 시도
+            if (UserSettingsAPI) {
+                try {
+                    const orderStr = await UserSettingsAPI.getSetting('script-order');
+                    if (orderStr) {
+                        savedOrder = JSON.parse(orderStr);
+                        log('[Sidebar] 스크립트 순서 서버에서 로드됨:', savedOrder);
+                    }
+                } catch (error) {
+                    log('[Sidebar] 서버에서 설정을 찾을 수 없음, 로컬 스토리지 확인');
+                }
+            }
+            
+            // 서버에 없으면 로컬 스토리지에서 로드
+            if (!savedOrder) {
+                const orderStr = localStorage.getItem('script-order');
+                if (orderStr) {
+                    savedOrder = JSON.parse(orderStr);
+                    log('[Sidebar] 스크립트 순서 로컬 스토리지에서 로드됨:', savedOrder);
+                }
+            }
+            
+            return savedOrder;
+        } catch (error) {
+            logError('[Sidebar] 스크립트 순서 로드 실패:', error);
+            return null;
+        }
+    }
+    
+    /**
+     * 저장된 순서대로 스크립트 배열 재정렬
+     */
+    applyScriptOrder(savedOrder) {
+        if (!savedOrder || savedOrder.length === 0) {
+            return;
+        }
+        
+        const logger = getLogger();
+        const log = logger.log;
+        
+        // ID를 키로 하는 맵 생성
+        const scriptMap = new Map(this.scripts.map(script => [script.id, script]));
+        
+        // 저장된 순서대로 재정렬
+        const orderedScripts = [];
+        const usedIds = new Set();
+        
+        // 저장된 순서대로 추가
+        for (const id of savedOrder) {
+            if (scriptMap.has(id)) {
+                orderedScripts.push(scriptMap.get(id));
+                usedIds.add(id);
+            }
+        }
+        
+        // 저장된 순서에 없는 새 스크립트들을 끝에 추가
+        for (const script of this.scripts) {
+            if (!usedIds.has(script.id)) {
+                orderedScripts.push(script);
+            }
+        }
+        
+        this.scripts = orderedScripts;
+        log('[Sidebar] 저장된 순서 적용 완료');
     }
     
     selectScript(index) {
@@ -359,6 +836,11 @@ export class SidebarManager {
                 this.scripts.unshift(newScript);
                 log('[Sidebar] 스크립트 목록에 추가됨 - ID:', result.id, '이름:', result.name);
                 
+                // 순서 저장 (비동기)
+                this.saveScriptOrder().catch(error => {
+                    logger.error('[Sidebar] 스크립트 순서 저장 실패:', error);
+                });
+                
                 // UI 업데이트
                 this.loadScripts();
                 
@@ -448,6 +930,11 @@ export class SidebarManager {
                         if (this.currentScriptIndex >= deletedIndex && deletedIndex >= 0) {
                             this.currentScriptIndex = Math.max(0, this.currentScriptIndex - 1);
                         }
+                        
+                        // 순서 저장 (비동기)
+                        this.saveScriptOrder().catch(error => {
+                            logger.error('[Sidebar] 스크립트 순서 저장 실패:', error);
+                        });
                         
                         // UI 업데이트
                         this.loadScripts();
@@ -659,6 +1146,313 @@ export class SidebarManager {
             } catch (error) {
                 console.error('스크립트 로드 실패:', error);
             }
+        }
+    }
+
+    /**
+     * 모든 스크립트를 순차적으로 실행
+     * 최상단 스크립트부터 차례대로 하나씩 실행합니다.
+     * 각 스크립트를 선택하고, 기존 실행 방식대로 노드 하나씩 서버에 요청을 보냅니다.
+     */
+    async runAllScripts() {
+        const logger = getLogger();
+        const log = logger.log;
+        const logError = logger.error;
+        const logWarn = logger.warn;
+        
+        log('[Sidebar] runAllScripts() 호출됨');
+        
+        if (this.scripts.length === 0) {
+            logWarn('[Sidebar] 실행할 스크립트가 없습니다.');
+            const modalManager = getModalManagerInstance();
+            if (modalManager) {
+                modalManager.showAlert('알림', '실행할 스크립트가 없습니다.');
+            }
+            return;
+        }
+
+        // 실행 중 플래그 설정 (중복 실행 방지 / 취소 처리)
+        if (this.isRunningAllScripts === true) {
+            // 실행 중인 경우 취소 처리
+            log('[Sidebar] 실행 취소 요청');
+            this.cancelExecution();
+            return;
+        }
+        
+        this.isRunningAllScripts = true;
+        this.isCancelled = false; // 취소 플래그 초기화
+
+        // 버튼 상태 설정 (다른 버튼 비활성화, 실행 중인 버튼 활성화)
+        this.setButtonsState('running', 'run-all-scripts-btn');
+
+        // 스크립트 개수 기준 카운터 (try-catch 블록 밖에서 선언)
+        let successCount = 0;
+        let failCount = 0;
+        let cancelledCount = 0;
+        const totalCount = this.scripts.length;
+
+        // WorkflowPage 인스턴스 가져오기 (finally 블록에서도 접근 가능하도록 밖에서 정의)
+        const getWorkflowPage = () => {
+            // window에서 직접 접근 시도
+            if (window.workflowPage) {
+                return window.workflowPage;
+            }
+            // 모듈에서 가져오기 시도
+            if (window.getWorkflowPageInstance) {
+                return window.getWorkflowPageInstance();
+            }
+            return null;
+        };
+
+        try {
+            const modalManager = getModalManagerInstance();
+
+            log(`[Sidebar] 총 ${totalCount}개 스크립트 실행 시작`);
+
+            // 최상단 스크립트부터 순차적으로 실행
+            for (let i = 0; i < this.scripts.length; i++) {
+                // 취소 플래그 체크
+                if (this.isCancelled) {
+                    log('[Sidebar] 실행이 취소되었습니다.');
+                    // 남은 스크립트 개수를 중단 개수로 계산
+                    cancelledCount = totalCount - successCount - failCount;
+                    if (modalManager) {
+                        modalManager.showAlert(
+                            '실행 취소',
+                            `실행이 취소되었습니다.\n\n성공 스크립트: ${successCount}개\n실패 스크립트: ${failCount}개\n중단 스크립트: ${cancelledCount}개`
+                        );
+                    }
+                    break;
+                }
+                
+                const script = this.scripts[i];
+                log(`[Sidebar] 스크립트 ${i + 1}/${this.scripts.length} 실행 중: ${script.name} (ID: ${script.id})`);
+
+                try {
+                    // 1. 스크립트 선택 (포커스)
+                    log(`[Sidebar] 스크립트 "${script.name}" 선택 중...`);
+                    this.selectScript(i);
+                    
+                    // 2. 스크립트 로드 완료 대기 (노드들이 화면에 렌더링될 때까지)
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                    // 3. WorkflowPage 인스턴스 가져오기
+                    const workflowPage = getWorkflowPage();
+                    if (!workflowPage || !workflowPage.executionService) {
+                        logWarn(`[Sidebar] WorkflowPage 또는 ExecutionService를 찾을 수 없습니다. 스크립트 "${script.name}" 건너뜀.`);
+                        failCount++;
+                        continue;
+                    }
+
+                    // 4. 현재 화면의 노드들이 있는지 확인
+                    const nodes = document.querySelectorAll('.workflow-node');
+                    if (nodes.length === 0) {
+                        logWarn(`[Sidebar] 스크립트 "${script.name}"에 실행할 노드가 없습니다.`);
+                        // 노드가 없는 스크립트는 성공으로 카운트 (스크립트 단위로 카운트)
+                        successCount++;
+                        continue;
+                    }
+
+                    log(`[Sidebar] 스크립트 "${script.name}" 실행 시작 - 노드 개수: ${nodes.length}개`);
+
+                    // 5. 기존 실행 방식 사용 (노드 하나씩 서버에 요청)
+                    try {
+                        // 취소 플래그와 전체 실행 플래그를 executionService에 전달
+                        workflowPage.executionService.isCancelled = this.isCancelled;
+                        workflowPage.executionService.isRunningAllScripts = true; // 전체 스크립트 실행 중임을 표시
+                        await workflowPage.executionService.execute();
+                        
+                        // 취소되었는지 확인
+                        if (this.isCancelled || workflowPage.executionService.isCancelled) {
+                            log('[Sidebar] 실행이 취소되었습니다.');
+                            // 남은 스크립트 개수를 중단 개수로 계산 (현재 스크립트는 성공으로 카운트하지 않음)
+                            cancelledCount = totalCount - successCount - failCount;
+                            break;
+                        }
+                        
+                        successCount++;
+                        log(`[Sidebar] ✅ 스크립트 "${script.name}" 실행 완료`);
+                    } catch (execError) {
+                        failCount++;
+                        logError(`[Sidebar] ❌ 스크립트 "${script.name}" 실행 중 오류 발생:`, execError);
+                        logError('[Sidebar] 에러 상세:', {
+                            name: execError.name,
+                            message: execError.message,
+                            stack: execError.stack
+                        });
+                        
+                        // 에러 발생 시 모든 실행 중단
+                        const errorMessage = execError.message || '알 수 없는 오류';
+                        if (modalManager) {
+                            modalManager.showAlert(
+                                '실행 중단',
+                                `스크립트 "${script.name}" 실행 중 오류가 발생하여 모든 실행이 중단되었습니다.\n\n오류: ${errorMessage}`
+                            );
+                        }
+                        
+                        // 모든 실행 중단
+                        throw execError;
+                    }
+
+                    // 스크립트 간 대기 시간 (선택적, 필요시 조정)
+                    if (i < this.scripts.length - 1) {
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    }
+
+                } catch (error) {
+                    failCount++;
+                    logError(`[Sidebar] ❌ 스크립트 "${script.name}" 처리 중 오류 발생:`, error);
+                    logError('[Sidebar] 에러 상세:', {
+                        name: error.name,
+                        message: error.message,
+                        stack: error.stack
+                    });
+                    
+                    // 에러 발생 시 모든 실행 중단
+                    const errorMessage = error.message || '알 수 없는 오류';
+                    if (modalManager) {
+                        modalManager.showAlert(
+                            '실행 중단',
+                            `스크립트 "${script.name}" 처리 중 오류가 발생하여 모든 실행이 중단되었습니다.\n\n오류: ${errorMessage}`
+                        );
+                    }
+                    
+                    // 모든 실행 중단
+                    throw error;
+                }
+            }
+
+            // 중단된 스크립트 개수 계산 (취소되지 않았으면 0)
+            if (!this.isCancelled) {
+                cancelledCount = totalCount - successCount - failCount;
+            }
+            
+            log(`[Sidebar] 모든 스크립트 실행 완료 - 성공: ${successCount}개, 실패: ${failCount}개, 중단: ${cancelledCount}개`);
+
+            // 실행 결과 알림 (0개여도 모두 표시, 스크립트 개수 기준)
+            if (modalManager) {
+                const statusMessage = this.isCancelled ? '실행이 취소되었습니다.' : '모든 스크립트 실행이 완료되었습니다.';
+                modalManager.showAlert(
+                    this.isCancelled ? '실행 취소' : '실행 완료',
+                    `${statusMessage}\n\n성공 스크립트: ${successCount}개\n실패 스크립트: ${failCount}개\n중단 스크립트: ${cancelledCount}개`
+                );
+            }
+
+        } catch (error) {
+            logError('[Sidebar] ❌ 모든 스크립트 실행 중 오류 발생:', error);
+            logError('[Sidebar] 에러 상세:', {
+                name: error.name,
+                message: error.message,
+                stack: error.stack
+            });
+            
+            // 중단된 스크립트 개수 계산
+            cancelledCount = totalCount - successCount - failCount;
+            
+            const modalManager = getModalManagerInstance();
+            if (modalManager) {
+                modalManager.showAlert(
+                    '실행 중단',
+                    `스크립트 실행 중 오류가 발생하여 실행이 중단되었습니다.\n\n성공 스크립트: ${successCount}개\n실패 스크립트: ${failCount}개\n중단 스크립트: ${cancelledCount}개\n\n오류: ${error.message}`
+                );
+            }
+        } finally {
+            // 실행 중 플래그 해제
+            this.isRunningAllScripts = false;
+            this.isCancelled = false;
+            
+            // executionService의 전체 실행 플래그도 초기화
+            const workflowPage = getWorkflowPage();
+            if (workflowPage && workflowPage.executionService) {
+                workflowPage.executionService.isRunningAllScripts = false;
+            }
+
+            // 버튼 상태 복원
+            this.setButtonsState('idle');
+        }
+    }
+    
+    /**
+     * 실행 취소
+     */
+    cancelExecution() {
+        const logger = getLogger();
+        logger.log('[Sidebar] 실행 취소 요청');
+        this.isCancelled = true;
+        
+        // WorkflowPage의 executionService도 취소
+        const getWorkflowPage = () => {
+            if (window.workflowPage) {
+                return window.workflowPage;
+            }
+            if (window.getWorkflowPageInstance) {
+                return window.getWorkflowPageInstance();
+            }
+            return null;
+        };
+        
+        const workflowPage = getWorkflowPage();
+        if (workflowPage && workflowPage.executionService) {
+            workflowPage.executionService.cancel();
+        }
+    }
+    
+    /**
+     * 버튼 상태 설정
+     * @param {string} state - 'idle' | 'running'
+     * @param {string} activeButton - 실행 중인 버튼 클래스 ('run-btn' | 'run-all-scripts-btn')
+     */
+    setButtonsState(state, activeButton = null) {
+        const buttons = {
+            save: document.querySelector('.save-btn'),
+            addNode: document.querySelector('.add-node-btn'),
+            run: document.querySelector('.run-btn'),
+            runAll: document.querySelector('.run-all-scripts-btn')
+        };
+        
+        if (state === 'running') {
+            // 모든 버튼 비활성화
+            Object.values(buttons).forEach(btn => {
+                if (btn) {
+                    btn.disabled = true;
+                    btn.style.opacity = '0.5';
+                    btn.style.cursor = 'not-allowed';
+                    btn.classList.remove('executing');
+                }
+            });
+            
+            // 실행 중인 버튼만 활성화 및 실행 중 스타일 적용
+            const activeBtn = activeButton === 'run-btn' ? buttons.run : buttons.runAll;
+            if (activeBtn) {
+                activeBtn.disabled = false;
+                activeBtn.style.opacity = '1';
+                activeBtn.style.cursor = 'pointer';
+                activeBtn.classList.add('executing');
+                
+                // 버튼 텍스트 변경
+                const btnText = activeBtn.querySelector('.btn-text');
+                if (btnText) {
+                    activeBtn.dataset.originalText = btnText.textContent;
+                    btnText.textContent = '취소';
+                }
+            }
+        } else {
+            // 모든 버튼 활성화
+            Object.values(buttons).forEach(btn => {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                    btn.style.cursor = 'pointer';
+                    btn.classList.remove('executing');
+                    
+                    // 버튼 텍스트 복원
+                    const btnText = btn.querySelector('.btn-text');
+                    if (btnText && btn.dataset.originalText) {
+                        btnText.textContent = btn.dataset.originalText;
+                        delete btn.dataset.originalText;
+                    }
+                }
+            });
         }
     }
 }

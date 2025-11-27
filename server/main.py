@@ -109,18 +109,6 @@ async def root():
         return HTMLResponse(content=html_content)
     return {"message": "로스트소드 자동화 API 서버가 실행 중입니다."}
 
-# 워크플로우 페이지 라우트
-@app.get("/workflow")
-async def workflow_page():
-    """워크플로우 페이지 제공 (환경 변수 주입)"""
-    html_file = os.path.join(ui_path, "pages", "workflow", "workflow.html")
-    if os.path.exists(html_file):
-        with open(html_file, 'r', encoding='utf-8') as f:
-            html_content = f.read()
-        html_content = inject_env_to_html(html_content)
-        return HTMLResponse(content=html_content)
-    return {"error": "워크플로우 페이지를 찾을 수 없습니다."}
-
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "service": "lostsword-automation"}

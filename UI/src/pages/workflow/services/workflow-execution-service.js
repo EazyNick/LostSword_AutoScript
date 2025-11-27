@@ -6,6 +6,24 @@
 export class WorkflowExecutionService {
     constructor(workflowPage) {
         this.workflowPage = workflowPage;
+        this.isCancelled = false; // 실행 취소 플래그
+        this.isRunningAllScripts = false; // 전체 스크립트 실행 중인지 여부
+    }
+    
+    /**
+     * 실행 취소
+     */
+    cancel() {
+        this.isCancelled = true;
+        const logger = this.workflowPage.getLogger();
+        logger.log('[WorkflowExecutionService] 실행 취소 요청됨');
+    }
+    
+    /**
+     * 취소 플래그 초기화
+     */
+    resetCancelFlag() {
+        this.isCancelled = false;
     }
 
     /**
@@ -38,16 +56,47 @@ export class WorkflowExecutionService {
         
         // 실행 중 플래그 설정 (중복 실행 방지)
         if (this.isExecuting) {
+            // 실행 중인 경우 취소 처리
             if (toastManager) {
-                toastManager.warning('이미 워크플로우가 실행 중입니다.');
+                toastManager.info('실행을 취소합니다...');
             }
+            this.cancel();
             return;
         }
         this.isExecuting = true;
+        this.isCancelled = false; // 취소 플래그 초기화
+        
+        let successCount = 0;
+        let failCount = 0;
+        let cancelledCount = 0;
+        const totalNodeCount = workflowData.nodes.length;
         
         try {
             // 노드를 순차적으로 실행
             for (let i = 0; i < workflowData.nodes.length; i++) {
+                // 취소 플래그 체크
+                if (this.isCancelled) {
+                    const logger = this.workflowPage.getLogger();
+                    logger.log('[WorkflowExecutionService] 실행이 취소되었습니다.');
+                    // 남은 노드 개수를 중단 개수로 계산
+                    cancelledCount = totalNodeCount - successCount - failCount;
+                    // 전체 스크립트 실행 중이면 토스트만 표시
+                    if (this.isRunningAllScripts) {
+                        if (toastManager) {
+                            toastManager.warning(`실행 취소 (성공 노드: ${successCount}개, 실패 노드: ${failCount}개, 중단 노드: ${cancelledCount}개)`);
+                        }
+                    } else {
+                        if (modalManager) {
+                            modalManager.showAlert(
+                                '실행 취소',
+                                `실행이 취소되었습니다.\n\n성공 노드: ${successCount}개\n실패 노드: ${failCount}개\n중단 노드: ${cancelledCount}개`
+                            );
+                        } else if (toastManager) {
+                            toastManager.warning('실행이 취소되었습니다.');
+                        }
+                    }
+                    break;
+                }
                 const nodeData = workflowData.nodes[i];
                 const nodeElement = document.getElementById(nodeData.id) || 
                                   document.querySelector(`[data-node-id="${nodeData.id}"]`);
@@ -103,26 +152,29 @@ export class WorkflowExecutionService {
                                 );
                             }
                             
-                            // 에러 발생 시 실행 중단
-                            break;
+                            // 에러 발생 시 실행 중단 (에러를 throw하여 상위로 전파)
+                            failCount++;
+                            throw new Error(`노드 "${nodeTitle}" 실행 중 오류: ${errorMessage}`);
                         } else {
                             // 성공 시
+                            successCount++;
                             this.showNodeCompleted(nodeElement);
                         }
                     } else {
                         // 서버 레벨 에러
                         this.showNodeError(nodeElement);
                         const nodeTitle = nodeData.data?.title || nodeData.type || nodeData.id;
+                        const errorMessage = result.detail || result.message || '노드 실행 중 오류가 발생했습니다.';
                         
                         if (modalManager) {
                             modalManager.showAlert(
                                 `노드 실행 실패: ${nodeTitle}`,
-                                result.detail || result.message || '노드 실행 중 오류가 발생했습니다.'
+                                errorMessage
                             );
                         }
                         
-                        // 에러 발생 시 실행 중단
-                        break;
+                        // 에러 발생 시 실행 중단 (에러를 throw하여 상위로 전파)
+                        throw new Error(`노드 "${nodeTitle}" 실행 실패: ${errorMessage}`);
                     }
                 } catch (error) {
                     // 네트워크 에러 등
@@ -130,14 +182,41 @@ export class WorkflowExecutionService {
                     this.showNodeError(nodeElement);
                     
                     const nodeTitle = nodeData.data?.title || nodeData.type || nodeData.id;
+                    const errorMessage = error.message || '알 수 없는 오류';
+                    
                     if (modalManager) {
                         modalManager.showAlert(
                             `노드 실행 오류: ${nodeTitle}`,
-                            `네트워크 오류: ${error.message}`
+                            `네트워크 오류: ${errorMessage}`
                         );
                     }
                     
-                    // 에러 발생 시 실행 중단
+                    // 에러 발생 시 실행 중단 (에러를 throw하여 상위로 전파)
+                    failCount++;
+                    throw new Error(`노드 "${nodeTitle}" 실행 중 네트워크 오류: ${errorMessage}`);
+                }
+                
+                // 취소 플래그 체크
+                if (this.isCancelled) {
+                    const logger = this.workflowPage.getLogger();
+                    logger.log('[WorkflowExecutionService] 실행이 취소되었습니다.');
+                    // 남은 노드 개수를 중단 개수로 계산
+                    cancelledCount = totalNodeCount - successCount - failCount;
+                    // 전체 스크립트 실행 중이면 토스트만 표시
+                    if (this.isRunningAllScripts) {
+                        if (toastManager) {
+                            toastManager.warning(`실행 취소 (성공 노드: ${successCount}개, 실패 노드: ${failCount}개, 중단 노드: ${cancelledCount}개)`);
+                        }
+                    } else {
+                        if (modalManager) {
+                            modalManager.showAlert(
+                                '실행 취소',
+                                `실행이 취소되었습니다.\n\n성공 노드: ${successCount}개\n실패 노드: ${failCount}개\n중단 노드: ${cancelledCount}개`
+                            );
+                        } else if (toastManager) {
+                            toastManager.warning('실행이 취소되었습니다.');
+                        }
+                    }
                     break;
                 }
                 
@@ -145,23 +224,62 @@ export class WorkflowExecutionService {
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
             
-            // 모든 노드 실행 완료
-            if (toastManager) {
-                toastManager.success(`워크플로우 실행 완료 (${workflowData.nodes.length}개 노드)`);
+            // 중단된 노드 개수 계산 (취소되지 않았으면 0)
+            if (!this.isCancelled) {
+                cancelledCount = totalNodeCount - successCount - failCount;
+            }
+            
+            // 모든 노드 실행 완료 (0개여도 모두 표시)
+            // 전체 스크립트 실행 중이면 토스트만 표시, 단일 실행이면 모달 표시
+            if (this.isRunningAllScripts) {
+                // 전체 스크립트 실행 중: 토스트만 표시 (노드 개수)
+                if (toastManager) {
+                    const statusMessage = this.isCancelled 
+                        ? `실행 취소 (성공 노드: ${successCount}개, 실패 노드: ${failCount}개, 중단 노드: ${cancelledCount}개)`
+                        : `실행 완료 (성공 노드: ${successCount}개, 실패 노드: ${failCount}개, 중단 노드: ${cancelledCount}개)`;
+                    if (this.isCancelled) {
+                        toastManager.warning(statusMessage);
+                    } else if (failCount > 0) {
+                        toastManager.error(statusMessage);
+                    } else {
+                        toastManager.success(statusMessage);
+                    }
+                }
+            } else {
+                // 단일 스크립트 실행: 모달 표시 (노드 개수)
+                if (modalManager) {
+                    const statusMessage = this.isCancelled ? '실행이 취소되었습니다.' : '워크플로우 실행이 완료되었습니다.';
+                    modalManager.showAlert(
+                        this.isCancelled ? '실행 취소' : '실행 완료',
+                        `${statusMessage}\n\n성공 노드: ${successCount}개\n실패 노드: ${failCount}개\n중단 노드: ${cancelledCount}개`
+                    );
+                } else if (toastManager) {
+                    toastManager.success(`워크플로우 실행 완료 (${workflowData.nodes.length}개 노드)`);
+                }
             }
         } catch (error) {
             console.error('워크플로우 실행 오류:', error);
-            if (modalManager) {
-                modalManager.showAlert(
-                    '워크플로우 실행 오류',
-                    `워크플로우 실행 중 오류가 발생했습니다: ${error.message}`
-                );
-            } else if (toastManager) {
-                toastManager.error(`워크플로우 실행 중 오류가 발생했습니다: ${error.message}`);
+            // 중단된 노드 개수 계산
+            cancelledCount = totalNodeCount - successCount - failCount;
+            // 전체 스크립트 실행 중이면 토스트만 표시
+            if (this.isRunningAllScripts) {
+                if (toastManager) {
+                    toastManager.error(`실행 중단 (성공 노드: ${successCount}개, 실패 노드: ${failCount}개, 중단 노드: ${cancelledCount}개) - ${error.message}`);
+                }
+            } else {
+                if (modalManager) {
+                    modalManager.showAlert(
+                        '실행 중단',
+                        `워크플로우 실행 중 오류가 발생하여 실행이 중단되었습니다.\n\n성공 노드: ${successCount}개\n실패 노드: ${failCount}개\n중단 노드: ${cancelledCount}개\n\n오류: ${error.message}`
+                    );
+                } else if (toastManager) {
+                    toastManager.error(`워크플로우 실행 중 오류가 발생했습니다: ${error.message}`);
+                }
             }
         } finally {
             // 실행 중 플래그 해제
             this.isExecuting = false;
+            // 전체 스크립트 실행 플래그는 sidebar에서 관리하므로 여기서는 초기화하지 않음
         }
     }
     
