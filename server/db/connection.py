@@ -64,7 +64,25 @@ class DatabaseConnection:
             conn.close()
 
 
+# ============================================================================
 # 테스트 코드
+# ============================================================================
+# DatabaseConnection 클래스의 기능을 테스트합니다.
+# 
+# 용어 설명:
+# - Connection (연결): 데이터베이스와의 연결 객체로, SQLite 데이터베이스 파일에 접근
+# - Cursor (커서): SQL 쿼리를 실행하고 결과를 가져오는 객체
+#                  Connection을 통해 생성되며, execute(), fetchone(), fetchall() 등의 메서드 제공
+# 
+# 테스트 항목:
+# 1. DatabaseConnection 인스턴스 생성 (기본 경로 및 사용자 지정 경로)
+# 2. 데이터베이스 연결 생성 및 커서 생성
+# 3. 간단한 쿼리 실행 (CREATE, INSERT, SELECT)
+# 4. execute_with_connection 메서드 (자동 연결 관리)
+# 5. 롤백 기능 (에러 발생 시 자동 롤백)
+# 6. 연결 종료
+# 7. 기본 경로 사용 확인
+# ============================================================================
 if __name__ == "__main__":
     import os
     
@@ -147,10 +165,13 @@ if __name__ == "__main__":
     print("✅ 연결 종료 성공\n")
     
     # [8] 기본 경로 사용 테스트
+    # DatabaseConnection을 인자 없이 생성하면 자동으로 server/db/workflows.db 경로를 사용
     print("[8] 기본 경로 사용 테스트...")
+    print("   (DatabaseConnection()을 인자 없이 생성하면 기본 경로 사용)")
     default_conn = DatabaseConnection()
     print(f"✅ 기본 경로 사용 성공")
-    print(f"   - 기본 데이터베이스 경로: {default_conn.db_path}\n")
+    print(f"   - 기본 데이터베이스 경로: {default_conn.db_path}")
+    print(f"   - 설명: db_path 인자를 전달하지 않으면 자동으로 workflows.db 사용\n")
     
     # 정리 (모든 연결 닫기)
     import gc
