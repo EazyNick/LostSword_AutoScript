@@ -49,7 +49,9 @@ def initialize_database():
     db_path = db_manager.connection.db_path
     
     # 데이터베이스 파일이 존재하는지 확인
-    if not os.path.exists(db_path):
+    is_new_db = not os.path.exists(db_path)
+    
+    if is_new_db:
         logger.info(f"데이터베이스 파일이 없습니다. 생성 중... ({db_path})")
         try:
             # 데이터베이스 초기화 (테이블 생성)
@@ -64,7 +66,40 @@ def initialize_database():
             raise e
     else:
         logger.info(f"기존 데이터베이스 파일 발견: {db_path}")
-        # 기존 데이터베이스는 그대로 사용 (마이그레이션은 자동으로 처리됨)
+        try:
+            # 스크립트 개수 확인
+            scripts = db_manager.get_all_scripts()
+            script_count = len(scripts)
+            
+            # 스크립트가 없으면 예시 데이터 생성
+            if script_count == 0:
+                logger.info("데이터베이스에 스크립트가 없습니다. 예시 데이터 생성 중...")
+                db_manager.seed_example_data(logger=logger)
+                logger.info("✅ 예시 데이터 생성 완료")
+                # 스크립트 다시 조회 (생성된 스크립트 ID를 얻기 위해)
+                scripts = db_manager.get_all_scripts()
+            
+            # 기본 설정값 확인 및 추가
+            import json
+            sidebar_width = db_manager.get_user_setting("sidebar-width")
+            if sidebar_width is None:
+                db_manager.save_user_setting("sidebar-width", "300")
+                logger.info("✅ 기본 설정값 추가: sidebar-width")
+            
+            # script-order 설정 확인 및 추가
+            script_order = db_manager.get_user_setting("script-order")
+            if script_order is None:
+                if len(scripts) > 0:
+                    # 스크립트가 있으면 현재 스크립트 ID 순서로 저장
+                    script_ids = [script['id'] for script in scripts]
+                    script_order_json = json.dumps(script_ids, ensure_ascii=False)
+                else:
+                    # 스크립트가 없으면 빈 배열로 초기화
+                    script_order_json = "[]"
+                db_manager.save_user_setting("script-order", script_order_json)
+                logger.info(f"✅ 기본 설정값 추가: script-order = {script_order_json}")
+        except Exception as e:
+            logger.warning(f"기본 설정값 추가 중 오류 발생 (무시): {e}")
 
 app = FastAPI(
     title="자동화 도구",

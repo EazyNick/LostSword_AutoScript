@@ -332,6 +332,13 @@ class DatabaseManager:
             self.user_settings.save_setting("theme", "dark")
             self.user_settings.save_setting("language", "ko")
             self.user_settings.save_setting("auto_save", "true")
+            
+            # 기본 UI 설정값 추가
+            import json
+            self.user_settings.save_setting("sidebar-width", "300")  # 기본 사이드바 너비
+            script_order = json.dumps([script1_id, script2_id, script3_id], ensure_ascii=False)
+            self.user_settings.save_setting("script-order", script_order)  # 스크립트 순서
+            
             log_func("사용자 설정 예시 데이터 추가 완료")
             
             total_nodes = len(script1_nodes) + len(script2_nodes) + len(script3_nodes)

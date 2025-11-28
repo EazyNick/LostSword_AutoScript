@@ -20,12 +20,12 @@ LostSword_AutoScript/
 │   ├── db/                # 데이터베이스 관련
 │   │   ├── database.py           # 데이터베이스 연결 및 설정
 │   │   └── workflows.db          # SQLite 데이터베이스 파일
-│   ├── game_automation/   # 게임 자동화 모듈
+│   ├── automation/        # 자동화 모듈
 │   │   ├── __init__.py
-│   │   ├── screen_capture.py    # 화면 캡처 및 이미지 처리
-│   │   ├── input_handler.py    # 입력 처리 (마우스, 키보드)
-│   │   ├── game_state.py       # 게임 상태 관리
-│   │   └── workflow_engine.py  # 워크플로우 실행 엔진
+│   │   ├── screen_capture.py      # 화면 캡처 및 이미지 처리
+│   │   ├── input_handler.py      # 입력 처리 (마우스, 키보드)
+│   │   ├── application_state.py  # 애플리케이션 상태 관리
+│   │   └── workflow_engine.py    # 워크플로우 실행 엔진
 │   ├── models/            # 데이터 모델
 │   │   ├── action_models.py    # 액션 관련 모델
 │   │   └── script_models.py    # 스크립트 관련 모델
@@ -113,7 +113,7 @@ LostSword_AutoScript/
 FastAPI 기반 백엔드 서버입니다. 게임 자동화 로직과 API 엔드포인트를 제공합니다.
 
 - **`api/`**: RESTful API 라우터들을 정의합니다.
-- **`game_automation/`**: 게임 자동화 핵심 로직 (화면 캡처, 입력 처리, 워크플로우 실행 등)
+- **`automation/`**: 자동화 핵심 로직 (화면 캡처, 입력 처리, 워크플로우 실행 등)
 - **`services/`**: 비즈니스 로직을 처리하는 서비스 레이어
 - **`models/`**: Pydantic 모델 정의
 - **`db/`**: 데이터베이스 연결 및 스키마 관리

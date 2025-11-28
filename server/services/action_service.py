@@ -114,8 +114,8 @@ class ActionService:
     async def handle_image_touch_action(self, parameters: dict):
         """이미지 터치 액션 처리"""
         import os
-        from game_automation.screen_capture import ScreenCapture
-        from game_automation.input_handler import InputHandler
+        from automation.screen_capture import ScreenCapture
+        from automation.input_handler import InputHandler
         
         folder_path = parameters.get("folder_path", "")
         if not folder_path:
