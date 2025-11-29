@@ -338,14 +338,14 @@ export class NodeSettingsModal {
                 <div id="node-input-preview" class="node-settings-preview-input">
                     <span class="node-settings-preview-placeholder">이전 노드의 출력이 여기에 표시됩니다.</span>
                 </div>
-                <small class="node-settings-help-text">이 노드로 전달되는 입력 데이터입니다.</small>
+                <small class="node-settings-help-text">이 노드로 전달되는 입력 데이터입니다. (읽기 전용 - 이전 노드의 출력)</small>
             </div>
             <div class="form-group node-settings-form-group node-settings-section-divider">
                 <label class="node-settings-label node-settings-preview-label">출력 미리보기:</label>
                 <div id="node-output-preview" class="node-settings-preview-output">
                     <span class="node-settings-preview-placeholder">이 노드의 출력이 여기에 표시됩니다.</span>
                 </div>
-                <small class="node-settings-help-text">이 노드가 반환하는 출력 데이터입니다.</small>
+                <small class="node-settings-help-text">이 노드가 반환하는 출력 데이터입니다. 값을 직접 수정할 수 있으며, 저장 버튼을 눌러야 변경사항이 적용됩니다.</small>
             </div>
             <div class="form-actions" style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
                 <button id="edit-node-save" class="btn btn-primary">저장</button>
@@ -710,7 +710,7 @@ export class NodeSettingsModal {
                 }
             }
             
-            // 마지막 노드의 출력을 입력으로 표시
+            // 마지막 노드의 출력을 입력으로 표시 (읽기 전용)
             if (lastOutput !== null) {
                 // 객체나 배열인 경우 JSON 문자열로 표시, 아니면 그대로 표시
                 if (lastOutput !== null && typeof lastOutput === 'object') {
@@ -737,30 +737,54 @@ export class NodeSettingsModal {
             return;
         }
         
+        // 이미 textarea가 있고 사용자가 수정 중이면 업데이트하지 않음 (포커스가 있으면)
+        const existingTextarea = document.getElementById('edit-node-output-value');
+        if (existingTextarea && document.activeElement === existingTextarea) {
+            return; // 사용자가 수정 중이면 업데이트하지 않음
+        }
+        
         // 로딩 상태 표시
         outputPreview.innerHTML = '<span class="node-settings-preview-placeholder">실행 중...</span>';
         
         try {
-            // 현재 노드를 실행
-            const result = await this.executeNodeForPreview({
-                id: nodeElement.id || nodeElement.dataset.nodeId,
-                type: nodeType,
-                data: nodeData
-            });
+            // 저장된 출력 오버라이드 값이 있으면 사용, 없으면 노드 실행
+            const outputOverride = nodeData?.output_override;
+            let displayValue;
             
-            if (result) {
-                // output 필드가 있으면 그것을, 없으면 전체 결과를 표시
-                const displayResult = result.output !== undefined ? result.output : result;
-                
-                // 객체나 배열인 경우 JSON 문자열로 하나의 textarea에 표시
-                if (displayResult !== null && typeof displayResult === 'object') {
-                    const jsonString = JSON.stringify(displayResult, null, 2);
-                    outputPreview.innerHTML = `<textarea readonly class="node-settings-textarea node-preview-textarea">${escapeHtml(jsonString)}</textarea>`;
+            if (outputOverride !== undefined && outputOverride !== null) {
+                // 오버라이드된 값이 있으면 그것을 사용
+                if (typeof outputOverride === 'object') {
+                    displayValue = JSON.stringify(outputOverride, null, 2);
                 } else {
-                    outputPreview.innerHTML = `<textarea readonly class="node-settings-textarea node-preview-textarea">${escapeHtml(String(displayResult))}</textarea>`;
+                    displayValue = String(outputOverride);
                 }
             } else {
-                outputPreview.innerHTML = '<span class="node-settings-preview-placeholder">출력 없음</span>';
+                // 없으면 노드 실행 결과 사용
+                const result = await this.executeNodeForPreview({
+                    id: nodeElement.id || nodeElement.dataset.nodeId,
+                    type: nodeType,
+                    data: nodeData
+                });
+                
+                if (result) {
+                    // output 필드가 있으면 그것을, 없으면 전체 결과를 표시
+                    const displayResult = result.output !== undefined ? result.output : result;
+                    
+                    if (displayResult !== null && typeof displayResult === 'object') {
+                        displayValue = JSON.stringify(displayResult, null, 2);
+                    } else {
+                        displayValue = String(displayResult);
+                    }
+                } else {
+                    displayValue = '';
+                }
+            }
+            
+            // 출력 표시 (항상 편집 가능)
+            if (displayValue !== null && displayValue !== undefined) {
+                outputPreview.innerHTML = `<textarea id="edit-node-output-value" class="node-settings-textarea node-preview-textarea">${escapeHtml(displayValue)}</textarea>`;
+            } else {
+                outputPreview.innerHTML = `<textarea id="edit-node-output-value" class="node-settings-textarea node-preview-textarea"></textarea>`;
             }
         } catch (error) {
             console.error('출력 미리보기 실행 오류:', error);

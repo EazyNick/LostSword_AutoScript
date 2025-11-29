@@ -33,11 +33,6 @@ class StartNode:
         return {
             "action": "start",
             "status": "completed",
-            "output": {
-                "node_type": "start",
-                "workflow_started": True,
-                "started_at": time.time(),
-                "message": "워크플로우가 시작되었습니다."
-            }
+            "output": "워크플로우가 시작되었습니다."
         }
 

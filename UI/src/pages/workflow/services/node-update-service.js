@@ -114,6 +114,28 @@ export class NodeUpdateService {
             updatedNodeData.description = description;
         }
         
+        // 출력 오버라이드 값 가져오기 (항상 편집 가능하므로 textarea 값이 있으면 저장)
+        const outputOverrideTextarea = document.getElementById('edit-node-output-value');
+        
+        if (outputOverrideTextarea) {
+            const outputValue = outputOverrideTextarea.value.trim();
+            if (outputValue) {
+                // JSON 파싱 시도
+                try {
+                    updatedNodeData.output_override = JSON.parse(outputValue);
+                } catch (e) {
+                    // JSON이 아니면 문자열로 저장
+                    updatedNodeData.output_override = outputValue;
+                }
+            } else {
+                // 빈 값이면 오버라이드 제거
+                updatedNodeData.output_override = null;
+            }
+        } else {
+            // textarea가 없으면 오버라이드 제거
+            updatedNodeData.output_override = null;
+        }
+        
         // 실제 노드 종류별 추가 데이터
         if (newActionNodeType === 'http-api-request') {
             const url = document.getElementById('edit-http-url')?.value || '';

@@ -184,9 +184,20 @@ class ActionService:
             # 실제 노드 종류 가져오기
             action_node_type = node_data.get("action_node_type")
             
-            # 액션 실행 (입력이 없어도 처리)
-            result = await self.process_game_action(node_type, node_data, action_node_type)
-            logger.debug(f"process_game_action 결과: {result}")
+            # 출력 오버라이드가 있으면 그것을 사용, 없으면 노드 실행
+            output_override = node_data.get("output_override")
+            if output_override is not None:
+                # 출력 오버라이드가 있으면 그것을 결과로 사용
+                result = {
+                    "action": node_type,
+                    "status": "completed",
+                    "output": output_override
+                }
+                logger.debug(f"출력 오버라이드 사용: {output_override}")
+            else:
+                # 액션 실행 (입력이 없어도 처리)
+                result = await self.process_game_action(node_type, node_data, action_node_type)
+                logger.debug(f"process_game_action 결과: {result}")
             
             # 결과가 None이면 기본값으로 변환
             if result is None:
@@ -204,10 +215,15 @@ class ActionService:
                     "output": result
                 }
             
+            # output 필드가 없으면 추가
+            if "output" not in result:
+                result["output"] = None
+            
             # 컨텍스트에 항상 결과 저장 (None이어도)
             if context:
                 context.add_node_result(node_id, node_name, result)
             
+            logger.debug(f"process_node 최종 결과: {result}")
             return result
         except Exception as e:
             logger.error(f"process_node 에러: {e}")
