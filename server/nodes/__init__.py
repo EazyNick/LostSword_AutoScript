@@ -16,6 +16,7 @@ from .actionnodes import (
 from .conditionnodes import ConditionNode
 from .waitnodes import WaitNode
 from .imagenodes import ImageTouchNode
+from .boundarynodes import StartNode, EndNode
 
 __all__ = [
     'HttpApiRequestNode',
@@ -28,6 +29,8 @@ __all__ = [
     'ProcessFocusNode',
     'ConditionNode',
     'WaitNode',
-    'ImageTouchNode'
+    'ImageTouchNode',
+    'StartNode',
+    'EndNode'
 ]
 

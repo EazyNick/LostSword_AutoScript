@@ -21,6 +21,7 @@ from nodes.actionnodes import (
 from nodes.conditionnodes import ConditionNode
 from nodes.waitnodes import WaitNode
 from nodes.imagenodes import ImageTouchNode
+from nodes.boundarynodes import StartNode, EndNode
 
 # config 모듈은 직접 import (같은 레벨에 있으므로)
 try:
@@ -39,6 +40,9 @@ class ActionService:
     def __init__(self):
         # 노드 타입별 핸들러 매핑
         self.node_handlers = {
+            # 경계 노드들
+            "start": StartNode.execute,
+            "end": EndNode.execute,
             # 액션 노드들
             "click": ClickNode.execute,
             "move": MoveNode.execute,

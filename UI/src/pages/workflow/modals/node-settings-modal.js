@@ -712,7 +712,13 @@ export class NodeSettingsModal {
             
             // 마지막 노드의 출력을 입력으로 표시
             if (lastOutput !== null) {
-                inputPreview.innerHTML = this.renderDataAsCards(lastOutput);
+                // 객체나 배열인 경우 JSON 문자열로 표시, 아니면 그대로 표시
+                if (lastOutput !== null && typeof lastOutput === 'object') {
+                    const jsonString = JSON.stringify(lastOutput, null, 2);
+                    inputPreview.innerHTML = `<textarea readonly class="node-settings-textarea node-preview-textarea">${escapeHtml(jsonString)}</textarea>`;
+                } else {
+                    inputPreview.innerHTML = `<textarea readonly class="node-settings-textarea node-preview-textarea">${escapeHtml(String(lastOutput))}</textarea>`;
+                }
             } else {
                 inputPreview.innerHTML = '<span class="node-settings-preview-placeholder">입력 없음 (이전 노드 실행 결과 없음)</span>';
             }
@@ -745,8 +751,14 @@ export class NodeSettingsModal {
             if (result) {
                 // output 필드가 있으면 그것을, 없으면 전체 결과를 표시
                 const displayResult = result.output !== undefined ? result.output : result;
-                outputPreview.innerHTML = this.renderDataAsCards(displayResult);
-                outputPreview.style.color = '#333';
+                
+                // 객체나 배열인 경우 JSON 문자열로 하나의 textarea에 표시
+                if (displayResult !== null && typeof displayResult === 'object') {
+                    const jsonString = JSON.stringify(displayResult, null, 2);
+                    outputPreview.innerHTML = `<textarea readonly class="node-settings-textarea node-preview-textarea">${escapeHtml(jsonString)}</textarea>`;
+                } else {
+                    outputPreview.innerHTML = `<textarea readonly class="node-settings-textarea node-preview-textarea">${escapeHtml(String(displayResult))}</textarea>`;
+                }
             } else {
                 outputPreview.innerHTML = '<span class="node-settings-preview-placeholder">출력 없음</span>';
             }
@@ -897,7 +909,7 @@ export class NodeSettingsModal {
             }
             
             const previousNodeId = inputConnection.from;
-            if (previousNodeId === 'start' || previousNodeId === currentNodeId) {
+            if (previousNodeId === currentNodeId) {
                 break;
             }
             
@@ -909,14 +921,17 @@ export class NodeSettingsModal {
             const previousNodeData = getNodeData(previousNodeElement);
             const previousNodeType = previousNodeData?.type || getNodeType(previousNodeElement);
             
-            // 시작 노드가 아니면 체인에 추가 (시작 노드는 제외)
-            if (previousNodeType !== 'start') {
-                nodeChain.unshift({
-                    id: previousNodeId,
-                    type: previousNodeType,
-                    data: previousNodeData,
-                    element: previousNodeElement
-                });
+            // 시작 노드도 체인에 포함
+            nodeChain.unshift({
+                id: previousNodeId,
+                type: previousNodeType,
+                data: previousNodeData,
+                element: previousNodeElement
+            });
+            
+            // 시작 노드에 도달하면 종료
+            if (previousNodeType === 'start' || previousNodeId === 'start') {
+                break;
             }
             
             currentNodeId = previousNodeId;
