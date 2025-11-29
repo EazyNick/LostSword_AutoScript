@@ -5,7 +5,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 import uvicorn
 import os
 import re
-from api import action_router, script_router, game_router, node_router, config_router
+from api import action_router, script_router, game_router, node_router, config_router, action_node_router
 from log import log_manager
 from db.database import db_manager 
 
@@ -130,6 +130,7 @@ app.include_router(script_router)
 app.include_router(game_router)
 app.include_router(node_router)
 app.include_router(config_router)
+app.include_router(action_node_router)
 
 # 정적 파일 서빙 설정 (개발 환경)
 ui_path = os.path.join(os.path.dirname(__file__), "..", "UI", "src")

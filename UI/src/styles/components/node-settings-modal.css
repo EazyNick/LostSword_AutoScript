@@ -1,0 +1,162 @@
+/**
+ * 노드 설정 모달 스타일
+ */
+
+/* 비활성화된 입력 필드 */
+.node-settings-disabled-input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: #fafafa;
+    color: #666;
+}
+
+/* 비활성화된 선택 필드 */
+.node-settings-disabled-select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: #fafafa;
+}
+
+/* 입력 미리보기 영역 */
+.node-settings-preview-input {
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 10px;
+    min-height: 60px;
+    max-height: 200px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 12px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+/* 출력 미리보기 영역 */
+.node-settings-preview-output {
+    background-color: #f0f8ff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 10px;
+    min-height: 60px;
+    max-height: 200px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 12px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+/* 미리보기 플레이스홀더 텍스트 */
+.node-settings-preview-placeholder {
+    color: #999;
+}
+
+/* 일반 입력 필드 */
+.node-settings-input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+/* 일반 선택 필드 */
+.node-settings-select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+/* 텍스트 영역 */
+.node-settings-textarea {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-family: monospace;
+}
+
+/* 설명 텍스트 */
+.node-settings-help-text {
+    color: #666;
+    font-size: 12px;
+}
+
+/* 폼 그룹 */
+.node-settings-form-group {
+    margin-bottom: 15px;
+}
+
+/* 폼 그룹 라벨 */
+.node-settings-label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+/* 미리보기 라벨 */
+.node-settings-preview-label {
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+/* 섹션 구분선 */
+.node-settings-section-divider {
+    border-top: 1px solid #ddd;
+    padding-top: 15px;
+    margin-top: 15px;
+}
+
+/* 미리보기 데이터 필드 박스 스타일 (textarea와 동일) */
+.node-preview-field-box {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-bottom: 12px;
+}
+
+.node-preview-field-box:last-child {
+    margin-bottom: 0;
+}
+
+.node-preview-field-label {
+    font-weight: 600;
+    color: #333;
+    font-size: 14px;
+}
+
+.node-preview-textarea {
+    resize: vertical;
+    min-height: 40px;
+    font-family: inherit;
+}
+
+.node-preview-string-value {
+    color: #333;
+}
+
+.node-preview-number-value {
+    color: #f57c00;
+    font-weight: 500;
+}
+
+.node-preview-boolean-value {
+    color: #7b1fa2;
+    font-weight: 500;
+}
+
+.node-preview-null-value {
+    color: #999;
+    font-style: italic;
+}
+
+.node-preview-empty {
+    color: #999;
+    font-style: italic;
+}
+

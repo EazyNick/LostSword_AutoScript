@@ -7,6 +7,7 @@ from typing import List
 import os
 from models import ActionRequest, ActionResponse, NodeExecutionRequest
 from services.action_service import ActionService
+from services.node_execution_context import NodeExecutionContext
 from log import log_manager
 
 router = APIRouter(prefix="/api", tags=["actions"])
@@ -35,12 +36,16 @@ async def execute_action(request: ActionRequest):
 async def execute_nodes(request: NodeExecutionRequest):
     """
     노드 기반 워크플로우를 실행합니다.
+    노드 간 데이터 전달을 지원합니다.
     """
     logger.debug(f"execute_nodes 호출됨 - 요청 데이터: {request}")
     
     try:
         logger.debug(f"실행 모드: {request.execution_mode}")
         logger.debug(f"노드 개수: {len(request.nodes)}")
+        
+        # 노드 실행 컨텍스트 생성 (데이터 전달)
+        context = NodeExecutionContext()
         
         results = []
         
@@ -49,12 +54,44 @@ async def execute_nodes(request: NodeExecutionRequest):
             for i, node in enumerate(request.nodes):
                 logger.debug(f"노드 {i+1} 실행 중: {node}")
                 try:
-                    result = await action_service.process_node(node)
+                    # 실행 컨텍스트와 함께 노드 실행
+                    result = await action_service.process_node(node, context)
+                    
+                    # 결과가 None이면 기본값으로 변환
+                    if result is None:
+                        result = {
+                            "action": node.get("type", "unknown"),
+                            "status": "completed",
+                            "output": None
+                        }
+                    
+                    # 결과가 dict가 아니면 dict로 변환
+                    if not isinstance(result, dict):
+                        result = {
+                            "action": node.get("type", "unknown"),
+                            "status": "completed",
+                            "output": result
+                        }
+                    
                     results.append(result)
                     logger.debug(f"노드 {i+1} 실행 완료: {result}")
                 except Exception as node_error:
                     logger.error(f"노드 {i+1} 실행 실패: {node_error}")
-                    results.append({"error": str(node_error), "node_id": node.get("id", "unknown")})
+                    node_id = node.get("id", f"node_{i}")
+                    node_name = node.get("data", {}).get("title") or node.get("data", {}).get("name")
+                    
+                    # 에러 결과도 항상 dict로 반환
+                    error_result = {
+                        "action": node.get("type", "unknown"),
+                        "status": "failed",
+                        "error": str(node_error),
+                        "node_id": node_id,
+                        "output": None
+                    }
+                    results.append(error_result)
+                    
+                    # 에러 결과도 컨텍스트에 저장 (다음 노드에서 참조 가능)
+                    context.add_node_result(node_id, node_name, error_result)
         elif request.execution_mode == "parallel":
             logger.error("병렬 실행은 아직 지원되지 않음")
             # 병렬 실행 로직 (향후 구현)
@@ -65,7 +102,10 @@ async def execute_nodes(request: NodeExecutionRequest):
         return ActionResponse(
             success=True,
             message=f"{len(request.nodes)}개 노드 실행 완료",
-            data={"results": results}
+            data={
+                "results": results,
+                "context": context.to_dict()  # 컨텍스트 정보도 반환 (디버깅용)
+            }
         )
     except HTTPException as http_error:
         logger.error(f"HTTP 에러 발생: {http_error}")
