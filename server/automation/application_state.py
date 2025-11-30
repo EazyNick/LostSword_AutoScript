@@ -5,12 +5,12 @@ from log import log_manager
 
 logger = log_manager.logger
 
-class GameState:
-    """게임 상태 관리 클래스"""
+class ApplicationState:
+    """애플리케이션 상태 관리 클래스"""
     
     def __init__(self):
         self.state = {
-            "game_running": False,
+            "is_running": False,
             "current_scene": "unknown",
             "player_level": 1,
             "player_hp": 100,
@@ -30,19 +30,19 @@ class GameState:
         self.scene_templates = {
             "main_menu": "templates/main_menu.png",
             "character_select": "templates/character_select.png",
-            "game_world": "templates/game_world.png",
+            "application_world": "templates/application_world.png",
             "inventory": "templates/inventory.png",
             "shop": "templates/shop.png",
             "battle": "templates/battle.png"
         }
     
     def update_state(self, key: str, value: Any) -> None:
-        """게임 상태를 업데이트합니다."""
+        """애플리케이션 상태를 업데이트합니다."""
         self.state[key] = value
         self.state["last_action_time"] = time.time()
     
     def get_state(self, key: Optional[str] = None) -> Any:
-        """게임 상태를 반환합니다."""
+        """애플리케이션 상태를 반환합니다."""
         if key:
             return self.state.get(key)
         return self.state.copy()
@@ -159,7 +159,7 @@ class GameState:
         })
     
     def save_state_to_file(self, filename: str) -> bool:
-        """게임 상태를 파일로 저장합니다."""
+        """애플리케이션 상태를 파일로 저장합니다."""
         try:
             with open(filename, 'w', encoding='utf-8') as f:
                 json.dump(self.state, f, ensure_ascii=False, indent=2)
@@ -169,7 +169,7 @@ class GameState:
             return False
     
     def load_state_from_file(self, filename: str) -> bool:
-        """파일에서 게임 상태를 로드합니다."""
+        """파일에서 애플리케이션 상태를 로드합니다."""
         try:
             with open(filename, 'r', encoding='utf-8') as f:
                 loaded_state = json.load(f)
@@ -179,10 +179,11 @@ class GameState:
             logger.error(f"상태 로드 실패: {e}")
             return False
     
-    def is_game_running(self) -> bool:
-        """게임이 실행 중인지 확인합니다."""
-        return self.state.get("game_running", False)
+    def is_running(self) -> bool:
+        """애플리케이션이 실행 중인지 확인합니다."""
+        return self.state.get("is_running", False)
     
-    def set_game_running(self, running: bool) -> None:
-        """게임 실행 상태를 설정합니다."""
-        self.update_state("game_running", running)
+    def set_running(self, running: bool) -> None:
+        """애플리케이션 실행 상태를 설정합니다."""
+        self.update_state("is_running", running)
+

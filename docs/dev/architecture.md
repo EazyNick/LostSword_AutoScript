@@ -29,11 +29,11 @@
 │  │  - action_service.py: 액션 처리 로직             │  │
 │  └──────────────────────────────────────────────────┘  │
 │  ┌──────────────────────────────────────────────────┐  │
-│  │  Game Automation (game_automation/)             │  │
+│  │  Automation (automation/)                        │  │
 │  │  - screen_capture.py: 화면 캡처 및 이미지 매칭    │  │
 │  │  - input_handler.py: 마우스/키보드 입력          │  │
 │  │  - workflow_engine.py: 워크플로우 실행 엔진     │  │
-│  │  - game_state.py: 게임 상태 관리                 │  │
+│  │  - application_state.py: 애플리케이션 상태 관리   │  │
 │  └──────────────────────────────────────────────────┘  │
 │  ┌──────────────────────────────────────────────────┐  │
 │  │  Data Layer (db/)                               │  │
@@ -69,24 +69,24 @@
 - **대기**: 지정된 시간만큼 대기
 - **프로세스 포커스**: 특정 프로세스 창을 포그라운드로 가져오기
 
-#### 2. 워크플로우 엔진 (`game_automation/workflow_engine.py`)
+#### 2. 워크플로우 엔진 (`automation/workflow_engine.py`)
 - 노드 기반 워크플로우 실행
 - 순차적/병렬 실행 모드 지원
 - 조건부 분기 처리
 - 루프 실행
 
-#### 3. 화면 캡처 (`game_automation/screen_capture.py`)
+#### 3. 화면 캡처 (`automation/screen_capture.py`)
 - 전체 화면 또는 영역 캡처
 - OpenCV를 사용한 이미지 템플릿 매칭
 - 재시도 로직 (화면 로딩 대기)
 - 한글 경로 지원
 
-#### 4. 입력 처리 (`game_automation/input_handler.py`)
+#### 4. 입력 처리 (`automation/input_handler.py`)
 - 마우스 클릭, 이동, 드래그
 - 키보드 입력
 - Windows API를 통한 저수준 제어
 
-#### 5. 게임 상태 관리 (`game_automation/game_state.py`)
+#### 5. 애플리케이션 상태 관리 (`automation/application_state.py`)
 - 플레이어 정보 추적
 - 인벤토리 상태 관리
 - 위치 정보 저장
@@ -152,7 +152,7 @@ workflow-execution-service.js
   ↓
 action_service.py
   ↓
-game_automation 모듈 실행
+automation 모듈 실행
   ↓
 Windows API 호출
 ```

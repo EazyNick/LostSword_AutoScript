@@ -89,6 +89,10 @@ export class NodeUpdateService {
         
         const newColor = document.getElementById('edit-node-color').value;
         
+        // 실제 노드 종류 가져오기
+        const actionNodeTypeSelect = document.getElementById('edit-action-node-type');
+        const newActionNodeType = actionNodeTypeSelect ? actionNodeTypeSelect.value : null;
+        
         const position = {
             x: parseFloat(nodeElement.style.left) || 0,
             y: parseFloat(nodeElement.style.top) || 0
@@ -98,6 +102,7 @@ export class NodeUpdateService {
             id: nodeId,
             type: newType,
             title: newTitle,
+            action_node_type: newActionNodeType || undefined,
             color: newColor,
             x: position.x,
             y: position.y
@@ -109,7 +114,61 @@ export class NodeUpdateService {
             updatedNodeData.description = description;
         }
         
-        // 타입별 추가 데이터
+        // 출력 오버라이드 값 가져오기 (항상 편집 가능하므로 textarea 값이 있으면 저장)
+        const outputOverrideTextarea = document.getElementById('edit-node-output-value');
+        
+        if (outputOverrideTextarea) {
+            const outputValue = outputOverrideTextarea.value.trim();
+            if (outputValue) {
+                // JSON 파싱 시도
+                try {
+                    updatedNodeData.output_override = JSON.parse(outputValue);
+                } catch (e) {
+                    // JSON이 아니면 문자열로 저장
+                    updatedNodeData.output_override = outputValue;
+                }
+            } else {
+                // 빈 값이면 오버라이드 제거
+                updatedNodeData.output_override = null;
+            }
+        } else {
+            // textarea가 없으면 오버라이드 제거
+            updatedNodeData.output_override = null;
+        }
+        
+        // 실제 노드 종류별 추가 데이터
+        if (newActionNodeType === 'http-api-request') {
+            const url = document.getElementById('edit-http-url')?.value || '';
+            const method = document.getElementById('edit-http-method')?.value || 'GET';
+            const headersText = document.getElementById('edit-http-headers')?.value || '{}';
+            const bodyText = document.getElementById('edit-http-body')?.value || '';
+            const timeout = document.getElementById('edit-http-timeout')?.value || '30';
+            
+            if (url) {
+                updatedNodeData.url = url;
+            }
+            updatedNodeData.method = method;
+            
+            // 헤더 파싱
+            try {
+                updatedNodeData.headers = JSON.parse(headersText);
+            } catch (e) {
+                updatedNodeData.headers = {};
+            }
+            
+            // 본문 파싱 시도 (JSON이면 파싱, 아니면 문자열로 저장)
+            if (bodyText) {
+                try {
+                    updatedNodeData.body = JSON.parse(bodyText);
+                } catch (e) {
+                    updatedNodeData.body = bodyText;
+                }
+            }
+            
+            updatedNodeData.timeout = parseFloat(timeout) || 30;
+        }
+        
+        // 타입별 추가 데이터 (레거시)
         if (newType === NODE_TYPES.IMAGE_TOUCH) {
             const folderPath = document.getElementById('edit-node-folder-path')?.value || '';
             if (folderPath) {

@@ -9,7 +9,7 @@ from log import log_manager
 logger = log_manager.logger
 
 class InputHandler:
-    """게임 입력 처리 클래스"""
+    """입력 처리 클래스"""
     
     def __init__(self):
         # PyAutoGUI 설정
@@ -208,3 +208,4 @@ class InputHandler:
             # 여기에 클릭 감지 로직 구현
             time.sleep(0.1)
         return None
+

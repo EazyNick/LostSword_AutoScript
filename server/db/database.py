@@ -111,10 +111,18 @@ class DatabaseManager:
         """스크립트 삭제"""
         return self.scripts.delete_script(script_id)
     
-    def seed_example_data(self):
-        """예시 데이터 생성"""
+    def seed_example_data(self, logger=None):
+        """
+        예시 데이터 생성
+        
+        Args:
+            logger: 로거 객체 (선택사항). None이면 print 사용
+        """
         conn = self.connection.get_connection()
         cursor = self.connection.get_cursor(conn)
+        
+        # 로거가 없으면 print 사용
+        log_func = logger.info if logger else print
         
         try:
             # 기존 데이터 확인
@@ -122,15 +130,19 @@ class DatabaseManager:
             existing_count = cursor.fetchone()[0]
             
             if existing_count > 0:
-                print(f"이미 {existing_count}개의 스크립트가 존재합니다. 예시 데이터 생성을 건너뜁니다.")
+                msg = f"이미 {existing_count}개의 스크립트가 존재합니다. 예시 데이터 생성을 건너뜁니다."
+                if logger:
+                    logger.info(msg)
+                else:
+                    print(msg)
                 conn.close()
                 return
             
-            print("예시 데이터 생성 시작...")
+            log_func("예시 데이터 생성 시작...")
             
             # 스크립트 1: 로그인 테스트
             script1_id = self.scripts.create_script("로그인 테스트", "사용자 로그인 프로세스 검증")
-            print(f"스크립트 1 생성: ID={script1_id}")
+            log_func(f"스크립트 1 생성: ID={script1_id}")
             
             script1_nodes = [
                 {
@@ -202,11 +214,11 @@ class DatabaseManager:
             
             self.nodes.save_nodes(script1_id, script1_nodes, script1_connections)
             self.scripts.update_script_timestamp(script1_id)
-            print(f"스크립트 1에 {len(script1_nodes)}개의 노드 추가 완료")
+            log_func(f"스크립트 1에 {len(script1_nodes)}개의 노드 추가 완료")
             
             # 스크립트 2: 결제 프로세스 테스트
             script2_id = self.scripts.create_script("결제 프로세스 테스트", "온라인 결제 과정 검증")
-            print(f"스크립트 2 생성: ID={script2_id}")
+            log_func(f"스크립트 2 생성: ID={script2_id}")
             
             script2_nodes = [
                 {
@@ -266,11 +278,11 @@ class DatabaseManager:
             
             self.nodes.save_nodes(script2_id, script2_nodes, script2_connections)
             self.scripts.update_script_timestamp(script2_id)
-            print(f"스크립트 2에 {len(script2_nodes)}개의 노드 추가 완료")
+            log_func(f"스크립트 2에 {len(script2_nodes)}개의 노드 추가 완료")
             
             # 스크립트 3: 이미지 터치 테스트
             script3_id = self.scripts.create_script("이미지 터치 테스트", "이미지 터치 노드를 사용한 자동화 테스트")
-            print(f"스크립트 3 생성: ID={script3_id}")
+            log_func(f"스크립트 3 생성: ID={script3_id}")
             
             script3_nodes = [
                 {
@@ -314,23 +326,34 @@ class DatabaseManager:
             
             self.nodes.save_nodes(script3_id, script3_nodes, script3_connections)
             self.scripts.update_script_timestamp(script3_id)
-            print(f"스크립트 3에 {len(script3_nodes)}개의 노드 추가 완료")
+            log_func(f"스크립트 3에 {len(script3_nodes)}개의 노드 추가 완료")
             
             # 사용자 설정 예시 데이터 추가
             self.user_settings.save_setting("theme", "dark")
             self.user_settings.save_setting("language", "ko")
             self.user_settings.save_setting("auto_save", "true")
-            print("사용자 설정 예시 데이터 추가 완료")
+            
+            # 기본 UI 설정값 추가
+            import json
+            self.user_settings.save_setting("sidebar-width", "300")  # 기본 사이드바 너비
+            script_order = json.dumps([script1_id, script2_id, script3_id], ensure_ascii=False)
+            self.user_settings.save_setting("script-order", script_order)  # 스크립트 순서
+            
+            log_func("사용자 설정 예시 데이터 추가 완료")
             
             total_nodes = len(script1_nodes) + len(script2_nodes) + len(script3_nodes)
-            print("✅ 예시 데이터 생성 완료!")
-            print(f"   - 스크립트: 3개")
-            print(f"   - 노드: {total_nodes}개")
-            print(f"   - 사용자 설정: 3개")
-            print(f"   - 데이터베이스 경로: {self.connection.db_path}")
+            log_func("✅ 예시 데이터 생성 완료!")
+            log_func(f"   - 스크립트: 3개")
+            log_func(f"   - 노드: {total_nodes}개")
+            log_func(f"   - 사용자 설정: 3개")
+            log_func(f"   - 데이터베이스 경로: {self.connection.db_path}")
             
         except Exception as e:
-            print(f"❌ 예시 데이터 생성 실패: {e}")
+            error_msg = f"❌ 예시 데이터 생성 실패: {e}"
+            if logger:
+                logger.error(error_msg)
+            else:
+                print(error_msg)
             raise e
         finally:
             conn.close()

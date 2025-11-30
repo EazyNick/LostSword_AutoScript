@@ -8,7 +8,7 @@ from log import log_manager
 logger = log_manager.logger
 
 class ScreenCapture:
-    """게임 화면 캡처 및 이미지 처리 클래스"""
+    """화면 캡처 및 이미지 처리 클래스"""
     
     def __init__(self):
         self.screen_width = pyautogui.size().width
@@ -162,3 +162,4 @@ class ScreenCapture:
         except Exception as e:
             logger.error(f"스크린샷 저장 실패: {e}")
             return False
+

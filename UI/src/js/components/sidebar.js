@@ -122,6 +122,12 @@ export class SidebarManager {
                 const savedOrder = await this.loadScriptOrder();
                 if (savedOrder) {
                     this.applyScriptOrder(savedOrder);
+                } else {
+                    // 최초 실행 시 저장된 순서가 없으면 현재 스크립트 순서를 DB에 저장
+                    if (this.scripts.length > 0) {
+                        log('[Sidebar] 최초 실행: 현재 스크립트 순서를 DB에 저장');
+                        await this.saveScriptOrder();
+                    }
                 }
                 
                 // 첫 번째 스크립트가 있으면 활성화

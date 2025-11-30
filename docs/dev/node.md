@@ -150,7 +150,24 @@ export const NODES_CONFIG = {
 
 ### 노드 실행 로직
 
-노드의 실행 로직은 서버 측(`server/game_automation/workflow_engine.py`)에서 구현해야 합니다.
+**중요**: 노드의 실행 로직은 **FastAPI API에 구현**해야 합니다.
+
+1. **API 엔드포인트 추가**: `server/api/` 디렉토리에 새로운 라우터를 추가하거나 기존 라우터에 엔드포인트를 추가합니다.
+   - 예: `server/api/action_router.py`에 새로운 액션 타입 처리 로직 추가
+   
+2. **서비스 로직 구현**: `server/services/action_service.py`에 노드 실행 로직을 구현합니다.
+   - `process_node()` 또는 `process_game_action()` 메서드에 새로운 노드 타입 처리 추가
+   
+3. **워크플로우 엔진 연동**: `server/automation/workflow_engine.py`에서 노드 실행 시 해당 API를 호출하도록 설정합니다.
+
+**예시 구조:**
+```
+새 노드 타입 추가 시:
+1. UI: node-{이름}.js (노드 렌더링)
+2. API: server/api/{router}.py (FastAPI 엔드포인트)
+3. Service: server/services/{service}.py (비즈니스 로직)
+4. Engine: server/automation/workflow_engine.py (실행 엔진)
+```
 
 ## 문제 해결
 
