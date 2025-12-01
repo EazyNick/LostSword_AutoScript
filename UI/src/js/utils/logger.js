@@ -18,8 +18,14 @@ async function loadDevMode() {
         const response = await fetch('/api/config');
         if (response.ok) {
             const config = await response.json();
-            DEV_MODE = config.dev_mode === true || config.dev_mode === 'true';
-            console.log('[Logger] 서버에서 DEV_MODE 받아옴:', config.dev_mode, '→', DEV_MODE);
+            // ENVIRONMENT 값이 있으면 그것을 우선 사용, 없으면 dev_mode 사용
+            if (config.environment !== undefined) {
+                DEV_MODE = config.environment === 'dev';
+                console.log('[Logger] 서버에서 ENVIRONMENT 받아옴:', config.environment, '→ DEV_MODE:', DEV_MODE);
+            } else {
+                DEV_MODE = config.dev_mode === true || config.dev_mode === 'true';
+                console.log('[Logger] 서버에서 DEV_MODE 받아옴:', config.dev_mode, '→', DEV_MODE);
+            }
             DEV_MODE_LOADED = true;
             return DEV_MODE;
         } else {
@@ -29,14 +35,24 @@ async function loadDevMode() {
         console.warn('[Logger] 서버 설정 조회 중 에러:', error);
     }
     
-    // 폴백: window.DEV_MODE (HTML 주입) 또는 localStorage, URL 파라미터
-    if (window.DEV_MODE !== undefined) {
+    // 폴백: window.ENVIRONMENT 또는 window.DEV_MODE (HTML 주입) 또는 localStorage, URL 파라미터
+    if (window.ENVIRONMENT !== undefined) {
+        DEV_MODE = window.ENVIRONMENT === 'dev';
+        console.log('[Logger] window.ENVIRONMENT에서 읽음:', window.ENVIRONMENT, '→ DEV_MODE:', DEV_MODE);
+    } else if (window.DEV_MODE !== undefined) {
         DEV_MODE = window.DEV_MODE === true || window.DEV_MODE === 'true';
         console.log('[Logger] window.DEV_MODE에서 읽음:', window.DEV_MODE, '→', DEV_MODE);
     } else {
-        DEV_MODE = localStorage.getItem('DEV_MODE') === 'true' || 
-                new URLSearchParams(window.location.search).get('dev') === 'true';
-        console.log('[Logger] 폴백 사용:', DEV_MODE);
+        // localStorage나 URL 파라미터 확인
+        const envFromStorage = localStorage.getItem('ENVIRONMENT');
+        if (envFromStorage) {
+            DEV_MODE = envFromStorage === 'dev';
+            console.log('[Logger] localStorage에서 ENVIRONMENT 읽음:', envFromStorage, '→ DEV_MODE:', DEV_MODE);
+        } else {
+            DEV_MODE = localStorage.getItem('DEV_MODE') === 'true' || 
+                    new URLSearchParams(window.location.search).get('dev') === 'true';
+            console.log('[Logger] 폴백 사용:', DEV_MODE);
+        }
     }
     
     DEV_MODE_LOADED = true;

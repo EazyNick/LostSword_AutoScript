@@ -35,7 +35,7 @@ logger = log_manager.logger
 
 
 class ActionService:
-    """게임 액션을 처리하는 서비스 클래스"""
+    """액션을 처리하는 서비스 클래스"""
     
     def __init__(self):
         # 노드 타입별 핸들러 매핑
@@ -65,7 +65,7 @@ class ActionService:
     
     async def process_game_action(self, action_type: str, parameters: dict, action_node_type: Optional[str] = None):
         """
-        게임 액션을 처리하는 함수
+        액션을 처리하는 함수
         
         Args:
             action_type: 액션 타입 (노드 타입, 예: "action")

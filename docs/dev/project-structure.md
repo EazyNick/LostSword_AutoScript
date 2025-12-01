@@ -1,20 +1,20 @@
 # 프로젝트 구조
 
-이 문서는 LostSword_AutoScript 프로젝트의 폴더 구조와 각 디렉토리의 역할을 설명합니다.
+이 문서는 자동화 도구 프로젝트의 폴더 구조와 각 디렉토리의 역할을 설명합니다.
 
 ## 전체 구조
 
 ```
-LostSword_AutoScript/
+자동화도구/
 ├── server/                 # FastAPI 서버
 │   ├── main.py             # 메인 서버 파일
 │   ├── config.py           # 설정 관리
 │   ├── requirements.txt    # Python 의존성
 │   ├── env.example        # 환경 변수 예제
 │   ├── api/               # API 라우터들
-│   │   ├── action_router.py      # 게임 액션 API
+│   │   ├── action_router.py      # 액션 API
 │   │   ├── config_router.py      # 설정 API
-│   │   ├── game_router.py        # 게임 상태 API
+│   │   ├── state_router.py        # 애플리케이션 상태 API
 │   │   ├── node_router.py        # 노드 관리 API
 │   │   └── script_router.py      # 스크립트 관리 API
 │   ├── db/                # 데이터베이스 관련
@@ -110,7 +110,7 @@ LostSword_AutoScript/
 ## 주요 디렉토리 설명
 
 ### `server/`
-FastAPI 기반 백엔드 서버입니다. 게임 자동화 로직과 API 엔드포인트를 제공합니다.
+FastAPI 기반 백엔드 서버입니다. 자동화 로직과 API 엔드포인트를 제공합니다.
 
 - **`api/`**: RESTful API 라우터들을 정의합니다.
 - **`automation/`**: 자동화 핵심 로직 (화면 캡처, 입력 처리, 워크플로우 실행 등)

@@ -1,4 +1,4 @@
-# LostSword_AutoScript
+# AutoScript
 
 자동화를 위한 FastAPI 서버와 웹 기반 UI 도구입니다.
 
@@ -17,7 +17,7 @@
 ### 1. 저장소 클론
 ```bash
 git clone <repository-url>
-cd LostSword_AutoScript
+cd AutoScript
 ```
 
 ### 2. 가상환경 생성 및 활성화

@@ -1,6 +1,6 @@
 # API 참조 문서
 
-이 문서는 LostSword_AutoScript의 RESTful API 엔드포인트를 설명합니다.
+이 문서는 자동화 도구의 RESTful API 엔드포인트를 설명합니다.
 
 ## 기본 정보
 
@@ -19,7 +19,7 @@ GET /
 **응답**:
 ```json
 {
-  "message": "LostSword AutoScript API",
+  "message": "자동화 도구 API",
   "version": "1.0.0"
 }
 ```
@@ -37,7 +37,7 @@ GET /health
 }
 ```
 
-## 게임 액션 API
+## 액션 API
 
 ### 단일 액션 실행
 ```http
@@ -128,8 +128,8 @@ POST /api/action/execute
   "action_type": "process_focus",
   "parameters": {
     "hwnd": 123456,
-    "process_name": "game.exe",
-    "window_title": "Game Window"
+    "process_name": "application.exe",
+    "window_title": "Application Window"
   }
 }
 ```
@@ -153,9 +153,9 @@ GET /api/processes/list
   "processes": [
     {
       "pid": 1234,
-      "name": "game.exe",
+      "name": "application.exe",
       "hwnd": 123456,
-      "window_title": "Game Window",
+      "window_title": "Application Window",
       "is_visible": true
     }
   ]
@@ -171,8 +171,8 @@ POST /api/processes/focus
 ```json
 {
   "hwnd": 123456,
-  "process_name": "game.exe",
-  "window_title": "Game Window"
+  "process_name": "application.exe",
+  "window_title": "Application Window"
 }
 ```
 
@@ -207,11 +207,11 @@ GET /api/images/list?folder_path={경로}
 }
 ```
 
-## 게임 상태 API
+## 애플리케이션 상태 API
 
-### 게임 상태 조회
+### 애플리케이션 상태 조회
 ```http
-GET /api/game-state
+GET /api/state
 ```
 
 **응답**:
@@ -219,18 +219,9 @@ GET /api/game-state
 {
   "success": true,
   "state": {
-    "player": {
-      "level": 50,
-      "hp": 1000,
-      "mp": 500
-    },
-    "inventory": {
-      "items": []
-    },
-    "position": {
-      "x": 100,
-      "y": 200
-    }
+    "application_running": true,
+    "current_scene": "main_menu",
+    "status": "active"
   }
 }
 ```

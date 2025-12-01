@@ -3,9 +3,10 @@
 워크플로우의 종료점을 나타내는 노드입니다.
 """
 
-import time
+from datetime import datetime
 from typing import Dict, Any
 from log import log_manager
+import pytz
 
 logger = log_manager.logger
 
@@ -30,13 +31,16 @@ class EndNode:
         if parameters is None:
             parameters = {}
         
+        # 대한민국 시간대 (UTC+9)
+        korea_tz = pytz.timezone('Asia/Seoul')
+        korea_time = datetime.now(korea_tz)
+        time_str = korea_time.strftime('%Y-%m-%d %H:%M:%S')
+        
         return {
             "action": "end",
             "status": "completed",
             "output": {
-                "node_type": "end",
-                "workflow_completed": True,
-                "completed_at": time.time(),
+                "time": time_str,
                 "message": "워크플로우가 종료되었습니다."
             }
         }
