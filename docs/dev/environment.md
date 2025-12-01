@@ -2,7 +2,7 @@
 
 ## 기본 동작
 
-**`.env` 파일이 없거나 `DEV` 변수가 없는 경우, 자동으로 프로덕션 모드(`DEV=false`)가 적용됩니다.**
+**`.env` 파일이 없거나 `ENVIRONMENT` 변수가 없는 경우, 자동으로 프로덕션 모드(`ENVIRONMENT=prd`)가 적용됩니다.**
 
 즉, `.env` 파일을 생성하지 않아도 서버는 정상적으로 실행되며, 프로덕션 모드로 동작합니다.
 
@@ -23,21 +23,21 @@
 
 #### 개발 모드 (모든 로그 출력)
 ```env
-DEV=true
+ENVIRONMENT=dev
 ```
 
 #### 프로덕션 모드 (로그 비활성화, 에러만 출력)
 ```env
-DEV=false
+ENVIRONMENT=prd
 ```
 
 ## 설정 값 설명
 
-- `DEV=true`: 개발 모드
+- `ENVIRONMENT=dev`: 개발 모드
   - 모든 `console.log`, `console.warn`, `console.info`, `console.debug` 출력
   - 디버깅에 유용한 상세 로그 표시
   
-- `DEV=false`: 프로덕션 모드
+- `ENVIRONMENT=prd`: 프로덕션 모드
   - 일반 로그 비활성화
   - `console.error`만 출력 (에러는 항상 표시)
 
@@ -45,7 +45,7 @@ DEV=false
 
 ### 프로덕션 모드 (기본값)
 
-`.env` 파일이 없거나 `DEV` 변수가 없는 경우, 자동으로 프로덕션 모드로 동작합니다.
+`.env` 파일이 없거나 `ENVIRONMENT` 변수가 없는 경우, 자동으로 프로덕션 모드로 동작합니다.
 - 별도 설정 불필요
 - 로그 최소화 (에러만 출력)
 
@@ -63,7 +63,7 @@ DEV=false
 
 2. **`.env` 파일에 설정 추가**
    ```
-   DEV=true
+   ENVIRONMENT=dev
    ```
 
 3. **서버 재시작**
@@ -72,15 +72,16 @@ DEV=false
 4. **브라우저에서 확인**
    - 페이지를 새로고침 (Ctrl+Shift+R)
    - 개발자 도구 콘솔(F12)에서 확인:
-     - `DEV=true` → `[Logger] 개발 모드 활성화됨`
-     - `DEV=false` 또는 `.env` 없음 → `[Logger] 프로덕션 모드 (로그 비활성화)`
+     - `ENVIRONMENT=dev` → `[Logger] 개발 모드 활성화됨`
+     - `ENVIRONMENT=prd` 또는 `.env` 없음 → `[Logger] 프로덕션 모드 (로그 비활성화)`
 
 ## 동작 원리
 
 1. 서버(`server/main.py`)가 `.env` 파일을 읽습니다.
-   - `.env` 파일이 없거나 `DEV` 변수가 없으면 기본값 `'false'` 사용
-   - `DEV_MODE = env_vars.get('DEV', 'false').lower() == 'true'`
-2. `DEV` 값을 `window.DEV_MODE`로 HTML에 주입합니다.
+   - `.env` 파일이 없거나 `ENVIRONMENT` 변수가 없으면 기본값 `'prd'` 사용
+   - `ENVIRONMENT = env_vars.get('ENVIRONMENT', 'prd').lower()`
+   - `DEV_MODE = ENVIRONMENT == 'dev'`
+2. `ENVIRONMENT` 값을 기반으로 `window.DEV_MODE`를 HTML에 주입합니다.
 3. `logger.js`가 `window.DEV_MODE` 값을 확인합니다.
 4. 개발 모드일 때만 로그를 출력합니다.
 
@@ -95,13 +96,13 @@ DEV=false
 ### 개발 중 (.env)
 ```env
 # 개발 모드 - 모든 로그 출력
-DEV=true
+ENVIRONMENT=dev
 ```
 
 ### 프로덕션 배포 (.env)
 ```env
 # 프로덕션 모드 - 로그 최소화
-DEV=false
+ENVIRONMENT=prd
 ```
 
 ### 로그 확인

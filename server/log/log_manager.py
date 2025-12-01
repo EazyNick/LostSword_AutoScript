@@ -36,7 +36,7 @@ class LogManager:
 
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
-            cls._instance = super(LogManager, cls).__new__(cls, *args, **kwargs)
+            cls._instance = super(LogManager, cls).__new__(cls)
         return cls._instance
 
     def __init__(self, directory=None, max_files=10):
@@ -61,6 +61,11 @@ class LogManager:
             log_path = Path(self.directory)
             if not log_path.exists():
                 os.makedirs(log_path)
+            
+            # server_config에서 로그 레벨 읽기
+            from server_config import settings
+            log_level_str = settings.LOG_LEVEL
+            self.log_level = getattr(logging, log_level_str.upper(), logging.INFO)
             
             self.max_files = max_files
             self._timestamp = self._init_timestamp()
@@ -113,7 +118,9 @@ class LogManager:
         logger.addHandler(file_handler)
 
         logger.propagate = False
-        logger.setLevel(logging.DEBUG)
+        # 설정된 로그 레벨 적용
+        logger.setLevel(self.log_level)
+        stream_handler.setLevel(self.log_level)
         logger.debug('Logger initialized')
         
         return logger

@@ -12,52 +12,20 @@ from log import log_manager
 router = APIRouter(prefix="/api/config", tags=["config"])
 logger = log_manager.logger
 
-# main.py에서 DEV_MODE를 가져오기 위해 import
-import os
-import sys
-
-# 프로젝트 루트 경로 추가
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-
-def load_env():
-    """프로젝트 루트의 .env 파일에서 환경 변수 로드"""
-    env_path = os.path.join(os.path.dirname(__file__), "..", "..", ".env")
-    env_vars = {}
-    
-    if os.path.exists(env_path):
-        with open(env_path, 'r', encoding='utf-8') as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith('#') and '=' in line:
-                    key, value = line.split('=', 1)
-                    env_vars[key.strip()] = value.strip()
-    
-    return env_vars
+from server_config import settings
 
 @router.get("/")
 async def get_config():
-    """서버 설정 정보 조회 (.env 파일 기반)"""
-    try:
-        env_vars = load_env()
-        dev_mode = env_vars.get('DEV', 'false').lower() == 'true'
-        
-        logger.info(f"[API] 설정 조회 요청 - DEV_MODE: {dev_mode}")
-        
-        return {
-            "dev_mode": dev_mode,
-            "env": {
-                "DEV": env_vars.get('DEV', 'false')
-            }
+    """서버 설정 정보 조회 (server_config 기반)"""
+    logger.info(f"[API] 설정 조회 요청 - ENVIRONMENT: {settings.ENVIRONMENT}, DEV_MODE: {settings.DEV_MODE}")
+    
+    return {
+        "dev_mode": settings.DEV_MODE,
+        "environment": settings.ENVIRONMENT,
+        "env": {
+            "ENVIRONMENT": settings.ENVIRONMENT
         }
-    except Exception as e:
-        logger.error(f"[API] 설정 조회 실패: {str(e)}")
-        # 에러 발생 시 기본값 반환
-        return {
-            "dev_mode": False,
-            "env": {
-                "DEV": "false"
-            }
-        }
+    }
 
 @router.get("/user-settings")
 async def get_user_settings(request: Request):
@@ -66,9 +34,9 @@ async def get_user_settings(request: Request):
     logger.info(f"[API] 사용자 설정 조회 요청 - 클라이언트 IP: {client_ip}")
     
     try:
-        settings = db_manager.get_all_user_settings()
-        logger.info(f"[API] 사용자 설정 조회 성공 - 설정 개수: {len(settings)}개")
-        return settings
+        user_settings = db_manager.get_all_user_settings()
+        logger.info(f"[API] 사용자 설정 조회 성공 - 설정 개수: {len(user_settings)}개")
+        return user_settings
     except Exception as e:
         logger.error(f"[API] 사용자 설정 조회 실패: {str(e)}")
         raise HTTPException(status_code=500, detail=f"사용자 설정 조회 실패: {str(e)}")

@@ -8,40 +8,21 @@ import re
 from api import action_router, script_router, state_router, node_router, config_router, action_node_router
 from log import log_manager
 from db.database import db_manager 
+from server_config import settings
 
 # cd server
 # python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
 
-# .env 파일 읽기
-def load_env():
-    """프로젝트 루트의 .env 파일에서 환경 변수 로드"""
-    env_path = os.path.join(os.path.dirname(__file__), "..", ".env")
-    env_vars = {}
-    
-    if os.path.exists(env_path):
-        with open(env_path, 'r', encoding='utf-8') as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith('#') and '=' in line:
-                    key, value = line.split('=', 1)
-                    env_vars[key.strip()] = value.strip()
-    
-    return env_vars
-
-# 환경 변수 로드
-env_vars = load_env()
-DEV_MODE = env_vars.get('DEV', 'false').lower() == 'true'
+# 환경 변수는 config.py에서 관리
+ENVIRONMENT = settings.ENVIRONMENT
+DEV_MODE = settings.DEV_MODE
 
 # 로거 초기화 (싱글톤 패턴)
 logger = log_manager.logger
 logger.info("=" * 60)
 logger.info("서버 시작")
+logger.info(f"환경: {ENVIRONMENT}")
 logger.info(f"개발 모드: {DEV_MODE}")
-logger.info(f"환경 변수: {env_vars}")
-if 'DEV' in env_vars:
-    logger.info(f"DEV 환경 변수 값: '{env_vars['DEV']}' (타입: {type(env_vars['DEV'])})")
-else:
-    logger.warning("⚠️ .env 파일에 DEV 변수가 없습니다. 기본값 'false' 사용")
 
 # 데이터베이스 초기화 및 기본 데이터 생성
 def initialize_database():
@@ -144,13 +125,15 @@ else:
 def inject_env_to_html(html_content: str) -> str:
     """HTML 내용에 환경 변수를 주입"""
     # <head> 태그 안에 스크립트 추가
-    # DEV_MODE를 boolean으로 주입 (true/false)
+    # DEV_MODE를 boolean으로 주입 (ENVIRONMENT 기반)
     dev_mode_value = 'true' if DEV_MODE else 'false'
+    environment_value = ENVIRONMENT
     script_tag = f'''
     <script>
         // 환경 변수 주입 (.env 파일에서 읽은 값)
         window.DEV_MODE = {dev_mode_value};
-        console.log('[Server] DEV_MODE 주입됨:', window.DEV_MODE, '(타입:', typeof window.DEV_MODE, ')');
+        window.ENVIRONMENT = '{environment_value}';
+        console.log('[Server] ENVIRONMENT 주입됨:', window.ENVIRONMENT, '→ DEV_MODE:', window.DEV_MODE);
     </script>
     '''
     
@@ -163,7 +146,7 @@ def inject_env_to_html(html_content: str) -> str:
         # head 태그가 없으면 body 앞에 추가
         html_content = html_content.replace('<body>', script_tag + '<body>')
     
-    logger.debug(f"HTML에 DEV_MODE 주입 완료: {dev_mode_value}")
+    logger.debug(f"HTML에 ENVIRONMENT 주입 완료: {environment_value} (DEV_MODE: {dev_mode_value})")
     return html_content
 
 # 기본 라우트 - 웹 UI 제공 (환경 변수 주입)
