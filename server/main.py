@@ -5,7 +5,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 import uvicorn
 import os
 import re
-from api import action_router, script_router, game_router, node_router, config_router, action_node_router
+from api import action_router, script_router, state_router, node_router, config_router, action_node_router
 from log import log_manager
 from db.database import db_manager 
 
@@ -127,7 +127,7 @@ app.add_middleware(
 # API 라우터 등록
 app.include_router(action_router)
 app.include_router(script_router)
-app.include_router(game_router)
+app.include_router(state_router)
 app.include_router(node_router)
 app.include_router(config_router)
 app.include_router(action_node_router)
@@ -175,11 +175,11 @@ async def root():
             html_content = f.read()
         html_content = inject_env_to_html(html_content)
         return HTMLResponse(content=html_content)
-    return {"message": "로스트소드 자동화 API 서버가 실행 중입니다."}
+    return {"message": "자동화 API 서버가 실행 중입니다."}
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "service": "lostsword-automation"}
+    return {"status": "healthy", "service": "automation"}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -1,5 +1,5 @@
 """
-게임 액션 관련 API 라우터
+액션 관련 API 라우터
 """
 
 from fastapi import APIRouter, HTTPException
@@ -18,7 +18,7 @@ logger = log_manager.logger
 @router.post("/action", response_model=ActionResponse)
 async def execute_action(request: ActionRequest):
     """
-    단일 게임 액션을 실행합니다.
+    단일 액션을 실행합니다.
     """
     try:
         result = await action_service.process_game_action(request.action_type, request.parameters)

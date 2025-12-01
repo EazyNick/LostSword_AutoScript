@@ -12,7 +12,7 @@
 
 ### 파일 위치
 ```
-LostSword_AutoScript/
+자동화도구/
 ├── .env          ← 여기에 생성
 ├── server/
 ├── UI/

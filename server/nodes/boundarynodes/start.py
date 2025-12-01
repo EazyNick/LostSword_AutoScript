@@ -3,9 +3,10 @@
 워크플로우의 시작점을 나타내는 노드입니다.
 """
 
-import time
+from datetime import datetime
 from typing import Dict, Any
 from log import log_manager
+import pytz
 
 logger = log_manager.logger
 
@@ -30,9 +31,17 @@ class StartNode:
         if parameters is None:
             parameters = {}
         
+        # 대한민국 시간대 (UTC+9)
+        korea_tz = pytz.timezone('Asia/Seoul')
+        korea_time = datetime.now(korea_tz)
+        time_str = korea_time.strftime('%Y-%m-%d %H:%M:%S')
+        
         return {
             "action": "start",
             "status": "completed",
-            "output": "워크플로우가 시작되었습니다."
+            "output": {
+                "time": time_str,
+                "message": "워크플로우가 시작되었습니다."
+            }
         }
 

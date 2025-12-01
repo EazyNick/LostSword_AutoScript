@@ -253,7 +253,7 @@ async def execute_script(script_id: int, request: NodeExecutionRequest):
         results = []
         for node in request.nodes:
             try:
-                # 실제 노드 실행 로직 (여기에 게임 액션 처리 추가)
+                # 실제 노드 실행 로직
                 result = await action_service.process_game_action(node.get("type", "unknown"), node.get("data", {}))
                 results.append(result)
                 

@@ -9,8 +9,8 @@ class Settings:
     API_PORT: int = int(os.getenv("API_PORT", "8000"))
     DEBUG: bool = os.getenv("DEBUG", "False").lower() == "true"
     
-    # 게임 설정
-    GAME_WINDOW_TITLE: str = os.getenv("GAME_WINDOW_TITLE", "로스트소드")
+    # 애플리케이션 설정
+    GAME_WINDOW_TITLE: str = os.getenv("GAME_WINDOW_TITLE", "")
     GAME_SCREEN_WIDTH: int = int(os.getenv("GAME_SCREEN_WIDTH", "1920"))
     GAME_SCREEN_HEIGHT: int = int(os.getenv("GAME_SCREEN_HEIGHT", "1080"))
     
