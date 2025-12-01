@@ -12,7 +12,7 @@ from log import log_manager
 router = APIRouter(prefix="/api/config", tags=["config"])
 logger = log_manager.logger
 
-from server_config import settings
+from config.server_config import settings
 
 @router.get("/")
 async def get_config():
