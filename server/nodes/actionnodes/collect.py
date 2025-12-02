@@ -4,15 +4,16 @@
 """
 
 from typing import Dict, Any
-from log import log_manager
+from nodes.base_node import BaseNode
+from nodes.node_executor_wrapper import node_executor
+from utils import get_parameter
 
-logger = log_manager.logger
 
-
-class CollectNode:
+class CollectNode(BaseNode):
     """수집 노드 클래스"""
     
     @staticmethod
+    @node_executor("collect")
     async def execute(parameters: Dict[str, Any]) -> Dict[str, Any]:
         """
         아이템을 수집합니다.
@@ -24,10 +25,7 @@ class CollectNode:
         Returns:
             실행 결과 딕셔너리
         """
-        if parameters is None:
-            parameters = {}
-        
-        item_type = parameters.get("item_type")
+        item_type = get_parameter(parameters, "item_type")
         
         return {
             "action": "collect",

@@ -4,15 +4,16 @@
 """
 
 from typing import Dict, Any
-from log import log_manager
+from nodes.base_node import BaseNode
+from nodes.node_executor_wrapper import node_executor
+from utils import get_parameter
 
-logger = log_manager.logger
 
-
-class MoveNode:
+class MoveNode(BaseNode):
     """이동 노드 클래스"""
     
     @staticmethod
+    @node_executor("move")
     async def execute(parameters: Dict[str, Any]) -> Dict[str, Any]:
         """
         캐릭터를 이동시킵니다.
@@ -25,11 +26,8 @@ class MoveNode:
         Returns:
             실행 결과 딕셔너리
         """
-        if parameters is None:
-            parameters = {}
-        
-        direction = parameters.get("direction", "forward")
-        distance = parameters.get("distance", 1)
+        direction = get_parameter(parameters, "direction", default="forward")
+        distance = get_parameter(parameters, "distance", default=1)
         
         return {
             "action": "move",

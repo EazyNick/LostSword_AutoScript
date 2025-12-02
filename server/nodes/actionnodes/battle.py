@@ -4,15 +4,16 @@
 """
 
 from typing import Dict, Any
-from log import log_manager
+from nodes.base_node import BaseNode
+from nodes.node_executor_wrapper import node_executor
+from utils import get_parameter
 
-logger = log_manager.logger
 
-
-class BattleNode:
+class BattleNode(BaseNode):
     """전투 노드 클래스"""
     
     @staticmethod
+    @node_executor("battle")
     async def execute(parameters: Dict[str, Any]) -> Dict[str, Any]:
         """
         전투를 수행합니다.
@@ -25,11 +26,8 @@ class BattleNode:
         Returns:
             실행 결과 딕셔너리
         """
-        if parameters is None:
-            parameters = {}
-        
-        enemy_type = parameters.get("enemy_type")
-        strategy = parameters.get("strategy")
+        enemy_type = get_parameter(parameters, "enemy_type")
+        strategy = get_parameter(parameters, "strategy")
         
         return {
             "action": "battle",

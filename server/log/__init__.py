@@ -1,7 +1,7 @@
 from .log_manager import LogManager
 from pathlib import Path
 import os
-from server_config import settings
+from config.server_config import settings
 
 # server_config에서 로그 디렉토리 설정 가져오기 (server 폴더 기준 상대 경로)
 log_dir = settings.LOG_DIR

@@ -7,15 +7,16 @@ import os
 from typing import Dict, Any
 from automation.screen_capture import ScreenCapture
 from automation.input_handler import InputHandler
-from log import log_manager
+from nodes.base_node import BaseNode
+from nodes.node_executor_wrapper import node_executor
+from utils import get_parameter, create_failed_result
 
-logger = log_manager.logger
 
-
-class ImageTouchNode:
+class ImageTouchNode(BaseNode):
     """이미지 터치 노드 클래스"""
     
     @staticmethod
+    @node_executor("image-touch")
     async def execute(parameters: Dict[str, Any]) -> Dict[str, Any]:
         """
         화면에서 이미지를 찾아 터치합니다.
@@ -27,21 +28,14 @@ class ImageTouchNode:
         Returns:
             실행 결과 딕셔너리
         """
-        if parameters is None:
-            parameters = {}
-        
-        folder_path = parameters.get("folder_path", "")
+        folder_path = get_parameter(parameters, "folder_path", default="")
         if not folder_path:
             # 폴더 경로가 없으면 실패로 반환
-            return {
-                "action": "image-touch",
-                "status": "failed",
-                "message": "폴더 경로가 제공되지 않았습니다.",
-                "output": {
-                    "success": False,
-                    "reason": "no_folder"
-                }
-            }
+            return create_failed_result(
+                action="image-touch",
+                reason="no_folder",
+                message="폴더 경로가 제공되지 않았습니다."
+            )
         
         if not os.path.exists(folder_path):
             raise ValueError(f"폴더를 찾을 수 없습니다: {folder_path}")
@@ -62,15 +56,11 @@ class ImageTouchNode:
         image_files.sort()
         
         if not image_files:
-            return {
-                "action": "image-touch",
-                "status": "failed",
-                "message": "이미지 파일이 없습니다.",
-                "output": {
-                    "success": False,
-                    "reason": "no_images"
-                }
-            }
+            return create_failed_result(
+                action="image-touch",
+                reason="no_images",
+                message="이미지 파일이 없습니다."
+            )
         
         # 화면 캡처 및 입력 핸들러 초기화
         screen_capture = ScreenCapture()

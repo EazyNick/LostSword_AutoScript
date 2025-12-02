@@ -7,15 +7,16 @@ import aiohttp
 import asyncio
 import json
 from typing import Dict, Any, Optional
-from log import log_manager
+from nodes.base_node import BaseNode
+from nodes.node_executor_wrapper import node_executor
+from utils import get_parameter, create_failed_result
 
-logger = log_manager.logger
 
-
-class HttpApiRequestNode:
+class HttpApiRequestNode(BaseNode):
     """HTTP API 요청 액션 노드 클래스"""
     
     @staticmethod
+    @node_executor("http-api-request")
     async def execute(parameters: Dict[str, Any]) -> Dict[str, Any]:
         """
         HTTP API 요청을 실행합니다.
@@ -31,25 +32,18 @@ class HttpApiRequestNode:
         Returns:
             실행 결과 딕셔너리
         """
-        if parameters is None:
-            parameters = {}
-        
-        url = parameters.get("url")
+        url = get_parameter(parameters, "url")
         if not url:
-            return {
-                "action": "http-api-request",
-                "status": "failed",
-                "message": "URL이 제공되지 않았습니다.",
-                "output": {
-                    "success": False,
-                    "reason": "no_url"
-                }
-            }
+            return create_failed_result(
+                action="http-api-request",
+                reason="no_url",
+                message="URL이 제공되지 않았습니다."
+            )
         
-        method = parameters.get("method", "GET").upper()
-        headers = parameters.get("headers", {})
-        body = parameters.get("body")
-        timeout = parameters.get("timeout", 30)
+        method = get_parameter(parameters, "method", default="GET").upper()
+        headers = get_parameter(parameters, "headers", default={})
+        body = get_parameter(parameters, "body")
+        timeout = get_parameter(parameters, "timeout", default=30)
         
         # headers가 문자열이면 JSON 파싱
         if isinstance(headers, str):
@@ -101,40 +95,27 @@ class HttpApiRequestNode:
                     }
         
         except aiohttp.ClientError as e:
-            logger.error(f"HTTP 요청 실패: {e}")
-            return {
-                "action": "http-api-request",
-                "status": "failed",
-                "message": f"HTTP 요청 실패: {str(e)}",
-                "output": {
-                    "success": False,
-                    "reason": "request_failed",
-                    "error": str(e)
-                }
-            }
+            return create_failed_result(
+                action="http-api-request",
+                reason="request_failed",
+                message=f"HTTP 요청 실패: {str(e)}",
+                output={"error": str(e)}
+            )
         except asyncio.TimeoutError:
-            logger.error(f"HTTP 요청 타임아웃: {url}")
-            return {
-                "action": "http-api-request",
-                "status": "failed",
-                "message": f"요청 시간 초과: {timeout}초",
-                "output": {
-                    "success": False,
-                    "reason": "timeout"
-                }
-            }
+            return create_failed_result(
+                action="http-api-request",
+                reason="timeout",
+                message=f"요청 시간 초과: {timeout}초"
+            )
         except Exception as e:
-            logger.error(f"HTTP 요청 중 예상치 못한 오류: {e}")
             import traceback
-            logger.error(f"스택 트레이스: {traceback.format_exc()}")
-            return {
-                "action": "http-api-request",
-                "status": "failed",
-                "message": f"예상치 못한 오류: {str(e)}",
-                "output": {
-                    "success": False,
-                    "reason": "unknown_error",
-                    "error": str(e)
-                }
-            }
+            from log import log_manager
+            log_manager.logger.error(f"HTTP 요청 중 예상치 못한 오류: {e}")
+            log_manager.logger.error(f"스택 트레이스: {traceback.format_exc()}")
+            return create_failed_result(
+                action="http-api-request",
+                reason="unknown_error",
+                message=f"예상치 못한 오류: {str(e)}",
+                output={"error": str(e)}
+            )
 

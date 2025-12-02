@@ -63,7 +63,7 @@ class LogManager:
                 os.makedirs(log_path)
             
             # server_config에서 로그 레벨 읽기
-            from server_config import settings
+            from config.server_config import settings
             log_level_str = settings.LOG_LEVEL
             self.log_level = getattr(logging, log_level_str.upper(), logging.INFO)
             

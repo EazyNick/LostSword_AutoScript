@@ -5,15 +5,16 @@
 
 import asyncio
 from typing import Dict, Any
-from log import log_manager
+from nodes.base_node import BaseNode
+from nodes.node_executor_wrapper import node_executor
+from utils import get_parameter
 
-logger = log_manager.logger
 
-
-class WaitNode:
+class WaitNode(BaseNode):
     """대기 노드 클래스"""
     
     @staticmethod
+    @node_executor("wait")
     async def execute(parameters: Dict[str, Any]) -> Dict[str, Any]:
         """
         지정된 시간만큼 대기합니다.
@@ -25,14 +26,10 @@ class WaitNode:
         Returns:
             실행 결과 딕셔너리
         """
-        if parameters is None:
-            parameters = {}
-        
-        wait_time = parameters.get("wait_time", 1)
-        
-        # wait_time이 숫자가 아니면 기본값 1초 사용
+        # wait_time 추출 및 검증
+        wait_time_raw = get_parameter(parameters, "wait_time", default=1)
         try:
-            wait_time = float(wait_time)
+            wait_time = float(wait_time_raw)
             if wait_time < 0:
                 wait_time = 0
         except (ValueError, TypeError):

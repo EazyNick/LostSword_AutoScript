@@ -3,8 +3,8 @@ from dotenv import load_dotenv
 from pathlib import Path
 
 # 프로젝트 루트 디렉토리의 .env 파일 경로 지정
-# server/server_config.py에서 루트 디렉토리로 이동 (상위 디렉토리)
-env_path = Path(__file__).resolve().parent.parent / ".env"
+# server/config/server_config.py에서 루트 디렉토리로 이동 (상위 디렉토리 2개)
+env_path = Path(__file__).resolve().parent.parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
 class Settings:
@@ -32,3 +32,4 @@ class Settings:
     LOG_DIR: str = os.getenv("LOG_DIR", "log/logs")
 
 settings = Settings()
+

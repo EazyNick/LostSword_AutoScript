@@ -8,7 +8,7 @@ import re
 from api import action_router, script_router, state_router, node_router, config_router, action_node_router
 from log import log_manager
 from db.database import db_manager 
-from server_config import settings
+from config.server_config import settings
 
 # cd server
 # python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000

@@ -4,15 +4,16 @@
 """
 
 from typing import Dict, Any
-from log import log_manager
+from nodes.base_node import BaseNode
+from nodes.node_executor_wrapper import node_executor
+from utils import get_parameter
 
-logger = log_manager.logger
 
-
-class ActionNode:
+class ActionNode(BaseNode):
     """기본 액션 노드 클래스"""
     
     @staticmethod
+    @node_executor("action")
     async def execute(parameters: Dict[str, Any]) -> Dict[str, Any]:
         """
         기본 액션을 수행합니다.
@@ -24,10 +25,7 @@ class ActionNode:
         Returns:
             실행 결과 딕셔너리
         """
-        if parameters is None:
-            parameters = {}
-        
-        action_name = parameters.get("action")
+        action_name = get_parameter(parameters, "action")
         
         return {
             "action": "action",
