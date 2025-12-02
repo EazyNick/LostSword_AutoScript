@@ -60,6 +60,13 @@ class TableManager:
             ''')
             
             # 사용자 설정 테이블 생성
+            # 사용자별 설정을 키-값 쌍으로 저장
+            # 주요 설정 키:
+            #   - focused-script-id: 마지막으로 포커스된 스크립트 ID
+            #   - script-order: 스크립트 목록 순서 (JSON 배열)
+            #   - sidebar-width: 사이드바 너비
+            #   - theme: 테마 설정 (dark/light)
+            #   - language: 언어 설정
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS user_settings (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,

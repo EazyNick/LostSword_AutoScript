@@ -130,16 +130,38 @@ export class SidebarManager {
                     }
                 }
                 
-                // 첫 번째 스크립트가 있으면 활성화
+                // 저장된 포커스된 스크립트 ID 복원
+                let focusedScriptIndex = 0; // 기본값: 첫 번째 스크립트
+                try {
+                    const focusedScriptId = await UserSettingsAPI.getSetting('focused-script-id');
+                    if (focusedScriptId) {
+                        const scriptId = parseInt(focusedScriptId, 10);
+                        const foundIndex = this.scripts.findIndex(script => script.id === scriptId);
+                        if (foundIndex !== -1) {
+                            focusedScriptIndex = foundIndex;
+                            log(`[Sidebar] 저장된 포커스된 스크립트 복원: ID=${scriptId}, Index=${foundIndex}`);
+                        } else {
+                            log(`[Sidebar] 저장된 포커스된 스크립트를 찾을 수 없음: ID=${scriptId}, 첫 번째 스크립트 선택`);
+                        }
+                    }
+                } catch (error) {
+                    log(`[Sidebar] 포커스된 스크립트 복원 실패 (첫 번째 스크립트 선택):`, error);
+                }
+                
+                // 포커스된 스크립트 활성화
                 if (this.scripts.length > 0) {
-                    this.currentScriptIndex = 0;
+                    this.currentScriptIndex = focusedScriptIndex;
+                    // 선택된 스크립트 활성화 (selectScript 호출하지 않고 직접 설정하여 중복 저장 방지)
+                    this.scripts.forEach((script, idx) => {
+                        script.active = (idx === focusedScriptIndex);
+                    });
                     this.updateHeader();
                 }
                 
                 // UI 업데이트
                 this.loadScripts();
                 
-                // 첫 번째 스크립트 선택 이벤트 발생
+                // 포커스된 스크립트 선택 이벤트 발생
                 if (this.scripts.length > 0) {
                     this.dispatchScriptChangeEvent();
                 }
@@ -739,7 +761,7 @@ export class SidebarManager {
         log('[Sidebar] 저장된 순서 적용 완료');
     }
     
-    selectScript(index) {
+    async selectScript(index) {
         // 이전 스크립트 정보 저장 (스크립트 변경 전에)
         const previousScript = this.getCurrentScript();
         this.previousScript = previousScript;
@@ -750,6 +772,20 @@ export class SidebarManager {
         // 선택된 스크립트 활성화
         this.scripts[index].active = true;
         this.currentScriptIndex = index;
+        
+        // 포커스된 스크립트 ID 저장 (비동기, 에러 무시)
+        const selectedScript = this.scripts[index];
+        if (selectedScript && selectedScript.id) {
+            try {
+                await UserSettingsAPI.saveSetting('focused-script-id', selectedScript.id.toString());
+                const logger = getLogger();
+                logger.log(`[Sidebar] 포커스된 스크립트 ID 저장됨: ${selectedScript.id}`);
+            } catch (error) {
+                // 에러는 무시 (설정 저장 실패해도 스크립트 선택은 계속 진행)
+                const logger = getLogger();
+                logger.log(`[Sidebar] 포커스된 스크립트 ID 저장 실패 (무시):`, error);
+            }
+        }
         
         // UI 업데이트
         this.loadScripts();
