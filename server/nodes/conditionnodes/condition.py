@@ -4,15 +4,16 @@
 """
 
 from typing import Dict, Any
-from log import log_manager
+from nodes.base_node import BaseNode
+from nodes.node_executor_wrapper import node_executor
+from utils import get_parameter
 
-logger = log_manager.logger
 
-
-class ConditionNode:
+class ConditionNode(BaseNode):
     """조건 노드 클래스"""
     
     @staticmethod
+    @node_executor("condition")
     async def execute(parameters: Dict[str, Any]) -> Dict[str, Any]:
         """
         조건을 확인합니다.
@@ -25,11 +26,8 @@ class ConditionNode:
         Returns:
             실행 결과 딕셔너리
         """
-        if parameters is None:
-            parameters = {}
-        
-        condition = parameters.get("condition")
-        result = parameters.get("result", True)
+        condition = get_parameter(parameters, "condition")
+        result = get_parameter(parameters, "result", default=True)
         
         return {
             "action": "condition",

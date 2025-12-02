@@ -10,12 +10,15 @@ import win32process
 import ctypes
 import time
 from typing import Dict, Any
+from nodes.base_node import BaseNode
+from nodes.node_executor_wrapper import node_executor
+from utils import get_parameter, create_failed_result
 from log import log_manager
 
 logger = log_manager.logger
 
 
-class ProcessFocusNode:
+class ProcessFocusNode(BaseNode):
     """프로세스 포커스 노드 클래스"""
     
     @staticmethod
@@ -82,6 +85,7 @@ class ProcessFocusNode:
             return False
     
     @staticmethod
+    @node_executor("process-focus")
     async def execute(parameters: Dict[str, Any]) -> Dict[str, Any]:
         """
         특정 프로세스/창에 포커스를 줍니다.
@@ -96,25 +100,18 @@ class ProcessFocusNode:
         Returns:
             실행 결과 딕셔너리
         """
-        if parameters is None:
-            parameters = {}
-        
-        process_id = parameters.get("process_id")
-        hwnd = parameters.get("hwnd")
-        window_title = parameters.get("window_title", "")
-        process_name = parameters.get("process_name", "")
+        process_id = get_parameter(parameters, "process_id")
+        hwnd = get_parameter(parameters, "hwnd")
+        window_title = get_parameter(parameters, "window_title", default="")
+        process_name = get_parameter(parameters, "process_name", default="")
         
         if not process_id and not hwnd:
             # process_id와 hwnd가 없으면 실패로 반환
-            return {
-                "action": "process-focus",
-                "status": "failed",
-                "message": "process_id 또는 hwnd가 제공되지 않았습니다.",
-                "output": {
-                    "success": False,
-                    "reason": "no_target"
-                }
-            }
+            return create_failed_result(
+                action="process-focus",
+                reason="no_target",
+                message="process_id 또는 hwnd가 제공되지 않았습니다."
+            )
         
         # pygetwindow를 사용하여 창 찾기 (가장 안정적인 방법)
         target_window = None
@@ -276,13 +273,9 @@ class ProcessFocusNode:
                 }
         
         # 창을 찾을 수 없는 경우
-        return {
-            "action": "process-focus",
-            "status": "failed",
-            "message": "창을 찾을 수 없습니다.",
-            "output": {
-                "success": False,
-                "reason": "window_not_found"
-            }
-        }
+        return create_failed_result(
+            action="process-focus",
+            reason="window_not_found",
+            message="창을 찾을 수 없습니다."
+        )
 

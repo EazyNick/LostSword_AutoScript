@@ -3,18 +3,17 @@
 워크플로우의 시작점을 나타내는 노드입니다.
 """
 
-from datetime import datetime
 from typing import Dict, Any
-from log import log_manager
-import pytz
+from nodes.base_node import BaseNode
+from nodes.node_executor_wrapper import node_executor
+from utils import get_korea_time_str
 
-logger = log_manager.logger
 
-
-class StartNode:
+class StartNode(BaseNode):
     """시작 노드 클래스"""
     
     @staticmethod
+    @node_executor("start")
     async def execute(parameters: Dict[str, Any]) -> Dict[str, Any]:
         """
         시작 노드를 실행합니다.
@@ -28,13 +27,7 @@ class StartNode:
         Returns:
             실행 결과 딕셔너리
         """
-        if parameters is None:
-            parameters = {}
-        
-        # 대한민국 시간대 (UTC+9)
-        korea_tz = pytz.timezone('Asia/Seoul')
-        korea_time = datetime.now(korea_tz)
-        time_str = korea_time.strftime('%Y-%m-%d %H:%M:%S')
+        time_str = get_korea_time_str()
         
         return {
             "action": "start",

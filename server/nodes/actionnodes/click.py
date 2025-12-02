@@ -4,15 +4,16 @@
 """
 
 from typing import Dict, Any
-from log import log_manager
+from nodes.base_node import BaseNode
+from nodes.node_executor_wrapper import node_executor
+from utils import get_parameter
 
-logger = log_manager.logger
 
-
-class ClickNode:
+class ClickNode(BaseNode):
     """클릭 노드 클래스"""
     
     @staticmethod
+    @node_executor("click")
     async def execute(parameters: Dict[str, Any]) -> Dict[str, Any]:
         """
         화면의 특정 좌표를 클릭합니다.
@@ -25,11 +26,8 @@ class ClickNode:
         Returns:
             실행 결과 딕셔너리
         """
-        if parameters is None:
-            parameters = {}
-        
-        x = parameters.get("x", 0)
-        y = parameters.get("y", 0)
+        x = get_parameter(parameters, "x", default=0)
+        y = get_parameter(parameters, "y", default=0)
         
         return {
             "action": "click",
