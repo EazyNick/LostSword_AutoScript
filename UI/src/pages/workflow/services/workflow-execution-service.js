@@ -111,7 +111,8 @@ export class WorkflowExecutionService {
                 
                 // 2. 서버에 단일 노드 실행 요청
                 try {
-                    const response = await fetch('http://localhost:8000/api/execute-nodes', {
+                    const apiBaseUrl = window.API_BASE_URL || 'http://localhost:8000';
+                    const response = await fetch(`${apiBaseUrl}/api/execute-nodes`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'

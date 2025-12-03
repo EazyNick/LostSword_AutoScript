@@ -63,6 +63,12 @@ export class NodeSettingsModal {
         // 이벤트 리스너 설정
         this.setupEventListeners(nodeElement, nodeId, nodeType, nodeData);
         
+        // 출력 미리보기 영역에 로딩 상태 클래스 추가
+        const outputPreview = document.getElementById('node-output-preview');
+        if (outputPreview) {
+            outputPreview.classList.add('node-preview-loading-state');
+        }
+        
         // 입력/출력 미리보기 업데이트
         this.updateInputOutputPreview(nodeElement, nodeId, nodeType, nodeData);
     }
@@ -343,7 +349,7 @@ export class NodeSettingsModal {
             <div class="form-group node-settings-form-group node-settings-section-divider">
                 <label class="node-settings-label node-settings-preview-label">출력 미리보기:</label>
                 <div id="node-output-preview" class="node-settings-preview-output">
-                    <span class="node-settings-preview-placeholder">이 노드의 출력이 여기에 표시됩니다.</span>
+                    <textarea readonly class="node-settings-textarea node-preview-textarea node-preview-loading-textarea">계산 중...</textarea>
                 </div>
                 <small class="node-settings-help-text">이 노드가 반환하는 출력 데이터입니다. 값을 직접 수정할 수 있으며, 저장 버튼을 눌러야 변경사항이 적용됩니다.</small>
             </div>
@@ -572,7 +578,8 @@ export class NodeSettingsModal {
             btn.disabled = true;
             btn.textContent = '폴더 선택 중...';
 
-            const response = await fetch('http://localhost:8000/api/folder/select', {
+            const apiBaseUrl = window.API_BASE_URL || 'http://localhost:8000';
+            const response = await fetch(`${apiBaseUrl}/api/folder/select`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -601,7 +608,8 @@ export class NodeSettingsModal {
      */
     async updateImageCount(folderPath) {
         try {
-            const response = await fetch(`http://localhost:8000/api/images/list?folder_path=${encodeURIComponent(folderPath)}`);
+            const apiBaseUrl = window.API_BASE_URL || 'http://localhost:8000';
+            const response = await fetch(`${apiBaseUrl}/api/images/list?folder_path=${encodeURIComponent(folderPath)}`);
             const data = await response.json();
             
             if (data.success) {
@@ -687,14 +695,18 @@ export class NodeSettingsModal {
             return;
         }
         
-        // 로딩 상태 표시
-        inputPreview.innerHTML = '<span class="node-settings-preview-placeholder">실행 중...</span>';
+        // 로딩 상태 표시 (시각적 피드백) - 실제 값과 동일한 textarea 스타일
+        inputPreview.innerHTML = `
+            <textarea readonly class="node-settings-textarea node-preview-textarea node-preview-loading-textarea">계산 중...</textarea>
+        `;
+        inputPreview.classList.add('node-preview-loading-state');
         
         try {
             // 이전 노드들의 실행 경로 찾기
             const previousNodes = this.getPreviousNodeChain(nodeId);
             
             if (previousNodes.length === 0) {
+                inputPreview.classList.remove('node-preview-loading-state');
                 inputPreview.innerHTML = '<span class="node-settings-preview-placeholder">입력 없음 (이전 노드가 없거나 연결되지 않음)</span>';
                 return;
             }
@@ -710,6 +722,9 @@ export class NodeSettingsModal {
                 }
             }
             
+            // 로딩 상태 제거
+            inputPreview.classList.remove('node-preview-loading-state');
+            
             // 마지막 노드의 출력을 입력으로 표시 (읽기 전용)
             if (lastOutput !== null) {
                 // 객체나 배열인 경우 JSON 문자열로 표시, 아니면 그대로 표시
@@ -724,6 +739,7 @@ export class NodeSettingsModal {
             }
         } catch (error) {
             console.error('입력 미리보기 실행 오류:', error);
+            inputPreview.classList.remove('node-preview-loading-state');
             inputPreview.innerHTML = `<span style="color: #d32f2f;">실행 오류: ${error.message}</span>`;
         }
     }
@@ -743,8 +759,11 @@ export class NodeSettingsModal {
             return; // 사용자가 수정 중이면 업데이트하지 않음
         }
         
-        // 로딩 상태 표시
-        outputPreview.innerHTML = '<span class="node-settings-preview-placeholder">실행 중...</span>';
+        // 로딩 상태 표시 (시각적 피드백) - 실제 값과 동일한 textarea 스타일
+        outputPreview.innerHTML = `
+            <textarea readonly class="node-settings-textarea node-preview-textarea node-preview-loading-textarea">계산 중...</textarea>
+        `;
+        outputPreview.classList.add('node-preview-loading-state');
         
         try {
             // 저장된 출력 오버라이드 값이 있으면 사용, 없으면 노드 실행
@@ -780,6 +799,9 @@ export class NodeSettingsModal {
                 }
             }
             
+            // 로딩 상태 제거
+            outputPreview.classList.remove('node-preview-loading-state');
+            
             // 출력 표시 (항상 편집 가능)
             if (displayValue !== null && displayValue !== undefined) {
                 outputPreview.innerHTML = `<textarea id="edit-node-output-value" class="node-settings-textarea node-preview-textarea">${escapeHtml(displayValue)}</textarea>`;
@@ -788,6 +810,7 @@ export class NodeSettingsModal {
             }
         } catch (error) {
             console.error('출력 미리보기 실행 오류:', error);
+            outputPreview.classList.remove('node-preview-loading-state');
             outputPreview.innerHTML = `<span style="color: #d32f2f;">실행 오류: ${error.message}</span>`;
         }
     }
@@ -977,7 +1000,8 @@ export class NodeSettingsModal {
             };
             
             // 서버에 실행 요청
-            const response = await fetch('http://localhost:8000/api/execute-nodes', {
+            const apiBaseUrl = window.API_BASE_URL || 'http://localhost:8000';
+            const response = await fetch(`${apiBaseUrl}/api/execute-nodes`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -1075,7 +1099,8 @@ export class NodeSettingsModal {
      */
     async loadProcessList(selectElement, nodeData) {
         try {
-            const response = await fetch('http://localhost:8000/api/processes/list');
+            const apiBaseUrl = window.API_BASE_URL || 'http://localhost:8000';
+            const response = await fetch(`${apiBaseUrl}/api/processes/list`);
             const data = await response.json();
 
             if (data.success && data.processes) {

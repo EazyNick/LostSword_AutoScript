@@ -38,7 +38,7 @@ export class NodeCreationService {
     async updateImageCountForNode(nodeElement, nodeData, nodeManager) {
         try {
             const response = await fetch(
-                `http://localhost:8000/api/images/list?folder_path=${encodeURIComponent(nodeData.folder_path)}`
+                `${window.API_BASE_URL || 'http://localhost:8000'}/api/images/list?folder_path=${encodeURIComponent(nodeData.folder_path)}`
             );
             const data = await response.json();
             
