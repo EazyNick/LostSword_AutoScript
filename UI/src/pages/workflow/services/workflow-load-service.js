@@ -412,7 +412,8 @@ export class WorkflowLoadService {
         
         try {
             // 현재 프로세스 목록 가져오기
-            const response = await fetch('http://localhost:8000/api/processes/list');
+            const apiBaseUrl = window.API_BASE_URL || 'http://localhost:8000';
+            const response = await fetch(`${apiBaseUrl}/api/processes/list`);
             const result = await response.json();
             
             if (!result.success || !result.processes) {

@@ -572,7 +572,8 @@ export class NodeSettingsModal {
             btn.disabled = true;
             btn.textContent = '폴더 선택 중...';
 
-            const response = await fetch('http://localhost:8000/api/folder/select', {
+            const apiBaseUrl = window.API_BASE_URL || 'http://localhost:8000';
+            const response = await fetch(`${apiBaseUrl}/api/folder/select`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -601,7 +602,8 @@ export class NodeSettingsModal {
      */
     async updateImageCount(folderPath) {
         try {
-            const response = await fetch(`http://localhost:8000/api/images/list?folder_path=${encodeURIComponent(folderPath)}`);
+            const apiBaseUrl = window.API_BASE_URL || 'http://localhost:8000';
+            const response = await fetch(`${apiBaseUrl}/api/images/list?folder_path=${encodeURIComponent(folderPath)}`);
             const data = await response.json();
             
             if (data.success) {
@@ -977,7 +979,8 @@ export class NodeSettingsModal {
             };
             
             // 서버에 실행 요청
-            const response = await fetch('http://localhost:8000/api/execute-nodes', {
+            const apiBaseUrl = window.API_BASE_URL || 'http://localhost:8000';
+            const response = await fetch(`${apiBaseUrl}/api/execute-nodes`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -1075,7 +1078,8 @@ export class NodeSettingsModal {
      */
     async loadProcessList(selectElement, nodeData) {
         try {
-            const response = await fetch('http://localhost:8000/api/processes/list');
+            const apiBaseUrl = window.API_BASE_URL || 'http://localhost:8000';
+            const response = await fetch(`${apiBaseUrl}/api/processes/list`);
             const data = await response.json();
 
             if (data.success && data.processes) {

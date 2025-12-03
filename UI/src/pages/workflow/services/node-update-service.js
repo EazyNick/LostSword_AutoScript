@@ -282,7 +282,8 @@ export class NodeUpdateService {
      */
     updateImageTouchNode(nodeElement, nodeId, nodeData, nodeManager) {
         // 이미지 개수 확인
-        fetch(`http://localhost:8000/api/images/list?folder_path=${encodeURIComponent(nodeData.folder_path)}`)
+        const apiBaseUrl = window.API_BASE_URL || 'http://localhost:8000';
+        fetch(`${apiBaseUrl}/api/images/list?folder_path=${encodeURIComponent(nodeData.folder_path)}`)
             .then(response => response.json())
             .then(data => {
                 if (data.success) {

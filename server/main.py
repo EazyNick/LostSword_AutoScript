@@ -13,6 +13,14 @@ from config.server_config import settings
 # cd server
 # python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
 
+import os
+import re
+import mimetypes
+
+# Ensure correct MIME types (fix: .js/.mjs served as application/javascript)
+mimetypes.add_type("application/javascript", ".js")
+mimetypes.add_type("application/javascript", ".mjs")
+
 # 환경 변수는 config.py에서 관리
 ENVIRONMENT = settings.ENVIRONMENT
 DEV_MODE = settings.DEV_MODE
@@ -128,12 +136,25 @@ def inject_env_to_html(html_content: str) -> str:
     # DEV_MODE를 boolean으로 주입 (ENVIRONMENT 기반)
     dev_mode_value = 'true' if DEV_MODE else 'false'
     environment_value = ENVIRONMENT
+    api_host = settings.API_HOST
+    api_port = settings.API_PORT
+    
+    # API_HOST가 0.0.0.0이면 클라이언트에서는 localhost로 접근
+    client_api_host = 'localhost' if api_host == '0.0.0.0' else api_host
+    
     script_tag = f'''
     <script>
         // 환경 변수 주입 (.env 파일에서 읽은 값)
         window.DEV_MODE = {dev_mode_value};
         window.ENVIRONMENT = '{environment_value}';
-        console.log('[Server] ENVIRONMENT 주입됨:', window.ENVIRONMENT, '→ DEV_MODE:', window.DEV_MODE);
+        window.API_HOST = '{client_api_host}';
+        window.API_PORT = {api_port};
+        console.log('[Server] 환경 변수 주입됨:', {{
+            ENVIRONMENT: window.ENVIRONMENT,
+            DEV_MODE: window.DEV_MODE,
+            API_HOST: window.API_HOST,
+            API_PORT: window.API_PORT
+        }});
     </script>
     '''
     
@@ -146,7 +167,7 @@ def inject_env_to_html(html_content: str) -> str:
         # head 태그가 없으면 body 앞에 추가
         html_content = html_content.replace('<body>', script_tag + '<body>')
     
-    logger.debug(f"HTML에 ENVIRONMENT 주입 완료: {environment_value} (DEV_MODE: {dev_mode_value})")
+    logger.debug(f"HTML에 환경 변수 주입 완료: ENVIRONMENT={environment_value}, DEV_MODE={dev_mode_value}, API_HOST={client_api_host}, API_PORT={api_port}")
     return html_content
 
 # 기본 라우트 - 웹 UI 제공 (환경 변수 주입)
@@ -165,4 +186,4 @@ async def health_check():
     return {"status": "healthy", "service": "automation"}
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host=settings.API_HOST, port=settings.API_PORT)

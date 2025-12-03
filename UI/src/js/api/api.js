@@ -13,7 +13,28 @@ const getLogger = () => {
     };
 };
 
-export const API_BASE_URL = 'http://localhost:8000';
+/**
+ * API 기본 URL 동적 생성
+ * window.API_HOST와 window.API_PORT를 사용 (서버에서 주입)
+ * 기본값은 localhost:8000 (fallback)
+ * 
+ * 주의: window.API_HOST, window.API_PORT는 서버에서 HTML에 주입되므로
+ * 모듈 로드 시점에는 아직 없을 수 있습니다.
+ * 따라서 함수로 만들어서 호출 시점에 동적으로 가져옵니다.
+ */
+function getApiBaseUrl() {
+    if (typeof window === 'undefined') {
+        return 'http://localhost:8000'; // 서버 사이드 렌더링 시 기본값
+    }
+    
+    // window.API_HOST와 window.API_PORT가 주입되었는지 확인
+    const host = window.API_HOST || 'localhost';
+    const port = window.API_PORT || 8000;
+    return `http://${host}:${port}`;
+}
+
+// 초기값 (나중에 동적으로 업데이트됨)
+export let API_BASE_URL = getApiBaseUrl();
 
 /**
  * API 호출 헬퍼 함수
@@ -27,7 +48,9 @@ export async function apiCall(endpoint, options = {}) {
     const log = logger.log;
     const logError = logger.error;
     
-    const url = `${API_BASE_URL}${endpoint}`;
+    // 호출 시점에 동적으로 API URL 가져오기 (window.API_HOST, API_PORT가 주입되었을 수 있음)
+    const apiBaseUrl = getApiBaseUrl();
+    const url = `${apiBaseUrl}${endpoint}`;
     const method = options.method || 'GET';
     
     log(`[apiCall] 요청 시작: ${method} ${url}`);
@@ -77,7 +100,7 @@ export async function apiCall(endpoint, options = {}) {
         // 네트워크 에러인 경우 추가 정보
         if (error.name === 'TypeError' && error.message.includes('fetch')) {
             logError('[apiCall] 네트워크 에러 가능성 - 서버가 실행 중인지 확인하세요.');
-            logError('[apiCall] 서버 URL:', API_BASE_URL);
+            logError('[apiCall] 서버 URL:', getApiBaseUrl());
         }
         
         throw error;
@@ -88,5 +111,21 @@ export async function apiCall(endpoint, options = {}) {
 // TODO: 다른 파일들이 ES6 모듈로 전환되면 제거
 if (typeof window !== 'undefined') {
     window.apiCall = apiCall;
-    window.API_BASE_URL = API_BASE_URL;
+    // API_BASE_URL을 함수로 노출하여 동적으로 가져올 수 있도록 함
+    window.getApiBaseUrl = getApiBaseUrl;
+    // API_BASE_URL을 getter로 노출 (동적 값 반환)
+    Object.defineProperty(window, 'API_BASE_URL', {
+        get: getApiBaseUrl,
+        configurable: true,
+        enumerable: true
+    });
+    
+    // 초기화 시점에 한 번 더 업데이트 (window.API_HOST, API_PORT가 주입된 후)
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            API_BASE_URL = getApiBaseUrl();
+        });
+    } else {
+        API_BASE_URL = getApiBaseUrl();
+    }
 }

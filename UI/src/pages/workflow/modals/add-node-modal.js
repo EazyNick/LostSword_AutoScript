@@ -241,7 +241,8 @@ export class AddNodeModal {
             btn.disabled = true;
             btn.textContent = '폴더 선택 중...';
 
-            const response = await fetch('http://localhost:8000/api/folder/select', {
+            const apiBaseUrl = window.API_BASE_URL || 'http://localhost:8000';
+            const response = await fetch(`${apiBaseUrl}/api/folder/select`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -254,7 +255,7 @@ export class AddNodeModal {
                 // 이미지 개수 확인
                 try {
                     const imageListResponse = await fetch(
-                        `http://localhost:8000/api/images/list?folder_path=${encodeURIComponent(data.folder_path)}`
+                        `${apiBaseUrl}/api/images/list?folder_path=${encodeURIComponent(data.folder_path)}`
                     );
                     const imageListData = await imageListResponse.json();
                     if (imageListData.success) {
@@ -394,7 +395,8 @@ export class AddNodeModal {
         if (!selectElement) return;
 
         try {
-            const response = await fetch('http://localhost:8000/api/processes/list');
+            const apiBaseUrl = window.API_BASE_URL || 'http://localhost:8000';
+            const response = await fetch(`${apiBaseUrl}/api/processes/list`);
             const data = await response.json();
 
             if (data.success && data.processes) {
