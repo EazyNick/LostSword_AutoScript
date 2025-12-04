@@ -83,6 +83,7 @@ python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
 - **[노드 추가 가이드](docs/dev/node.md)**: 새로운 노드 타입을 추가하는 방법
 - **[환경 변수 설정](docs/dev/environment.md)**: 개발/프로덕션 모드 환경 변수 설정
 - **[워크플로우 구조](docs/dev/workflow-structure.md)**: 워크플로우 페이지 코드 구조 설명
+- **[코드 린팅 가이드](docs/dev/linting.md)**: 코드 품질 관리 및 린팅 사용법
 
 ## 라이선스
 
@@ -91,6 +92,22 @@ Apache-2.0 license
 ## 기여
 
 이슈 및 풀 리퀘스트를 환영합니다.
+
+### 코드 기여 전 확인사항
+
+코드를 기여하기 전에 다음을 확인해주세요:
+
+1. **코드 품질 검사**: 린팅과 포매팅을 실행해주세요
+   ```bash
+   # 개발 의존성 설치
+   pip install -r server/requirements-dev.txt
+   
+   # 린팅 및 포매팅 실행
+   ruff check --fix server/
+   ruff format server/
+   ```
+
+자세한 내용은 [코드 린팅 가이드](docs/dev/linting.md)를 참고하세요.
 
 ## 주의사항
 

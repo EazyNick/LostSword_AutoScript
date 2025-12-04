@@ -11,7 +11,11 @@ source venv/bin/activate  # Linux/Mac
 
 ### 2. 패키지 설치
 ```bash
+# 프로덕션 의존성
 pip install -r server/requirements.txt
+
+# 개발 의존성 (린팅, 테스팅 등)
+pip install -r server/requirements-dev.txt
 ```
 
 ### 3. 환경 변수 설정 (선택)
@@ -38,6 +42,10 @@ cd server
 python -m uvicorn main:app
 ```
 
+## 코드 품질 관리
+
+코드 품질 관리를 위한 린팅 및 포매팅 설정에 대한 자세한 내용은 [린팅 가이드](linting.md)를 참고하세요.
+
 ## 유용한 명령어
 
 ```bash
@@ -53,4 +61,5 @@ API_PORT=8001
 - [프로젝트 구조](project-structure.md)
 - [시스템 아키텍처](architecture.md)
 - [환경 변수 설정](environment.md)
+- [코드 린팅 가이드](linting.md)
 

@@ -5,5 +5,4 @@
 
 from .image_touch import ImageTouchNode
 
-__all__ = ['ImageTouchNode']
-
+__all__ = ["ImageTouchNode"]

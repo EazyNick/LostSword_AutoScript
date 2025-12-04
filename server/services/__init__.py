@@ -4,6 +4,4 @@
 
 from .action_service import ActionService
 
-__all__ = [
-    "ActionService"
-]
+__all__ = ["ActionService"]

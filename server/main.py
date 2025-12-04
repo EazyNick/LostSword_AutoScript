@@ -1,21 +1,19 @@
+import mimetypes
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, HTMLResponse
 import uvicorn
-import os
-import re
-from api import action_router, script_router, state_router, node_router, config_router, action_node_router
-from log import log_manager
-from db.database import db_manager 
+
+from api import action_node_router, action_router, config_router, node_router, script_router, state_router
 from config.server_config import settings
+from db.database import db_manager
+from log import log_manager
 
 # cd server
 # python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
-
-import os
-import re
-import mimetypes
 
 # Ensure correct MIME types (fix: .js/.mjs served as application/javascript)
 mimetypes.add_type("application/javascript", ".js")
@@ -32,21 +30,22 @@ logger.info("서버 시작")
 logger.info(f"환경: {ENVIRONMENT}")
 logger.info(f"개발 모드: {DEV_MODE}")
 
+
 # 데이터베이스 초기화 및 기본 데이터 생성
-def initialize_database():
+def initialize_database() -> None:
     """데이터베이스가 없으면 생성하고 기본 데이터 삽입"""
     db_path = db_manager.connection.db_path
-    
+
     # 데이터베이스 파일이 존재하는지 확인
     is_new_db = not os.path.exists(db_path)
-    
+
     if is_new_db:
         logger.info(f"데이터베이스 파일이 없습니다. 생성 중... ({db_path})")
         try:
             # 데이터베이스 초기화 (테이블 생성)
             db_manager.init_database()
             logger.info("✅ 데이터베이스 테이블 생성 완료")
-            
+
             # 기본 데이터 삽입 (logger 전달)
             db_manager.seed_example_data(logger=logger)
             logger.info("✅ 기본 데이터 삽입 완료")
@@ -59,7 +58,7 @@ def initialize_database():
             # 스크립트 개수 확인
             scripts = db_manager.get_all_scripts()
             script_count = len(scripts)
-            
+
             # 스크립트가 없으면 예시 데이터 생성
             if script_count == 0:
                 logger.info("데이터베이스에 스크립트가 없습니다. 예시 데이터 생성 중...")
@@ -67,20 +66,21 @@ def initialize_database():
                 logger.info("✅ 예시 데이터 생성 완료")
                 # 스크립트 다시 조회 (생성된 스크립트 ID를 얻기 위해)
                 scripts = db_manager.get_all_scripts()
-            
+
             # 기본 설정값 확인 및 추가
             import json
+
             sidebar_width = db_manager.get_user_setting("sidebar-width")
             if sidebar_width is None:
                 db_manager.save_user_setting("sidebar-width", "300")
                 logger.info("✅ 기본 설정값 추가: sidebar-width")
-            
+
             # script-order 설정 확인 및 추가
             script_order = db_manager.get_user_setting("script-order")
             if script_order is None:
                 if len(scripts) > 0:
                     # 스크립트가 있으면 현재 스크립트 ID 순서로 저장
-                    script_ids = [script['id'] for script in scripts]
+                    script_ids = [script["id"] for script in scripts]
                     script_order_json = json.dumps(script_ids, ensure_ascii=False)
                 else:
                     # 스크립트가 없으면 빈 배열로 초기화
@@ -90,19 +90,18 @@ def initialize_database():
         except Exception as e:
             logger.warning(f"기본 설정값 추가 중 오류 발생 (무시): {e}")
 
-app = FastAPI(
-    title="자동화 도구",
-    description="자동화를 위한 API 서버",
-    version="1.0.0"
-)
+
+app = FastAPI(title="자동화 도구", description="자동화를 위한 API 서버", version="1.0.0")
+
 
 # 서버 시작 시 데이터베이스 초기화
 @app.on_event("startup")
-async def startup_event():
+async def startup_event() -> None:
     """서버 시작 시 실행되는 이벤트 핸들러"""
     logger.info("서버 시작 이벤트 실행 중...")
     initialize_database()
     logger.info("서버 시작 이벤트 완료")
+
 
 # CORS 설정
 app.add_middleware(
@@ -129,20 +128,21 @@ if os.path.exists(ui_path):
 else:
     logger.warning("UI 경로를 찾을 수 없습니다. API만 사용 가능합니다.")
 
+
 # HTML 파일에 환경 변수 주입하는 헬퍼 함수
 def inject_env_to_html(html_content: str) -> str:
     """HTML 내용에 환경 변수를 주입"""
     # <head> 태그 안에 스크립트 추가
     # DEV_MODE를 boolean으로 주입 (ENVIRONMENT 기반)
-    dev_mode_value = 'true' if DEV_MODE else 'false'
+    dev_mode_value = "true" if DEV_MODE else "false"
     environment_value = ENVIRONMENT
     api_host = settings.API_HOST
     api_port = settings.API_PORT
-    
+
     # API_HOST가 0.0.0.0이면 클라이언트에서는 localhost로 접근
-    client_api_host = 'localhost' if api_host == '0.0.0.0' else api_host
-    
-    script_tag = f'''
+    client_api_host = "localhost" if api_host == "0.0.0.0" else api_host
+
+    script_tag = f"""
     <script>
         // 환경 변수 주입 (.env 파일에서 읽은 값)
         window.DEV_MODE = {dev_mode_value};
@@ -156,34 +156,39 @@ def inject_env_to_html(html_content: str) -> str:
             API_PORT: window.API_PORT
         }});
     </script>
-    '''
-    
+    """
+
     # </head> 태그 앞에 스크립트 삽입
-    if '</head>' in html_content:
-        html_content = html_content.replace('</head>', script_tag + '</head>')
-    elif '<head>' in html_content:
-        html_content = html_content.replace('<head>', '<head>' + script_tag)
+    if "</head>" in html_content:
+        html_content = html_content.replace("</head>", script_tag + "</head>")
+    elif "<head>" in html_content:
+        html_content = html_content.replace("<head>", "<head>" + script_tag)
     else:
         # head 태그가 없으면 body 앞에 추가
-        html_content = html_content.replace('<body>', script_tag + '<body>')
-    
-    logger.debug(f"HTML에 환경 변수 주입 완료: ENVIRONMENT={environment_value}, DEV_MODE={dev_mode_value}, API_HOST={client_api_host}, API_PORT={api_port}")
+        html_content = html_content.replace("<body>", script_tag + "<body>")
+
+    logger.debug(
+        f"HTML에 환경 변수 주입 완료: ENVIRONMENT={environment_value}, DEV_MODE={dev_mode_value}, API_HOST={client_api_host}, API_PORT={api_port}"
+    )
     return html_content
+
 
 # 기본 라우트 - 웹 UI 제공 (환경 변수 주입)
 @app.get("/")
-async def root():
+async def root() -> Response:
     ui_file = os.path.join(ui_path, "index.html")
     if os.path.exists(ui_file):
-        with open(ui_file, 'r', encoding='utf-8') as f:
+        with open(ui_file, encoding="utf-8") as f:
             html_content = f.read()
         html_content = inject_env_to_html(html_content)
         return HTMLResponse(content=html_content)
-    return {"message": "자동화 API 서버가 실행 중입니다."}
+    return JSONResponse(content={"message": "자동화 API 서버가 실행 중입니다."})
+
 
 @app.get("/health")
-async def health_check():
+async def health_check() -> dict[str, str]:
     return {"status": "healthy", "service": "automation"}
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host=settings.API_HOST, port=settings.API_PORT)
