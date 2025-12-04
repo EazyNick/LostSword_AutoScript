@@ -5,5 +5,4 @@
 
 from .wait import WaitNode
 
-__all__ = ['WaitNode']
-
+__all__ = ["WaitNode"]

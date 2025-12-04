@@ -5,5 +5,4 @@
 
 from .condition import ConditionNode
 
-__all__ = ['ConditionNode']
-
+__all__ = ["ConditionNode"]

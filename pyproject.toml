@@ -1,0 +1,191 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lostsword-autoscript"
+version = "1.0.0"
+description = "자동화를 위한 FastAPI 서버와 웹 기반 UI 도구"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "Apache-2.0"}
+
+[tool.ruff]
+# Ruff 린터 설정
+# target-version: 타겟 Python 버전 (이 버전의 문법을 기준으로 검사)
+target-version = "py310"
+# line-length: 최대 라인 길이 (이 길이를 초과하면 경고)
+line-length = 120
+# exclude: 린팅에서 제외할 파일/디렉토리 패턴
+exclude = [
+    ".git",          # Git 저장소 디렉토리
+    "__pycache__",   # Python 캐시 디렉토리
+    ".venv",         # 가상환경 디렉토리
+    "venv",          # 가상환경 디렉토리
+    "env",           # 가상환경 디렉토리
+    "ENV",           # 가상환경 디렉토리
+    "build",         # 빌드 디렉토리
+    "dist",          # 배포 디렉토리
+    "*.egg-info",    # 패키지 메타데이터 디렉토리
+    ".mypy_cache",   # mypy 캐시 디렉토리
+    ".pytest_cache", # pytest 캐시 디렉토리
+]
+
+[tool.ruff.lint]
+# 활성화할 규칙 세트
+# 각 규칙 코드는 특정 린팅 작업을 나타냅니다.
+select = [
+    # === 코드 스타일 검사 ===
+    "E",   # pycodestyle errors - PEP 8 스타일 가이드 위반 (들여쓰기, 공백 등)
+    "W",   # pycodestyle warnings - PEP 8 스타일 경고 (사용하지 않는 변수 등)
+    
+    # === 코드 품질 검사 ===
+    "F",   # pyflakes - 사용하지 않는 import, 정의되지 않은 변수 등 버그 검사
+    
+    # === Import 정렬 ===
+    "I",   # isort - import 문 정렬 및 그룹화 검사
+    
+    # === 버그 패턴 검사 ===
+    "B",   # flake8-bugbear - 일반적인 버그 패턴 검사 (예: mutable default arguments)
+    
+    # === 코드 개선 제안 ===
+    "C4",  # flake8-comprehensions - 리스트/딕셔너리 컴프리헨션 사용 권장
+    "SIM", # flake8-simplify - 코드 단순화 제안 (불필요한 if문 제거 등)
+    "UP",  # pyupgrade - 최신 Python 문법 사용 권장 (예: f-string 사용)
+    
+    # === 함수/메서드 검사 ===
+    "ARG", # flake8-unused-arguments - 사용하지 않는 함수 인자 검사
+    "RET", # flake8-return - return 문 관련 검사 (불필요한 return 등)
+    
+    # === 타입 힌트 검사 ===
+    "ANN", # flake8-annotations - 타입 힌트 누락 검사 (함수 매개변수, 반환값)
+    "TCH", # flake8-type-checking - TYPE_CHECKING 블록 사용 권장 (순환 import 방지)
+    
+    # === 기타 검사 ===
+    "PIE", # flake8-pie - 다양한 코드 품질 검사 (예: 중복 코드)
+    "PT",  # flake8-pytest-style - pytest 스타일 가이드 검사
+    "RUF", # Ruff-specific rules - Ruff 고유 규칙 (예: 불필요한 키워드 인자)
+]
+
+# 무시할 규칙
+# 특정 규칙을 비활성화합니다 (프로젝트 특성상 필요하지 않거나 너무 엄격한 경우)
+ignore = [
+    # === 코드 스타일 ===
+    "E501",  # line too long - 라인 길이 초과 (포매터가 자동으로 처리하므로 무시)
+    
+    # === 버그 패턴 ===
+    "B008",  # do not perform function calls in argument defaults - 기본값에 함수 호출 사용 (일부 경우 필요)
+    "B904",  # Allow `raise` without specifying exception - 예외 타입 없이 raise 사용 허용
+    
+    # === 함수 인자 ===
+    "ARG001", # Unused function argument - 사용하지 않는 함수 인자 (인터페이스 호환성을 위해 필요할 수 있음)
+    "ARG002", # Unused method argument - 사용하지 않는 메서드 인자 (인터페이스 호환성을 위해 필요할 수 있음)
+    "ARG004", # Unused static method argument - 사용하지 않는 정적 메서드 인자 (인터페이스 호환성을 위해 필요할 수 있음, 예: start/end 노드)
+    
+    # === 코드 단순화 ===
+    "SIM108", # Use ternary operator - 삼항 연산자 사용 권장 (가독성을 위해 무시)
+    
+    # === 출력문 ===
+    "T201",  # print statements - print 문 사용 허용 (일부 컨텍스트에서 필요)
+    
+    # === 타입 힌트 ===
+    # ANN101, ANN102는 ruff에서 제거된 규칙이므로 무시 설정 불필요
+    "ANN401", # Dynamically typed expressions (typing.Any) - 동적 타입 표현식 (일부는 동적 타입이 필요하므로 무시)
+]
+
+# 자동 수정 불가능한 규칙
+# 이 규칙들은 자동으로 수정할 수 없으므로 수동으로 수정해야 합니다.
+unfixable = [
+    "F401",  # Unused imports - 사용하지 않는 import (수동으로 제거해야 함)
+]
+
+[tool.ruff.lint.per-file-ignores]
+# 특정 파일 타입에 대한 무시 규칙
+# 파일 패턴별로 특정 규칙을 무시합니다.
+"__init__.py" = [
+    "F401",  # Unused imports - __init__.py에서는 export를 위해 사용하지 않는 import가 필요할 수 있음
+]
+"tests/**/*.py" = [
+    "ARG",   # Unused function argument - 테스트 함수에서 사용하지 않는 인자 허용
+    "S101",  # Use of assert detected - 테스트 파일에서는 assert 사용 허용
+]
+
+[tool.ruff.format]
+# Ruff 포매터 설정 (코드 자동 포매팅)
+# quote-style: 따옴표 스타일 ("double" = 쌍따옴표, "single" = 홑따옴표)
+quote-style = "double"
+# indent-style: 들여쓰기 스타일 ("space" = 공백, "tab" = 탭)
+indent-style = "space"
+# skip-magic-trailing-comma: 마지막 쉼표 자동 추가 여부 (False = 자동 추가)
+skip-magic-trailing-comma = false
+# line-ending: 줄 끝 문자 ("auto" = 자동 감지, "lf" = Unix, "crlf" = Windows)
+line-ending = "auto"
+
+[tool.ruff.lint.isort]
+# import 정렬 설정 (isort 규칙)
+# known-first-party: 프로젝트 내부 모듈 목록 (이 모듈들은 first-party로 간주되어 별도 그룹으로 정렬됨)
+known-first-party = ["api", "automation", "config", "db", "log", "models", "nodes", "services", "utils"]
+# force-sort-within-sections: 각 import 섹션 내에서도 알파벳 순으로 정렬
+force-sort-within-sections = true
+
+[tool.mypy]
+# mypy 타입 체커 설정
+# python_version: 타겟 Python 버전
+python_version = "3.10"
+
+# === 경고 설정 ===
+# warn_return_any: Any 타입 반환 시 경고
+warn_return_any = true
+# warn_unused_configs: 사용하지 않는 설정 파일 경고
+warn_unused_configs = true
+# warn_redundant_casts: 불필요한 타입 캐스팅 경고
+warn_redundant_casts = true
+# warn_unused_ignores: 사용하지 않는 type: ignore 주석 경고
+warn_unused_ignores = true
+# warn_no_return: 반환값이 없는 함수에서 return 누락 경고
+warn_no_return = true
+
+# === 타입 힌트 검사 강도 ===
+# disallow_untyped_defs: 타입 힌트가 없는 함수 정의 금지 (모든 함수에 타입 힌트 필수)
+disallow_untyped_defs = true
+# disallow_incomplete_defs: 불완전한 타입 힌트 금지 (일부 매개변수만 타입 힌트 있는 경우)
+disallow_incomplete_defs = true
+# check_untyped_defs: 타입 힌트가 없는 함수 내부도 타입 체크 수행
+check_untyped_defs = true
+# no_implicit_optional: Optional 타입을 명시적으로 작성해야 함 (예: Optional[str] = None)
+no_implicit_optional = true
+
+# === Import 처리 ===
+# ignore_missing_imports: 타입 스텁이 없는 외부 라이브러리 import 무시
+ignore_missing_imports = true
+
+# === 무시할 에러 코드 ===
+# 특정 타입 체크 에러를 전역적으로 무시합니다
+disable_error_code = [
+    "no-any-return",      # Any 타입 반환 허용 (동적 타입이 필요한 경우 Any 사용)
+    "attr-defined",       # 실행중 동적 속성 추가 허용 (예: logger.hr) (정적인 경우에는 적용이 안되어 있지만 동적일 떄는 적용되는 코드들을 허용하는 것)
+    "import-untyped",     # 타입 정보가 없는 라이브러리 import 허용
+    "arg-type",           # 함수 인자 타입 불일치 허용 (테스트 코드의 리터럴 리스트 타입 추론 시 문제가 발생하여 무시)
+    "index",              # 딕셔너리/컬렉션 인덱싱 타입 추론 무시 (테스트 코드의 리터럴 리스트 타입 추론 시 문제가 발생하여 무시)
+    "return-value",       # 반환 타입 불일치 허용 (데코레이터 래퍼의 복잡한 제네릭 타입 반환 문제)
+]
+
+# === 제외할 경로 ===
+exclude = [
+    "build/",    # 빌드 디렉토리
+    "dist/",     # 배포 디렉토리
+    ".venv/",    # 가상환경 디렉토리
+    "venv/",     # 가상환경 디렉토리
+]
+
+[tool.pytest.ini_options]
+# pytest 테스트 프레임워크 설정 (선택사항)
+# testpaths: 테스트 파일을 찾을 디렉토리 경로
+testpaths = ["tests"]
+# python_files: 테스트 파일 이름 패턴
+python_files = ["test_*.py", "*_test.py"]
+# python_classes: 테스트 클래스 이름 패턴
+python_classes = ["Test*"]
+# python_functions: 테스트 함수 이름 패턴
+python_functions = ["test_*"]
+
