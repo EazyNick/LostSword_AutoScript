@@ -1549,7 +1549,7 @@ export async function initializeSidebar(options = {}) {
             apiCall: apiLoaded ? '로드됨' : '로드 안됨',
             ScriptAPI: scriptApiLoaded ? '로드됨' : '로드 안됨',
             window_apiCall: window.apiCall,
-            ScriptAPI: ScriptAPI
+            ScriptAPIObject: ScriptAPI
         });
 
         return apiLoaded && scriptApiLoaded;

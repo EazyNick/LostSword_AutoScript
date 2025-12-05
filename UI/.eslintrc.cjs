@@ -37,7 +37,8 @@ module.exports = {
         // indent 규칙은 eslint-config-prettier에 의해 자동으로 비활성화됨
 
         // === 줄바꿈 스타일 ===
-        // Windows/Linux 모두 허용 (CRLF/LF) - 개발 편의성
+        // Prettier가 줄바꿈을 관리하므로 ESLint 규칙은 비활성화
+        // Prettier 설정: endOfLine: "auto" (현재 파일의 줄바꿈 스타일 유지)
         'linebreak-style': 'off',
 
         // === 따옴표 ===
@@ -85,8 +86,9 @@ module.exports = {
         'no-case-declarations': 'off',
 
         // === 중복 키 ===
-        // 객체에서 중복 키 허용 (개발 편의성 - 실수로 인한 중복 허용)
-        'no-dupe-keys': 'off',
+        // 객체에서 중복 키는 실제 버그이므로 에러로 감지
+        // 중복 키는 예상치 못한 동작을 일으킬 수 있음
+        'no-dupe-keys': 'error',
 
         // === 쉼표 ===
         // 마지막 쉼표 사용하지 않음 (예: [1, 2, 3] ✓, [1, 2, 3,] ✗)
