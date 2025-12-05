@@ -12,7 +12,7 @@ async function loadDevMode() {
     if (DEV_MODE_LOADED) {
         return DEV_MODE;
     }
-    
+
     try {
         // 서버 API에서 설정 정보 가져오기
         const response = await fetch('/api/config');
@@ -34,7 +34,7 @@ async function loadDevMode() {
     } catch (error) {
         console.warn('[Logger] 서버 설정 조회 중 에러:', error);
     }
-    
+
     // 폴백: window.ENVIRONMENT 또는 window.DEV_MODE (HTML 주입) 또는 localStorage, URL 파라미터
     if (window.ENVIRONMENT !== undefined) {
         DEV_MODE = window.ENVIRONMENT === 'dev';
@@ -49,12 +49,13 @@ async function loadDevMode() {
             DEV_MODE = envFromStorage === 'dev';
             console.log('[Logger] localStorage에서 ENVIRONMENT 읽음:', envFromStorage, '→ DEV_MODE:', DEV_MODE);
         } else {
-            DEV_MODE = localStorage.getItem('DEV_MODE') === 'true' || 
-                    new URLSearchParams(window.location.search).get('dev') === 'true';
+            DEV_MODE =
+                localStorage.getItem('DEV_MODE') === 'true' ||
+                new URLSearchParams(window.location.search).get('dev') === 'true';
             console.log('[Logger] 폴백 사용:', DEV_MODE);
         }
     }
-    
+
     DEV_MODE_LOADED = true;
     return DEV_MODE;
 }
@@ -73,7 +74,7 @@ const Logger = {
             console.log(...args);
         }
     },
-    
+
     /**
      * 개발 모드일 때만 경고 출력
      */
@@ -82,7 +83,7 @@ const Logger = {
             console.warn(...args);
         }
     },
-    
+
     /**
      * 개발 모드일 때만 에러 출력 (에러는 항상 출력)
      */
@@ -90,7 +91,7 @@ const Logger = {
         // 에러는 항상 출력
         console.error(...args);
     },
-    
+
     /**
      * 개발 모드일 때만 정보 출력
      */
@@ -99,7 +100,7 @@ const Logger = {
             console.info(...args);
         }
     },
-    
+
     /**
      * 개발 모드일 때만 디버그 출력
      */
@@ -108,14 +109,14 @@ const Logger = {
             console.debug(...args);
         }
     },
-    
+
     /**
      * 개발 모드 상태 확인
      */
     isDevMode() {
         return DEV_MODE;
     },
-    
+
     /**
      * 개발 모드 로드 완료 대기
      */
@@ -147,4 +148,3 @@ if (!window._LOGGER_INITIALIZED) {
     });
     window._LOGGER_INITIALIZED = true;
 }
-

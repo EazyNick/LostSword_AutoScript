@@ -20,35 +20,35 @@ export class NodeUpdateService {
         const logger = this.workflowPage.getLogger();
         const log = logger.log;
         const logError = logger.error;
-        
+
         const nodeManager = this.workflowPage.getNodeManager();
         if (!nodeManager) {
             logError('NodeManager를 찾을 수 없습니다.');
             return;
         }
-        
+
         // 폼에서 데이터 가져오기
         const formData = this.extractFormData(nodeElement, nodeId, nodeManager);
-        
+
         // NodeManager의 노드 데이터 업데이트
         this.updateNodeData(nodeId, formData, nodeManager);
-        
+
         // 노드 DOM 업데이트
         this.updateNodeDOM(nodeElement, formData, nodeManager);
-        
+
         // 이미지 터치 노드인 경우 추가 처리
         if (formData.type === NODE_TYPES.IMAGE_TOUCH && formData.folder_path) {
             this.updateImageTouchNode(nodeElement, nodeId, formData, nodeManager);
         }
-        
+
         log(`[WorkflowPage] 노드 업데이트 완료: ${nodeId}`);
-        
+
         // 모달 닫기
         const modalManager = this.workflowPage.getModalManager();
         if (modalManager) {
             modalManager.close();
         }
-        
+
         // 연결선 업데이트
         if (window.connectionManager) {
             setTimeout(() => {
@@ -62,12 +62,13 @@ export class NodeUpdateService {
      */
     extractFormData(nodeElement, nodeId, nodeManager) {
         const newTitle = document.getElementById('edit-node-title').value;
-        const currentType = nodeManager.nodeData && nodeManager.nodeData[nodeId] 
-            ? (nodeManager.nodeData[nodeId].type || nodeElement.dataset.nodeType)
-            : nodeElement.dataset.nodeType;
+        const currentType =
+            nodeManager.nodeData && nodeManager.nodeData[nodeId]
+                ? nodeManager.nodeData[nodeId].type || nodeElement.dataset.nodeType
+                : nodeElement.dataset.nodeType;
         const isStartOrEnd = currentType === 'start' || currentType === 'end';
-        let newType = isStartOrEnd ? currentType : (document.getElementById('edit-node-type')?.value || currentType);
-        
+        let newType = isStartOrEnd ? currentType : document.getElementById('edit-node-type')?.value || currentType;
+
         // 노드 타입 변경 시 검증 (시작/종료 노드로 변경하려는 경우)
         if (!isStartOrEnd && newType !== currentType) {
             const validation = NodeValidationUtils.validateNodeTypeChange(newType, nodeId, nodeManager);
@@ -86,18 +87,18 @@ export class NodeUpdateService {
                 newType = currentType; // 원래 타입 유지
             }
         }
-        
+
         const newColor = document.getElementById('edit-node-color').value;
-        
+
         // 실제 노드 종류 가져오기
         const actionNodeTypeSelect = document.getElementById('edit-action-node-type');
         const newActionNodeType = actionNodeTypeSelect ? actionNodeTypeSelect.value : null;
-        
+
         const position = {
             x: parseFloat(nodeElement.style.left) || 0,
             y: parseFloat(nodeElement.style.top) || 0
         };
-        
+
         const updatedNodeData = {
             id: nodeId,
             type: newType,
@@ -107,16 +108,16 @@ export class NodeUpdateService {
             x: position.x,
             y: position.y
         };
-        
+
         // description 가져오기
         const description = document.getElementById('edit-node-description')?.value || '';
         if (description) {
             updatedNodeData.description = description;
         }
-        
+
         // 출력 오버라이드 값 가져오기 (항상 편집 가능하므로 textarea 값이 있으면 저장)
         const outputOverrideTextarea = document.getElementById('edit-node-output-value');
-        
+
         if (outputOverrideTextarea) {
             const outputValue = outputOverrideTextarea.value.trim();
             if (outputValue) {
@@ -135,7 +136,7 @@ export class NodeUpdateService {
             // textarea가 없으면 오버라이드 제거
             updatedNodeData.output_override = null;
         }
-        
+
         // 실제 노드 종류별 추가 데이터
         if (newActionNodeType === 'http-api-request') {
             const url = document.getElementById('edit-http-url')?.value || '';
@@ -143,19 +144,19 @@ export class NodeUpdateService {
             const headersText = document.getElementById('edit-http-headers')?.value || '{}';
             const bodyText = document.getElementById('edit-http-body')?.value || '';
             const timeout = document.getElementById('edit-http-timeout')?.value || '30';
-            
+
             if (url) {
                 updatedNodeData.url = url;
             }
             updatedNodeData.method = method;
-            
+
             // 헤더 파싱
             try {
                 updatedNodeData.headers = JSON.parse(headersText);
             } catch (e) {
                 updatedNodeData.headers = {};
             }
-            
+
             // 본문 파싱 시도 (JSON이면 파싱, 아니면 문자열로 저장)
             if (bodyText) {
                 try {
@@ -164,10 +165,10 @@ export class NodeUpdateService {
                     updatedNodeData.body = bodyText;
                 }
             }
-            
+
             updatedNodeData.timeout = parseFloat(timeout) || 30;
         }
-        
+
         // 타입별 추가 데이터 (레거시)
         if (newType === NODE_TYPES.IMAGE_TOUCH) {
             const folderPath = document.getElementById('edit-node-folder-path')?.value || '';
@@ -187,7 +188,7 @@ export class NodeUpdateService {
             const hwnd = document.getElementById('edit-node-process-hwnd')?.value || '';
             const processName = document.getElementById('edit-node-process-name')?.value || '';
             const windowTitle = document.getElementById('edit-node-window-title')?.value || '';
-            
+
             if (processId) {
                 updatedNodeData.process_id = parseInt(processId);
             }
@@ -201,7 +202,7 @@ export class NodeUpdateService {
                 updatedNodeData.window_title = windowTitle;
             }
         }
-        
+
         return updatedNodeData;
     }
 
@@ -213,14 +214,14 @@ export class NodeUpdateService {
             if (!nodeManager.nodeData[nodeId]) {
                 nodeManager.nodeData[nodeId] = {};
             }
-            
+
             // description 저장
             if (nodeData.description) {
                 nodeManager.nodeData[nodeId].description = nodeData.description;
             } else {
                 nodeManager.nodeData[nodeId].description = null;
             }
-            
+
             // 나머지 데이터 업데이트
             Object.assign(nodeManager.nodeData[nodeId], nodeData, {
                 updatedAt: new Date().toISOString()
@@ -234,16 +235,16 @@ export class NodeUpdateService {
     updateNodeDOM(nodeElement, nodeData, nodeManager) {
         // 색상 클래스 업데이트
         nodeElement.className = nodeElement.className.replace(/node-\w+/g, '');
-        nodeElement.classList.add(`workflow-node`, `node-${nodeData.color}`);
-        
+        nodeElement.classList.add('workflow-node', `node-${nodeData.color}`);
+
         // 노드 타입별 콘텐츠 재생성
         const nodeContent = nodeManager.generateNodeContent(nodeData);
-        
+
         // 기존 연결점 정보 저장
         const existingInput = nodeElement.querySelector('.node-input');
         const existingOutput = nodeElement.querySelector('.node-output');
         const existingSettings = nodeElement.querySelector('.node-settings');
-        
+
         const inputConnector = existingInput ? existingInput.outerHTML : '<div class="node-input"></div>';
         let outputConnector = '<div class="node-output"></div>';
         if (existingOutput) {
@@ -254,23 +255,23 @@ export class NodeUpdateService {
                 outputConnector = outputsContainer.outerHTML;
             }
         }
-        
+
         nodeElement.innerHTML = `
             ${inputConnector}
             ${nodeContent}
             ${outputConnector}
             ${existingSettings ? existingSettings.outerHTML : `<div class="node-settings" data-node-id="${nodeData.id}">⚙</div>`}
         `;
-        
+
         // 이벤트 리스너 다시 설정
         nodeManager.setupNodeEventListeners(nodeElement);
         if (nodeManager.connectionHandler) {
             nodeManager.connectionHandler.setupConnectionEvents(nodeElement);
         }
-        
+
         // ConnectionManager에 노드 커넥터 다시 바인딩
         nodeManager.registerNodeWithConnectionManager(nodeElement);
-        
+
         // 드래그 컨트롤러 다시 연결
         if (nodeManager.dragController) {
             nodeManager.dragController.attachNode(nodeElement);
@@ -284,24 +285,24 @@ export class NodeUpdateService {
         // 이미지 개수 확인
         const apiBaseUrl = window.API_BASE_URL || 'http://localhost:8000';
         fetch(`${apiBaseUrl}/api/images/list?folder_path=${encodeURIComponent(nodeData.folder_path)}`)
-            .then(response => response.json())
-            .then(data => {
+            .then((response) => response.json())
+            .then((data) => {
                 if (data.success) {
                     const count = data.count || 0;
                     nodeData.image_count = count;
-                    
+
                     // NodeManager의 노드 데이터에도 이미지 개수 저장
                     if (nodeManager.nodeData && nodeManager.nodeData[nodeId]) {
                         nodeManager.nodeData[nodeId].image_count = count;
                     }
-                    
+
                     const descriptionElement = nodeElement.querySelector('.node-description');
                     const infoElement = nodeElement.querySelector('.node-info');
-                    
+
                     if (descriptionElement) {
                         descriptionElement.textContent = nodeData.folder_path;
                     }
-                    
+
                     if (infoElement) {
                         infoElement.textContent = `${count}개 이미지`;
                     } else if (count > 0) {
@@ -315,9 +316,8 @@ export class NodeUpdateService {
                     }
                 }
             })
-            .catch(e => {
+            .catch((e) => {
                 console.warn('이미지 개수 조회 실패:', e);
             });
     }
 }
-

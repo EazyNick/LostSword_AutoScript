@@ -39,7 +39,9 @@
          */
         bindEvents() {
             const canvas = this.canvas;
-            if (!canvas) return;
+            if (!canvas) {
+                return;
+            }
 
             // 마우스 휠 + Ctrl : 줌 / 그냥 휠 : 피그마식 패닝
             canvas.addEventListener('wheel', (e) => this.handleWheel(e), { passive: false });
@@ -58,7 +60,7 @@
                         if (this.isPanning) {
                             // 성능 최적화: 마우스 위치를 저장하고 requestAnimationFrame으로 업데이트
                             this.pendingPanPosition = { x: moveEvent.clientX, y: moveEvent.clientY };
-                            
+
                             // requestAnimationFrame이 이미 예약되지 않았을 때만 예약
                             if (this.panRafId === null) {
                                 this.panRafId = requestAnimationFrame(() => {
@@ -190,9 +192,7 @@
             this.updateCanvasTransform(newX, newY, currentScale);
 
             if (Math.random() < 0.1) {
-                log(
-                    `피그마 방식 휠 패닝: translate(${Math.round(newX)}, ${Math.round(newY)})`
-                );
+                log(`피그마 방식 휠 패닝: translate(${Math.round(newX)}, ${Math.round(newY)})`);
             }
         }
 
@@ -201,7 +201,9 @@
          * 성능 최적화: canvasTransform 객체를 직접 사용하여 DOM 파싱 제거
          */
         startPan(e) {
-            if (this.isPanning) return;
+            if (this.isPanning) {
+                return;
+            }
 
             this.isPanning = true;
             this.panStart = { x: e.clientX, y: e.clientY };
@@ -243,7 +245,7 @@
             }
 
             const currentTransform = canvasContent.style.transform || 'translate(-50000px, -50000px) scale(1)';
-            
+
             let currentX = -50000;
             let currentY = -50000;
             let currentScale = 1;
@@ -269,7 +271,9 @@
          * 또한 canvasTransform 객체를 직접 사용하여 DOM 파싱 제거
          */
         handlePan() {
-            if (!this.isPanning || !this.pendingPanPosition) return;
+            if (!this.isPanning || !this.pendingPanPosition) {
+                return;
+            }
 
             // 저장된 마우스 위치 사용
             const deltaX = this.pendingPanPosition.x - this.panStart.x;
@@ -286,9 +290,7 @@
             this.updateCanvasTransform(newX, newY, currentScale);
 
             if (Math.random() < 0.02) {
-                log(
-                    `피그마 방식 드래그 패닝: translate(${Math.round(newX)}, ${Math.round(newY)})`
-                );
+                log(`피그마 방식 드래그 패닝: translate(${Math.round(newX)}, ${Math.round(newY)})`);
             }
         }
 
@@ -358,13 +360,11 @@
 
             // 성능 최적화: 메모리 객체 먼저 업데이트
             this.canvasTransform = { x, y, scale: currentScale };
-            
+
             // DOM에 반영
             canvasContent.style.transform = `translate(${x}px, ${y}px) scale(${currentScale})`;
 
-            log(
-                `updateCanvasTransform: translate(${x}, ${y}) scale(${currentScale})`
-            );
+            log(`updateCanvasTransform: translate(${x}, ${y}) scale(${currentScale})`);
 
             // 성능 최적화: 연결선 업데이트 스로틀링
             // 드래그 중이 아닐 때만 연결선 업데이트
@@ -458,9 +458,11 @@
                     if (nodes.length > 0) {
                         // 노드가 이미 위치를 가지고 있는지 확인
                         const firstNode = nodes[0];
-                        const hasExistingPosition = firstNode.style.left && firstNode.style.top && 
-                                                   (parseFloat(firstNode.style.left) !== 0 || parseFloat(firstNode.style.top) !== 0);
-                        
+                        const hasExistingPosition =
+                            firstNode.style.left &&
+                            firstNode.style.top &&
+                            (parseFloat(firstNode.style.left) !== 0 || parseFloat(firstNode.style.top) !== 0);
+
                         // 노드 위치가 없을 때만 재배열
                         if (!hasExistingPosition) {
                             const screenCenterX = this.canvas.clientWidth / 2;
@@ -471,8 +473,7 @@
                                 const nodeHeight = 80;
                                 const spacing = 250;
 
-                                const nodeX =
-                                    screenCenterX + (index - 1) * spacing - nodeWidth / 2;
+                                const nodeX = screenCenterX + (index - 1) * spacing - nodeWidth / 2;
                                 const nodeY = screenCenterY - nodeHeight / 2;
 
                                 log(
@@ -550,11 +551,7 @@
 
             this.showZoomLevel(newScale);
 
-            log(
-                `캔버스 줌 레벨 변경: ${currentScale.toFixed(
-                    2
-                )}x → ${newScale.toFixed(2)}x`
-            );
+            log(`캔버스 줌 레벨 변경: ${currentScale.toFixed(2)}x → ${newScale.toFixed(2)}x`);
 
             setTimeout(() => {
                 this.isZooming = false;
@@ -567,7 +564,9 @@
          */
         showZoomLevel(zoomLevel) {
             const existing = document.getElementById('zoom-indicator');
-            if (existing) existing.remove();
+            if (existing) {
+                existing.remove();
+            }
 
             const indicator = document.createElement('div');
             indicator.id = 'zoom-indicator';

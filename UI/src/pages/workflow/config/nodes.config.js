@@ -1,9 +1,9 @@
 /**
  * 노드 설정 파일
- * 
+ *
  * 새로운 노드를 추가하려면 이 파일에 노드 정보를 추가하고,
  * 해당 노드의 기능을 구현한 JS 파일을 생성하세요.
- * 
+ *
  * 예시:
  * 1. 아래에 노드 정보 추가:
  *    'my-node': {
@@ -14,13 +14,13 @@
  *      script: 'node-my-node.js',
  *      isBoundary: false
  *    }
- * 
+ *
  * 2. UI/src/js/components/node/node-my-node.js 파일 생성
  * 3. 해당 파일에서 NodeManager.registerNodeType('my-node', {...}) 호출
  */
 
 export const NODES_CONFIG = {
-    'start': {
+    start: {
         label: '시작 노드',
         title: '시작',
         description: '워크플로우의 시작점입니다.',
@@ -29,7 +29,7 @@ export const NODES_CONFIG = {
         isBoundary: true,
         category: 'system'
     },
-    'end': {
+    end: {
         label: '종료 노드',
         title: '종료',
         description: '워크플로우의 종료점입니다.',
@@ -38,7 +38,7 @@ export const NODES_CONFIG = {
         isBoundary: true,
         category: 'system'
     },
-    'action': {
+    action: {
         label: '액션 노드',
         title: '액션 노드',
         description: '액션을 수행하는 노드입니다.',
@@ -47,7 +47,7 @@ export const NODES_CONFIG = {
         isBoundary: false,
         category: 'action'
     },
-    'condition': {
+    condition: {
         label: '조건 노드',
         title: '조건 노드',
         description: '조건을 확인하는 노드입니다.',
@@ -56,7 +56,7 @@ export const NODES_CONFIG = {
         isBoundary: false,
         category: 'logic'
     },
-    'loop': {
+    loop: {
         label: '반복 노드',
         title: '반복 노드',
         description: '반복 작업을 수행하는 노드입니다.',
@@ -65,7 +65,7 @@ export const NODES_CONFIG = {
         isBoundary: false,
         category: 'logic'
     },
-    'wait': {
+    wait: {
         label: '대기 노드',
         title: '대기 노드',
         description: '일정 시간 대기하는 노드입니다.',
@@ -132,4 +132,3 @@ export function getNodeLabel(nodeType) {
     const config = getNodeConfig(nodeType);
     return config ? config.label : nodeType;
 }
-

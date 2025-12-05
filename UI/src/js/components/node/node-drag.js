@@ -47,7 +47,7 @@ export class NodeDragController {
             if (this.isDragging) {
                 // 마우스 위치를 즉시 저장 (이벤트 객체는 재사용되므로)
                 this.pendingPosition = { x: e.clientX, y: e.clientY };
-                
+
                 // requestAnimationFrame이 이미 예약되지 않았을 때만 예약
                 // 이렇게 하면 한 프레임에 한 번만 업데이트되어 성능이 향상됨
                 if (this.rafId === null) {
@@ -90,10 +90,11 @@ export class NodeDragController {
         if (node.dataset.dragAttached === 'true') {
             return;
         }
-        
+
         // 드래그 시작
         node.addEventListener('mousedown', (e) => {
-            if (e.button === 0) { // 왼쪽 버튼
+            if (e.button === 0) {
+                // 왼쪽 버튼
                 e.preventDefault();
                 e.stopPropagation();
                 this.startDrag(e, node);
@@ -110,7 +111,7 @@ export class NodeDragController {
                 node.style.transform = '';
             }
         });
-        
+
         // 바인딩 완료 플래그 설정
         node.dataset.dragAttached = 'true';
     }
@@ -174,18 +175,18 @@ export class NodeDragController {
     /**
      * 캔버스 바운딩 박스 가져오기 (캐싱 최적화)
      * getBoundingClientRect()는 리플로우를 유발하므로 캐싱하여 성능 향상
-     * 
+     *
      * @returns {DOMRect} 캔버스의 바운딩 박스
      */
     getCanvasRect() {
         const now = Date.now();
-        
+
         // 캐시가 없거나 만료되었으면 새로 계산
-        if (!this.cachedCanvasRect || (now - this.canvasRectCacheTime) > this.CANVAS_RECT_CACHE_DURATION) {
+        if (!this.cachedCanvasRect || now - this.canvasRectCacheTime > this.CANVAS_RECT_CACHE_DURATION) {
             this.cachedCanvasRect = this.nodeManager.canvas.getBoundingClientRect();
             this.canvasRectCacheTime = now;
         }
-        
+
         return this.cachedCanvasRect;
     }
 
@@ -206,15 +207,17 @@ export class NodeDragController {
      * 이렇게 하면 불필요한 업데이트를 줄이고 부드러운 애니메이션을 보장함
      */
     handleDrag() {
-        if (!this.isDragging || !this.draggedNode || !this.pendingPosition) return;
+        if (!this.isDragging || !this.draggedNode || !this.pendingPosition) {
+            return;
+        }
 
         try {
             // 저장된 마우스 위치 사용 (이벤트 객체는 재사용되므로)
             const pos = this.calculateNewPosition(this.pendingPosition);
-            
+
             // 노드 위치 업데이트
             this.updateNodePosition(this.draggedNode, pos);
-            
+
             // 연결선 업데이트 (스로틀링 적용)
             this.updateRelatedComponentsThrottled(this.draggedNode);
         } catch (error) {
@@ -225,14 +228,14 @@ export class NodeDragController {
     /**
      * 새 위치 계산
      * 마우스 위치와 드래그 오프셋을 사용하여 노드의 새 위치를 계산
-     * 
+     *
      * @param {Object} mousePos - 마우스 위치 { x, y } (화면 좌표)
      * @returns {Object} 노드의 새 위치 { x, y } (캔버스 좌표)
      */
     calculateNewPosition(mousePos) {
         // 성능 최적화: 캐시된 바운딩 박스 사용
         const canvasRect = this.getCanvasRect();
-        
+
         // 화면 좌표를 캔버스 좌표로 변환
         const mouseX = mousePos.x - canvasRect.left;
         const mouseY = mousePos.y - canvasRect.top;
@@ -257,14 +260,16 @@ export class NodeDragController {
      * 연결선 등 관련 컴포넌트 업데이트 (스로틀링 적용)
      * 드래그 중에는 연결선 업데이트를 제한하여 성능 향상
      * 매 프레임마다 업데이트하지 않고, 일정 간격으로만 업데이트
-     * 
+     *
      * @param {HTMLElement} node - 업데이트할 노드 요소
      */
     updateRelatedComponentsThrottled(node) {
         const now = Date.now();
         const nodeId = node.dataset.nodeId || node.id;
 
-        if (!this.nodeManager) return;
+        if (!this.nodeManager) {
+            return;
+        }
 
         // 마지막 업데이트로부터 일정 시간이 지났을 때만 업데이트
         // 이렇게 하면 드래그 중에도 부드러운 성능을 유지할 수 있음
@@ -277,7 +282,7 @@ export class NodeDragController {
                 // 전역 connectionManager가 있으면 사용
                 window.connectionManager.updateNodeConnectionsImmediately(nodeId);
             }
-            
+
             this.lastConnectionUpdateTime = now;
         }
     }
@@ -287,7 +292,9 @@ export class NodeDragController {
      * 드래그가 끝나면 최종 위치를 저장하고 연결선을 완전히 업데이트
      */
     endDrag() {
-        if (!this.isDragging || !this.draggedNode) return;
+        if (!this.isDragging || !this.draggedNode) {
+            return;
+        }
 
         try {
             const node = this.draggedNode;

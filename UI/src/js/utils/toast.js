@@ -12,7 +12,7 @@ export class ToastManager {
         this.container = null;
         this.init();
     }
-    
+
     /**
      * Toast 컨테이너 초기화
      */
@@ -32,10 +32,10 @@ export class ToastManager {
             align-items: center;
             gap: 10px;
         `;
-        
+
         document.body.appendChild(this.container);
     }
-    
+
     /**
      * Toast 알림 표시
      * @param {string} message - 표시할 메시지
@@ -46,7 +46,7 @@ export class ToastManager {
         if (!this.container) {
             this.init();
         }
-        
+
         // Toast 요소 생성
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
@@ -66,10 +66,10 @@ export class ToastManager {
             transition: opacity 0.3s ease, transform 0.3s ease;
         `;
         toast.textContent = message;
-        
+
         // 컨테이너에 추가
         this.container.appendChild(toast);
-        
+
         // 애니메이션을 위해 약간의 지연 후 표시
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
@@ -77,12 +77,12 @@ export class ToastManager {
                 toast.style.transform = 'translateY(0)';
             });
         });
-        
+
         // 지정된 시간 후 자동 제거
         setTimeout(() => {
             toast.style.opacity = '0';
             toast.style.transform = 'translateY(-20px)';
-            
+
             setTimeout(() => {
                 if (toast.parentNode) {
                     toast.parentNode.removeChild(toast);
@@ -90,7 +90,7 @@ export class ToastManager {
             }, 300); // 애니메이션 시간과 동일
         }, duration);
     }
-    
+
     /**
      * Toast 타입에 따른 배경색 반환
      * @param {string} type - Toast 타입
@@ -99,13 +99,13 @@ export class ToastManager {
     getBackgroundColor(type) {
         const colors = {
             success: '#10b981', // green-500
-            error: '#ef4444',   // red-500
+            error: '#ef4444', // red-500
             warning: '#f59e0b', // amber-500
-            info: '#3b82f6'     // blue-500
+            info: '#3b82f6' // blue-500
         };
         return colors[type] || colors.info;
     }
-    
+
     /**
      * 성공 Toast 표시
      * @param {string} message - 표시할 메시지
@@ -114,7 +114,7 @@ export class ToastManager {
     success(message, duration = 3000) {
         this.show(message, 'success', duration);
     }
-    
+
     /**
      * 에러 Toast 표시
      * @param {string} message - 표시할 메시지
@@ -123,7 +123,7 @@ export class ToastManager {
     error(message, duration = 3000) {
         this.show(message, 'error', duration);
     }
-    
+
     /**
      * 정보 Toast 표시
      * @param {string} message - 표시할 메시지
@@ -132,7 +132,7 @@ export class ToastManager {
     info(message, duration = 3000) {
         this.show(message, 'info', duration);
     }
-    
+
     /**
      * 경고 Toast 표시
      * @param {string} message - 표시할 메시지
@@ -156,4 +156,3 @@ export function getToastManagerInstance() {
     }
     return toastManagerInstance;
 }
-

@@ -4,20 +4,20 @@
  */
 
 export const ACTION_NODE_TYPES = {
-    "action": {
-        "http-api-request": {
-            label: "HTTP API 요청",
-            description: "외부 API에 HTTP 요청을 보냅니다.",
-            icon: "🌐"
+    action: {
+        'http-api-request': {
+            label: 'HTTP API 요청',
+            description: '외부 API에 HTTP 요청을 보냅니다.',
+            icon: '🌐'
         }
         // 향후 추가될 액션 노드들:
         // "file-read": {...},
         // "file-write": {...},
     },
-    "condition": {
+    condition: {
         // 조건 노드 종류들
     },
-    "wait": {
+    wait: {
         // 대기 노드 종류들
     }
 };
@@ -39,7 +39,9 @@ export function getActionNodeTypes(nodeType) {
  */
 export function getActionNodeConfig(nodeType, actionNodeType) {
     const actionNodes = ACTION_NODE_TYPES[nodeType];
-    if (!actionNodes) return null;
+    if (!actionNodes) {
+        return null;
+    }
     return actionNodes[actionNodeType] || null;
 }
 
@@ -50,4 +52,3 @@ export function getActionNodeConfig(nodeType, actionNodeType) {
 export function getAllActionNodeTypes() {
     return ACTION_NODE_TYPES;
 }
-

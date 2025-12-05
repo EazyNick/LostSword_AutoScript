@@ -8,9 +8,9 @@
 
 /* 메인 컨텐츠 영역: 헤더 아래 전체 공간을 차지 */
 .main-content {
-    flex: 1;                                    /* 남은 공간을 모두 차지 */
-    display: flex;                              /* 플렉스박스 레이아웃 */
-    height: calc(100vh - 80px);                /* 전체 화면 높이에서 헤더 높이(80px) 제외 */
+    flex: 1; /* 남은 공간을 모두 차지 */
+    display: flex; /* 플렉스박스 레이아웃 */
+    height: calc(100vh - 80px); /* 전체 화면 높이에서 헤더 높이(80px) 제외 */
 }
 
 /* ========================================== */
@@ -19,37 +19,36 @@
 
 /* 워크플로우 영역: 메인 캔버스가 들어가는 공간 */
 .workflow-area {
-    flex: 1;                                    /* 사이드바를 제외한 남은 공간을 모두 차지 */
-    position: relative;                         /* 미니맵의 절대 위치 기준점 */
-    background-color: #1a202c;                  /* 어두운 배경색 */
-    
+    flex: 1; /* 사이드바를 제외한 남은 공간을 모두 차지 */
+    position: relative; /* 미니맵의 절대 위치 기준점 */
+    background-color: #1a202c; /* 어두운 배경색 */
+
     /* 격자 패턴 배경: 점들이 격자 형태로 배치된 패턴 */
-    background-image: 
-        radial-gradient(circle at 1px 1px, rgba(255,255,255,0.1) 1px, transparent 0);
-    background-size: 20px 20px;                 /* 격자 크기: 20x20 픽셀 */
-    
-    overflow: auto;                            /* 스크롤 가능하게 설정 */
-    
+    background-image: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.1) 1px, transparent 0);
+    background-size: 20px 20px; /* 격자 크기: 20x20 픽셀 */
+
+    overflow: auto; /* 스크롤 가능하게 설정 */
+
     /* 부모 컨테이너 크기 고정 - 절대 크기로 설정 */
     width: 100%;
     height: 100%;
-    min-width: 0;                              /* 플렉스 아이템이 축소될 수 있도록 */
-    min-height: 0;                             /* 플렉스 아이템이 축소될 수 있도록 */
-    z-index: 1;                                /* 사이드바 리사이즈 핸들보다 낮게 */
+    min-width: 0; /* 플렉스 아이템이 축소될 수 있도록 */
+    min-height: 0; /* 플렉스 아이템이 축소될 수 있도록 */
+    z-index: 1; /* 사이드바 리사이즈 핸들보다 낮게 */
 }
 
 /* 워크플로우 캔버스: 노드들이 배치되는 메인 영역 */
 .workflow-canvas {
     /* 피그마 방식: Transform 기반 패닝 */
-    position: absolute;                        /* 절대 위치로 설정 */
+    position: absolute; /* 절대 위치로 설정 */
     top: 0;
     left: 0;
-    width: 100%;                               /* 부모 컨테이너 전체 크기 */
-    height: 100%;                              /* 부모 컨테이너 전체 크기 */
-    overflow: hidden;                          /* 스크롤바 숨김 */
-    cursor: grab;                              /* 드래그 가능한 커서 */
-    transform-origin: 0 0;                     /* Transform 기준점 */
-    z-index: 1;                                /* 사이드바 리사이즈 핸들보다 낮게 */
+    width: 100%; /* 부모 컨테이너 전체 크기 */
+    height: 100%; /* 부모 컨테이너 전체 크기 */
+    overflow: hidden; /* 스크롤바 숨김 */
+    cursor: grab; /* 드래그 가능한 커서 */
+    transform-origin: 0 0; /* Transform 기준점 */
+    z-index: 1; /* 사이드바 리사이즈 핸들보다 낮게 */
 }
 
 /* 캔버스 내부 콘텐츠 컨테이너 */
@@ -57,9 +56,9 @@
     position: absolute;
     top: 0;
     left: 0;
-    width: 100000px;                           /* 무한 캔버스 크기 */
-    height: 100000px;                          /* 무한 캔버스 크기 */
-    transform-origin: 0 0;                     /* Transform 기준점 */
+    width: 100000px; /* 무한 캔버스 크기 */
+    height: 100000px; /* 무한 캔버스 크기 */
+    transform-origin: 0 0; /* Transform 기준점 */
 }
 
 /* ========================================== */
@@ -68,21 +67,21 @@
 
 /* 패닝 모드: 마우스 휠 버튼을 누르고 드래그할 때 */
 .workflow-canvas.panning {
-    cursor: grabbing !important;                /* 드래그 중 커서로 변경 */
-    user-select: none;                         /* 텍스트 선택 방지 */
-    
+    cursor: grabbing !important; /* 드래그 중 커서로 변경 */
+    user-select: none; /* 텍스트 선택 방지 */
+
     /* 스크롤바 숨김 (모든 브라우저 지원) */
-    scrollbar-width: none;                      /* Firefox */
-    -ms-overflow-style: none;                  /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
 }
 
 .workflow-canvas.panning::-webkit-scrollbar {
-    display: none;                             /* Chrome, Safari, Opera */
+    display: none; /* Chrome, Safari, Opera */
 }
 
 /* 패닝 중에는 텍스트 선택만 방지 (pointer-events는 제거하여 패닝 동작 보장) */
 .workflow-canvas.panning * {
-    user-select: none;                         /* 텍스트 선택 방지 */
+    user-select: none; /* 텍스트 선택 방지 */
 }
 
 /* ========================================== */
@@ -91,11 +90,11 @@
 
 /* 줌 모드: 줌 가능한 상태임을 나타내는 커서 */
 .workflow-canvas.zooming {
-    cursor: zoom-in;                           /* 확대 커서 */
+    cursor: zoom-in; /* 확대 커서 */
 }
 
 .workflow-canvas.zooming:hover {
-    cursor: zoom-out;                          /* 축소 커서 */
+    cursor: zoom-out; /* 축소 커서 */
 }
 
 /* ========================================== */
@@ -104,14 +103,14 @@
 
 /* 연결선을 그리는 SVG 컨테이너 */
 .connection-svg {
-    position: absolute !important;              /* 절대 위치 (노드 위에 표시) */
-    top: 0 !important;                         /* 캔버스 상단에 고정 */
-    left: 0 !important;                        /* 캔버스 좌측에 고정 */
-    width: 100% !important;                     /* 캔버스 전체 너비 */
-    height: 100% !important;                    /* 캔버스 전체 높이 */
-    pointer-events: none !important;           /* 마우스 이벤트 무시 (노드 클릭 방해 방지) */
-    z-index: 1 !important;                     /* 노드들 위에 표시 */
-    overflow: visible !important;              /* 연결선이 영역 밖으로 나가도 표시 */
+    position: absolute !important; /* 절대 위치 (노드 위에 표시) */
+    top: 0 !important; /* 캔버스 상단에 고정 */
+    left: 0 !important; /* 캔버스 좌측에 고정 */
+    width: 100% !important; /* 캔버스 전체 너비 */
+    height: 100% !important; /* 캔버스 전체 높이 */
+    pointer-events: none !important; /* 마우스 이벤트 무시 (노드 클릭 방해 방지) */
+    z-index: 1 !important; /* 노드들 위에 표시 */
+    overflow: visible !important; /* 연결선이 영역 밖으로 나가도 표시 */
 }
 
 /* ========================================== */
@@ -120,23 +119,23 @@
 
 /* 워크플로우 노드 기본 스타일 */
 .workflow-node {
-    position: absolute;                         /* 절대 위치 (캔버스 내에서 자유 배치) */
-    width: 200px;                              /* 노드 너비 */
-    height: 80px;                              /* 노드 높이 */
-    border-radius: 12px;                       /* 둥근 모서리 */
-    cursor: move;                              /* 드래그 가능함을 나타내는 커서 */
-    transition: all 0.3s ease;                 /* 부드러운 전환 효과 */
-    display: flex;                             /* 플렉스박스 레이아웃 */
-    align-items: center;                       /* 세로 중앙 정렬 */
-    justify-content: space-between;            /* 요소들 사이에 공간 배분 */
-    padding: 0 15px;                           /* 좌우 여백 */
+    position: absolute; /* 절대 위치 (캔버스 내에서 자유 배치) */
+    width: 200px; /* 노드 너비 */
+    height: 80px; /* 노드 높이 */
+    border-radius: 12px; /* 둥근 모서리 */
+    cursor: move; /* 드래그 가능함을 나타내는 커서 */
+    transition: all 0.3s ease; /* 부드러운 전환 효과 */
+    display: flex; /* 플렉스박스 레이아웃 */
+    align-items: center; /* 세로 중앙 정렬 */
+    justify-content: space-between; /* 요소들 사이에 공간 배분 */
+    padding: 0 15px; /* 좌우 여백 */
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); /* 그림자 효과 */
-    animation: fadeIn 0.5s ease-out;          /* 생성 시 페이드인 애니메이션 */
+    animation: fadeIn 0.5s ease-out; /* 생성 시 페이드인 애니메이션 */
 }
 
 /* 노드 호버 효과: 마우스를 올렸을 때 */
 .workflow-node:hover {
-    transform: translateY(-2px);               /* 살짝 위로 이동 */
+    transform: translateY(-2px); /* 살짝 위로 이동 */
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3); /* 그림자 강화 */
 }
 
@@ -146,38 +145,38 @@
 
 /* 파란색 노드: 일반 액션 노드 */
 .node-blue {
-    background: #3182ce;                        /* 파란색 배경 */
-    border: 2px solid #2c5282;                 /* 진한 파란색 테두리 */
+    background: #3182ce; /* 파란색 배경 */
+    border: 2px solid #2c5282; /* 진한 파란색 테두리 */
 }
 
 /* 주황색 노드: 조건 노드 */
 .node-orange {
-    background: #ed8936;                       /* 주황색 배경 */
-    border: 2px solid #dd6b20;                 /* 진한 주황색 테두리 */
+    background: #ed8936; /* 주황색 배경 */
+    border: 2px solid #dd6b20; /* 진한 주황색 테두리 */
 }
 
 /* 초록색 노드: 성공/완료 노드 */
 .node-green {
-    background: #38a169;                       /* 초록색 배경 */
-    border: 2px solid #2f855a;                 /* 진한 초록색 테두리 */
+    background: #38a169; /* 초록색 배경 */
+    border: 2px solid #2f855a; /* 진한 초록색 테두리 */
 }
 
 /* 보라색 노드: 특별한 기능 노드 */
 .node-purple {
-    background: #805ad5;                        /* 보라색 배경 */
-    border: 2px solid #6b46c1;                 /* 진한 보라색 테두리 */
+    background: #805ad5; /* 보라색 배경 */
+    border: 2px solid #6b46c1; /* 진한 보라색 테두리 */
 }
 
 /* 빨간색 노드: 에러 처리 노드 */
 .node-red {
-    background: #e53e3e;                        /* 빨간색 배경 */
-    border: 2px solid #c53030;                 /* 진한 빨간색 테두리 */
+    background: #e53e3e; /* 빨간색 배경 */
+    border: 2px solid #c53030; /* 진한 빨간색 테두리 */
 }
 
 /* 회색 노드: 종료 노드 */
 .node-gray {
-    background: #718096;                       /* 회색 배경 */
-    border: 2px solid #4a5568;                 /* 진한 회색 테두리 */
+    background: #718096; /* 회색 배경 */
+    border: 2px solid #4a5568; /* 진한 회색 테두리 */
 }
 
 /* ========================================== */
@@ -186,87 +185,87 @@
 
 /* 입력 연결점: 다른 노드에서 이 노드로 연결되는 지점 */
 .node-input {
-    width: 12px;                               /* 연결점 크기 */
-    height: 12px;                              /* 연결점 크기 */
-    background-color: #60a5fa;                 /* 파란색 연결점 */
-    border-radius: 50%;                        /* 원형 */
-    border: 2px solid #ffffff;                 /* 흰색 테두리 */
-    position: absolute;                         /* 절대 위치 */
-    left: -6px;                                /* 노드 왼쪽 밖에 배치 */
-    top: 50%;                                  /* 세로 중앙 */
-    transform: translateY(-50%);               /* 정확한 중앙 정렬 */
-    transition: all 0.3s ease;                 /* 부드러운 전환 효과 */
+    width: 12px; /* 연결점 크기 */
+    height: 12px; /* 연결점 크기 */
+    background-color: #60a5fa; /* 파란색 연결점 */
+    border-radius: 50%; /* 원형 */
+    border: 2px solid #ffffff; /* 흰색 테두리 */
+    position: absolute; /* 절대 위치 */
+    left: -6px; /* 노드 왼쪽 밖에 배치 */
+    top: 50%; /* 세로 중앙 */
+    transform: translateY(-50%); /* 정확한 중앙 정렬 */
+    transition: all 0.3s ease; /* 부드러운 전환 효과 */
 }
 
 /* 조건 노드의 입력점은 노란색으로 구분 */
 .node-orange .node-input {
-    background-color: #fbbf24;                 /* 노란색 연결점 */
+    background-color: #fbbf24; /* 노란색 연결점 */
 }
 
 /* 입력점 호버 효과 */
 .node-input:hover {
-    transform: translateY(-50%) scale(1.2);    /* 크기 확대 */
-    background-color: #ffd700;                 /* 금색으로 변경 */
+    transform: translateY(-50%) scale(1.2); /* 크기 확대 */
+    background-color: #ffd700; /* 금색으로 변경 */
     box-shadow: 0 0 10px rgba(255, 215, 0, 0.8); /* 발광 효과 */
 }
 
 /* 연결 중인 입력점 */
 .node-input.connecting {
-    background-color: #ff6b35;                 /* 주황색으로 변경 */
-    transform: translateY(-50%) scale(1.3);    /* 더 크게 확대 */
+    background-color: #ff6b35; /* 주황색으로 변경 */
+    transform: translateY(-50%) scale(1.3); /* 더 크게 확대 */
     box-shadow: 0 0 15px rgba(255, 107, 53, 0.9); /* 강한 발광 효과 */
 }
 
 /* 노드 메인 컨텐츠 영역 */
 .node-content {
-    flex: 1;                                   /* 남은 공간을 모두 차지 */
-    display: flex;                             /* 플렉스박스 레이아웃 */
-    align-items: center;                       /* 세로 중앙 정렬 */
-    gap: 10px;                                 /* 요소들 사이 간격 */
-    padding: 0 10px;                           /* 좌우 여백 */
+    flex: 1; /* 남은 공간을 모두 차지 */
+    display: flex; /* 플렉스박스 레이아웃 */
+    align-items: center; /* 세로 중앙 정렬 */
+    gap: 10px; /* 요소들 사이 간격 */
+    padding: 0 10px; /* 좌우 여백 */
 }
 
 /* 노드 아이콘 (조건 노드 등에 사용) */
 .node-icon {
-    font-size: 20px;                           /* 아이콘 크기 */
-    margin-right: 8px;                         /* 오른쪽 여백 */
-    display: flex;                              /* 플렉스박스 */
-    align-items: center;                       /* 세로 중앙 정렬 */
+    font-size: 20px; /* 아이콘 크기 */
+    margin-right: 8px; /* 오른쪽 여백 */
+    display: flex; /* 플렉스박스 */
+    align-items: center; /* 세로 중앙 정렬 */
 }
 
 /* 노드 제목 */
 .node-title {
-    font-size: 14px;                           /* 제목 크기 */
-    font-weight: 600;                          /* 굵은 글씨 */
-    color: #ffffff;                            /* 흰색 텍스트 */
-    text-align: center;                        /* 가운데 정렬 */
+    font-size: 14px; /* 제목 크기 */
+    font-weight: 600; /* 굵은 글씨 */
+    color: #ffffff; /* 흰색 텍스트 */
+    text-align: center; /* 가운데 정렬 */
 }
 
 /* 출력 연결점: 이 노드에서 다른 노드로 연결되는 지점 */
 .node-output {
-    width: 12px;                               /* 연결점 크기 */
-    height: 12px;                              /* 연결점 크기 */
-    background-color: #60a5fa;                 /* 파란색 연결점 */
-    border-radius: 50%;                        /* 원형 */
-    border: 2px solid #ffffff;                 /* 흰색 테두리 */
-    position: absolute;                         /* 절대 위치 */
-    right: -6px;                               /* 노드 오른쪽 밖에 배치 */
-    top: 50%;                                  /* 세로 중앙 */
-    transform: translateY(-50%);                /* 정확한 중앙 정렬 */
-    transition: all 0.3s ease;                 /* 부드러운 전환 효과 */
+    width: 12px; /* 연결점 크기 */
+    height: 12px; /* 연결점 크기 */
+    background-color: #60a5fa; /* 파란색 연결점 */
+    border-radius: 50%; /* 원형 */
+    border: 2px solid #ffffff; /* 흰색 테두리 */
+    position: absolute; /* 절대 위치 */
+    right: -6px; /* 노드 오른쪽 밖에 배치 */
+    top: 50%; /* 세로 중앙 */
+    transform: translateY(-50%); /* 정확한 중앙 정렬 */
+    transition: all 0.3s ease; /* 부드러운 전환 효과 */
 }
 
 /* 출력점 호버 효과 */
 .node-output:hover {
-    transform: translateY(-50%) scale(1.2);    /* 크기 확대 */
-    background-color: #ffd700;                 /* 금색으로 변경 */
+    transform: translateY(-50%) scale(1.2); /* 크기 확대 */
+    background-color: #ffd700; /* 금색으로 변경 */
     box-shadow: 0 0 10px rgba(255, 215, 0, 0.8); /* 발광 효과 */
 }
 
 /* 연결 중인 출력점 */
 .node-output.connecting {
-    background-color: #ff6b35;                 /* 주황색으로 변경 */
-    transform: translateY(-50%) scale(1.3);    /* 더 크게 확대 */
+    background-color: #ff6b35; /* 주황색으로 변경 */
+    transform: translateY(-50%) scale(1.3); /* 더 크게 확대 */
     box-shadow: 0 0 15px rgba(255, 107, 53, 0.9); /* 강한 발광 효과 */
 }
 
@@ -276,93 +275,93 @@
 
 /* 조건 노드의 출력점들 컨테이너 */
 .node-outputs {
-    position: absolute;                         /* 절대 위치 */
-    right: -8px;                               /* 노드 오른쪽 밖에 배치 */
-    top: 50%;                                  /* 세로 중앙 */
-    transform: translateY(-50%);                /* 정확한 중앙 정렬 */
-    display: flex;                              /* 플렉스박스 레이아웃 */
-    flex-direction: column;                     /* 세로 방향 배치 */
-    gap: 16px;                                 /* 출력점들 사이 간격 */
-    z-index: 10;                               /* 다른 요소 위에 표시 */
+    position: absolute; /* 절대 위치 */
+    right: -8px; /* 노드 오른쪽 밖에 배치 */
+    top: 50%; /* 세로 중앙 */
+    transform: translateY(-50%); /* 정확한 중앙 정렬 */
+    display: flex; /* 플렉스박스 레이아웃 */
+    flex-direction: column; /* 세로 방향 배치 */
+    gap: 16px; /* 출력점들 사이 간격 */
+    z-index: 10; /* 다른 요소 위에 표시 */
 }
 
 /* True/False 출력점 */
 .node-output.true-output,
 .node-output.false-output {
-    display: flex;                              /* 플렉스박스 레이아웃 */
-    align-items: center;                        /* 세로 중앙 정렬 */
-    gap: 6px;                                  /* 점과 라벨 사이 간격 */
-    position: relative;                         /* 상대 위치 */
-    padding: 2px 4px;                          /* 내부 여백 */
-    border-radius: 4px;                        /* 둥근 모서리 */
-    transition: all 0.2s ease;                 /* 부드러운 전환 효과 */
+    display: flex; /* 플렉스박스 레이아웃 */
+    align-items: center; /* 세로 중앙 정렬 */
+    gap: 6px; /* 점과 라벨 사이 간격 */
+    position: relative; /* 상대 위치 */
+    padding: 2px 4px; /* 내부 여백 */
+    border-radius: 4px; /* 둥근 모서리 */
+    transition: all 0.2s ease; /* 부드러운 전환 효과 */
 }
 
 /* True 출력점 호버 효과 */
 .node-output.true-output:hover {
-    background-color: rgba(34, 197, 94, 0.2);  /* 초록색 배경 */
+    background-color: rgba(34, 197, 94, 0.2); /* 초록색 배경 */
 }
 
 /* False 출력점 호버 효과 */
 .node-output.false-output:hover {
-    background-color: rgba(239, 68, 68, 0.2);  /* 빨간색 배경 */
+    background-color: rgba(239, 68, 68, 0.2); /* 빨간색 배경 */
 }
 
 /* 출력점 원형 도트 */
 .output-dot {
-    width: 20px;                               /* 도트 크기 (더 크게) */
-    height: 20px;                              /* 도트 크기 */
-    border-radius: 50%;                        /* 원형 */
-    border: 2px solid #ffffff;                 /* 흰색 테두리 */
-    transition: all 0.3s ease;                 /* 부드러운 전환 효과 */
-    display: flex;                              /* 플렉스박스 */
-    align-items: center;                        /* 세로 중앙 정렬 */
-    justify-content: center;                    /* 가로 중앙 정렬 */
-    flex-shrink: 0;                            /* 크기 고정 */
-    cursor: pointer;                            /* 클릭 가능한 커서 */
+    width: 20px; /* 도트 크기 (더 크게) */
+    height: 20px; /* 도트 크기 */
+    border-radius: 50%; /* 원형 */
+    border: 2px solid #ffffff; /* 흰색 테두리 */
+    transition: all 0.3s ease; /* 부드러운 전환 효과 */
+    display: flex; /* 플렉스박스 */
+    align-items: center; /* 세로 중앙 정렬 */
+    justify-content: center; /* 가로 중앙 정렬 */
+    flex-shrink: 0; /* 크기 고정 */
+    cursor: pointer; /* 클릭 가능한 커서 */
 }
 
 /* 출력점 도트 호버 효과 */
 .output-dot:hover {
-    transform: scale(1.15);                     /* 크기 확대 */
+    transform: scale(1.15); /* 크기 확대 */
     box-shadow: 0 0 10px rgba(255, 255, 255, 0.8); /* 발광 효과 */
 }
 
 /* 연결 중인 출력점 도트 */
 .output-dot.connecting {
-    transform: scale(1.25);                     /* 더 크게 확대 */
+    transform: scale(1.25); /* 더 크게 확대 */
     box-shadow: 0 0 15px rgba(255, 107, 53, 0.9); /* 강한 발광 효과 */
 }
 
 /* True 출력점: 성공/참일 때 */
 .true-dot {
-    background-color: #22c55e;                 /* 초록색 */
-    border-color: #16a34a;                     /* 진한 초록색 테두리 */
+    background-color: #22c55e; /* 초록색 */
+    border-color: #16a34a; /* 진한 초록색 테두리 */
 }
 
 /* False 출력점: 실패/거짓일 때 */
 .false-dot {
-    background-color: #ef4444;                 /* 빨간색 */
-    border-color: #dc2626;                     /* 진한 빨간색 테두리 */
+    background-color: #ef4444; /* 빨간색 */
+    border-color: #dc2626; /* 진한 빨간색 테두리 */
 }
 
 /* 출력점 내부 심볼 (T/F) */
 .output-symbol {
-    font-size: 11px;                           /* 심볼 크기 */
-    font-weight: 700;                          /* 굵은 글씨 */
-    color: #ffffff;                            /* 흰색 텍스트 */
-    line-height: 1;                            /* 줄 높이 */
-    user-select: none;                         /* 텍스트 선택 방지 */
+    font-size: 11px; /* 심볼 크기 */
+    font-weight: 700; /* 굵은 글씨 */
+    color: #ffffff; /* 흰색 텍스트 */
+    line-height: 1; /* 줄 높이 */
+    user-select: none; /* 텍스트 선택 방지 */
 }
 
 /* 출력점 라벨 (True/False 텍스트) */
 .output-label {
-    font-size: 11px;                           /* 라벨 크기 */
-    color: #ffffff;                            /* 흰색 텍스트 */
-    font-weight: 600;                          /* 중간 굵기 */
-    white-space: nowrap;                        /* 줄바꿈 방지 */
+    font-size: 11px; /* 라벨 크기 */
+    color: #ffffff; /* 흰색 텍스트 */
+    font-weight: 600; /* 중간 굵기 */
+    white-space: nowrap; /* 줄바꿈 방지 */
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); /* 텍스트 그림자 */
-    user-select: none;                         /* 텍스트 선택 방지 */
+    user-select: none; /* 텍스트 선택 방지 */
 }
 
 /* ========================================== */
@@ -371,32 +370,32 @@
 
 /* 노드 설정 버튼 (기어 아이콘) */
 .node-settings {
-    position: absolute;                         /* 절대 위치 */
-    top: -8px;                                 /* 노드 상단 밖에 배치 */
-    right: -8px;                               /* 노드 오른쪽 밖에 배치 */
-    width: 20px;                               /* 버튼 크기 */
-    height: 20px;                              /* 버튼 크기 */
-    background-color: #4a5568;                 /* 회색 배경 */
-    border-radius: 50%;                        /* 원형 */
-    display: flex;                              /* 플렉스박스 */
-    align-items: center;                        /* 세로 중앙 정렬 */
-    justify-content: center;                    /* 가로 중앙 정렬 */
-    font-size: 12px;                           /* 아이콘 크기 */
-    color: #ffffff;                            /* 흰색 아이콘 */
-    cursor: pointer;                            /* 클릭 가능한 커서 */
-    transition: all 0.3s ease;                 /* 부드러운 전환 효과 */
-    opacity: 0;                                /* 기본적으로 숨김 */
+    position: absolute; /* 절대 위치 */
+    top: -8px; /* 노드 상단 밖에 배치 */
+    right: -8px; /* 노드 오른쪽 밖에 배치 */
+    width: 20px; /* 버튼 크기 */
+    height: 20px; /* 버튼 크기 */
+    background-color: #4a5568; /* 회색 배경 */
+    border-radius: 50%; /* 원형 */
+    display: flex; /* 플렉스박스 */
+    align-items: center; /* 세로 중앙 정렬 */
+    justify-content: center; /* 가로 중앙 정렬 */
+    font-size: 12px; /* 아이콘 크기 */
+    color: #ffffff; /* 흰색 아이콘 */
+    cursor: pointer; /* 클릭 가능한 커서 */
+    transition: all 0.3s ease; /* 부드러운 전환 효과 */
+    opacity: 0; /* 기본적으로 숨김 */
 }
 
 /* 노드 호버 시 설정 버튼 표시 */
 .workflow-node:hover .node-settings {
-    opacity: 1;                                /* 완전히 표시 */
+    opacity: 1; /* 완전히 표시 */
 }
 
 /* 설정 버튼 호버 효과 */
 .node-settings:hover {
-    background-color: #2d3748;                 /* 더 어두운 회색 */
-    transform: scale(1.1);                     /* 크기 확대 */
+    background-color: #2d3748; /* 더 어두운 회색 */
+    transform: scale(1.1); /* 크기 확대 */
 }
 
 /* ========================================== */
@@ -405,40 +404,40 @@
 
 /* 연결선 컨테이너 */
 .connections {
-    position: absolute;                         /* 절대 위치 */
-    top: 0;                                    /* 캔버스 상단에 고정 */
-    left: 0;                                   /* 캔버스 좌측에 고정 */
-    width: 100%;                               /* 캔버스 전체 너비 */
-    height: 100%;                              /* 캔버스 전체 높이 */
-    pointer-events: none;                      /* 마우스 이벤트 무시 */
-    z-index: 1;                                /* 노드들 위에 표시 */
+    position: absolute; /* 절대 위치 */
+    top: 0; /* 캔버스 상단에 고정 */
+    left: 0; /* 캔버스 좌측에 고정 */
+    width: 100%; /* 캔버스 전체 너비 */
+    height: 100%; /* 캔버스 전체 높이 */
+    pointer-events: none; /* 마우스 이벤트 무시 */
+    z-index: 1; /* 노드들 위에 표시 */
 }
 
 /* 연결선 기본 스타일 */
 .connection-line {
-    stroke: #9ca3af;                           /* 회색 선 */
-    stroke-width: 2;                           /* 선 두께 */
-    fill: none;                                /* 채우기 없음 */
-    stroke-dasharray: none;                    /* 점선 없음 */
+    stroke: #9ca3af; /* 회색 선 */
+    stroke-width: 2; /* 선 두께 */
+    fill: none; /* 채우기 없음 */
+    stroke-dasharray: none; /* 점선 없음 */
 }
 
 /* 실행 중인 연결선 */
 .connection-line.executing {
-    stroke: #ff6b35;                           /* 주황색 선 */
-    stroke-width: 3;                           /* 더 두꺼운 선 */
-    animation: pulse-line 1s infinite;        /* 펄스 애니메이션 */
+    stroke: #ff6b35; /* 주황색 선 */
+    stroke-width: 3; /* 더 두꺼운 선 */
+    animation: pulse-line 1s infinite; /* 펄스 애니메이션 */
 }
 
 /* 완료된 연결선 */
 .connection-line.completed {
-    stroke: #2ecc71;                           /* 초록색 선 */
-    stroke-width: 3;                           /* 더 두꺼운 선 */
+    stroke: #2ecc71; /* 초록색 선 */
+    stroke-width: 3; /* 더 두꺼운 선 */
 }
 
 /* 실패한 연결선 */
 .connection-line.failed {
-    stroke: #e74c3c;                           /* 빨간색 선 */
-    stroke-width: 3;                           /* 더 두꺼운 선 */
+    stroke: #e74c3c; /* 빨간색 선 */
+    stroke-width: 3; /* 더 두꺼운 선 */
 }
 
 /* ========================================== */
@@ -448,16 +447,15 @@
 /* 연결선 펄스 애니메이션 */
 @keyframes pulse-line {
     0% {
-        stroke-opacity: 0.7;                   /* 투명도 70% */
+        stroke-opacity: 0.7; /* 투명도 70% */
     }
     50% {
-        stroke-opacity: 1;                     /* 투명도 100% */
+        stroke-opacity: 1; /* 투명도 100% */
     }
     100% {
-        stroke-opacity: 0.7;                   /* 투명도 70% */
+        stroke-opacity: 0.7; /* 투명도 70% */
     }
 }
-
 
 /* ========================================== */
 /* 노드 상태 */
@@ -465,37 +463,37 @@
 
 /* 드래그 중인 노드 */
 .workflow-node.dragging {
-    opacity: 0.7;                              /* 반투명 */
-    transform: scale(1.1);                     /* 크기 확대 */
-    z-index: 1000;                             /* 다른 노드들 위에 표시 */
-    transition: none !important;               /* 드래그 중에는 위치 변경 애니메이션 비활성화 */
+    opacity: 0.7; /* 반투명 */
+    transform: scale(1.1); /* 크기 확대 */
+    z-index: 1000; /* 다른 노드들 위에 표시 */
+    transition: none !important; /* 드래그 중에는 위치 변경 애니메이션 비활성화 */
 }
 
 /* 선택된 노드 */
 .workflow-node.selected {
-    border-color: #f6e05e;                     /* 노란색 테두리 */
+    border-color: #f6e05e; /* 노란색 테두리 */
     box-shadow: 0 0 20px rgba(246, 224, 94, 0.5); /* 노란색 발광 효과 */
 }
 
 /* 실행 중인 노드 */
 .workflow-node.executing {
-    border-color: #ff6b35;                     /* 주황색 테두리 */
+    border-color: #ff6b35; /* 주황색 테두리 */
     box-shadow: 0 0 15px rgba(255, 107, 53, 0.5); /* 주황색 발광 효과 */
-    animation: pulse-executing 1s infinite;    /* 펄스 애니메이션 */
+    animation: pulse-executing 1s infinite; /* 펄스 애니메이션 */
 }
 
 /* 완료된 노드 */
 .workflow-node.completed {
-    border-color: #2ecc71;                     /* 초록색 테두리 */
+    border-color: #2ecc71; /* 초록색 테두리 */
     box-shadow: 0 0 15px rgba(46, 204, 113, 0.5); /* 초록색 발광 효과 */
 }
 
 /* 실패한 노드 */
 .workflow-node.failed,
 .workflow-node.error {
-    border-color: #e74c3c;                     /* 빨간색 테두리 */
+    border-color: #e74c3c; /* 빨간색 테두리 */
     box-shadow: 0 0 15px rgba(231, 76, 60, 0.5); /* 빨간색 발광 효과 */
-    animation: pulse-error 0.5s infinite;       /* 빠른 깜빡임 애니메이션 */
+    animation: pulse-error 0.5s infinite; /* 빠른 깜빡임 애니메이션 */
 }
 
 /* 실행 중 노드 펄스 애니메이션 (깜빡깜빡) */
@@ -536,18 +534,18 @@
 
 /* 샘플 노드들의 초기 위치 */
 #node1 {
-    top: 100px;                                /* 상단에서 100px */
-    left: 100px;                               /* 좌측에서 100px */
+    top: 100px; /* 상단에서 100px */
+    left: 100px; /* 좌측에서 100px */
 }
 
 #node2 {
-    top: 100px;                                /* 상단에서 100px */
-    left: 350px;                               /* 좌측에서 350px */
+    top: 100px; /* 상단에서 100px */
+    left: 350px; /* 좌측에서 350px */
 }
 
 #node3 {
-    top: 100px;                                /* 상단에서 100px */
-    left: 600px;                               /* 좌측에서 600px */
+    top: 100px; /* 상단에서 100px */
+    left: 600px; /* 좌측에서 600px */
 }
 
 /* ========================================== */
@@ -556,8 +554,8 @@
 
 /* 드래그 연결 중인 출력 연결점 */
 .node-output.dragging-connection {
-    background-color: #FF6B35 !important;
-    border-color: #FF6B35 !important;
+    background-color: #ff6b35 !important;
+    border-color: #ff6b35 !important;
     box-shadow: 0 0 15px rgba(255, 107, 53, 0.8) !important;
     transform: translateY(-50%) scale(1.3) !important;
     z-index: 1001;
@@ -565,8 +563,8 @@
 
 /* 마그네틱 하이라이트된 입력 연결점 */
 .node-input.magnetic-highlight {
-    background-color: #34C759 !important;
-    border-color: #34C759 !important;
+    background-color: #34c759 !important;
+    border-color: #34c759 !important;
     box-shadow: 0 0 15px rgba(52, 199, 89, 0.8) !important;
     transform: translateY(-50%) scale(1.2) !important;
     z-index: 1001;
@@ -575,8 +573,8 @@
 /* 연결된 연결점 스타일 */
 .node-input.connected,
 .node-output.connected {
-    background-color: #34C759 !important;
-    border-color: #34C759 !important;
+    background-color: #34c759 !important;
+    border-color: #34c759 !important;
     box-shadow: 0 0 8px rgba(52, 199, 89, 0.6) !important;
 }
 
@@ -620,31 +618,27 @@
 /* 중간 크기 화면 (1200px 이하) */
 @media (max-width: 1200px) {
     .workflow-node {
-        width: 180px;                          /* 노드 크기 축소 */
-        height: 70px;                          /* 노드 높이 축소 */
+        width: 180px; /* 노드 크기 축소 */
+        height: 70px; /* 노드 높이 축소 */
     }
-    
-    
 }
 
 /* 작은 화면 (768px 이하) - 모바일 */
 @media (max-width: 768px) {
     .main-content {
-        flex-direction: column;                /* 세로 방향 배치 */
+        flex-direction: column; /* 세로 방향 배치 */
     }
-    
+
     .workflow-area {
-        height: calc(100vh - 280px);           /* 높이 조정 */
+        height: calc(100vh - 280px); /* 높이 조정 */
     }
-    
+
     .workflow-node {
-        width: 160px;                          /* 노드 크기 더 축소 */
-        height: 60px;                          /* 노드 높이 더 축소 */
+        width: 160px; /* 노드 크기 더 축소 */
+        height: 60px; /* 노드 높이 더 축소 */
     }
-    
+
     .node-title {
-        font-size: 12px;                       /* 제목 크기 축소 */
+        font-size: 12px; /* 제목 크기 축소 */
     }
-    
-    
 }

@@ -12,7 +12,7 @@ export const NODE_DEFAULT_DESCRIPTIONS = {};
 export const NODE_DEFAULT_COLORS = {};
 export const NODE_DEFAULT_TITLES = {};
 
-nodeTypes.forEach(type => {
+nodeTypes.forEach((type) => {
     const config = getNodeConfig(type);
     if (config) {
         NODE_DEFAULT_DESCRIPTIONS[type] = config.description || '노드에 대한 설명을 입력하세요.';
@@ -47,4 +47,3 @@ export function getDefaultColor(type) {
 export function getDefaultTitle(type) {
     return NODE_DEFAULT_TITLES[type] || `${type} 노드`;
 }
-

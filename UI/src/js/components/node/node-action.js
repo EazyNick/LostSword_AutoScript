@@ -2,7 +2,9 @@
 // 공통 액션 노드 정의 (기본 노드 형태)
 
 (function () {
-    if (!window.NodeManager) return;
+    if (!window.NodeManager) {
+        return;
+    }
 
     window.NodeManager.registerNodeType('action', {
         /**

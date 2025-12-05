@@ -13,13 +13,13 @@ export class StorageUtils {
         if (!script) {
             return;
         }
-        
+
         const nodeManager = workflowPage.getNodeManager();
         const currentNodes = nodeManager ? nodeManager.getAllNodes() : [];
         const currentConnections = nodeManager ? nodeManager.getAllConnections() : [];
-        
+
         const viewportPosition = ViewportUtils.getCurrentViewportPosition();
-        
+
         const workflowData = {
             script: script,
             nodes: currentNodes,
@@ -27,17 +27,17 @@ export class StorageUtils {
             viewport: viewportPosition,
             timestamp: new Date().toISOString()
         };
-        
+
         const savedWorkflows = JSON.parse(localStorage.getItem('workflows') || '[]');
         const scriptId = script.id;
-        
-        const existingIndex = savedWorkflows.findIndex(w => w.script && w.script.id === scriptId);
+
+        const existingIndex = savedWorkflows.findIndex((w) => w.script && w.script.id === scriptId);
         if (existingIndex >= 0) {
             savedWorkflows[existingIndex] = workflowData;
         } else {
             savedWorkflows.push(workflowData);
         }
-        
+
         localStorage.setItem('workflows', JSON.stringify(savedWorkflows));
     }
 
@@ -47,19 +47,19 @@ export class StorageUtils {
     static autoSave(workflowPage) {
         const sidebarManager = workflowPage.getSidebarManager();
         const currentScript = sidebarManager ? sidebarManager.getCurrentScript() : null;
-        
+
         if (!currentScript) {
             return;
         }
-        
+
         const nodeManager = workflowPage.getNodeManager();
         const currentNodes = nodeManager ? nodeManager.getAllNodes() : [];
-        
+
         // 노드가 없으면 저장하지 않음
         if (currentNodes.length === 0) {
             return;
         }
-        
+
         StorageUtils.saveToLocalStorage(workflowPage, currentScript);
     }
 
@@ -68,7 +68,7 @@ export class StorageUtils {
      */
     static debugStorageState() {
         const savedWorkflows = JSON.parse(localStorage.getItem('workflows') || '[]');
-        
+
         savedWorkflows.forEach((workflow, index) => {
             console.log(`워크플로우 ${index + 1}:`, {
                 scriptName: workflow.script ? workflow.script.name : 'Unknown',
@@ -80,4 +80,3 @@ export class StorageUtils {
         });
     }
 }
-

@@ -2,7 +2,9 @@
 // 반복 노드 정의 (예: for / while 느낌)
 
 (function () {
-    if (!window.NodeManager) return;
+    if (!window.NodeManager) {
+        return;
+    }
 
     window.NodeManager.registerNodeType('loop', {
         renderContent(nodeData) {

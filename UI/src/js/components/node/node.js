@@ -8,7 +8,7 @@
  * - Ctrl + 마우스 휠(줌 인/줌 아웃)
  * - 캔버스 크기 및 위치 관리
  * - 연결선(에지) 관리 및 미니맵과 연동
- * 
+ *
  * ES6 모듈 방식으로 작성됨
  */
 
@@ -20,28 +20,28 @@ const logError = window.Logger ? window.Logger.error.bind(window.Logger) : conso
 export class NodeManager {
     constructor() {
         // === 기본 속성 초기화 ===
-        this.nodes = [];                    // 생성된 모든 노드들의 배열
-        this.selectedNode = null;           // 현재 선택된 노드
-        this.nodeData = {};                 // 노드 데이터(위치, 설정 등 메타 정보)
+        this.nodes = []; // 생성된 모든 노드들의 배열
+        this.selectedNode = null; // 현재 선택된 노드
+        this.nodeData = {}; // 노드 데이터(위치, 설정 등 메타 정보)
 
         // === 무한 캔버스 관련 속성 ===
-        this.isInfiniteCanvas = true;       // 무한 캔버스 모드 활성화 여부
+        this.isInfiniteCanvas = true; // 무한 캔버스 모드 활성화 여부
         this.canvasSize = { width: 50000, height: 50000 }; // 무한 캔버스 가상 크기
 
         // === 연결 모드 관련 속성 ===
-        this.isConnecting = false;          // 연결 모드 여부 (기본: false)
-        this.connectionStart = null;        // 연결 시작 정보
+        this.isConnecting = false; // 연결 모드 여부 (기본: false)
+        this.connectionStart = null; // 연결 시작 정보
 
         // === 연결 핸들러 ===
-        this.connectionHandler = null;      // 연결 처리 핸들러(초기화 후 할당)
+        this.connectionHandler = null; // 연결 처리 핸들러(초기화 후 할당)
 
         // === 캔버스 관련 속성 ===
-        this.canvas = null;                 // 워크플로우 캔버스 DOM 요소
-        this.isCanvasFocused = false;       // 캔버스에 포커스가 있는지 여부
+        this.canvas = null; // 워크플로우 캔버스 DOM 요소
+        this.isCanvasFocused = false; // 캔버스에 포커스가 있는지 여부
 
         // === 외부 매니저 참조 ===
-        this.connectionManager = null;      // 노드 간 연결선 관리 객체
-        this.workflowPage = null;           // WorkflowPage 인스턴스 참조
+        this.connectionManager = null; // 노드 간 연결선 관리 객체
+        this.workflowPage = null; // WorkflowPage 인스턴스 참조
 
         // 드래그/연결 업데이트 스로틀링 관련 플래그
         this.connectionUpdateScheduled = false;
@@ -93,9 +93,7 @@ export class NodeManager {
             'NodeConnectionHandler'
         ];
 
-        const allLoaded = requiredControllers.every(
-            name => typeof window[name] === 'function'
-        );
+        const allLoaded = requiredControllers.every((name) => typeof window[name] === 'function');
 
         if (allLoaded || attempt >= maxAttempts) {
             if (allLoaded) {
@@ -244,7 +242,7 @@ export class NodeManager {
      */
     setupExistingNodes() {
         const existingNodes = document.querySelectorAll('.workflow-node');
-        existingNodes.forEach(node => {
+        existingNodes.forEach((node) => {
             this.setupNodeEventListeners(node);
         });
     }
@@ -264,13 +262,15 @@ export class NodeManager {
         node.addEventListener('dblclick', (e) => {
             // 입력/출력 커넥터를 더블클릭한 경우 노드 설정 모달을 열지 않음
             const target = e.target;
-            if (target.classList.contains('node-input') || 
+            if (
+                target.classList.contains('node-input') ||
                 target.classList.contains('node-output') ||
                 target.closest('.node-input') ||
-                target.closest('.node-output')) {
+                target.closest('.node-output')
+            ) {
                 return; // 커넥터의 더블클릭 이벤트가 처리하도록 함
             }
-            
+
             e.stopPropagation();
             e.preventDefault();
             this.openNodeSettings(node);
@@ -365,7 +365,6 @@ export class NodeManager {
 
             log(`노드 생성 완료: ${nodeData.id} (${nodeData.title})`);
             return nodeElement;
-
         } catch (error) {
             logError('노드 생성 실패:', error);
             throw error;
@@ -402,14 +401,11 @@ export class NodeManager {
     generateNodeContent(nodeData) {
         // 정적 노드 타입 정의 레지스트리에서 타입별 렌더러를 찾는다.
         const registry = this.constructor.nodeTypeDefinitions || {};
-        
+
         log(`[NodeManager] generateNodeContent 호출: type=${nodeData.type}, registry keys:`, Object.keys(registry));
 
         // 우선순위: 명시된 type → 'action' → 'default'
-        const def =
-            registry[nodeData.type] ||
-            registry['action'] ||
-            registry['default'];
+        const def = registry[nodeData.type] || registry['action'] || registry['default'];
 
         if (def && typeof def.renderContent === 'function') {
             log(`[NodeManager] 노드 타입 '${nodeData.type}' 렌더러 사용`);
@@ -451,7 +447,7 @@ export class NodeManager {
             console.error('[NodeManager] ConnectionManager가 없습니다. 입력 커넥터 이벤트를 설정할 수 없습니다.');
             return;
         }
-        
+
         // ConnectionManager가 있으면 클릭 이벤트는 ConnectionManager가 처리
         // 여기서는 더블클릭만 처리
         inputConnector.addEventListener('dblclick', (e) => {
@@ -460,16 +456,11 @@ export class NodeManager {
         });
 
         // 현재 연결 상태 반영
-        const connections = this.findConnectionsByNode(
-            nodeElement.dataset.nodeId,
-            'input'
-        );
+        const connections = this.findConnectionsByNode(nodeElement.dataset.nodeId, 'input');
         this.updateConnectorVisualState(inputConnector, connections.length > 0);
 
         inputConnector.addEventListener('mouseenter', () => {
-            const tooltipText = connections.length > 0
-                ? `입력 커넥터 (연결 ${connections.length}개)`
-                : '입력 커넥터';
+            const tooltipText = connections.length > 0 ? `입력 커넥터 (연결 ${connections.length}개)` : '입력 커넥터';
             this.showConnectorTooltip(inputConnector, tooltipText);
         });
 
@@ -490,7 +481,7 @@ export class NodeManager {
             console.error('[NodeManager] ConnectionManager가 없습니다. 출력 커넥터 이벤트를 설정할 수 없습니다.');
             return;
         }
-        
+
         // ConnectionManager가 있으면 클릭 이벤트는 ConnectionManager가 처리
         // 여기서는 더블클릭만 처리
         outputConnector.addEventListener('dblclick', (e) => {
@@ -499,18 +490,14 @@ export class NodeManager {
         });
 
         // 현재 연결 상태 반영
-        const outputConnections = this.findConnectionsByNode(
-            nodeElement.dataset.nodeId,
-            'output'
-        );
+        const outputConnections = this.findConnectionsByNode(nodeElement.dataset.nodeId, 'output');
         this.updateConnectorVisualState(outputConnector, outputConnections.length > 0);
 
         outputConnector.addEventListener('mouseenter', () => {
             const label = outputConnector.querySelector('.output-label');
             const baseText = label ? label.textContent : '출력 커넥터';
-            const tooltipText = outputConnections.length > 0
-                ? `${baseText} (연결 ${outputConnections.length}개)`
-                : baseText;
+            const tooltipText =
+                outputConnections.length > 0 ? `${baseText} (연결 ${outputConnections.length}개)` : baseText;
             this.showConnectorTooltip(outputConnector, tooltipText);
         });
 
@@ -546,13 +533,12 @@ export class NodeManager {
 
         const nodeId = nodeElement.dataset.nodeId;
         // .output-dot이 클릭된 경우 부모 요소(.true-output 또는 .false-output)를 확인
-        const outputType = (outputConnector.classList.contains('true-output') || 
-                           outputConnector.closest('.true-output'))
-            ? 'true'
-            : (outputConnector.classList.contains('false-output') || 
-               outputConnector.closest('.false-output'))
-                ? 'false'
-                : 'default';
+        const outputType =
+            outputConnector.classList.contains('true-output') || outputConnector.closest('.true-output')
+                ? 'true'
+                : outputConnector.classList.contains('false-output') || outputConnector.closest('.false-output')
+                  ? 'false'
+                  : 'default';
 
         // 클릭 연결 상태 설정
         this.isClickConnecting = true;
@@ -702,7 +688,9 @@ export class NodeManager {
      */
     showClickConnectionMessage(text = '연결할 입력 커넥터를 클릭하세요.') {
         const existing = document.getElementById('click-connection-message');
-        if (existing) existing.remove();
+        if (existing) {
+            existing.remove();
+        }
 
         const message = document.createElement('div');
         message.id = 'click-connection-message';
@@ -769,11 +757,9 @@ export class NodeManager {
         let nearestConnector = null;
         let minDistance = this.magneticThreshold;
 
-        inputConnectors.forEach(connector => {
+        inputConnectors.forEach((connector) => {
             const pos = this.getConnectorPosition(connector);
-            const distance = Math.sqrt(
-                Math.pow(mouseX - pos.x, 2) + Math.pow(mouseY - pos.y, 2)
-            );
+            const distance = Math.sqrt(Math.pow(mouseX - pos.x, 2) + Math.pow(mouseY - pos.y, 2));
 
             if (distance < minDistance) {
                 minDistance = distance;
@@ -782,7 +768,7 @@ export class NodeManager {
         });
 
         // 기존 하이라이트 제거
-        inputConnectors.forEach(connector => {
+        inputConnectors.forEach((connector) => {
             connector.classList.remove('magnetic-highlight');
         });
 
@@ -803,7 +789,8 @@ export class NodeManager {
 
         if (canvasContent) {
             const transform = canvasContent.style.transform;
-            let transformX = 0, transformY = 0;
+            let transformX = 0,
+                transformY = 0;
 
             if (transform && transform !== 'none') {
                 const match = transform.match(/translate\(([^,]+)px,\s*([^)]+)px\)/);
@@ -846,13 +833,12 @@ export class NodeManager {
 
         const nodeId = nodeElement.dataset.nodeId;
         // .output-dot이 클릭된 경우 부모 요소(.true-output 또는 .false-output)를 확인
-        const outputType = (outputConnector.classList.contains('true-output') || 
-                           outputConnector.closest('.true-output'))
-            ? 'true'
-            : (outputConnector.classList.contains('false-output') || 
-               outputConnector.closest('.false-output'))
-                ? 'false'
-                : 'default';
+        const outputType =
+            outputConnector.classList.contains('true-output') || outputConnector.closest('.true-output')
+                ? 'true'
+                : outputConnector.classList.contains('false-output') || outputConnector.closest('.false-output')
+                  ? 'false'
+                  : 'default';
 
         // 드래그 연결 상태 설정
         this.isDraggingConnection = true;
@@ -873,10 +859,7 @@ export class NodeManager {
         outputConnector.style.boxShadow = '0 0 15px rgba(255, 107, 53, 0.8)';
 
         // 임시 연결선 생성
-        this.createTempConnectionLine(
-            this.dragConnectionStart.startCanvasX,
-            this.dragConnectionStart.startCanvasY
-        );
+        this.createTempConnectionLine(this.dragConnectionStart.startCanvasX, this.dragConnectionStart.startCanvasY);
 
         // 전역 마우스 이벤트 등록
         document.addEventListener('mousemove', this.handleDragConnectionMove);
@@ -892,7 +875,9 @@ export class NodeManager {
      * 드래그 연결 이동 처리
      */
     handleDragConnectionMove = (e) => {
-        if (!this.isDraggingConnection) return;
+        if (!this.isDraggingConnection) {
+            return;
+        }
 
         // 마우스 위치를 캔버스 기준 좌표로 변환
         const canvasRect = this.canvas.getBoundingClientRect();
@@ -921,7 +906,9 @@ export class NodeManager {
      * 드래그 연결 종료 처리
      */
     handleDragConnectionEnd = (e) => {
-        if (!this.isDraggingConnection) return;
+        if (!this.isDraggingConnection) {
+            return;
+        }
 
         const nearbyInputConnector = this.findNearbyInputConnector(e.clientX, e.clientY);
 
@@ -942,14 +929,12 @@ export class NodeManager {
         let closestConnector = null;
         let closestDistance = this.magneticThreshold;
 
-        inputConnectors.forEach(connector => {
+        inputConnectors.forEach((connector) => {
             const rect = connector.getBoundingClientRect();
             const connectorX = rect.left + rect.width / 2;
             const connectorY = rect.top + rect.height / 2;
 
-            const distance = Math.sqrt(
-                Math.pow(mouseX - connectorX, 2) + Math.pow(mouseY - connectorY, 2)
-            );
+            const distance = Math.sqrt(Math.pow(mouseX - connectorX, 2) + Math.pow(mouseY - connectorY, 2));
 
             if (distance < closestDistance) {
                 closestDistance = distance;
@@ -964,10 +949,14 @@ export class NodeManager {
      * 드래그 연결 완료
      */
     completeDragConnection(targetInputConnector) {
-        if (!this.dragConnectionStart || !targetInputConnector) return;
+        if (!this.dragConnectionStart || !targetInputConnector) {
+            return;
+        }
 
         const targetNode = targetInputConnector.closest('.workflow-node');
-        if (!targetNode) return;
+        if (!targetNode) {
+            return;
+        }
 
         const targetNodeId = targetNode.dataset.nodeId;
         const startNodeId = this.dragConnectionStart.nodeId;
@@ -1065,7 +1054,9 @@ export class NodeManager {
      * 임시 연결선 업데이트
      */
     updateTempConnectionLine(startPos, endPos) {
-        if (!this.tempConnectionLine) return;
+        if (!this.tempConnectionLine) {
+            return;
+        }
 
         const startX = startPos.x;
         const startY = startPos.y;
@@ -1097,7 +1088,9 @@ export class NodeManager {
      */
     showDragConnectionMessage() {
         const existing = document.getElementById('drag-connection-message');
-        if (existing) existing.remove();
+        if (existing) {
+            existing.remove();
+        }
 
         const message = document.createElement('div');
         message.id = 'drag-connection-message';
@@ -1158,7 +1151,7 @@ export class NodeManager {
             }
 
             // 연결 삭제
-            connections.forEach(connection => {
+            connections.forEach((connection) => {
                 this.deleteConnectionByConnectionId(connection.id);
             });
 
@@ -1170,8 +1163,9 @@ export class NodeManager {
                 this.updateAllConnectorsVisualState();
             }, 100);
 
-            log(`노드 ${nodeId} 의 ${connectorType} 커넥터에서 연결 ${connections.length}개 삭제 (outputType: ${outputType || 'null'})`);
-
+            log(
+                `노드 ${nodeId} 의 ${connectorType} 커넥터에서 연결 ${connections.length}개 삭제 (outputType: ${outputType || 'null'})`
+            );
         } catch (error) {
             logError('연결 삭제 실패:', error);
         }
@@ -1273,7 +1267,7 @@ export class NodeManager {
     updateAllConnectorsVisualState() {
         const allNodes = this.canvas.querySelectorAll('.workflow-node');
 
-        allNodes.forEach(node => {
+        allNodes.forEach((node) => {
             const nodeId = node.dataset.nodeId;
 
             // 입력 커넥터
@@ -1285,7 +1279,7 @@ export class NodeManager {
 
             // 출력 커넥터(여러 개일 수 있음)
             const outputConnectors = node.querySelectorAll('.node-output');
-            outputConnectors.forEach(outputConnector => {
+            outputConnectors.forEach((outputConnector) => {
                 const outputConnections = this.findConnectionsByNode(nodeId, 'output');
                 this.updateConnectorVisualState(outputConnector, outputConnections.length > 0);
             });
@@ -1313,7 +1307,6 @@ export class NodeManager {
             this.highlightConnectionStart(nodeId, connectorType, outputType);
 
             log(`연결 모드 시작: ${nodeId} (${connectorType}, ${outputType})`);
-
         } catch (error) {
             logError('연결 모드 시작 실패:', error);
             this.cancelConnection();
@@ -1348,7 +1341,6 @@ export class NodeManager {
             this.finishConnection();
 
             log(`연결 완료: ${startNodeId} → ${nodeId}`);
-
         } catch (error) {
             logError('연결 완료 실패:', error);
             this.cancelConnection();
@@ -1398,10 +1390,7 @@ export class NodeManager {
         }
 
         // 출력 → 입력, 입력 → 출력만 허용
-        if (!(
-            (fromType === 'output' && toType === 'input') ||
-            (fromType === 'input' && toType === 'output')
-        )) {
+        if (!((fromType === 'output' && toType === 'input') || (fromType === 'input' && toType === 'output'))) {
             logWarn('출력 → 입력 또는 입력 → 출력 방향으로만 연결할 수 있습니다.');
             return false;
         }
@@ -1414,9 +1403,11 @@ export class NodeManager {
 
         // 출력 커넥터 검증: 조건 노드가 아닌 경우 출력은 최대 1개만 연결 허용
         if (fromType === 'output') {
-            const fromNode = this.nodes.find(n => n.id === fromNodeId);
-            const fromNodeType = fromNode ? (this.nodeData[fromNodeId]?.type || fromNode.element?.dataset?.nodeType) : null;
-            
+            const fromNode = this.nodes.find((n) => n.id === fromNodeId);
+            const fromNodeType = fromNode
+                ? this.nodeData[fromNodeId]?.type || fromNode.element?.dataset?.nodeType
+                : null;
+
             // 조건 노드가 아니고 이미 출력 연결이 있는 경우
             if (fromNodeType !== 'condition' && this.hasExistingOutputConnection(fromNodeId, outputType)) {
                 logWarn('조건 노드가 아닌 노드는 출력을 최대 1개만 연결할 수 있습니다.');
@@ -1435,7 +1426,7 @@ export class NodeManager {
             return false;
         }
 
-        return Array.from(this.connectionManager.connections.values()).some(connection => {
+        return Array.from(this.connectionManager.connections.values()).some((connection) => {
             if (connectorType === 'input') {
                 return connection.to === nodeId;
             } else if (connectorType === 'output') {
@@ -1457,14 +1448,12 @@ export class NodeManager {
         }
 
         let connections = Array.from(this.connectionManager.connections.values()).filter(
-            connection => connection.from === nodeId
+            (connection) => connection.from === nodeId
         );
-        
+
         // 조건 노드인 경우, 같은 outputType을 가진 연결만 카운트
         if (outputType) {
-            connections = connections.filter(
-                connection => connection.outputType === outputType
-            );
+            connections = connections.filter((connection) => connection.outputType === outputType);
         }
 
         return connections.length;
@@ -1505,14 +1494,17 @@ export class NodeManager {
                 logWarn('이미 연결된 입력 커넥터입니다. 입력 커넥터는 하나의 연결만 허용됩니다.', {
                     toNodeId: toNodeId,
                     existingConnections: existingInputConnections.length,
-                    existingConnectionIds: existingInputConnections.map(c => c.id)
+                    existingConnectionIds: existingInputConnections.map((c) => c.id)
                 });
-                
+
                 // 사용자에게 알림 표시
                 if (window.ModalManager) {
                     const modalManager = window.ModalManager.getInstance();
                     if (modalManager) {
-                        modalManager.showAlert('연결 불가', '이미 연결된 입력 커넥터입니다. 입력 커넥터는 하나의 연결만 허용됩니다.');
+                        modalManager.showAlert(
+                            '연결 불가',
+                            '이미 연결된 입력 커넥터입니다. 입력 커넥터는 하나의 연결만 허용됩니다.'
+                        );
                     }
                 }
                 return;
@@ -1522,13 +1514,15 @@ export class NodeManager {
         // 출력 연결 개수 검증 (조건 노드 제외)
         // 조건 노드의 경우 출력 타입 추출
         const outputType = fromOutputType === 'true' || fromOutputType === 'false' ? fromOutputType : null;
-        
+
         if (fromOutputType === 'output' || outputType) {
-            const fromNode = this.nodes.find(n => n.id === fromNodeId);
-            const fromNodeType = fromNode ? (this.nodeData[fromNodeId]?.type || fromNode.element?.dataset?.nodeType) : null;
+            const fromNode = this.nodes.find((n) => n.id === fromNodeId);
+            const fromNodeType = fromNode
+                ? this.nodeData[fromNodeId]?.type || fromNode.element?.dataset?.nodeType
+                : null;
             const isConditionNode = fromNodeType === 'condition';
             const existingCount = this.getOutputConnectionCount(fromNodeId, outputType);
-            
+
             log('[NodeManager] createNodeConnection 출력 연결 검증:', {
                 fromNodeId: fromNodeId,
                 fromNodeType: fromNodeType,
@@ -1536,7 +1530,7 @@ export class NodeManager {
                 outputType: outputType,
                 existingCount: existingCount
             });
-            
+
             // 조건 노드가 아니고 이미 출력 연결이 있는 경우 (nodeType이 undefined이어도 조건 노드가 아니라고 가정)
             if (!isConditionNode && existingCount >= 1) {
                 logWarn('조건 노드가 아닌 노드는 출력을 최대 1개만 연결할 수 있습니다.', {
@@ -1544,12 +1538,15 @@ export class NodeManager {
                     fromNodeType: fromNodeType,
                     existingCount: existingCount
                 });
-                
+
                 // 사용자에게 알림 표시
                 if (window.ModalManager) {
                     const modalManager = window.ModalManager.getInstance();
                     if (modalManager) {
-                        modalManager.showAlert('연결 불가', '조건 노드가 아닌 노드는 출력을 최대 1개만 연결할 수 있습니다.');
+                        modalManager.showAlert(
+                            '연결 불가',
+                            '조건 노드가 아닌 노드는 출력을 최대 1개만 연결할 수 있습니다.'
+                        );
                     }
                 }
                 return;
@@ -1573,7 +1570,6 @@ export class NodeManager {
             setTimeout(() => {
                 this.updateAllConnectorsVisualState();
             }, 100);
-
         } catch (error) {
             logError('노드 연결 생성 실패:', error);
         }
@@ -1614,7 +1610,7 @@ export class NodeManager {
      */
     activateInputConnectors() {
         const inputConnectors = this.canvas.querySelectorAll('.node-input');
-        inputConnectors.forEach(connector => {
+        inputConnectors.forEach((connector) => {
             connector.classList.add('connection-active');
         });
     }
@@ -1624,7 +1620,7 @@ export class NodeManager {
      */
     activateOutputConnectors() {
         const outputConnectors = this.canvas.querySelectorAll('.node-output');
-        outputConnectors.forEach(connector => {
+        outputConnectors.forEach((connector) => {
             connector.classList.add('connection-active');
         });
     }
@@ -1634,7 +1630,7 @@ export class NodeManager {
      */
     deactivateAllConnectors() {
         const allConnectors = this.canvas.querySelectorAll('.node-input, .node-output');
-        allConnectors.forEach(connector => {
+        allConnectors.forEach((connector) => {
             connector.classList.remove('connection-active', 'connection-highlight');
         });
     }
@@ -1644,7 +1640,9 @@ export class NodeManager {
      */
     highlightConnectionStart(nodeId, connectorType, outputType) {
         const node = document.getElementById(nodeId);
-        if (!node) return;
+        if (!node) {
+            return;
+        }
 
         let connector;
         if (connectorType === 'output') {
@@ -1669,7 +1667,7 @@ export class NodeManager {
      */
     clearAllHighlights() {
         const highlightedConnectors = this.canvas.querySelectorAll('.connection-highlight');
-        highlightedConnectors.forEach(connector => {
+        highlightedConnectors.forEach((connector) => {
             connector.classList.remove('connection-highlight');
         });
     }
@@ -1742,7 +1740,9 @@ export class NodeManager {
      */
     showConnectionInfo(nodeId, connectorType) {
         const node = document.getElementById(nodeId);
-        if (!node) return;
+        if (!node) {
+            return;
+        }
 
         const nodeTitle = node.querySelector('.node-title');
         const title = nodeTitle ? nodeTitle.textContent : nodeId;
@@ -1751,9 +1751,7 @@ export class NodeManager {
 
         if (this.connectionManager && this.connectionManager.connections) {
             const connections = Array.from(this.connectionManager.connections.values());
-            const relatedConnections = connections.filter(
-                conn => conn.from === nodeId || conn.to === nodeId
-            );
+            const relatedConnections = connections.filter((conn) => conn.from === nodeId || conn.to === nodeId);
 
             if (relatedConnections.length > 0) {
                 log('연결 목록:', relatedConnections);
@@ -1805,7 +1803,7 @@ export class NodeManager {
         if (!nodeElement) {
             return;
         }
-        
+
         // ConnectionManager 초기화
         if (!this.connectionManager) {
             if (window.ConnectionManager) {
@@ -1818,7 +1816,7 @@ export class NodeManager {
                 return;
             }
         }
-        
+
         // 즉시 커넥터 바인딩
         this.connectionManager.bindNodeConnector(nodeElement);
     }
@@ -1842,7 +1840,7 @@ export class NodeManager {
         node.remove();
 
         // 내부 배열/데이터에서 제거
-        this.nodes = this.nodes.filter(n => n.id !== nodeId);
+        this.nodes = this.nodes.filter((n) => n.id !== nodeId);
         delete this.nodeData[nodeId];
 
         // 연결 제거
@@ -1885,17 +1883,17 @@ export class NodeManager {
      * 현재 모든 노드 데이터 반환
      */
     getAllNodes() {
-        return this.nodes.map(n => {
+        return this.nodes.map((n) => {
             const nodeId = n.data.id;
             const nodeElement = n.element;
-            
+
             // DOM에서 최신 제목 가져오기
             const titleElement = nodeElement.querySelector('.node-title');
             const latestTitle = titleElement ? titleElement.textContent.trim() : null;
-            
+
             // nodeData에서 최신 정보 가져오기 (업데이트된 색상, 타입 등)
             const latestData = this.nodeData && this.nodeData[nodeId] ? this.nodeData[nodeId] : {};
-            
+
             return {
                 id: nodeId,
                 title: latestTitle || latestData.title || n.data.title, // DOM 제목 우선 사용
@@ -1973,7 +1971,7 @@ export class NodeManager {
 
         this.isDrawingConnection = true;
         this.connectionStartConnector = connector;
-        
+
         // 출력 타입 감지 (조건 노드의 경우)
         let outputType = null;
         if (connectorType === 'output' && connector) {
@@ -1983,7 +1981,7 @@ export class NodeManager {
                 outputType = 'false';
             }
         }
-        
+
         this.connectionStartPoint = {
             x: e.clientX,
             y: e.clientY,
@@ -2045,7 +2043,9 @@ export class NodeManager {
      * 연결 그리기 처리 (마우스 이동)
      */
     handleConnectionDrawing = (e) => {
-        if (!this.isDrawingConnection || !this.connectionStartPoint) return;
+        if (!this.isDrawingConnection || !this.connectionStartPoint) {
+            return;
+        }
 
         // connectionManager 를 통해 임시 연결선 그리기
         if (this.connectionManager && typeof this.connectionManager.updateTempConnection === 'function') {
@@ -2070,7 +2070,9 @@ export class NodeManager {
      * 연결 그리기 완료 처리 (마우스 업)
      */
     handleConnectionComplete = (e) => {
-        if (!this.isDrawingConnection || !this.connectionStartPoint) return;
+        if (!this.isDrawingConnection || !this.connectionStartPoint) {
+            return;
+        }
 
         const nearbyConnector = this.findNearbyConnector(e.clientX, e.clientY);
 
@@ -2089,14 +2091,12 @@ export class NodeManager {
         let closestConnector = null;
         let closestDistance = this.magneticThreshold;
 
-        allConnectors.forEach(connector => {
+        allConnectors.forEach((connector) => {
             const rect = connector.getBoundingClientRect();
             const connectorX = rect.left + rect.width / 2;
             const connectorY = rect.top + rect.height / 2;
 
-            const distance = Math.sqrt(
-                Math.pow(mouseX - connectorX, 2) + Math.pow(mouseY - connectorY, 2)
-            );
+            const distance = Math.sqrt(Math.pow(mouseX - connectorX, 2) + Math.pow(mouseY - connectorY, 2));
 
             if (distance < closestDistance) {
                 closestDistance = distance;
@@ -2127,7 +2127,7 @@ export class NodeManager {
      */
     clearAllConnectorHighlights() {
         const highlightedConnectors = this.canvas.querySelectorAll('.magnetic-highlight');
-        highlightedConnectors.forEach(connector => {
+        highlightedConnectors.forEach((connector) => {
             connector.style.backgroundColor = '';
             connector.style.borderColor = '';
             connector.style.boxShadow = '';
@@ -2140,19 +2140,21 @@ export class NodeManager {
      * 특정 커넥터로 연결 완료
      */
     completeConnectionToConnector(targetConnector) {
-        if (!this.connectionStartPoint || !targetConnector) return;
+        if (!this.connectionStartPoint || !targetConnector) {
+            return;
+        }
 
         const targetNode = targetConnector.closest('.workflow-node');
-        if (!targetNode) return;
+        if (!targetNode) {
+            return;
+        }
 
         const targetNodeId = targetNode.dataset.nodeId;
-        const targetConnectorType = targetConnector.classList.contains('node-input')
-            ? 'input'
-            : 'output';
+        const targetConnectorType = targetConnector.classList.contains('node-input') ? 'input' : 'output';
 
         log(
-            `연결 완료: ${this.connectionStartPoint.nodeId}(${this.connectionStartPoint.connectorType}) → `
-            + `${targetNodeId}(${targetConnectorType})`
+            `연결 완료: ${this.connectionStartPoint.nodeId}(${this.connectionStartPoint.connectorType}) → ` +
+                `${targetNodeId}(${targetConnectorType})`
         );
 
         // 방향에 따라 연결 생성 (검증 포함)
@@ -2170,13 +2172,8 @@ export class NodeManager {
                 this.deactivateConnectionDrawingMode();
                 return;
             }
-            
-            this.createNodeConnection(
-                this.connectionStartPoint.nodeId,
-                targetNodeId,
-                outputType || 'output',
-                'input'
-            );
+
+            this.createNodeConnection(this.connectionStartPoint.nodeId, targetNodeId, outputType || 'output', 'input');
         } else if (this.connectionStartPoint.connectorType === 'input' && targetConnectorType === 'output') {
             // 입력에서 출력으로 연결하는 경우, 타겟 커넥터의 outputType 확인
             let outputType = null;
@@ -2185,7 +2182,7 @@ export class NodeManager {
             } else if (targetConnector.classList.contains('false-output') || targetConnector.closest('.false-output')) {
                 outputType = 'false';
             }
-            
+
             // 연결 유효성 검증
             const isValid = this.validateConnection(
                 targetNodeId,
@@ -2198,13 +2195,8 @@ export class NodeManager {
                 this.deactivateConnectionDrawingMode();
                 return;
             }
-            
-            this.createNodeConnection(
-                targetNodeId,
-                this.connectionStartPoint.nodeId,
-                outputType || 'output',
-                'input'
-            );
+
+            this.createNodeConnection(targetNodeId, this.connectionStartPoint.nodeId, outputType || 'output', 'input');
         }
 
         this.deactivateConnectionDrawingMode();
@@ -2215,7 +2207,9 @@ export class NodeManager {
      */
     showConnectionDrawingMessage(connectorType) {
         const existing = document.getElementById('connection-drawing-message');
-        if (existing) existing.remove();
+        if (existing) {
+            existing.remove();
+        }
 
         const message = document.createElement('div');
         message.id = 'connection-drawing-message';
@@ -2232,8 +2226,7 @@ export class NodeManager {
             z-index: 1000;
             pointer-events: none;
         `;
-        message.textContent =
-            `${connectorType === 'output' ? '출력' : '입력'} 커넥터에서 드래그하여 연결선을 그려주세요.`;
+        message.textContent = `${connectorType === 'output' ? '출력' : '입력'} 커넥터에서 드래그하여 연결선을 그려주세요.`;
 
         document.body.appendChild(message);
     }

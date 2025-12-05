@@ -30,24 +30,26 @@ export class NodeSettingsModal {
 
         const nodeId = nodeElement.id || nodeElement.dataset.nodeId;
         const nodeManager = this.workflowPage.getNodeManager();
-        
+
         // 저장된 노드 데이터 가져오기
-        let nodeData = getNodeData(nodeElement);
-        
+        const nodeData = getNodeData(nodeElement);
+
         // 노드 타입 확인
         const nodeType = nodeData?.type || getNodeType(nodeElement);
         const currentTitle = nodeElement.querySelector('.node-title')?.textContent || '';
         const currentColor = nodeElement.className.match(/node-(\w+)/)?.[1] || 'blue';
         const currentActionNodeType = nodeData?.action_node_type || '';
-        
+
         // description이 없으면 기본 설명 사용
         const currentDescription = nodeData?.description || getDefaultDescription(nodeType);
-        
-        log(`[WorkflowPage] 노드 설정 모달 열기: ${nodeId}, 타입: ${nodeType}, 실제 노드 종류: ${currentActionNodeType}`);
-        
+
+        log(
+            `[WorkflowPage] 노드 설정 모달 열기: ${nodeId}, 타입: ${nodeType}, 실제 노드 종류: ${currentActionNodeType}`
+        );
+
         // 노드 타입별 설정 UI 생성
         const typeSpecificSettings = this.generateTypeSpecificSettings(nodeType, nodeData);
-        
+
         // 모달 콘텐츠 생성
         const content = this.generateModalContent(
             nodeType,
@@ -57,18 +59,18 @@ export class NodeSettingsModal {
             typeSpecificSettings,
             currentActionNodeType
         );
-        
+
         modalManager.show(content);
-        
+
         // 이벤트 리스너 설정
         this.setupEventListeners(nodeElement, nodeId, nodeType, nodeData);
-        
+
         // 출력 미리보기 영역에 로딩 상태 클래스 추가
         const outputPreview = document.getElementById('node-output-preview');
         if (outputPreview) {
             outputPreview.classList.add('node-preview-loading-state');
         }
-        
+
         // 입력/출력 미리보기 업데이트
         this.updateInputOutputPreview(nodeElement, nodeId, nodeType, nodeData);
     }
@@ -79,21 +81,21 @@ export class NodeSettingsModal {
     updateActionNodeTypeSelect(nodeType) {
         const actionNodeTypeGroup = document.getElementById('edit-action-node-type-group');
         const actionNodeTypeSelect = document.getElementById('edit-action-node-type');
-        
+
         if (!actionNodeTypeGroup) {
             return;
         }
-        
+
         if (isBoundaryNode(nodeType)) {
             actionNodeTypeGroup.style.display = 'none';
             return;
         }
-        
+
         actionNodeTypeGroup.style.display = 'block';
-        
+
         // 현재 선택된 값 유지
         const currentValue = actionNodeTypeSelect ? actionNodeTypeSelect.value : '';
-        
+
         // 새로운 선택란 생성
         const newSelect = this.generateActionNodeTypeSelect(nodeType, currentValue);
         if (actionNodeTypeSelect) {
@@ -101,43 +103,50 @@ export class NodeSettingsModal {
         } else {
             actionNodeTypeGroup.insertAdjacentHTML('beforeend', newSelect);
         }
-        
+
         // 이벤트 리스너 재설정
         const newActionNodeTypeSelect = document.getElementById('edit-action-node-type');
         if (newActionNodeTypeSelect) {
-            const nodeElement = document.querySelector('.workflow-node.selected') || 
-                              document.querySelector('[data-node-id]');
+            const nodeElement =
+                document.querySelector('.workflow-node.selected') || document.querySelector('[data-node-id]');
             newActionNodeTypeSelect.addEventListener('change', async () => {
                 const newActionNodeType = newActionNodeTypeSelect.value;
                 if (nodeElement) {
                     const updatedNodeData = getNodeData(nodeElement);
                     updatedNodeData.action_node_type = newActionNodeType;
                     const settingsContainer = document.getElementById('edit-node-type-settings');
-                    await this.handleActionNodeTypeChange(nodeType, newActionNodeType, updatedNodeData, settingsContainer);
+                    await this.handleActionNodeTypeChange(
+                        nodeType,
+                        newActionNodeType,
+                        updatedNodeData,
+                        settingsContainer
+                    );
                     await this.updateOutputPreview(nodeType, updatedNodeData, nodeElement);
                 }
             });
         }
     }
-    
+
     /**
      * 실제 노드 종류 변경 처리
      */
     async handleActionNodeTypeChange(nodeType, actionNodeType, nodeData, settingsContainer) {
-        if (!settingsContainer) return;
-        
+        if (!settingsContainer) {
+            return;
+        }
+
         // 실제 노드 종류별 설정 UI 생성
         const settings = this.generateActionNodeTypeSettings(nodeType, actionNodeType, nodeData);
-        
+
         // 기존 설정 제거
         const existingSettings = settingsContainer.querySelectorAll('.form-group');
-        existingSettings.forEach(el => {
+        existingSettings.forEach((el) => {
             // 입력/출력 미리보기는 유지
             if (!el.id || (!el.id.includes('input-preview') && !el.id.includes('output-preview'))) {
                 el.remove();
             }
         });
-        
+
         // 새로운 설정 추가 (미리보기 앞에)
         const previewSection = settingsContainer.querySelector('.form-group[style*="border-top"]');
         if (previewSection && settings) {
@@ -145,11 +154,11 @@ export class NodeSettingsModal {
         } else if (settings) {
             settingsContainer.insertAdjacentHTML('afterbegin', settings);
         }
-        
+
         // 설정 변경 이벤트 리스너 설정
         this.setupActionNodeTypeEventListeners(actionNodeType);
     }
-    
+
     /**
      * 실제 노드 종류별 설정 UI 생성
      */
@@ -157,7 +166,7 @@ export class NodeSettingsModal {
         if (!actionNodeType) {
             return '';
         }
-        
+
         switch (actionNodeType) {
             case 'http-api-request':
                 const url = nodeData?.url || '';
@@ -165,7 +174,7 @@ export class NodeSettingsModal {
                 const headers = nodeData?.headers || '{}';
                 const body = nodeData?.body || '';
                 const timeout = nodeData?.timeout || 30;
-                
+
                 return `
                     <div class="form-group node-settings-form-group">
                         <label for="edit-http-url" class="node-settings-label">요청 URL:</label>
@@ -198,7 +207,7 @@ export class NodeSettingsModal {
                 return '';
         }
     }
-    
+
     /**
      * 실제 노드 종류별 이벤트 리스너 설정
      */
@@ -208,8 +217,8 @@ export class NodeSettingsModal {
         const updatePreviewDebounced = () => {
             clearTimeout(previewUpdateTimer);
             previewUpdateTimer = setTimeout(async () => {
-                const nodeElement = document.querySelector('.workflow-node.selected') || 
-                                  document.querySelector('[data-node-id]');
+                const nodeElement =
+                    document.querySelector('.workflow-node.selected') || document.querySelector('[data-node-id]');
                 if (nodeElement) {
                     const updatedNodeData = getNodeData(nodeElement);
                     const updatedNodeType = updatedNodeData?.type || getNodeType(nodeElement);
@@ -217,7 +226,7 @@ export class NodeSettingsModal {
                 }
             }, 500);
         };
-        
+
         switch (actionNodeType) {
             case 'http-api-request':
                 // HTTP 설정 변경 시 미리보기 업데이트
@@ -226,16 +235,26 @@ export class NodeSettingsModal {
                 const headersTextarea = document.getElementById('edit-http-headers');
                 const bodyTextarea = document.getElementById('edit-http-body');
                 const timeoutInput = document.getElementById('edit-http-timeout');
-                
-                if (urlInput) urlInput.addEventListener('input', updatePreviewDebounced);
-                if (methodSelect) methodSelect.addEventListener('change', updatePreviewDebounced);
-                if (headersTextarea) headersTextarea.addEventListener('input', updatePreviewDebounced);
-                if (bodyTextarea) bodyTextarea.addEventListener('input', updatePreviewDebounced);
-                if (timeoutInput) timeoutInput.addEventListener('input', updatePreviewDebounced);
+
+                if (urlInput) {
+                    urlInput.addEventListener('input', updatePreviewDebounced);
+                }
+                if (methodSelect) {
+                    methodSelect.addEventListener('change', updatePreviewDebounced);
+                }
+                if (headersTextarea) {
+                    headersTextarea.addEventListener('input', updatePreviewDebounced);
+                }
+                if (bodyTextarea) {
+                    bodyTextarea.addEventListener('input', updatePreviewDebounced);
+                }
+                if (timeoutInput) {
+                    timeoutInput.addEventListener('input', updatePreviewDebounced);
+                }
                 break;
         }
     }
-    
+
     /**
      * 타입별 설정 UI 생성
      */
@@ -243,7 +262,10 @@ export class NodeSettingsModal {
         if (nodeType === NODE_TYPES.IMAGE_TOUCH) {
             const folderPath = nodeData?.folder_path || '';
             const imageCount = nodeData?.image_count || 0;
-            const imageCountText = imageCount > 0 ? ` <span class="node-settings-help-text" style="font-weight: normal;">(${imageCount}개 이미지)</span>` : '';
+            const imageCountText =
+                imageCount > 0
+                    ? ` <span class="node-settings-help-text" style="font-weight: normal;">(${imageCount}개 이미지)</span>`
+                    : '';
             return `
                 <div class="form-group node-settings-form-group">
                     <label for="edit-node-folder-path" class="node-settings-label">이미지 폴더 경로${imageCountText}:</label>
@@ -298,12 +320,19 @@ export class NodeSettingsModal {
     /**
      * 모달 콘텐츠 생성
      */
-    generateModalContent(nodeType, currentTitle, currentColor, currentDescription, typeSpecificSettings, currentActionNodeType = '') {
+    generateModalContent(
+        nodeType,
+        currentTitle,
+        currentColor,
+        currentDescription,
+        typeSpecificSettings,
+        currentActionNodeType = ''
+    ) {
         const nodeTypeSelect = isBoundaryNode(nodeType)
             ? `<input type="text" value="${NODE_TYPE_LABELS[nodeType] || nodeType}" disabled class="node-settings-disabled-input">
                <small class="node-settings-help-text">시작/종료 노드는 타입을 변경할 수 없습니다.</small>`
             : this.generateNodeTypeSelect(nodeType);
-        
+
         // 실제 노드 종류 선택란 생성
         const actionNodeTypeSelect = this.generateActionNodeTypeSelect(nodeType, currentActionNodeType);
 
@@ -366,38 +395,41 @@ export class NodeSettingsModal {
     generateNodeTypeSelect(currentType) {
         const options = Object.entries(NODE_TYPE_LABELS)
             .filter(([type]) => !isBoundaryNode(type)) // 시작/종료 노드는 제외
-            .map(([value, label]) => 
-                `<option value="${value}" ${currentType === value ? 'selected' : ''}>${label}</option>`
+            .map(
+                ([value, label]) =>
+                    `<option value="${value}" ${currentType === value ? 'selected' : ''}>${label}</option>`
             )
             .join('');
 
         return `<select id="edit-node-type" class="node-settings-select">${options}</select>`;
     }
-    
+
     /**
      * 실제 노드 종류 선택 드롭다운 생성
      */
     generateActionNodeTypeSelect(nodeType, currentActionNodeType = '') {
         const actionNodes = getActionNodeTypes(nodeType);
         const actionNodeKeys = Object.keys(actionNodes);
-        
+
         if (actionNodeKeys.length === 0) {
             return `<select id="edit-action-node-type" disabled class="node-settings-disabled-select">
                 <option value="">사용 가능한 실제 노드 종류가 없습니다</option>
             </select>
             <small class="node-settings-help-text">이 노드 타입에는 실제 노드 종류가 없습니다.</small>`;
         }
-        
-        const options = actionNodeKeys.map(key => {
-            const config = actionNodes[key];
-            const label = config.label || key;
-            const icon = config.icon || '';
-            return `<option value="${key}" ${currentActionNodeType === key ? 'selected' : ''}>${icon} ${label}</option>`;
-        }).join('');
-        
+
+        const options = actionNodeKeys
+            .map((key) => {
+                const config = actionNodes[key];
+                const label = config.label || key;
+                const icon = config.icon || '';
+                return `<option value="${key}" ${currentActionNodeType === key ? 'selected' : ''}>${icon} ${label}</option>`;
+            })
+            .join('');
+
         // "없음" 옵션 추가
         const noneOption = `<option value="" ${currentActionNodeType === '' ? 'selected' : ''}>없음 (기본 동작)</option>`;
-        
+
         return `<select id="edit-action-node-type" class="node-settings-select">
             ${noneOption}
             ${options}
@@ -419,16 +451,16 @@ export class NodeSettingsModal {
             nodeTypeSelect.addEventListener('change', async () => {
                 const newType = nodeTypeSelect.value;
                 await this.handleTypeChange(newType, nodeType, nodeData, settingsContainer, descriptionTextarea);
-                
+
                 // 실제 노드 종류 선택란 업데이트
                 this.updateActionNodeTypeSelect(newType);
-                
+
                 // 타입 변경 시 출력 미리보기도 업데이트
                 const updatedNodeData = getNodeData(nodeElement);
                 await this.updateOutputPreview(newType, updatedNodeData, nodeElement);
             });
         }
-        
+
         // 실제 노드 종류 변경 시 설정 UI 업데이트
         const actionNodeTypeSelect = document.getElementById('edit-action-node-type');
         if (actionNodeTypeSelect && !isBoundaryNode(nodeType)) {
@@ -436,14 +468,14 @@ export class NodeSettingsModal {
                 const newActionNodeType = actionNodeTypeSelect.value;
                 // 실제 노드 종류별 설정 UI 업데이트
                 await this.handleActionNodeTypeChange(nodeType, newActionNodeType, nodeData, settingsContainer);
-                
+
                 // 출력 미리보기 업데이트
                 const updatedNodeData = getNodeData(nodeElement);
                 updatedNodeData.action_node_type = newActionNodeType;
                 await this.updateOutputPreview(nodeType, updatedNodeData, nodeElement);
             });
         }
-        
+
         // 설정 변경 시 미리보기 업데이트 (debounce)
         let previewUpdateTimer = null;
         const updatePreviewDebounced = () => {
@@ -454,19 +486,19 @@ export class NodeSettingsModal {
                 await this.updateOutputPreview(updatedNodeType, updatedNodeData, nodeElement);
             }, 500);
         };
-        
+
         // 폴더 경로 변경 시
         const folderPathInput = document.getElementById('edit-node-folder-path');
         if (folderPathInput) {
             folderPathInput.addEventListener('input', updatePreviewDebounced);
         }
-        
+
         // 대기 시간 변경 시
         const waitTimeInput = document.getElementById('edit-node-wait-time');
         if (waitTimeInput) {
             waitTimeInput.addEventListener('input', updatePreviewDebounced);
         }
-        
+
         // 프로세스 선택 변경 시
         const processSelect = document.getElementById('edit-node-process-select');
         if (processSelect) {
@@ -511,7 +543,7 @@ export class NodeSettingsModal {
         const nodeId = nodeData?.id || '';
         const nodeManager = this.workflowPage.getNodeManager();
         const validation = NodeValidationUtils.validateNodeTypeChange(selectedType, nodeId, nodeManager);
-        
+
         if (!validation.canChange) {
             const modalManager = this.workflowPage.getModalManager();
             if (modalManager) {
@@ -519,7 +551,7 @@ export class NodeSettingsModal {
             } else {
                 alert(validation.message);
             }
-            
+
             // 원래 타입으로 되돌리기
             const nodeTypeSelect = document.getElementById('edit-node-type');
             if (nodeTypeSelect) {
@@ -527,13 +559,13 @@ export class NodeSettingsModal {
             }
             return;
         }
-        
+
         // description 업데이트
         if (descriptionTextarea) {
             const currentDesc = descriptionTextarea.value.trim();
             const oldDefaultDesc = getDefaultDescription(oldType);
             const newDefaultDesc = getDefaultDescription(selectedType);
-            
+
             if (!currentDesc || currentDesc === oldDefaultDesc) {
                 descriptionTextarea.value = newDefaultDesc;
             }
@@ -541,15 +573,15 @@ export class NodeSettingsModal {
 
         // 타입별 설정 UI 업데이트
         const newSettings = this.generateTypeSpecificSettings(selectedType, nodeData);
-        
+
         // 기존 설정 제거
         const existingTypeSettings = settingsContainer.querySelectorAll('.form-group');
-        existingTypeSettings.forEach(el => el.remove());
-        
+        existingTypeSettings.forEach((el) => el.remove());
+
         // 새로운 설정 추가
         if (newSettings) {
             settingsContainer.insertAdjacentHTML('beforeend', newSettings);
-            
+
             // 폴더 선택 버튼 이벤트 재바인딩
             const newBrowseBtn = document.getElementById('edit-browse-folder-btn');
             if (newBrowseBtn) {
@@ -570,7 +602,9 @@ export class NodeSettingsModal {
      */
     async handleFolderSelection() {
         const btn = document.getElementById('edit-browse-folder-btn');
-        if (!btn) return;
+        if (!btn) {
+            return;
+        }
 
         const originalText = btn.textContent;
 
@@ -588,7 +622,7 @@ export class NodeSettingsModal {
 
             if (data.success && data.folder_path) {
                 document.getElementById('edit-node-folder-path').value = data.folder_path;
-                
+
                 // 이미지 개수 확인 및 표시
                 this.updateImageCount(data.folder_path);
             } else if (data.message) {
@@ -611,7 +645,7 @@ export class NodeSettingsModal {
             const apiBaseUrl = window.API_BASE_URL || 'http://localhost:8000';
             const response = await fetch(`${apiBaseUrl}/api/images/list?folder_path=${encodeURIComponent(folderPath)}`);
             const data = await response.json();
-            
+
             if (data.success) {
                 const count = data.count || 0;
                 const label = document.querySelector('label[for="edit-node-folder-path"]');
@@ -638,8 +672,10 @@ export class NodeSettingsModal {
     async setupProcessSelection(nodeData) {
         const processSelect = document.getElementById('edit-node-process-select');
         const refreshBtn = document.getElementById('edit-refresh-processes-btn');
-        
-        if (!processSelect || !refreshBtn) return;
+
+        if (!processSelect || !refreshBtn) {
+            return;
+        }
 
         // 프로세스 목록 로드
         await this.loadProcessList(processSelect, nodeData);
@@ -685,7 +721,7 @@ export class NodeSettingsModal {
         await this.updateInputPreview(nodeId, nodeElement);
         await this.updateOutputPreview(nodeType, nodeData, nodeElement);
     }
-    
+
     /**
      * 입력 미리보기 업데이트 (이전 노드 실행)
      */
@@ -694,23 +730,24 @@ export class NodeSettingsModal {
         if (!inputPreview) {
             return;
         }
-        
+
         // 로딩 상태 표시 (시각적 피드백) - 실제 값과 동일한 textarea 스타일
         inputPreview.innerHTML = `
             <textarea readonly class="node-settings-textarea node-preview-textarea node-preview-loading-textarea">계산 중...</textarea>
         `;
         inputPreview.classList.add('node-preview-loading-state');
-        
+
         try {
             // 이전 노드들의 실행 경로 찾기
             const previousNodes = this.getPreviousNodeChain(nodeId);
-            
+
             if (previousNodes.length === 0) {
                 inputPreview.classList.remove('node-preview-loading-state');
-                inputPreview.innerHTML = '<span class="node-settings-preview-placeholder">입력 없음 (이전 노드가 없거나 연결되지 않음)</span>';
+                inputPreview.innerHTML =
+                    '<span class="node-settings-preview-placeholder">입력 없음 (이전 노드가 없거나 연결되지 않음)</span>';
                 return;
             }
-            
+
             // 이전 노드들을 순차적으로 실행
             let lastOutput = null;
             for (const prevNode of previousNodes) {
@@ -721,10 +758,10 @@ export class NodeSettingsModal {
                     lastOutput = result;
                 }
             }
-            
+
             // 로딩 상태 제거
             inputPreview.classList.remove('node-preview-loading-state');
-            
+
             // 마지막 노드의 출력을 입력으로 표시 (읽기 전용)
             if (lastOutput !== null) {
                 // 객체나 배열인 경우 JSON 문자열로 표시, 아니면 그대로 표시
@@ -735,7 +772,8 @@ export class NodeSettingsModal {
                     inputPreview.innerHTML = `<textarea readonly class="node-settings-textarea node-preview-textarea">${escapeHtml(String(lastOutput))}</textarea>`;
                 }
             } else {
-                inputPreview.innerHTML = '<span class="node-settings-preview-placeholder">입력 없음 (이전 노드 실행 결과 없음)</span>';
+                inputPreview.innerHTML =
+                    '<span class="node-settings-preview-placeholder">입력 없음 (이전 노드 실행 결과 없음)</span>';
             }
         } catch (error) {
             console.error('입력 미리보기 실행 오류:', error);
@@ -743,7 +781,7 @@ export class NodeSettingsModal {
             inputPreview.innerHTML = `<span style="color: #d32f2f;">실행 오류: ${error.message}</span>`;
         }
     }
-    
+
     /**
      * 출력 미리보기 업데이트 (현재 노드 실행)
      */
@@ -752,24 +790,24 @@ export class NodeSettingsModal {
         if (!outputPreview) {
             return;
         }
-        
+
         // 이미 textarea가 있고 사용자가 수정 중이면 업데이트하지 않음 (포커스가 있으면)
         const existingTextarea = document.getElementById('edit-node-output-value');
         if (existingTextarea && document.activeElement === existingTextarea) {
             return; // 사용자가 수정 중이면 업데이트하지 않음
         }
-        
+
         // 로딩 상태 표시 (시각적 피드백) - 실제 값과 동일한 textarea 스타일
         outputPreview.innerHTML = `
             <textarea readonly class="node-settings-textarea node-preview-textarea node-preview-loading-textarea">계산 중...</textarea>
         `;
         outputPreview.classList.add('node-preview-loading-state');
-        
+
         try {
             // 저장된 출력 오버라이드 값이 있으면 사용, 없으면 노드 실행
             const outputOverride = nodeData?.output_override;
             let displayValue;
-            
+
             if (outputOverride !== undefined && outputOverride !== null) {
                 // 오버라이드된 값이 있으면 그것을 사용
                 if (typeof outputOverride === 'object') {
@@ -784,11 +822,11 @@ export class NodeSettingsModal {
                     type: nodeType,
                     data: nodeData
                 });
-                
+
                 if (result) {
                     // output 필드가 있으면 그것을, 없으면 전체 결과를 표시
                     const displayResult = result.output !== undefined ? result.output : result;
-                    
+
                     if (displayResult !== null && typeof displayResult === 'object') {
                         displayValue = JSON.stringify(displayResult, null, 2);
                     } else {
@@ -798,15 +836,16 @@ export class NodeSettingsModal {
                     displayValue = '';
                 }
             }
-            
+
             // 로딩 상태 제거
             outputPreview.classList.remove('node-preview-loading-state');
-            
+
             // 출력 표시 (항상 편집 가능)
             if (displayValue !== null && displayValue !== undefined) {
                 outputPreview.innerHTML = `<textarea id="edit-node-output-value" class="node-settings-textarea node-preview-textarea">${escapeHtml(displayValue)}</textarea>`;
             } else {
-                outputPreview.innerHTML = `<textarea id="edit-node-output-value" class="node-settings-textarea node-preview-textarea"></textarea>`;
+                outputPreview.innerHTML =
+                    '<textarea id="edit-node-output-value" class="node-settings-textarea node-preview-textarea"></textarea>';
             }
         } catch (error) {
             console.error('출력 미리보기 실행 오류:', error);
@@ -814,7 +853,7 @@ export class NodeSettingsModal {
             outputPreview.innerHTML = `<span style="color: #d32f2f;">실행 오류: ${error.message}</span>`;
         }
     }
-    
+
     /**
      * 데이터를 textarea 스타일로 렌더링
      */
@@ -825,9 +864,9 @@ export class NodeSettingsModal {
                 <textarea readonly class="node-settings-textarea node-preview-textarea">null</textarea>
             </div>`;
         }
-        
+
         const type = Array.isArray(data) ? 'array' : typeof data;
-        
+
         if (type === 'object' && !Array.isArray(data)) {
             // 객체인 경우
             const keys = Object.keys(data);
@@ -837,15 +876,17 @@ export class NodeSettingsModal {
                     <textarea readonly class="node-settings-textarea node-preview-textarea">{} (빈 객체)</textarea>
                 </div>`;
             }
-            
+
             let html = '';
-            keys.forEach(key => {
+            keys.forEach((key) => {
                 const value = data[key];
                 const valueType = Array.isArray(value) ? 'array' : typeof value;
                 const isComplex = (valueType === 'object' && value !== null) || valueType === 'array';
-                
-                const displayValue = isComplex ? JSON.stringify(value, null, 2) : this.renderValueAsText(value, valueType);
-                
+
+                const displayValue = isComplex
+                    ? JSON.stringify(value, null, 2)
+                    : this.renderValueAsText(value, valueType);
+
                 html += `
                     <div class="node-preview-field-box" style="margin-left: ${depth * 16}px;">
                         <div class="node-preview-field-label">${escapeHtml(key)}:</div>
@@ -863,14 +904,14 @@ export class NodeSettingsModal {
                     <textarea readonly class="node-settings-textarea node-preview-textarea">[] (빈 배열)</textarea>
                 </div>`;
             }
-            
+
             let html = '';
             data.forEach((item, index) => {
                 const itemType = Array.isArray(item) ? 'array' : typeof item;
                 const isComplex = (itemType === 'object' && item !== null) || itemType === 'array';
-                
+
                 const displayValue = isComplex ? JSON.stringify(item, null, 2) : this.renderValueAsText(item, itemType);
-                
+
                 html += `
                     <div class="node-preview-field-box" style="margin-left: ${depth * 16}px;">
                         <div class="node-preview-field-label">[${index}]:</div>
@@ -889,7 +930,7 @@ export class NodeSettingsModal {
             </div>`;
         }
     }
-    
+
     /**
      * 값을 텍스트로 렌더링
      */
@@ -897,7 +938,7 @@ export class NodeSettingsModal {
         if (value === null) {
             return 'null';
         }
-        
+
         switch (type) {
             case 'string':
                 return String(value);
@@ -909,7 +950,7 @@ export class NodeSettingsModal {
                 return String(value);
         }
     }
-    
+
     /**
      * 값을 렌더링
      */
@@ -917,7 +958,7 @@ export class NodeSettingsModal {
         if (value === null) {
             return '<span class="node-preview-null-value">null</span>';
         }
-        
+
         switch (type) {
             case 'string':
                 return `<span class="node-preview-string-value">${escapeHtml(String(value))}</span>`;
@@ -929,7 +970,7 @@ export class NodeSettingsModal {
                 return `<span>${escapeHtml(String(value))}</span>`;
         }
     }
-    
+
     /**
      * 이전 노드 체인 가져오기 (시작 노드부터 현재 노드까지)
      */
@@ -938,36 +979,36 @@ export class NodeSettingsModal {
         if (!nodeManager || !nodeManager.connectionManager) {
             return [];
         }
-        
+
         const connections = nodeManager.connectionManager.getConnections();
         if (!connections || connections.length === 0) {
             return [];
         }
-        
+
         // 역방향으로 노드 체인 구성
         const nodeChain = [];
         let currentNodeId = nodeId;
-        
+
         while (currentNodeId) {
             // 현재 노드로 들어오는 연결 찾기
-            const inputConnection = connections.find(conn => conn.to === currentNodeId);
+            const inputConnection = connections.find((conn) => conn.to === currentNodeId);
             if (!inputConnection) {
                 break;
             }
-            
+
             const previousNodeId = inputConnection.from;
             if (previousNodeId === currentNodeId) {
                 break;
             }
-            
+
             const previousNodeElement = document.getElementById(previousNodeId);
             if (!previousNodeElement) {
                 break;
             }
-            
+
             const previousNodeData = getNodeData(previousNodeElement);
             const previousNodeType = previousNodeData?.type || getNodeType(previousNodeElement);
-            
+
             // 시작 노드도 체인에 포함
             nodeChain.unshift({
                 id: previousNodeId,
@@ -975,18 +1016,18 @@ export class NodeSettingsModal {
                 data: previousNodeData,
                 element: previousNodeElement
             });
-            
+
             // 시작 노드에 도달하면 종료
             if (previousNodeType === 'start' || previousNodeId === 'start') {
                 break;
             }
-            
+
             currentNodeId = previousNodeId;
         }
-        
+
         return nodeChain;
     }
-    
+
     /**
      * 미리보기용 노드 실행
      */
@@ -998,7 +1039,7 @@ export class NodeSettingsModal {
                 type: nodeInfo.type,
                 data: this.prepareNodeDataForExecution(nodeInfo.type, nodeInfo.data)
             };
-            
+
             // 서버에 실행 요청
             const apiBaseUrl = window.API_BASE_URL || 'http://localhost:8000';
             const response = await fetch(`${apiBaseUrl}/api/execute-nodes`, {
@@ -1011,21 +1052,21 @@ export class NodeSettingsModal {
                     execution_mode: 'sequential'
                 })
             });
-            
+
             if (!response.ok) {
                 throw new Error(`서버 오류: ${response.status}`);
             }
-            
+
             const result = await response.json();
-            
+
             if (result.success && result.data?.results?.[0]) {
                 const nodeResult = result.data.results[0];
-                
+
                 // 에러가 있으면 throw
                 if (nodeResult.error) {
                     throw new Error(nodeResult.error);
                 }
-                
+
                 return nodeResult;
             } else {
                 throw new Error('노드 실행 결과를 가져올 수 없습니다.');
@@ -1035,7 +1076,7 @@ export class NodeSettingsModal {
             throw error;
         }
     }
-    
+
     /**
      * 노드 실행을 위한 데이터 준비
      */
@@ -1043,12 +1084,12 @@ export class NodeSettingsModal {
         if (!nodeData) {
             return {};
         }
-        
+
         const prepared = {
             title: nodeData.title || '',
             ...nodeData
         };
-        
+
         // 노드 타입별 특수 처리
         switch (nodeType) {
             case 'image-touch':
@@ -1089,11 +1130,10 @@ export class NodeSettingsModal {
                 }
                 break;
         }
-        
+
         return prepared;
     }
-    
-    
+
     /**
      * 프로세스 목록 로드
      */
@@ -1110,23 +1150,23 @@ export class NodeSettingsModal {
                 }
 
                 // 프로세스 목록 추가
-                data.processes.forEach(process => {
+                data.processes.forEach((process) => {
                     process.windows.forEach((window, index) => {
                         const option = document.createElement('option');
                         const value = `${process.process_id}|${window.hwnd}`;
                         option.value = value;
                         option.dataset.processName = process.process_name;
                         option.dataset.windowTitle = window.title;
-                        
+
                         // 표시 텍스트: 프로세스명 - 창제목 (여러 창이면 인덱스 표시)
-                        const displayText = process.window_count > 1 
-                            ? `${process.process_name} - ${window.title} (${index + 1})`
-                            : `${process.process_name} - ${window.title}`;
+                        const displayText =
+                            process.window_count > 1
+                                ? `${process.process_name} - ${window.title} (${index + 1})`
+                                : `${process.process_name} - ${window.title}`;
                         option.textContent = displayText;
 
                         // 현재 선택된 프로세스와 일치하면 선택
-                        if (nodeData?.process_id == process.process_id && 
-                            nodeData?.hwnd == window.hwnd) {
+                        if (nodeData?.process_id == process.process_id && nodeData?.hwnd == window.hwnd) {
                             option.selected = true;
                         }
 
@@ -1142,4 +1182,3 @@ export class NodeSettingsModal {
         }
     }
 }
-

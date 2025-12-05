@@ -97,7 +97,7 @@ Apache-2.0 license
 
 코드를 기여하기 전에 다음을 확인해주세요:
 
-1. **코드 품질 검사**: 린팅과 포매팅을 실행해주세요
+1. **Python 코드 품질 검사**: 린팅과 포매팅을 실행해주세요
    ```bash
    # 개발 의존성 설치
    pip install -r server/requirements-dev.txt
@@ -107,7 +107,25 @@ Apache-2.0 license
    ruff format server/
    ```
 
-자세한 내용은 [코드 린팅 가이드](docs/dev/linting.md)를 참고하세요.
+2. **JavaScript 코드 품질 검사**: 린팅과 포매팅을 실행해주세요
+   ```bash
+   # UI 디렉토리로 이동
+   cd UI
+   
+   # 의존성 설치 (최초 1회만)
+   npm install
+   
+   # 린팅 실행 (오류 확인)
+   npm run lint
+   
+   # 린팅 자동 수정
+   npm run lint:fix
+   
+   # 코드 포매팅
+   npm run format
+   ```
+
+자세한 내용은 [코드 린팅 가이드](docs/dev/linting.md)와 [JavaScript 린팅 가이드](docs/lint/javascript-linting.md)를 참고하세요.
 
 ## 주의사항
 

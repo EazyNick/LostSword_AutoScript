@@ -22,16 +22,18 @@ export class NodeValidationUtils {
         }
 
         // nodeManager.nodes 배열에서 DOM 요소 가져오기
-        const nodeElements = nodeManager.nodes ? nodeManager.nodes.map(n => n.element) : [];
+        const nodeElements = nodeManager.nodes ? nodeManager.nodes.map((n) => n.element) : [];
         const nodeData = nodeManager.nodeData || {};
 
         // 시작 노드 확인
         if (nodeType === NODE_TYPES.START) {
-            const startNodes = nodeElements.filter(nodeElement => {
+            const startNodes = nodeElements.filter((nodeElement) => {
                 const nodeId = nodeElement.id || nodeElement.dataset?.nodeId;
-                return nodeId === 'start' || 
-                       nodeData[nodeId]?.type === NODE_TYPES.START ||
-                       nodeElement.querySelector('.node-title')?.textContent?.includes('시작');
+                return (
+                    nodeId === 'start' ||
+                    nodeData[nodeId]?.type === NODE_TYPES.START ||
+                    nodeElement.querySelector('.node-title')?.textContent?.includes('시작')
+                );
             });
 
             if (startNodes.length > 0) {
@@ -44,11 +46,13 @@ export class NodeValidationUtils {
 
         // 종료 노드 확인
         if (nodeType === NODE_TYPES.END) {
-            const endNodes = nodeElements.filter(nodeElement => {
+            const endNodes = nodeElements.filter((nodeElement) => {
                 const nodeId = nodeElement.id || nodeElement.dataset?.nodeId;
-                return nodeId === 'end' || 
-                       nodeData[nodeId]?.type === NODE_TYPES.END ||
-                       nodeElement.querySelector('.node-title')?.textContent?.includes('종료');
+                return (
+                    nodeId === 'end' ||
+                    nodeData[nodeId]?.type === NODE_TYPES.END ||
+                    nodeElement.querySelector('.node-title')?.textContent?.includes('종료')
+                );
             });
 
             if (endNodes.length > 0) {
@@ -79,19 +83,23 @@ export class NodeValidationUtils {
         }
 
         // nodeManager.nodes 배열에서 DOM 요소 가져오기
-        const nodeElements = nodeManager.nodes ? nodeManager.nodes.map(n => n.element) : [];
+        const nodeElements = nodeManager.nodes ? nodeManager.nodes.map((n) => n.element) : [];
         const nodeData = nodeManager.nodeData || {};
 
         // 시작 노드로 변경하려는 경우
         if (newType === NODE_TYPES.START) {
-            const existingStartNodes = nodeElements.filter(nodeElement => {
+            const existingStartNodes = nodeElements.filter((nodeElement) => {
                 const nodeId = nodeElement.id || nodeElement.dataset?.nodeId;
                 // 현재 노드는 제외
-                if (nodeId === currentNodeId) return false;
-                
-                return nodeId === 'start' || 
-                       nodeData[nodeId]?.type === NODE_TYPES.START ||
-                       nodeElement.querySelector('.node-title')?.textContent?.includes('시작');
+                if (nodeId === currentNodeId) {
+                    return false;
+                }
+
+                return (
+                    nodeId === 'start' ||
+                    nodeData[nodeId]?.type === NODE_TYPES.START ||
+                    nodeElement.querySelector('.node-title')?.textContent?.includes('시작')
+                );
             });
 
             if (existingStartNodes.length > 0) {
@@ -104,14 +112,18 @@ export class NodeValidationUtils {
 
         // 종료 노드로 변경하려는 경우
         if (newType === NODE_TYPES.END) {
-            const existingEndNodes = nodeElements.filter(nodeElement => {
+            const existingEndNodes = nodeElements.filter((nodeElement) => {
                 const nodeId = nodeElement.id || nodeElement.dataset?.nodeId;
                 // 현재 노드는 제외
-                if (nodeId === currentNodeId) return false;
-                
-                return nodeId === 'end' || 
-                       nodeData[nodeId]?.type === NODE_TYPES.END ||
-                       nodeElement.querySelector('.node-title')?.textContent?.includes('종료');
+                if (nodeId === currentNodeId) {
+                    return false;
+                }
+
+                return (
+                    nodeId === 'end' ||
+                    nodeData[nodeId]?.type === NODE_TYPES.END ||
+                    nodeElement.querySelector('.node-title')?.textContent?.includes('종료')
+                );
             });
 
             if (existingEndNodes.length > 0) {
@@ -125,4 +137,3 @@ export class NodeValidationUtils {
         return { canChange: true, message: '' };
     }
 }
-

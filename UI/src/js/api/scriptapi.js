@@ -28,16 +28,16 @@ export const ScriptAPI = {
         const logger = getLogger();
         logger.log('[ScriptAPI] getAllScripts() 호출됨');
         logger.log('[ScriptAPI] API 요청 시작: GET /api/scripts');
-        
+
         try {
             const startTime = performance.now();
             const result = await apiCall('/api/scripts');
             const endTime = performance.now();
-            
+
             logger.log('[ScriptAPI] ✅ API 응답 받음:', result);
             logger.log(`[ScriptAPI] 응답 시간: ${(endTime - startTime).toFixed(2)}ms`);
             logger.log(`[ScriptAPI] 받은 스크립트 개수: ${result.length}개`);
-            
+
             return result;
         } catch (error) {
             const logger = getLogger();
@@ -60,41 +60,48 @@ export const ScriptAPI = {
         logger.log('[ScriptAPI] getScript() 호출됨');
         logger.log('[ScriptAPI] 조회할 스크립트 ID:', scriptId);
         logger.log('[ScriptAPI] API 요청 시작: GET /api/scripts/' + scriptId);
-        
+
         try {
             const startTime = performance.now();
             const result = await apiCall(`/api/scripts/${scriptId}`);
             const endTime = performance.now();
-            
+
             logger.log('[ScriptAPI] ✅ API 응답 받음:', result);
             logger.log(`[ScriptAPI] 응답 시간: ${(endTime - startTime).toFixed(2)}ms`);
             logger.log(`[ScriptAPI] 스크립트 ID: ${result.id}, 이름: ${result.name}`);
             logger.log(`[ScriptAPI] 노드 개수: ${result.nodes ? result.nodes.length : 0}개`);
             logger.log(`[ScriptAPI] 연결 개수: ${result.connections ? result.connections.length : 0}개`);
-            
+
             if (result.nodes && result.nodes.length > 0) {
-                logger.log('[ScriptAPI] 노드 목록:', result.nodes.map(n => ({ 
-                    id: n.id, 
-                    type: n.type,
-                    connected_to: n.connected_to,
-                    connected_from: n.connected_from
-                })));
-                
+                logger.log(
+                    '[ScriptAPI] 노드 목록:',
+                    result.nodes.map((n) => ({
+                        id: n.id,
+                        type: n.type,
+                        connected_to: n.connected_to,
+                        connected_from: n.connected_from
+                    }))
+                );
+
                 // 연결 정보가 있는 노드 확인
-                const nodesWithConnections = result.nodes.filter(n => 
-                    (n.connected_to && Array.isArray(n.connected_to) && n.connected_to.length > 0) ||
-                    (n.connected_from && Array.isArray(n.connected_from) && n.connected_from.length > 0)
+                const nodesWithConnections = result.nodes.filter(
+                    (n) =>
+                        (n.connected_to && Array.isArray(n.connected_to) && n.connected_to.length > 0) ||
+                        (n.connected_from && Array.isArray(n.connected_from) && n.connected_from.length > 0)
                 );
                 logger.log(`[ScriptAPI] 연결 정보가 있는 노드 개수: ${nodesWithConnections.length}개`);
                 if (nodesWithConnections.length > 0) {
-                    logger.log('[ScriptAPI] 연결 정보가 있는 노드:', nodesWithConnections.map(n => ({
-                        id: n.id,
-                        connected_to: n.connected_to,
-                        connected_from: n.connected_from
-                    })));
+                    logger.log(
+                        '[ScriptAPI] 연결 정보가 있는 노드:',
+                        nodesWithConnections.map((n) => ({
+                            id: n.id,
+                            connected_to: n.connected_to,
+                            connected_from: n.connected_from
+                        }))
+                    );
                 }
             }
-            
+
             return result;
         } catch (error) {
             logger.error('[ScriptAPI] ❌ API 요청 실패:', error);
@@ -117,7 +124,7 @@ export const ScriptAPI = {
         logger.log('[ScriptAPI] createScript() 호출됨');
         logger.log('[ScriptAPI] 요청 데이터:', { name, description });
         logger.log('[ScriptAPI] API 요청 시작: POST /api/scripts');
-        
+
         try {
             const startTime = performance.now();
             const result = await apiCall('/api/scripts', {
@@ -128,12 +135,12 @@ export const ScriptAPI = {
                 })
             });
             const endTime = performance.now();
-            
+
             logger.log('[ScriptAPI] ✅ API 응답 받음:', result);
             logger.log(`[ScriptAPI] 응답 시간: ${(endTime - startTime).toFixed(2)}ms`);
             logger.log(`[ScriptAPI] 생성된 스크립트 ID: ${result.id}`);
             logger.log(`[ScriptAPI] 생성된 스크립트 이름: ${result.name}`);
-            
+
             return result;
         } catch (error) {
             logger.error('[ScriptAPI] ❌ API 요청 실패:', error);
@@ -155,18 +162,18 @@ export const ScriptAPI = {
         logger.log('[ScriptAPI] deleteScript() 호출됨');
         logger.log('[ScriptAPI] 삭제할 스크립트 ID:', scriptId);
         logger.log('[ScriptAPI] API 요청 시작: DELETE /api/scripts/' + scriptId);
-        
+
         try {
             const startTime = performance.now();
             const result = await apiCall(`/api/scripts/${scriptId}`, {
                 method: 'DELETE'
             });
             const endTime = performance.now();
-            
+
             logger.log('[ScriptAPI] ✅ API 응답 받음:', result);
             logger.log(`[ScriptAPI] 응답 시간: ${(endTime - startTime).toFixed(2)}ms`);
             logger.log(`[ScriptAPI] 삭제된 스크립트 ID: ${result.id}`);
-            
+
             return result;
         } catch (error) {
             logger.error('[ScriptAPI] ❌ API 요청 실패:', error);
@@ -190,7 +197,7 @@ export const ScriptAPI = {
         logger.log('[ScriptAPI] 실행할 스크립트 ID:', scriptId);
         logger.log('[ScriptAPI] 노드 개수:', nodes.length);
         logger.log('[ScriptAPI] API 요청 시작: POST /api/scripts/' + scriptId + '/execute');
-        
+
         try {
             const startTime = performance.now();
             const result = await apiCall(`/api/scripts/${scriptId}/execute`, {
@@ -201,12 +208,12 @@ export const ScriptAPI = {
                 })
             });
             const endTime = performance.now();
-            
+
             logger.log('[ScriptAPI] ✅ API 응답 받음:', result);
             logger.log(`[ScriptAPI] 응답 시간: ${(endTime - startTime).toFixed(2)}ms`);
             logger.log(`[ScriptAPI] 실행 성공: ${result.success}`);
             logger.log(`[ScriptAPI] 실행 결과 개수: ${result.results ? result.results.length : 0}개`);
-            
+
             return result;
         } catch (error) {
             logger.error('[ScriptAPI] ❌ API 요청 실패:', error);
