@@ -73,6 +73,7 @@ python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ## 문서
 
 ### 사용자 가이드
+- **[노드 목록](docs/node.md)**: 사용 가능한 모든 노드 타입 설명
 - **[데이터베이스 사용 가이드](docs/database.md)**: 데이터베이스 사용 및 샘플 데이터 삽입 방법
 
 ### 개발자 가이드
@@ -80,7 +81,7 @@ python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
 - **[프로젝트 구조](docs/dev/project-structure.md)**: 프로젝트 폴더 구조 및 각 디렉토리 역할
 - **[시스템 아키텍처](docs/dev/architecture.md)**: 서버/클라이언트 역할 및 시스템 구조
 - **[API 참조 문서](docs/dev/api-reference.md)**: RESTful API 엔드포인트 상세 설명
-- **[노드 추가 가이드](docs/dev/node.md)**: 새로운 노드 타입을 추가하는 방법
+- **[노드 추가 가이드](docs/dev/creating-nodes.md)**: 새로운 노드 타입을 추가하는 방법
 - **[환경 변수 설정](docs/dev/environment.md)**: 개발/프로덕션 모드 환경 변수 설정
 - **[워크플로우 구조](docs/dev/workflow-structure.md)**: 워크플로우 페이지 코드 구조 설명
 - **[코드 린팅 가이드](docs/dev/linting.md)**: 코드 품질 관리 및 린팅 사용법
@@ -91,41 +92,7 @@ Apache-2.0 license
 
 ## 기여
 
-이슈 및 풀 리퀘스트를 환영합니다.
-
-### 코드 기여 전 확인사항
-
-코드를 기여하기 전에 다음을 확인해주세요:
-
-1. **Python 코드 품질 검사**: 린팅과 포매팅을 실행해주세요
-   ```bash
-   # 개발 의존성 설치
-   pip install -r server/requirements-dev.txt
-   
-   # 린팅 및 포매팅 실행
-   ruff check --fix server/
-   ruff format server/
-   ```
-
-2. **JavaScript 코드 품질 검사**: 린팅과 포매팅을 실행해주세요
-   ```bash
-   # UI 디렉토리로 이동
-   cd UI
-   
-   # 의존성 설치 (최초 1회만)
-   npm install
-   
-   # 린팅 실행 (오류 확인)
-   npm run lint
-   
-   # 린팅 자동 수정
-   npm run lint:fix
-   
-   # 코드 포매팅
-   npm run format
-   ```
-
-자세한 내용은 [코드 린팅 가이드](docs/dev/linting.md)와 [JavaScript 린팅 가이드](docs/lint/javascript-linting.md)를 참고하세요.
+이슈 및 풀 리퀘스트를 환영합니다. 자세한 내용은 [CONTRIBUTING.md](CONTRIBUTING.md)를 참고하세요.
 
 ## 주의사항
 
