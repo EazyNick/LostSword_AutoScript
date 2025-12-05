@@ -2,7 +2,9 @@
 // 이미지 터치 노드 정의
 
 (function () {
-    if (!window.NodeManager) return;
+    if (!window.NodeManager) {
+        return;
+    }
 
     window.NodeManager.registerNodeType('image-touch', {
         /**
@@ -12,7 +14,7 @@
         renderContent(nodeData) {
             const folderPath = nodeData.folder_path || '폴더 미선택';
             const imageCount = nodeData.image_count || 0;
-            
+
             return `
                 <div class="node-input"></div>
                 <div class="node-content">
@@ -26,4 +28,3 @@
         }
     });
 })();
-

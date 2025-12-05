@@ -4,28 +4,28 @@
 
 /* 노드 기본 스타일: 워크플로우 캔버스에 배치되는 노드의 기본 스타일 */
 .node {
-    position: absolute;                             /* 절대 위치 (캔버스 내에서 자유 배치) */
-    min-width: 120px;                              /* 최소 너비 120px */
-    min-height: 60px;                              /* 최소 높이 60px */
+    position: absolute; /* 절대 위치 (캔버스 내에서 자유 배치) */
+    min-width: 120px; /* 최소 너비 120px */
+    min-height: 60px; /* 최소 높이 60px */
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); /* 파란색-보라색 그라데이션 배경 */
-    border-radius: 12px;                           /* 둥근 모서리 */
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);   /* 그림자 효과 */
-    cursor: move;                                  /* 드래그 가능함을 나타내는 커서 */
-    user-select: none;                             /* 텍스트 선택 방지 */
-    transition: all 0.3s ease;                     /* 부드러운 전환 효과 */
-    border: 2px solid transparent;                /* 투명한 테두리 (선택 시 표시용) */
-    overflow: hidden;                              /* 내용이 넘치면 숨김 */
+    border-radius: 12px; /* 둥근 모서리 */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); /* 그림자 효과 */
+    cursor: move; /* 드래그 가능함을 나타내는 커서 */
+    user-select: none; /* 텍스트 선택 방지 */
+    transition: all 0.3s ease; /* 부드러운 전환 효과 */
+    border: 2px solid transparent; /* 투명한 테두리 (선택 시 표시용) */
+    overflow: hidden; /* 내용이 넘치면 숨김 */
 }
 
 /* 노드 호버 효과: 마우스를 올렸을 때 */
 .node:hover {
-    transform: translateY(-2px);                  /* 살짝 위로 이동 */
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);   /* 그림자 강화 */
+    transform: translateY(-2px); /* 살짝 위로 이동 */
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3); /* 그림자 강화 */
 }
 
 /* 선택된 노드: 현재 선택된 노드의 스타일 */
 .node.selected {
-    border-color: #ffd700;                         /* 금색 테두리 */
+    border-color: #ffd700; /* 금색 테두리 */
     box-shadow: 0 0 20px rgba(255, 215, 0, 0.5); /* 금색 발광 효과 */
 }
 
@@ -79,27 +79,27 @@
 
 /* 실행 중인 노드: 현재 실행 중인 노드의 스타일 */
 .node.executing {
-    border-color: #ff6b35;                         /* 주황색 테두리 */
+    border-color: #ff6b35; /* 주황색 테두리 */
     box-shadow: 0 0 20px rgba(255, 107, 53, 0.7); /* 주황색 발광 효과 */
-    animation: pulse-executing 1s infinite;        /* 펄스 애니메이션 반복 */
+    animation: pulse-executing 1s infinite; /* 펄스 애니메이션 반복 */
 }
 
 /* 완료된 노드: 실행이 완료된 노드의 스타일 */
 .node.completed {
-    border-color: #2ecc71;                         /* 초록색 테두리 */
+    border-color: #2ecc71; /* 초록색 테두리 */
     box-shadow: 0 0 20px rgba(46, 204, 113, 0.7); /* 초록색 발광 효과 */
 }
 
 /* 실패한 노드: 실행이 실패한 노드의 스타일 */
 .node.failed {
-    border-color: #e74c3c;                         /* 빨간색 테두리 */
+    border-color: #e74c3c; /* 빨간색 테두리 */
     box-shadow: 0 0 20px rgba(231, 76, 60, 0.7); /* 빨간색 발광 효과 */
 }
 
 /* 비활성화된 노드: 사용할 수 없는 노드의 스타일 */
 .node.disabled {
-    opacity: 0.5;                                  /* 반투명 */
-    cursor: not-allowed;                           /* 사용 불가 커서 */
+    opacity: 0.5; /* 반투명 */
+    cursor: not-allowed; /* 사용 불가 커서 */
 }
 
 /* ========================================== */
@@ -108,13 +108,16 @@
 
 /* 실행 중 노드 펄스 애니메이션: 실행 중일 때 깜빡이는 효과 */
 @keyframes pulse-executing {
-    0% {                                           /* 시작 상태 */
+    0% {
+        /* 시작 상태 */
         box-shadow: 0 0 20px rgba(255, 107, 53, 0.7); /* 기본 발광 */
     }
-    50% {                                          /* 중간 상태 */
+    50% {
+        /* 중간 상태 */
         box-shadow: 0 0 30px rgba(255, 107, 53, 1); /* 강한 발광 */
     }
-    100% {                                         /* 끝 상태 */
+    100% {
+        /* 끝 상태 */
         box-shadow: 0 0 20px rgba(255, 107, 53, 0.7); /* 기본 발광 */
     }
 }
@@ -125,30 +128,30 @@
 
 /* 노드 내용 영역: 노드 안에 표시되는 텍스트 영역 */
 .node-content {
-    padding: 12px;                                  /* 내부 여백 12px */
-    color: white;                                  /* 흰색 텍스트 */
-    text-align: center;                            /* 가운데 정렬 */
-    position: relative;                             /* 상대 위치 */
-    height: 100%;                                  /* 전체 높이 사용 */
-    display: flex;                                  /* 플렉스박스 레이아웃 */
-    flex-direction: column;                        /* 세로 방향 배치 */
-    justify-content: center;                       /* 세로 중앙 정렬 */
-    align-items: center;                           /* 가로 중앙 정렬 */
+    padding: 12px; /* 내부 여백 12px */
+    color: white; /* 흰색 텍스트 */
+    text-align: center; /* 가운데 정렬 */
+    position: relative; /* 상대 위치 */
+    height: 100%; /* 전체 높이 사용 */
+    display: flex; /* 플렉스박스 레이아웃 */
+    flex-direction: column; /* 세로 방향 배치 */
+    justify-content: center; /* 세로 중앙 정렬 */
+    align-items: center; /* 가로 중앙 정렬 */
 }
 
 /* 노드 제목: 노드에 표시되는 제목 텍스트 */
 .node-title {
-    font-weight: 600;                              /* 중간 굵기 */
-    font-size: 14px;                               /* 글씨 크기 14px */
-    margin-bottom: 4px;                            /* 하단 여백 4px */
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);   /* 텍스트 그림자 */
+    font-weight: 600; /* 중간 굵기 */
+    font-size: 14px; /* 글씨 크기 14px */
+    margin-bottom: 4px; /* 하단 여백 4px */
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); /* 텍스트 그림자 */
 }
 
 /* 노드 설명: 노드에 표시되는 설명 텍스트 */
 .node-description {
-    font-size: 11px;                               /* 작은 글씨 크기 11px */
-    opacity: 0.9;                                  /* 약간 투명 */
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);   /* 텍스트 그림자 */
+    font-size: 11px; /* 작은 글씨 크기 11px */
+    opacity: 0.9; /* 약간 투명 */
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); /* 텍스트 그림자 */
 }
 
 /* ========================================== */
@@ -157,34 +160,34 @@
 
 /* 노드 연결점 기본 스타일: 노드와 노드를 연결하는 점 */
 .node-connector {
-    position: absolute;                             /* 절대 위치 */
-    width: 12px;                                   /* 연결점 너비 12px */
-    height: 12px;                                  /* 연결점 높이 12px */
-    background: #fff;                              /* 흰색 배경 */
-    border: 2px solid #333;                       /* 어두운 회색 테두리 */
-    border-radius: 50%;                            /* 원형 */
-    cursor: pointer;                                /* 클릭 가능한 커서 */
-    transition: all 0.2s ease;                     /* 부드러운 전환 효과 */
-    z-index: 10;                                   /* 다른 요소 위에 표시 */
-    top: 50%;                                      /* 세로 중앙 */
-    margin-top: -6px;                              /* 높이의 절반만큼 위로 이동 (정확한 중앙 정렬) */
+    position: absolute; /* 절대 위치 */
+    width: 12px; /* 연결점 너비 12px */
+    height: 12px; /* 연결점 높이 12px */
+    background: #fff; /* 흰색 배경 */
+    border: 2px solid #333; /* 어두운 회색 테두리 */
+    border-radius: 50%; /* 원형 */
+    cursor: pointer; /* 클릭 가능한 커서 */
+    transition: all 0.2s ease; /* 부드러운 전환 효과 */
+    z-index: 10; /* 다른 요소 위에 표시 */
+    top: 50%; /* 세로 중앙 */
+    margin-top: -6px; /* 높이의 절반만큼 위로 이동 (정확한 중앙 정렬) */
 }
 
 /* 연결점 호버 효과: 마우스를 올렸을 때 */
 .node-connector:hover {
-    transform: scale(1.2);                         /* 크기 확대 1.2배 */
-    background: #ffd700;                           /* 금색 배경 */
-    box-shadow: 0 0 8px rgba(255, 215, 0, 0.6);  /* 금색 발광 효과 */
+    transform: scale(1.2); /* 크기 확대 1.2배 */
+    background: #ffd700; /* 금색 배경 */
+    box-shadow: 0 0 8px rgba(255, 215, 0, 0.6); /* 금색 발광 효과 */
 }
 
 /* 입력 연결점: 다른 노드에서 이 노드로 연결되는 지점 */
 .node-connector.input {
-    left: -6px;                                    /* 노드 왼쪽 밖에 배치 */
+    left: -6px; /* 노드 왼쪽 밖에 배치 */
 }
 
 /* 출력 연결점: 이 노드에서 다른 노드로 연결되는 지점 */
 .node-connector.output {
-    right: -6px;                                   /* 노드 오른쪽 밖에 배치 */
+    right: -6px; /* 노드 오른쪽 밖에 배치 */
 }
 
 /* ========================================== */
@@ -193,15 +196,15 @@
 
 /* 연결 중인 연결점: 현재 연결을 생성하고 있는 연결점 */
 .node-connector.connecting {
-    background: #ff6b35 !important;               /* 주황색 배경 (강제 적용) */
-    transform: scale(1.3) !important;               /* 크기 확대 1.3배 (강제 적용) */
+    background: #ff6b35 !important; /* 주황색 배경 (강제 적용) */
+    transform: scale(1.3) !important; /* 크기 확대 1.3배 (강제 적용) */
     box-shadow: 0 0 10px rgba(255, 107, 53, 0.7); /* 주황색 발광 효과 */
 }
 
 /* 연결된 연결점: 이미 연결이 완료된 연결점 */
 .node-connector.connected {
-    background: #2ecc71 !important;               /* 초록색 배경 (강제 적용) */
-    transform: scale(1.1) !important;             /* 크기 확대 1.1배 (강제 적용) */
+    background: #2ecc71 !important; /* 초록색 배경 (강제 적용) */
+    transform: scale(1.1) !important; /* 크기 확대 1.1배 (강제 적용) */
 }
 
 /* ========================================== */
@@ -210,33 +213,33 @@
 
 /* 노드 삭제 버튼: 노드를 삭제하는 X 버튼 */
 .node-delete {
-    position: absolute;                             /* 절대 위치 */
-    top: -8px;                                     /* 노드 상단 밖에 배치 */
-    right: 8px;                                     /* 노드 오른쪽에서 8px (연결점과 겹치지 않도록 위치 조정) */
-    width: 20px;                                   /* 버튼 너비 20px */
-    height: 20px;                                  /* 버튼 높이 20px */
-    background: #e74c3c;                           /* 빨간색 배경 */
-    border-radius: 50%;                            /* 원형 */
-    border: 2px solid #fff;                       /* 흰색 테두리 */
-    cursor: pointer;                                /* 클릭 가능한 커서 */
-    display: none;                                 /* 기본적으로 숨김 */
-    align-items: center;                           /* 세로 중앙 정렬 */
-    justify-content: center;                       /* 가로 중앙 정렬 */
-    font-size: 12px;                               /* 아이콘 크기 12px */
-    color: white;                                  /* 흰색 아이콘 */
-    transition: all 0.2s ease;                     /* 부드러운 전환 효과 */
-    z-index: 15;                                   /* 연결점보다 위에 표시 */
+    position: absolute; /* 절대 위치 */
+    top: -8px; /* 노드 상단 밖에 배치 */
+    right: 8px; /* 노드 오른쪽에서 8px (연결점과 겹치지 않도록 위치 조정) */
+    width: 20px; /* 버튼 너비 20px */
+    height: 20px; /* 버튼 높이 20px */
+    background: #e74c3c; /* 빨간색 배경 */
+    border-radius: 50%; /* 원형 */
+    border: 2px solid #fff; /* 흰색 테두리 */
+    cursor: pointer; /* 클릭 가능한 커서 */
+    display: none; /* 기본적으로 숨김 */
+    align-items: center; /* 세로 중앙 정렬 */
+    justify-content: center; /* 가로 중앙 정렬 */
+    font-size: 12px; /* 아이콘 크기 12px */
+    color: white; /* 흰색 아이콘 */
+    transition: all 0.2s ease; /* 부드러운 전환 효과 */
+    z-index: 15; /* 연결점보다 위에 표시 */
 }
 
 /* 노드 호버 시 삭제 버튼 표시: 마우스를 올리면 삭제 버튼이 나타남 */
 .node:hover .node-delete {
-    display: flex;                                  /* 플렉스박스로 표시 */
+    display: flex; /* 플렉스박스로 표시 */
 }
 
 /* 삭제 버튼 호버 효과: 마우스를 올렸을 때 */
 .node-delete:hover {
-    background: #c0392b;                           /* 더 진한 빨간색 배경 */
-    transform: scale(1.1);                         /* 크기 확대 1.1배 */
+    background: #c0392b; /* 더 진한 빨간색 배경 */
+    transform: scale(1.1); /* 크기 확대 1.1배 */
 }
 
 /* ========================================== */
@@ -245,9 +248,9 @@
 
 /* 드래그 중인 노드: 현재 드래그하고 있는 노드의 스타일 */
 .node.dragging {
-    z-index: 1000;                                 /* 다른 노드들 위에 표시 */
-    transform: rotate(5deg);                       /* 5도 회전 */
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);  /* 강한 그림자 효과 */
+    z-index: 1000; /* 다른 노드들 위에 표시 */
+    transform: rotate(5deg); /* 5도 회전 */
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4); /* 강한 그림자 효과 */
 }
 
 /* ========================================== */
@@ -256,46 +259,49 @@
 
 /* 연결선 기본 스타일: 노드와 노드를 연결하는 선 */
 .connection-line {
-    position: absolute;                             /* 절대 위치 */
-    pointer-events: none;                          /* 마우스 이벤트 무시 */
-    z-index: 1;                                    /* 노드들 아래에 표시 */
+    position: absolute; /* 절대 위치 */
+    pointer-events: none; /* 마우스 이벤트 무시 */
+    z-index: 1; /* 노드들 아래에 표시 */
 }
 
 /* 활성화된 연결선: 현재 선택된 연결선 */
 .connection-line.active {
-    stroke: #ffd700;                               /* 금색 선 */
-    stroke-width: 3;                               /* 선 두께 3px */
+    stroke: #ffd700; /* 금색 선 */
+    stroke-width: 3; /* 선 두께 3px */
 }
 
 /* 실행 중인 연결선: 현재 실행 중인 연결선 */
 .connection-line.executing {
-    stroke: #ff6b35;                               /* 주황색 선 */
-    stroke-width: 3;                               /* 선 두께 3px */
-    animation: pulse-line 1s infinite;            /* 펄스 애니메이션 반복 */
+    stroke: #ff6b35; /* 주황색 선 */
+    stroke-width: 3; /* 선 두께 3px */
+    animation: pulse-line 1s infinite; /* 펄스 애니메이션 반복 */
 }
 
 /* 완료된 연결선: 실행이 완료된 연결선 */
 .connection-line.completed {
-    stroke: #2ecc71;                               /* 초록색 선 */
-    stroke-width: 3;                               /* 선 두께 3px */
+    stroke: #2ecc71; /* 초록색 선 */
+    stroke-width: 3; /* 선 두께 3px */
 }
 
 /* 실패한 연결선: 실행이 실패한 연결선 */
 .connection-line.failed {
-    stroke: #e74c3c;                               /* 빨간색 선 */
-    stroke-width: 3;                               /* 선 두께 3px */
+    stroke: #e74c3c; /* 빨간색 선 */
+    stroke-width: 3; /* 선 두께 3px */
 }
 
 /* 연결선 펄스 애니메이션: 실행 중일 때 깜빡이는 효과 */
 @keyframes pulse-line {
-    0% {                                           /* 시작 상태 */
-        stroke-opacity: 0.7;                       /* 투명도 70% */
+    0% {
+        /* 시작 상태 */
+        stroke-opacity: 0.7; /* 투명도 70% */
     }
-    50% {                                          /* 중간 상태 */
-        stroke-opacity: 1;                         /* 투명도 100% */
+    50% {
+        /* 중간 상태 */
+        stroke-opacity: 1; /* 투명도 100% */
     }
-    100% {                                         /* 끝 상태 */
-        stroke-opacity: 0.7;                       /* 투명도 70% */
+    100% {
+        /* 끝 상태 */
+        stroke-opacity: 0.7; /* 투명도 70% */
     }
 }
 
@@ -307,18 +313,18 @@
 @media (max-width: 768px) {
     /* 모바일에서 노드 크기 축소 */
     .node {
-        min-width: 100px;                          /* 최소 너비 100px로 축소 */
-        min-height: 50px;                          /* 최소 높이 50px로 축소 */
+        min-width: 100px; /* 최소 너비 100px로 축소 */
+        min-height: 50px; /* 최소 높이 50px로 축소 */
     }
-    
+
     /* 모바일에서 노드 제목 크기 축소 */
     .node-title {
-        font-size: 12px;                           /* 크기 12px로 축소 */
+        font-size: 12px; /* 크기 12px로 축소 */
     }
-    
+
     /* 모바일에서 노드 설명 크기 축소 */
     .node-description {
-        font-size: 10px;                           /* 크기 10px로 축소 */
+        font-size: 10px; /* 크기 10px로 축소 */
     }
 }
 
@@ -328,12 +334,12 @@
 
 /* 연결 모드 캔버스: 연결 모드일 때 캔버스 커서 변경 */
 .workflow-canvas.connection-mode {
-    cursor: crosshair;                             /* 십자선 커서 */
+    cursor: crosshair; /* 십자선 커서 */
 }
 
 /* 연결 모드에서 노드 포인터 이벤트 활성화 */
 .workflow-canvas.connection-mode .workflow-node {
-    pointer-events: auto;                          /* 마우스 이벤트 활성화 */
+    pointer-events: auto; /* 마우스 이벤트 활성화 */
 }
 
 /* ========================================== */
@@ -343,87 +349,93 @@
 /* 입력/출력 연결점 기본 스타일: 워크플로우 노드의 연결점 */
 .node-input,
 .node-output {
-    position: absolute;                             /* 절대 위치 */
-    width: 12px;                                   /* 연결점 너비 12px */
-    height: 12px;                                  /* 연결점 높이 12px */
-    border-radius: 50%;                            /* 원형 */
-    background: #ffffff;                            /* 흰색 배경 */
-    border: 2px solid #666;                       /* 회색 테두리 */
-    cursor: pointer;                                /* 클릭 가능한 커서 */
-    transition: all 0.2s ease;                     /* 부드러운 전환 효과 */
-    z-index: 10;                                   /* 다른 요소 위에 표시 */
+    position: absolute; /* 절대 위치 */
+    width: 12px; /* 연결점 너비 12px */
+    height: 12px; /* 연결점 높이 12px */
+    border-radius: 50%; /* 원형 */
+    background: #ffffff; /* 흰색 배경 */
+    border: 2px solid #666; /* 회색 테두리 */
+    cursor: pointer; /* 클릭 가능한 커서 */
+    transition: all 0.2s ease; /* 부드러운 전환 효과 */
+    z-index: 10; /* 다른 요소 위에 표시 */
 }
 
 /* 입력 연결점 위치: 노드 왼쪽에 배치 */
 .node-input {
-    left: -6px;                                    /* 노드 왼쪽 밖에 배치 */
-    top: 50%;                                      /* 세로 중앙 */
-    transform: translateY(-50%);                    /* 정확한 중앙 정렬 */
+    left: -6px; /* 노드 왼쪽 밖에 배치 */
+    top: 50%; /* 세로 중앙 */
+    transform: translateY(-50%); /* 정확한 중앙 정렬 */
 }
 
 /* 출력 연결점 위치: 노드 오른쪽에 배치 */
 .node-output {
-    right: -6px;                                   /* 노드 오른쪽 밖에 배치 */
-    top: 50%;                                      /* 세로 중앙 */
-    transform: translateY(-50%);                    /* 정확한 중앙 정렬 */
+    right: -6px; /* 노드 오른쪽 밖에 배치 */
+    top: 50%; /* 세로 중앙 */
+    transform: translateY(-50%); /* 정확한 중앙 정렬 */
 }
 
 /* 연결점 호버 효과: 마우스를 올렸을 때 */
 .node-input:hover,
 .node-output:hover {
-    transform: translateY(-50%) scale(1.2);        /* 중앙 정렬 유지하며 크기 확대 1.2배 */
-    background: #007AFF;                           /* 파란색 배경 */
-    border-color: #007AFF;                         /* 파란색 테두리 */
-    box-shadow: 0 0 8px rgba(0, 122, 255, 0.6);  /* 파란색 발광 효과 */
+    transform: translateY(-50%) scale(1.2); /* 중앙 정렬 유지하며 크기 확대 1.2배 */
+    background: #007aff; /* 파란색 배경 */
+    border-color: #007aff; /* 파란색 테두리 */
+    box-shadow: 0 0 8px rgba(0, 122, 255, 0.6); /* 파란색 발광 효과 */
 }
 
 /* 연결된 연결점 스타일: 이미 연결이 완료된 연결점 */
 .node-input.connected,
 .node-output.connected {
-    background: #34C759;                           /* 초록색 배경 */
-    border-color: #34C759;                         /* 초록색 테두리 */
-    box-shadow: 0 0 8px rgba(52, 199, 89, 0.6);  /* 초록색 발광 효과 */
-    animation: connected-pulse 2s infinite;        /* 펄스 애니메이션 반복 */
+    background: #34c759; /* 초록색 배경 */
+    border-color: #34c759; /* 초록색 테두리 */
+    box-shadow: 0 0 8px rgba(52, 199, 89, 0.6); /* 초록색 발광 효과 */
+    animation: connected-pulse 2s infinite; /* 펄스 애니메이션 반복 */
 }
 
 /* 연결된 연결점 펄스 애니메이션: 연결된 연결점이 깜빡이는 효과 */
 @keyframes connected-pulse {
-    0% {                                           /* 시작 상태 */
+    0% {
+        /* 시작 상태 */
         box-shadow: 0 0 8px rgba(52, 199, 89, 0.6); /* 기본 발광 */
     }
-    50% {                                          /* 중간 상태 */
+    50% {
+        /* 중간 상태 */
         box-shadow: 0 0 12px rgba(52, 199, 89, 0.8); /* 강한 발광 */
     }
-    100% {                                         /* 끝 상태 */
+    100% {
+        /* 끝 상태 */
         box-shadow: 0 0 8px rgba(52, 199, 89, 0.6); /* 기본 발광 */
     }
 }
 
 /* 연결 모드에서 활성화된 입력 연결점: 연결을 받을 준비가 된 입력 연결점 */
 .node-input.connection-active {
-    background: #34C759;                           /* 초록색 배경 */
-    border-color: #34C759;                         /* 초록색 테두리 */
-    box-shadow: 0 0 12px rgba(52, 199, 89, 0.8);  /* 초록색 발광 효과 */
-    animation: connection-pulse 1.5s infinite;     /* 펄스 애니메이션 반복 */
+    background: #34c759; /* 초록색 배경 */
+    border-color: #34c759; /* 초록색 테두리 */
+    box-shadow: 0 0 12px rgba(52, 199, 89, 0.8); /* 초록색 발광 효과 */
+    animation: connection-pulse 1.5s infinite; /* 펄스 애니메이션 반복 */
 }
 
 /* 연결 시작점 하이라이트: 연결을 시작하는 출력 연결점 */
 .node-output.connection-highlight {
-    background: #FF9500;                           /* 주황색 배경 */
-    border-color: #FF9500;                         /* 주황색 테두리 */
-    box-shadow: 0 0 12px rgba(255, 149, 0, 0.8);  /* 주황색 발광 효과 */
-    animation: connection-pulse 1.5s infinite;     /* 펄스 애니메이션 반복 */
+    background: #ff9500; /* 주황색 배경 */
+    border-color: #ff9500; /* 주황색 테두리 */
+    box-shadow: 0 0 12px rgba(255, 149, 0, 0.8); /* 주황색 발광 효과 */
+    animation: connection-pulse 1.5s infinite; /* 펄스 애니메이션 반복 */
 }
 
 /* 연결점 펄스 애니메이션: 연결 중일 때 깜빡이는 효과 */
 @keyframes connection-pulse {
-    0% {                                           /* 시작 상태 */
+    0% {
+        /* 시작 상태 */
         box-shadow: 0 0 12px rgba(52, 199, 89, 0.8); /* 기본 발광 */
     }
-    50% {                                          /* 중간 상태 */
+    50% {
+        /* 중간 상태 */
         box-shadow: 0 0 20px rgba(52, 199, 89, 1); /* 강한 발광 */
     }
-    100% {                                         /* 끝 상태 */
+    100% {
+        /* 끝 상태 */
         box-shadow: 0 0 12px rgba(52, 199, 89, 0.8); /* 기본 발광 */
     }
 }
@@ -434,57 +446,57 @@
 
 /* 조건 노드 출력 컨테이너: True/False 출력점들을 담는 컨테이너 (workflow.css에서 더 상세한 스타일 정의됨) */
 .node-outputs {
-    position: absolute;                             /* 절대 위치 */
-    right: -6px;                                   /* 노드 오른쪽 밖에 배치 */
-    top: 50%;                                      /* 세로 중앙 */
-    transform: translateY(-50%);                   /* 정확한 중앙 정렬 */
-    display: flex;                                  /* 플렉스박스 레이아웃 */
-    flex-direction: column;                        /* 세로 방향 배치 */
-    gap: 8px;                                      /* 출력점들 사이 간격 8px */
+    position: absolute; /* 절대 위치 */
+    right: -6px; /* 노드 오른쪽 밖에 배치 */
+    top: 50%; /* 세로 중앙 */
+    transform: translateY(-50%); /* 정확한 중앙 정렬 */
+    display: flex; /* 플렉스박스 레이아웃 */
+    flex-direction: column; /* 세로 방향 배치 */
+    gap: 8px; /* 출력점들 사이 간격 8px */
 }
 
 /* 조건 노드의 출력점: True/False 출력점 */
 .node-outputs .node-output {
-    position: relative;                             /* 상대 위치 */
-    width: 12px;                                   /* 연결점 너비 12px */
-    height: 12px;                                  /* 연결점 높이 12px */
-    border-radius: 50%;                            /* 원형 */
-    background: #ffffff;                            /* 흰색 배경 */
-    border: 2px solid #666;                       /* 회색 테두리 */
-    cursor: pointer;                                /* 클릭 가능한 커서 */
-    transition: all 0.2s ease;                     /* 부드러운 전환 효과 */
+    position: relative; /* 상대 위치 */
+    width: 12px; /* 연결점 너비 12px */
+    height: 12px; /* 연결점 높이 12px */
+    border-radius: 50%; /* 원형 */
+    background: #ffffff; /* 흰색 배경 */
+    border: 2px solid #666; /* 회색 테두리 */
+    cursor: pointer; /* 클릭 가능한 커서 */
+    transition: all 0.2s ease; /* 부드러운 전환 효과 */
 }
 
 /* 조건 노드 출력점 호버 효과: 마우스를 올렸을 때 */
 .node-outputs .node-output:hover {
-    transform: scale(1.2);                         /* 크기 확대 1.2배 */
-    background: #007AFF;                           /* 파란색 배경 */
-    border-color: #007AFF;                         /* 파란색 테두리 */
-    box-shadow: 0 0 8px rgba(0, 122, 255, 0.6);  /* 파란색 발광 효과 */
+    transform: scale(1.2); /* 크기 확대 1.2배 */
+    background: #007aff; /* 파란색 배경 */
+    border-color: #007aff; /* 파란색 테두리 */
+    box-shadow: 0 0 8px rgba(0, 122, 255, 0.6); /* 파란색 발광 효과 */
 }
 
 /* True 출력점 색상: 조건이 참일 때의 출력점 */
 .true-output .output-dot {
-    background: #34C759;                           /* 초록색 배경 */
-    border-color: #34C759;                         /* 초록색 테두리 */
+    background: #34c759; /* 초록색 배경 */
+    border-color: #34c759; /* 초록색 테두리 */
 }
 
 /* False 출력점 색상: 조건이 거짓일 때의 출력점 */
 .false-output .output-dot {
-    background: #FF3B30;                           /* 빨간색 배경 */
-    border-color: #FF3B30;                         /* 빨간색 테두리 */
+    background: #ff3b30; /* 빨간색 배경 */
+    border-color: #ff3b30; /* 빨간색 테두리 */
 }
 
 /* 출력점 라벨: 출력점 옆에 표시되는 "True"/"False" 텍스트 */
 .output-label {
-    position: absolute;                             /* 절대 위치 */
-    right: 20px;                                    /* 출력점 오른쪽에서 20px */
-    top: 50%;                                      /* 세로 중앙 */
-    transform: translateY(-50%);                    /* 정확한 중앙 정렬 */
-    font-size: 11px;                               /* 작은 글씨 크기 11px */
-    color: #666;                                   /* 회색 텍스트 */
-    white-space: nowrap;                           /* 줄바꿈 방지 */
-    pointer-events: none;                          /* 마우스 이벤트 무시 */
+    position: absolute; /* 절대 위치 */
+    right: 20px; /* 출력점 오른쪽에서 20px */
+    top: 50%; /* 세로 중앙 */
+    transform: translateY(-50%); /* 정확한 중앙 정렬 */
+    font-size: 11px; /* 작은 글씨 크기 11px */
+    color: #666; /* 회색 텍스트 */
+    white-space: nowrap; /* 줄바꿈 방지 */
+    pointer-events: none; /* 마우스 이벤트 무시 */
 }
 
 /* ========================================== */
@@ -493,44 +505,44 @@
 
 /* 연결 모드 안내 메시지: 연결 모드일 때 화면 상단에 표시되는 안내 메시지 */
 .connection-mode-message {
-    position: fixed;                               /* 화면에 고정 */
-    top: 20px;                                     /* 상단에서 20px */
-    left: 50%;                                     /* 왼쪽에서 50% */
-    transform: translateX(-50%);                   /* 정확한 중앙 정렬 */
-    background: rgba(0, 0, 0, 0.9);               /* 반투명 검은색 배경 */
-    color: white;                                  /* 흰색 텍스트 */
-    padding: 12px 20px;                            /* 내부 여백 상하 12px, 좌우 20px */
-    border-radius: 8px;                            /* 둥근 모서리 */
-    font-size: 14px;                               /* 글씨 크기 14px */
-    z-index: 10000;                                /* 다른 요소들 위에 표시 */
-    opacity: 0;                                    /* 기본적으로 투명 */
-    visibility: hidden;                           /* 기본적으로 숨김 */
-    transition: all 0.3s ease;                     /* 부드러운 전환 효과 */
+    position: fixed; /* 화면에 고정 */
+    top: 20px; /* 상단에서 20px */
+    left: 50%; /* 왼쪽에서 50% */
+    transform: translateX(-50%); /* 정확한 중앙 정렬 */
+    background: rgba(0, 0, 0, 0.9); /* 반투명 검은색 배경 */
+    color: white; /* 흰색 텍스트 */
+    padding: 12px 20px; /* 내부 여백 상하 12px, 좌우 20px */
+    border-radius: 8px; /* 둥근 모서리 */
+    font-size: 14px; /* 글씨 크기 14px */
+    z-index: 10000; /* 다른 요소들 위에 표시 */
+    opacity: 0; /* 기본적으로 투명 */
+    visibility: hidden; /* 기본적으로 숨김 */
+    transition: all 0.3s ease; /* 부드러운 전환 효과 */
 }
 
 /* 안내 메시지 표시 상태: 메시지가 보일 때 */
 .connection-mode-message.show {
-    opacity: 1;                                    /* 완전히 불투명 */
-    visibility: visible;                           /* 표시 */
+    opacity: 1; /* 완전히 불투명 */
+    visibility: visible; /* 표시 */
 }
 
 /* 메시지 내용 컨테이너: 아이콘과 텍스트를 담는 컨테이너 */
 .message-content {
-    display: flex;                                  /* 플렉스박스 레이아웃 */
-    align-items: center;                           /* 세로 중앙 정렬 */
-    gap: 8px;                                      /* 아이콘과 텍스트 사이 간격 8px */
+    display: flex; /* 플렉스박스 레이아웃 */
+    align-items: center; /* 세로 중앙 정렬 */
+    gap: 8px; /* 아이콘과 텍스트 사이 간격 8px */
 }
 
 /* 메시지 아이콘: 안내 메시지 앞에 표시되는 아이콘 */
 .message-icon {
-    font-size: 16px;                               /* 아이콘 크기 16px */
+    font-size: 16px; /* 아이콘 크기 16px */
 }
 
 /* 메시지 힌트: 안내 메시지 옆에 표시되는 추가 설명 */
 .message-hint {
-    font-size: 12px;                               /* 작은 글씨 크기 12px */
-    color: #ccc;                                   /* 연한 회색 텍스트 */
-    margin-left: 8px;                              /* 왼쪽 여백 8px */
+    font-size: 12px; /* 작은 글씨 크기 12px */
+    color: #ccc; /* 연한 회색 텍스트 */
+    margin-left: 8px; /* 왼쪽 여백 8px */
 }
 
 /* ========================================== */
@@ -539,35 +551,35 @@
 
 /* 연결점 툴팁: 연결점에 마우스를 올렸을 때 표시되는 설명 툴팁 */
 .connector-tooltip {
-    position: fixed;                               /* 화면에 고정 */
-    background: rgba(0, 0, 0, 0.8);               /* 반투명 검은색 배경 */
-    color: white;                                  /* 흰색 텍스트 */
-    padding: 6px 10px;                             /* 내부 여백 상하 6px, 좌우 10px */
-    border-radius: 4px;                            /* 둥근 모서리 */
-    font-size: 12px;                               /* 작은 글씨 크기 12px */
-    z-index: 10001;                                /* 다른 요소들 위에 표시 */
-    opacity: 0;                                    /* 기본적으로 투명 */
-    visibility: hidden;                           /* 기본적으로 숨김 */
-    transition: all 0.2s ease;                     /* 부드러운 전환 효과 */
-    pointer-events: none;                          /* 마우스 이벤트 무시 */
-    transform: translateX(-50%);                    /* 가로 중앙 정렬 */
+    position: fixed; /* 화면에 고정 */
+    background: rgba(0, 0, 0, 0.8); /* 반투명 검은색 배경 */
+    color: white; /* 흰색 텍스트 */
+    padding: 6px 10px; /* 내부 여백 상하 6px, 좌우 10px */
+    border-radius: 4px; /* 둥근 모서리 */
+    font-size: 12px; /* 작은 글씨 크기 12px */
+    z-index: 10001; /* 다른 요소들 위에 표시 */
+    opacity: 0; /* 기본적으로 투명 */
+    visibility: hidden; /* 기본적으로 숨김 */
+    transition: all 0.2s ease; /* 부드러운 전환 효과 */
+    pointer-events: none; /* 마우스 이벤트 무시 */
+    transform: translateX(-50%); /* 가로 중앙 정렬 */
 }
 
 /* 툴팁 표시 상태: 툴팁이 보일 때 */
 .connector-tooltip.show {
-    opacity: 1;                                    /* 완전히 불투명 */
-    visibility: visible;                           /* 표시 */
+    opacity: 1; /* 완전히 불투명 */
+    visibility: visible; /* 표시 */
 }
 
 /* 툴팁 화살표: 툴팁 아래에 표시되는 작은 삼각형 화살표 */
 .connector-tooltip::after {
-    content: '';                                   /* 가상 요소 생성 */
-    position: absolute;                             /* 절대 위치 */
-    top: 100%;                                     /* 툴팁 아래 */
-    left: 50%;                                     /* 가로 중앙 */
-    transform: translateX(-50%);                    /* 정확한 중앙 정렬 */
-    border: 4px solid transparent;                /* 투명한 테두리 */
-    border-top-color: rgba(0, 0, 0, 0.8);         /* 상단만 검은색 (화살표 효과) */
+    content: ''; /* 가상 요소 생성 */
+    position: absolute; /* 절대 위치 */
+    top: 100%; /* 툴팁 아래 */
+    left: 50%; /* 가로 중앙 */
+    transform: translateX(-50%); /* 정확한 중앙 정렬 */
+    border: 4px solid transparent; /* 투명한 테두리 */
+    border-top-color: rgba(0, 0, 0, 0.8); /* 상단만 검은색 (화살표 효과) */
 }
 
 /* ========================================== */
@@ -576,79 +588,81 @@
 
 /* SVG 연결선 컨테이너: 연결선을 그리는 SVG 요소의 컨테이너 */
 .connection-svg {
-    position: absolute;                             /* 절대 위치 */
-    top: 0;                                        /* 캔버스 상단에 고정 */
-    left: 0;                                       /* 캔버스 좌측에 고정 */
-    width: 100%;                                   /* 캔버스 전체 너비 */
-    height: 100%;                                  /* 캔버스 전체 높이 */
-    pointer-events: none;                          /* 마우스 이벤트 무시 (노드 클릭 방해 방지) */
-    z-index: 1;                                    /* 노드들 위에 표시 */
-    overflow: visible;                            /* 연결선이 영역 밖으로 나가도 표시 */
+    position: absolute; /* 절대 위치 */
+    top: 0; /* 캔버스 상단에 고정 */
+    left: 0; /* 캔버스 좌측에 고정 */
+    width: 100%; /* 캔버스 전체 너비 */
+    height: 100%; /* 캔버스 전체 높이 */
+    pointer-events: none; /* 마우스 이벤트 무시 (노드 클릭 방해 방지) */
+    z-index: 1; /* 노드들 위에 표시 */
+    overflow: visible; /* 연결선이 영역 밖으로 나가도 표시 */
 }
 
 /* 연결선 기본 스타일: 노드와 노드를 연결하는 SVG 선 */
 .connection-line {
-    stroke: #007AFF;                               /* 파란색 선 */
-    stroke-width: 2;                               /* 선 두께 2px */
-    fill: none;                                    /* 채우기 없음 */
-    stroke-linecap: round;                         /* 선 끝 둥글게 */
-    stroke-linejoin: round;                         /* 선 연결 부분 둥글게 */
-    transition: all 0.2s ease;                     /* 부드러운 전환 효과 */
-    pointer-events: stroke;                        /* 선 부분만 마우스 이벤트 받음 */
+    stroke: #007aff; /* 파란색 선 */
+    stroke-width: 2; /* 선 두께 2px */
+    fill: none; /* 채우기 없음 */
+    stroke-linecap: round; /* 선 끝 둥글게 */
+    stroke-linejoin: round; /* 선 연결 부분 둥글게 */
+    transition: all 0.2s ease; /* 부드러운 전환 효과 */
+    pointer-events: stroke; /* 선 부분만 마우스 이벤트 받음 */
 }
 
 /* 연결선 호버 효과: 마우스를 올렸을 때 */
 .connection-line:hover {
-    stroke: #FF3B30;                               /* 빨간색 선 */
-    stroke-width: 3;                               /* 선 두께 3px로 증가 */
+    stroke: #ff3b30; /* 빨간색 선 */
+    stroke-width: 3; /* 선 두께 3px로 증가 */
     filter: drop-shadow(0 0 4px rgba(255, 59, 48, 0.6)); /* 빨간색 발광 효과 */
 }
 
 /* 조건 노드 True 연결선 (초록색): 조건이 참일 때의 연결선 */
 .connection-line.connection-true,
-.connection-line[data-output-type="true"] {
-    stroke: #22c55e;                               /* 초록색 선 */
-    stroke-width: 2.5;                             /* 선 두께 2.5px */
+.connection-line[data-output-type='true'] {
+    stroke: #22c55e; /* 초록색 선 */
+    stroke-width: 2.5; /* 선 두께 2.5px */
 }
 
 /* True 연결선 호버 효과: 마우스를 올렸을 때 */
 .connection-line.connection-true:hover,
-.connection-line[data-output-type="true"]:hover {
-    stroke: #16a34a;                               /* 더 진한 초록색 선 */
-    stroke-width: 3.5;                             /* 선 두께 3.5px로 증가 */
+.connection-line[data-output-type='true']:hover {
+    stroke: #16a34a; /* 더 진한 초록색 선 */
+    stroke-width: 3.5; /* 선 두께 3.5px로 증가 */
     filter: drop-shadow(0 0 6px rgba(34, 197, 94, 0.6)); /* 초록색 발광 효과 */
 }
 
 /* 조건 노드 False 연결선 (빨간색): 조건이 거짓일 때의 연결선 */
 .connection-line.connection-false,
-.connection-line[data-output-type="false"] {
-    stroke: #ef4444;                               /* 빨간색 선 */
-    stroke-width: 2.5;                             /* 선 두께 2.5px */
+.connection-line[data-output-type='false'] {
+    stroke: #ef4444; /* 빨간색 선 */
+    stroke-width: 2.5; /* 선 두께 2.5px */
 }
 
 /* False 연결선 호버 효과: 마우스를 올렸을 때 */
 .connection-line.connection-false:hover,
-.connection-line[data-output-type="false"]:hover {
-    stroke: #dc2626;                               /* 더 진한 빨간색 선 */
-    stroke-width: 3.5;                             /* 선 두께 3.5px로 증가 */
+.connection-line[data-output-type='false']:hover {
+    stroke: #dc2626; /* 더 진한 빨간색 선 */
+    stroke-width: 3.5; /* 선 두께 3.5px로 증가 */
     filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.6)); /* 빨간색 발광 효과 */
 }
 
 /* 연결선 선택 상태: 현재 선택된 연결선 */
 .connection-line.selected {
-    stroke: #FF9500;                               /* 주황색 선 */
-    stroke-width: 3;                               /* 선 두께 3px */
-    stroke-dasharray: 5,5;                         /* 점선 패턴 (5px 실선, 5px 공백) */
-    animation: connection-dash 1s linear infinite;  /* 대시 애니메이션 반복 */
+    stroke: #ff9500; /* 주황색 선 */
+    stroke-width: 3; /* 선 두께 3px */
+    stroke-dasharray: 5, 5; /* 점선 패턴 (5px 실선, 5px 공백) */
+    animation: connection-dash 1s linear infinite; /* 대시 애니메이션 반복 */
 }
 
 /* 연결선 대시 애니메이션: 선택된 연결선의 점선이 움직이는 효과 */
 @keyframes connection-dash {
-    0% {                                           /* 시작 상태 */
-        stroke-dashoffset: 0;                       /* 점선 오프셋 0 */
+    0% {
+        /* 시작 상태 */
+        stroke-dashoffset: 0; /* 점선 오프셋 0 */
     }
-    100% {                                         /* 끝 상태 */
-        stroke-dashoffset: 10;                      /* 점선 오프셋 10px (움직임 효과) */
+    100% {
+        /* 끝 상태 */
+        stroke-dashoffset: 10; /* 점선 오프셋 10px (움직임 효과) */
     }
 }
 
@@ -658,31 +672,31 @@
 
 /* 연결선 삭제 버튼: 연결선을 삭제하는 X 버튼 */
 .connection-delete-btn {
-    position: absolute;                             /* 절대 위치 */
-    width: 20px;                                   /* 버튼 너비 20px */
-    height: 20px;                                  /* 버튼 높이 20px */
-    background: #FF3B30;                           /* 빨간색 배경 */
-    border-radius: 50%;                            /* 원형 */
-    border: 2px solid white;                       /* 흰색 테두리 */
-    cursor: pointer;                                /* 클릭 가능한 커서 */
-    display: none;                                 /* 기본적으로 숨김 */
-    align-items: center;                           /* 세로 중앙 정렬 */
-    justify-content: center;                       /* 가로 중앙 정렬 */
-    font-size: 12px;                               /* 아이콘 크기 12px */
-    color: white;                                  /* 흰색 아이콘 */
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);    /* 그림자 효과 */
-    z-index: 10;                                   /* 다른 요소 위에 표시 */
+    position: absolute; /* 절대 위치 */
+    width: 20px; /* 버튼 너비 20px */
+    height: 20px; /* 버튼 높이 20px */
+    background: #ff3b30; /* 빨간색 배경 */
+    border-radius: 50%; /* 원형 */
+    border: 2px solid white; /* 흰색 테두리 */
+    cursor: pointer; /* 클릭 가능한 커서 */
+    display: none; /* 기본적으로 숨김 */
+    align-items: center; /* 세로 중앙 정렬 */
+    justify-content: center; /* 가로 중앙 정렬 */
+    font-size: 12px; /* 아이콘 크기 12px */
+    color: white; /* 흰색 아이콘 */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); /* 그림자 효과 */
+    z-index: 10; /* 다른 요소 위에 표시 */
 }
 
 /* 삭제 버튼 호버 효과: 마우스를 올렸을 때 */
 .connection-delete-btn:hover {
-    background: #FF1A00;                           /* 더 진한 빨간색 배경 */
-    transform: scale(1.1);                         /* 크기 확대 1.1배 */
+    background: #ff1a00; /* 더 진한 빨간색 배경 */
+    transform: scale(1.1); /* 크기 확대 1.1배 */
 }
 
 /* 연결선 호버 시 삭제 버튼 표시: 연결선에 마우스를 올리면 삭제 버튼이 나타남 */
 .connection-line:hover + .connection-delete-btn {
-    display: flex;                                  /* 플렉스박스로 표시 */
+    display: flex; /* 플렉스박스로 표시 */
 }
 
 /* ========================================== */
@@ -691,11 +705,11 @@
 
 /* 마그네틱 하이라이트 스타일: 연결할 때 자동으로 하이라이트되는 연결점 */
 .magnetic-highlight {
-    background-color: #34C759 !important;          /* 초록색 배경 (강제 적용) */
-    border-color: #34C759 !important;             /* 초록색 테두리 (강제 적용) */
+    background-color: #34c759 !important; /* 초록색 배경 (강제 적용) */
+    border-color: #34c759 !important; /* 초록색 테두리 (강제 적용) */
     box-shadow: 0 0 15px rgba(52, 199, 89, 0.8) !important; /* 초록색 발광 효과 (강제 적용) */
-    transform: scale(1.2) !important;              /* 크기 확대 1.2배 (강제 적용) */
-    transition: all 0.2s ease !important;         /* 부드러운 전환 효과 (강제 적용) */
+    transform: scale(1.2) !important; /* 크기 확대 1.2배 (강제 적용) */
+    transition: all 0.2s ease !important; /* 부드러운 전환 효과 (강제 적용) */
 }
 
 /* ========================================== */
@@ -704,18 +718,20 @@
 
 /* 임시 연결선 스타일: 연결을 생성하는 중에 표시되는 임시 연결선 */
 .temp-connection-line {
-    stroke: #FF6B35 !important;                   /* 주황색 선 (강제 적용) */
-    stroke-width: 2 !important;                    /* 선 두께 2px (강제 적용) */
-    stroke-dasharray: 5,5 !important;             /* 점선 패턴 (강제 적용) */
+    stroke: #ff6b35 !important; /* 주황색 선 (강제 적용) */
+    stroke-width: 2 !important; /* 선 두께 2px (강제 적용) */
+    stroke-dasharray: 5, 5 !important; /* 점선 패턴 (강제 적용) */
     animation: temp-connection-dash 1s linear infinite; /* 대시 애니메이션 반복 */
 }
 
 /* 임시 연결선 대시 애니메이션: 점선이 움직이는 효과 */
 @keyframes temp-connection-dash {
-    0% {                                           /* 시작 상태 */
-        stroke-dashoffset: 0;                       /* 점선 오프셋 0 */
+    0% {
+        /* 시작 상태 */
+        stroke-dashoffset: 0; /* 점선 오프셋 0 */
     }
-    100% {                                         /* 끝 상태 */
-        stroke-dashoffset: 10;                      /* 점선 오프셋 10px (움직임 효과) */
+    100% {
+        /* 끝 상태 */
+        stroke-dashoffset: 10; /* 점선 오프셋 10px (움직임 효과) */
     }
 }

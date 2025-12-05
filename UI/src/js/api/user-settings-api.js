@@ -27,7 +27,7 @@ export const UserSettingsAPI = {
     async getAllSettings() {
         const logger = getLogger();
         logger.log('[UserSettingsAPI] getAllSettings() 호출됨');
-        
+
         try {
             const result = await apiCall('/api/config/user-settings');
             logger.log('[UserSettingsAPI] ✅ 모든 설정 조회 성공:', result);
@@ -46,7 +46,7 @@ export const UserSettingsAPI = {
     async getSetting(key) {
         const logger = getLogger();
         logger.log(`[UserSettingsAPI] getSetting() 호출됨 - 키: ${key}`);
-        
+
         try {
             const result = await apiCall(`/api/config/user-settings/${key}`);
             logger.log(`[UserSettingsAPI] ✅ 설정 조회 성공 - 키: ${key}, 값: ${result.value}`);
@@ -55,16 +55,18 @@ export const UserSettingsAPI = {
             // 404 에러는 설정이 없는 것이므로 null 반환 (정상적인 경우)
             const errorMessage = error.message || '';
             const errorString = errorMessage.toString();
-            
-            if (errorMessage.includes('404') || 
+
+            if (
+                errorMessage.includes('404') ||
                 errorMessage.includes('찾을 수 없습니다') ||
                 errorMessage.includes('Not Found') ||
                 errorString.includes('404') ||
-                errorString.includes('찾을 수 없습니다')) {
+                errorString.includes('찾을 수 없습니다')
+            ) {
                 logger.log(`[UserSettingsAPI] 설정을 찾을 수 없음 (정상, 처음 사용 시) - 키: ${key}`);
                 return null;
             }
-            
+
             // 다른 에러도 폴백으로 null 반환 (로컬 스토리지 사용)
             logger.log(`[UserSettingsAPI] 설정 조회 실패, null 반환 (폴백) - 키: ${key}, 에러: ${errorMessage}`);
             return null;
@@ -80,7 +82,7 @@ export const UserSettingsAPI = {
     async saveSetting(key, value) {
         const logger = getLogger();
         logger.log(`[UserSettingsAPI] saveSetting() 호출됨 - 키: ${key}, 값: ${value}`);
-        
+
         try {
             const result = await apiCall(`/api/config/user-settings/${key}`, {
                 method: 'PUT',
@@ -102,7 +104,7 @@ export const UserSettingsAPI = {
     async deleteSetting(key) {
         const logger = getLogger();
         logger.log(`[UserSettingsAPI] deleteSetting() 호출됨 - 키: ${key}`);
-        
+
         try {
             const result = await apiCall(`/api/config/user-settings/${key}`, {
                 method: 'DELETE'
@@ -120,4 +122,3 @@ export const UserSettingsAPI = {
 if (typeof window !== 'undefined') {
     window.UserSettingsAPI = UserSettingsAPI;
 }
-

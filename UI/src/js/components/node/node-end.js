@@ -2,7 +2,9 @@
 // 종료 노드 정의 (입력만 있는 노드)
 
 (function () {
-    if (!window.NodeManager) return;
+    if (!window.NodeManager) {
+        return;
+    }
 
     window.NodeManager.registerNodeType('end', {
         renderContent(nodeData) {

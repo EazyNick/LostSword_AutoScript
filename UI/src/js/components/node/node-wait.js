@@ -2,7 +2,9 @@
 // 대기 노드 정의 (타이머/딜레이용)
 
 (function () {
-    if (!window.NodeManager) return;
+    if (!window.NodeManager) {
+        return;
+    }
 
     window.NodeManager.registerNodeType('wait', {
         renderContent(nodeData) {

@@ -3,12 +3,17 @@
  * nodes.config.js에서 동적으로 생성됩니다.
  */
 
-import { NODES_CONFIG, getAllNodeTypes, isBoundaryNode as checkBoundaryNode, getNodeLabel } from '../config/nodes.config.js';
+import {
+    NODES_CONFIG,
+    getAllNodeTypes,
+    isBoundaryNode as checkBoundaryNode,
+    getNodeLabel
+} from '../config/nodes.config.js';
 
 // 설정 파일에서 동적으로 NODE_TYPES 생성
 const nodeTypes = getAllNodeTypes();
 export const NODE_TYPES = {};
-nodeTypes.forEach(type => {
+nodeTypes.forEach((type) => {
     // 대문자 상수명 생성 (예: 'image-touch' -> 'IMAGE_TOUCH')
     const constantName = type.toUpperCase().replace(/-/g, '_');
     NODE_TYPES[constantName] = type;
@@ -16,7 +21,7 @@ nodeTypes.forEach(type => {
 
 // 설정 파일에서 동적으로 NODE_TYPE_LABELS 생성
 export const NODE_TYPE_LABELS = {};
-nodeTypes.forEach(type => {
+nodeTypes.forEach((type) => {
     NODE_TYPE_LABELS[type] = getNodeLabel(type);
 });
 
@@ -28,4 +33,3 @@ nodeTypes.forEach(type => {
 export function isBoundaryNode(type) {
     return checkBoundaryNode(type);
 }
-

@@ -21,12 +21,46 @@ GitHub Desktop에서 hook이 실패하면:
    - "Commit failed" 또는 유사한 메시지가 나타납니다
 
 2. **에러 메시지 내용**
+   
+   Python 린팅 실패 시:
    ```
-   ✗ 린팅 검사 실패! 커밋이 취소되었습니다.
+   ========================================
+   ✗ Python 린팅 검사 실패!
+   ========================================
+   
+   커밋이 취소되었습니다.
+   
    문제를 수정한 후 다시 커밋해주세요.
    
-   자세한 내용은 터미널에서 다음 명령어를 실행하세요:
-     python scripts/linting/lint.py
+   --- 해결 방법 ---
+   1. 터미널에서 다음 명령어를 실행하여 자세한 에러를 확인하세요:
+      python scripts/linting/lint.py
+   
+   2. 문제를 수정한 후 다시 커밋하세요.
+   ```
+   
+   JavaScript 린팅 실패 시:
+   ```
+   ========================================
+   ✗ JavaScript 린팅 검사 실패!
+   ========================================
+   
+   커밋이 취소되었습니다.
+   
+   문제를 수정한 후 다시 커밋해주세요.
+   
+   --- 해결 방법 ---
+   1. 터미널에서 다음 명령어를 실행하여 자세한 에러를 확인하세요:
+      python scripts/linting/lint-js.py
+   
+   2. 또는 UI 디렉토리에서 직접 실행:
+      cd UI
+      npm run lint:fix
+      npm run format
+      npm run lint
+      npm run format:check
+   
+   3. 문제를 수정한 후 다시 커밋하세요.
    ```
 
 3. **커밋 취소**
@@ -118,15 +152,26 @@ git commit --no-verify -m "your message"
 ### 린팅 실패 시
 
 1. **에러 메시지 확인**
-   - GitHub Desktop의 에러 메시지 확인
-   - 터미널에서 `python scripts/linting/lint.py` 실행하여 상세 내용 확인
+   - GitHub Desktop 하단에 표시되는 에러 메시지 확인
+   - Python 또는 JavaScript 중 어느 부분에서 실패했는지 확인
+   - 터미널에서 다음 명령어를 실행하여 상세 내용 확인:
+     ```bash
+     # Python 린팅 상세 확인
+     python scripts/linting/lint.py
+     
+     # JavaScript 린팅 상세 확인
+     python scripts/linting/lint-js.py
+     ```
 
 2. **문제 수정**
    - 에러 메시지에 따라 코드 수정
    - 자동 수정이 안 되는 경우 수동으로 수정
+   - Python: `ruff check --fix server/` 및 `ruff format server/`
+   - JavaScript: `cd UI && npm run lint:fix && npm run format`
 
 3. **다시 커밋**
    - 문제를 수정한 후 다시 커밋 시도
+   - GitHub Desktop에서 "Commit to main" 버튼을 다시 클릭
 
 ## 참고
 

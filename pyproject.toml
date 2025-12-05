@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "lostsword-autoscript"
+name = "autoscript"
 version = "1.0.0"
 description = "자동화를 위한 FastAPI 서버와 웹 기반 UI 도구"
 readme = "README.md"

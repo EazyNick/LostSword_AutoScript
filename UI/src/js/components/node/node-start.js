@@ -2,7 +2,9 @@
 // 시작 노드 정의 (출력만 있는 노드)
 
 (function () {
-    if (!window.NodeManager) return;
+    if (!window.NodeManager) {
+        return;
+    }
 
     window.NodeManager.registerNodeType('start', {
         renderContent(nodeData) {

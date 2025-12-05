@@ -2,7 +2,9 @@
 // 프로세스 포커스 노드 정의
 
 (function () {
-    if (!window.NodeManager) return;
+    if (!window.NodeManager) {
+        return;
+    }
 
     window.NodeManager.registerNodeType('process-focus', {
         /**
@@ -13,7 +15,7 @@
             const processName = nodeData.process_name || '프로세스 미선택';
             const windowTitle = nodeData.window_title || '';
             const displayText = windowTitle ? `${processName} - ${windowTitle}` : processName;
-            
+
             return `
                 <div class="node-input"></div>
                 <div class="node-content">
@@ -26,4 +28,3 @@
         }
     });
 })();
-

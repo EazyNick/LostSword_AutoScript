@@ -16,27 +16,27 @@ export class ModalManager {
         this.modal = document.getElementById('modal');
         this.modalBody = document.getElementById('modal-body');
         this.closeBtn = document.querySelector('.close');
-        
+
         this.init();
     }
-    
+
     init() {
         this.setupEventListeners();
     }
-    
+
     setupEventListeners() {
         // 모달 닫기 버튼
         this.closeBtn.addEventListener('click', () => {
             this.close();
         });
-        
+
         // ESC 키로 모달 닫기
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && this.isOpen()) {
                 this.close();
             }
         });
-        
+
         // 모달 배경 클릭으로 닫기
         this.modal.addEventListener('click', (e) => {
             if (e.target === this.modal) {
@@ -44,33 +44,33 @@ export class ModalManager {
             }
         });
     }
-    
+
     show(content) {
         this.modalBody.innerHTML = content;
         this.modal.style.display = 'block';
         this.modal.classList.add('show');
-        
+
         // 포커스 관리
         const firstInput = this.modalBody.querySelector('input, select, textarea');
         if (firstInput) {
             setTimeout(() => firstInput.focus(), 100);
         }
     }
-    
+
     close() {
         this.modal.classList.remove('show');
         this.modal.classList.add('hide');
-        
+
         setTimeout(() => {
             this.modal.style.display = 'none';
             this.modal.classList.remove('hide');
         }, 300);
     }
-    
+
     isOpen() {
         return this.modal.style.display === 'block';
     }
-    
+
     // 일반적인 모달 템플릿들
     showConfirm(title, message, onConfirm, onCancel = null) {
         const content = `
@@ -81,20 +81,22 @@ export class ModalManager {
                 <button id="cancel-btn" class="btn btn-secondary">취소</button>
             </div>
         `;
-        
+
         this.show(content);
-        
+
         document.getElementById('confirm-btn').addEventListener('click', () => {
             onConfirm();
             this.close();
         });
-        
+
         document.getElementById('cancel-btn').addEventListener('click', () => {
-            if (onCancel) onCancel();
+            if (onCancel) {
+                onCancel();
+            }
             this.close();
         });
     }
-    
+
     showAlert(title, message, onOk = null) {
         // 줄바꿈 문자(\n)를 <br> 태그로 변환
         const formattedMessage = message.replace(/\n/g, '<br>');
@@ -105,15 +107,17 @@ export class ModalManager {
                 <button id="ok-btn" class="btn btn-primary">확인</button>
             </div>
         `;
-        
+
         this.show(content);
-        
+
         document.getElementById('ok-btn').addEventListener('click', () => {
-            if (onOk) onOk();
+            if (onOk) {
+                onOk();
+            }
             this.close();
         });
     }
-    
+
     showInput(title, label, placeholder = '', defaultValue = '') {
         return new Promise((resolve, reject) => {
             const content = `
@@ -127,15 +131,15 @@ export class ModalManager {
                     <button id="cancel-btn" class="btn btn-secondary">취소</button>
                 </div>
             `;
-            
+
             this.show(content);
-            
+
             document.getElementById('submit-btn').addEventListener('click', () => {
                 const value = document.getElementById('input-field').value;
                 resolve(value);
                 this.close();
             });
-            
+
             document.getElementById('cancel-btn').addEventListener('click', () => {
                 reject(new Error('사용자가 취소했습니다.'));
                 this.close();
@@ -153,7 +157,7 @@ let modalManagerInstance = null;
 /**
  * ModalManager 인스턴스 가져오기
  * ES6 모듈에서 명시적으로 인스턴스를 가져올 수 있도록 제공
- * 
+ *
  * @returns {ModalManager} ModalManager 인스턴스
  */
 export function getModalManagerInstance() {

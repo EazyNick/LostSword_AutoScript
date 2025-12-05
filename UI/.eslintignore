@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+
+# Config files
+*.config.js
+
+# Temporary files
+*.tmp
+*.temp
+
+# Logs
+*.log
+

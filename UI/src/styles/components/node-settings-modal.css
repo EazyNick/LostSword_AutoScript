@@ -9,21 +9,21 @@
 
 /* 비활성화된 입력 필드: 읽기 전용이거나 사용할 수 없는 입력 필드 */
 .node-settings-disabled-input {
-    width: 100%;                                   /* 전체 너비 사용 */
-    padding: 8px;                                  /* 내부 여백 8px */
-    border: 1px solid #ddd;                       /* 회색 테두리 */
-    border-radius: 4px;                            /* 둥근 모서리 */
-    background-color: #fafafa;                     /* 연한 회색 배경 */
-    color: #666;                                   /* 회색 텍스트 */
+    width: 100%; /* 전체 너비 사용 */
+    padding: 8px; /* 내부 여백 8px */
+    border: 1px solid #ddd; /* 회색 테두리 */
+    border-radius: 4px; /* 둥근 모서리 */
+    background-color: #fafafa; /* 연한 회색 배경 */
+    color: #666; /* 회색 텍스트 */
 }
 
 /* 비활성화된 선택 필드: 드롭다운 메뉴가 비활성화된 상태 */
 .node-settings-disabled-select {
-    width: 100%;                                   /* 전체 너비 사용 */
-    padding: 8px;                                  /* 내부 여백 8px */
-    border: 1px solid #ddd;                       /* 회색 테두리 */
-    border-radius: 4px;                            /* 둥근 모서리 */
-    background-color: #fafafa;                     /* 연한 회색 배경 */
+    width: 100%; /* 전체 너비 사용 */
+    padding: 8px; /* 내부 여백 8px */
+    border: 1px solid #ddd; /* 회색 테두리 */
+    border-radius: 4px; /* 둥근 모서리 */
+    background-color: #fafafa; /* 연한 회색 배경 */
 }
 
 /* ========================================== */
@@ -32,37 +32,37 @@
 
 /* 입력 미리보기 영역: 이전 노드의 출력 데이터를 표시하는 영역 */
 .node-settings-preview-input {
-    background-color: #f9f9f9;                     /* 연한 회색 배경 */
-    border: 1px solid #ddd;                       /* 회색 테두리 */
-    border-radius: 4px;                            /* 둥근 모서리 */
-    padding: 10px;                                  /* 내부 여백 10px */
-    min-height: 60px;                              /* 최소 높이 60px */
-    max-height: 200px;                              /* 최대 높이 200px (스크롤 가능) */
-    overflow-y: auto;                              /* 세로 스크롤 가능 */
-    font-family: monospace;                        /* 고정폭 폰트 (코드 표시용) */
-    font-size: 12px;                               /* 작은 글씨 크기 */
-    white-space: pre-wrap;                         /* 줄바꿈 및 공백 유지 */
-    word-wrap: break-word;                         /* 긴 단어 줄바꿈 */
+    background-color: #f9f9f9; /* 연한 회색 배경 */
+    border: 1px solid #ddd; /* 회색 테두리 */
+    border-radius: 4px; /* 둥근 모서리 */
+    padding: 10px; /* 내부 여백 10px */
+    min-height: 60px; /* 최소 높이 60px */
+    max-height: 200px; /* 최대 높이 200px (스크롤 가능) */
+    overflow-y: auto; /* 세로 스크롤 가능 */
+    font-family: monospace; /* 고정폭 폰트 (코드 표시용) */
+    font-size: 12px; /* 작은 글씨 크기 */
+    white-space: pre-wrap; /* 줄바꿈 및 공백 유지 */
+    word-wrap: break-word; /* 긴 단어 줄바꿈 */
 }
 
 /* 출력 미리보기 영역: 현재 노드의 출력 데이터를 표시하는 영역 */
 .node-settings-preview-output {
-    background-color: #f0f8ff;                     /* 연한 파란색 배경 */
-    border: 1px solid #ddd;                       /* 회색 테두리 */
-    border-radius: 4px;                            /* 둥근 모서리 */
-    padding: 10px;                                  /* 내부 여백 10px */
-    min-height: 60px;                              /* 최소 높이 60px */
-    max-height: 200px;                              /* 최대 높이 200px (스크롤 가능) */
-    overflow-y: auto;                              /* 세로 스크롤 가능 */
-    font-family: monospace;                        /* 고정폭 폰트 (코드 표시용) */
-    font-size: 12px;                               /* 작은 글씨 크기 */
-    white-space: pre-wrap;                         /* 줄바꿈 및 공백 유지 */
-    word-wrap: break-word;                         /* 긴 단어 줄바꿈 */
+    background-color: #f0f8ff; /* 연한 파란색 배경 */
+    border: 1px solid #ddd; /* 회색 테두리 */
+    border-radius: 4px; /* 둥근 모서리 */
+    padding: 10px; /* 내부 여백 10px */
+    min-height: 60px; /* 최소 높이 60px */
+    max-height: 200px; /* 최대 높이 200px (스크롤 가능) */
+    overflow-y: auto; /* 세로 스크롤 가능 */
+    font-family: monospace; /* 고정폭 폰트 (코드 표시용) */
+    font-size: 12px; /* 작은 글씨 크기 */
+    white-space: pre-wrap; /* 줄바꿈 및 공백 유지 */
+    word-wrap: break-word; /* 긴 단어 줄바꿈 */
 }
 
 /* 미리보기 플레이스홀더 텍스트: 데이터가 없을 때 표시되는 안내 문구 */
 .node-settings-preview-placeholder {
-    color: #999;                                   /* 회색 텍스트 */
+    color: #999; /* 회색 텍스트 */
 }
 
 /* ========================================== */
@@ -71,33 +71,33 @@
 
 /* 일반 입력 필드: 텍스트, 숫자 등 일반적인 입력 필드 */
 .node-settings-input {
-    width: 100%;                                   /* 전체 너비 사용 */
-    padding: 8px;                                  /* 내부 여백 8px */
-    border: 1px solid #ddd;                       /* 회색 테두리 */
-    border-radius: 4px;                            /* 둥근 모서리 */
+    width: 100%; /* 전체 너비 사용 */
+    padding: 8px; /* 내부 여백 8px */
+    border: 1px solid #ddd; /* 회색 테두리 */
+    border-radius: 4px; /* 둥근 모서리 */
 }
 
 /* 일반 선택 필드: 드롭다운 메뉴 */
 .node-settings-select {
-    width: 100%;                                   /* 전체 너비 사용 */
-    padding: 8px;                                  /* 내부 여백 8px */
-    border: 1px solid #ddd;                       /* 회색 테두리 */
-    border-radius: 4px;                            /* 둥근 모서리 */
+    width: 100%; /* 전체 너비 사용 */
+    padding: 8px; /* 내부 여백 8px */
+    border: 1px solid #ddd; /* 회색 테두리 */
+    border-radius: 4px; /* 둥근 모서리 */
 }
 
 /* 텍스트 영역: 여러 줄 입력이 가능한 텍스트 입력 필드 */
 .node-settings-textarea {
-    width: 100%;                                   /* 전체 너비 사용 */
-    padding: 8px;                                  /* 내부 여백 8px */
-    border: 1px solid #ddd;                       /* 회색 테두리 */
-    border-radius: 4px;                            /* 둥근 모서리 */
-    font-family: monospace;                        /* 고정폭 폰트 */
+    width: 100%; /* 전체 너비 사용 */
+    padding: 8px; /* 내부 여백 8px */
+    border: 1px solid #ddd; /* 회색 테두리 */
+    border-radius: 4px; /* 둥근 모서리 */
+    font-family: monospace; /* 고정폭 폰트 */
 }
 
 /* 설명 텍스트: 입력 필드 아래에 표시되는 도움말 텍스트 */
 .node-settings-help-text {
-    color: #666;                                   /* 회색 텍스트 */
-    font-size: 12px;                               /* 작은 글씨 크기 */
+    color: #666; /* 회색 텍스트 */
+    font-size: 12px; /* 작은 글씨 크기 */
 }
 
 /* ========================================== */
@@ -106,27 +106,27 @@
 
 /* 폼 그룹: 라벨과 입력 필드를 묶는 컨테이너 */
 .node-settings-form-group {
-    margin-bottom: 15px;                           /* 하단 여백 15px */
+    margin-bottom: 15px; /* 하단 여백 15px */
 }
 
 /* 폼 그룹 라벨: 입력 필드 위에 표시되는 라벨 텍스트 */
 .node-settings-label {
-    display: block;                                 /* 블록 요소로 변경 */
-    margin-bottom: 5px;                            /* 하단 여백 5px */
-    font-weight: bold;                             /* 굵은 글씨 */
+    display: block; /* 블록 요소로 변경 */
+    margin-bottom: 5px; /* 하단 여백 5px */
+    font-weight: bold; /* 굵은 글씨 */
 }
 
 /* 미리보기 라벨: 미리보기 영역 위에 표시되는 라벨 텍스트 */
 .node-settings-preview-label {
-    font-weight: bold;                             /* 굵은 글씨 */
-    margin-bottom: 8px;                            /* 하단 여백 8px */
+    font-weight: bold; /* 굵은 글씨 */
+    margin-bottom: 8px; /* 하단 여백 8px */
 }
 
 /* 섹션 구분선: 폼 섹션을 구분하는 상단 테두리 */
 .node-settings-section-divider {
-    border-top: 1px solid #ddd;                   /* 상단 회색 테두리 */
-    padding-top: 15px;                             /* 상단 여백 15px */
-    margin-top: 15px;                              /* 상단 마진 15px */
+    border-top: 1px solid #ddd; /* 상단 회색 테두리 */
+    padding-top: 15px; /* 상단 여백 15px */
+    margin-top: 15px; /* 상단 마진 15px */
 }
 
 /* ========================================== */
@@ -135,29 +135,29 @@
 
 /* 미리보기 데이터 필드 박스: JSON 데이터의 각 필드를 표시하는 컨테이너 */
 .node-preview-field-box {
-    display: flex;                                  /* 플렉스박스 레이아웃 */
-    flex-direction: column;                        /* 세로 방향 배치 */
-    gap: 5px;                                      /* 요소들 사이 간격 5px */
-    margin-bottom: 12px;                           /* 하단 여백 12px */
+    display: flex; /* 플렉스박스 레이아웃 */
+    flex-direction: column; /* 세로 방향 배치 */
+    gap: 5px; /* 요소들 사이 간격 5px */
+    margin-bottom: 12px; /* 하단 여백 12px */
 }
 
 /* 마지막 필드 박스: 하단 여백 제거 */
 .node-preview-field-box:last-child {
-    margin-bottom: 0;                              /* 하단 여백 없음 */
+    margin-bottom: 0; /* 하단 여백 없음 */
 }
 
 /* 미리보기 필드 라벨: 필드 이름을 표시하는 텍스트 */
 .node-preview-field-label {
-    font-weight: 600;                              /* 중간 굵기 */
-    color: #333;                                   /* 어두운 회색 텍스트 */
-    font-size: 14px;                               /* 중간 글씨 크기 */
+    font-weight: 600; /* 중간 굵기 */
+    color: #333; /* 어두운 회색 텍스트 */
+    font-size: 14px; /* 중간 글씨 크기 */
 }
 
 /* 미리보기 텍스트 영역: 미리보기 데이터를 표시하는 textarea */
 .node-preview-textarea {
-    resize: vertical;                               /* 세로 방향 크기 조절만 가능 */
-    min-height: 40px;                              /* 최소 높이 40px */
-    font-family: inherit;                         /* 부모 폰트 상속 */
+    resize: vertical; /* 세로 방향 크기 조절만 가능 */
+    min-height: 40px; /* 최소 높이 40px */
+    font-family: inherit; /* 부모 폰트 상속 */
 }
 
 /* ========================================== */
@@ -166,31 +166,31 @@
 
 /* 문자열 값: 텍스트 데이터를 표시할 때 사용 */
 .node-preview-string-value {
-    color: #333;                                   /* 어두운 회색 텍스트 */
+    color: #333; /* 어두운 회색 텍스트 */
 }
 
 /* 숫자 값: 숫자 데이터를 표시할 때 사용 */
 .node-preview-number-value {
-    color: #f57c00;                                /* 주황색 텍스트 */
-    font-weight: 500;                              /* 중간 굵기 */
+    color: #f57c00; /* 주황색 텍스트 */
+    font-weight: 500; /* 중간 굵기 */
 }
 
 /* 불린 값: true/false 데이터를 표시할 때 사용 */
 .node-preview-boolean-value {
-    color: #7b1fa2;                                /* 보라색 텍스트 */
-    font-weight: 500;                              /* 중간 굵기 */
+    color: #7b1fa2; /* 보라색 텍스트 */
+    font-weight: 500; /* 중간 굵기 */
 }
 
 /* null 값: null 데이터를 표시할 때 사용 */
 .node-preview-null-value {
-    color: #999;                                   /* 회색 텍스트 */
-    font-style: italic;                             /* 이탤릭체 */
+    color: #999; /* 회색 텍스트 */
+    font-style: italic; /* 이탤릭체 */
 }
 
 /* 빈 값: 빈 데이터를 표시할 때 사용 */
 .node-preview-empty {
-    color: #999;                                   /* 회색 텍스트 */
-    font-style: italic;                             /* 이탤릭체 */
+    color: #999; /* 회색 텍스트 */
+    font-style: italic; /* 이탤릭체 */
 }
 
 /* ========================================== */
@@ -199,64 +199,68 @@
 
 /* 로딩 상태 스타일 (입력/출력 공통): 계산 중일 때 미리보기 영역에 적용되는 스타일 */
 .node-preview-loading-state {
-    position: relative;                              /* 상대 위치 (스피너 위치 기준) */
-    background-color: #f5f5f5 !important;          /* 연한 회색 배경 (강제 적용) */
-    border-color: #4a90e2 !important;              /* 파란색 테두리 (강제 적용) */
+    position: relative; /* 상대 위치 (스피너 위치 기준) */
+    background-color: #f5f5f5 !important; /* 연한 회색 배경 (강제 적용) */
+    border-color: #4a90e2 !important; /* 파란색 테두리 (강제 적용) */
     animation: node-preview-pulse 1.5s ease-in-out infinite; /* 펄스 애니메이션 반복 */
 }
 
 /* 출력 미리보기 영역도 로딩 상태일 때 입력과 동일한 배경색: 출력 영역의 기본 파란색 배경을 회색으로 변경 */
 .node-settings-preview-output.node-preview-loading-state {
-    background-color: #f5f5f5 !important;          /* 연한 회색 배경 (강제 적용) */
+    background-color: #f5f5f5 !important; /* 연한 회색 배경 (강제 적용) */
 }
 
 /* 펄스 애니메이션: 로딩 중일 때 테두리와 그림자가 깜빡이는 효과 */
 @keyframes node-preview-pulse {
-    0%, 100% {                                     /* 시작과 끝 상태 */
-        opacity: 1;                                 /* 완전히 불투명 */
+    0%,
+    100% {
+        /* 시작과 끝 상태 */
+        opacity: 1; /* 완전히 불투명 */
         box-shadow: 0 0 0 0 rgba(74, 144, 226, 0.4); /* 그림자 없음 */
     }
-    50% {                                          /* 중간 상태 */
-        opacity: 0.8;                               /* 약간 투명 */
+    50% {
+        /* 중간 상태 */
+        opacity: 0.8; /* 약간 투명 */
         box-shadow: 0 0 0 4px rgba(74, 144, 226, 0); /* 그림자 확장 */
     }
 }
 
 /* 로딩 상태의 textarea (입력/출력 공통): 계산 중일 때 표시되는 textarea 스타일 */
 .node-preview-loading-textarea {
-    min-height: 60px;                              /* 최소 높이 60px */
-    background-color: #f5f5f5;                    /* 연한 회색 배경 */
-    border-color: #4a90e2;                        /* 파란색 테두리 */
-    color: #4a90e2;                                /* 파란색 텍스트 */
-    font-weight: 500;                              /* 중간 굵기 */
-    position: relative;                             /* 상대 위치 (스피너 위치 기준) */
-    padding-left: 35px;                            /* 왼쪽 여백 35px (스피너 공간 확보) */
-    text-align: left;                              /* 왼쪽 정렬 */
-    line-height: 1.5;                             /* 줄 간격 1.5배 */
-    width: 100%;                                   /* 전체 너비 사용 */
-    font-family: monospace;                        /* 고정폭 폰트 */
-    font-size: 12px;                               /* 작은 글씨 크기 */
+    min-height: 60px; /* 최소 높이 60px */
+    background-color: #f5f5f5; /* 연한 회색 배경 */
+    border-color: #4a90e2; /* 파란색 테두리 */
+    color: #4a90e2; /* 파란색 텍스트 */
+    font-weight: 500; /* 중간 굵기 */
+    position: relative; /* 상대 위치 (스피너 위치 기준) */
+    padding-left: 35px; /* 왼쪽 여백 35px (스피너 공간 확보) */
+    text-align: left; /* 왼쪽 정렬 */
+    line-height: 1.5; /* 줄 간격 1.5배 */
+    width: 100%; /* 전체 너비 사용 */
+    font-family: monospace; /* 고정폭 폰트 */
+    font-size: 12px; /* 작은 글씨 크기 */
 }
 
 /* 로딩 스피너를 textarea 앞에 표시: textarea 왼쪽에 회전하는 스피너 아이콘 */
 .node-preview-loading-textarea::before {
-    content: '';                                   /* 가상 요소 생성 */
-    position: absolute;                             /* 절대 위치 */
-    left: 10px;                                    /* 왼쪽에서 10px */
-    top: 50%;                                      /* 세로 중앙 */
-    transform: translateY(-50%);                    /* 정확한 중앙 정렬 */
-    width: 18px;                                   /* 스피너 너비 18px */
-    height: 18px;                                  /* 스피너 높이 18px */
-    border: 2px solid #e0e0e0;                    /* 회색 테두리 */
-    border-top-color: #4a90e2;                    /* 상단만 파란색 */
-    border-radius: 50%;                            /* 원형 */
+    content: ''; /* 가상 요소 생성 */
+    position: absolute; /* 절대 위치 */
+    left: 10px; /* 왼쪽에서 10px */
+    top: 50%; /* 세로 중앙 */
+    transform: translateY(-50%); /* 정확한 중앙 정렬 */
+    width: 18px; /* 스피너 너비 18px */
+    height: 18px; /* 스피너 높이 18px */
+    border: 2px solid #e0e0e0; /* 회색 테두리 */
+    border-top-color: #4a90e2; /* 상단만 파란색 */
+    border-radius: 50%; /* 원형 */
     animation: node-preview-spin 0.8s linear infinite; /* 회전 애니메이션 반복 */
-    pointer-events: none;                          /* 마우스 이벤트 무시 */
+    pointer-events: none; /* 마우스 이벤트 무시 */
 }
 
 /* 스피너 회전 애니메이션: 스피너가 360도 회전하는 효과 */
 @keyframes node-preview-spin {
-    to {                                           /* 끝 상태 */
+    to {
+        /* 끝 상태 */
         transform: translateY(-50%) rotate(360deg); /* 중앙 정렬 유지하며 360도 회전 */
     }
 }
@@ -264,16 +268,18 @@
 /* 로딩 상태일 때 shimmer 효과: textarea 배경에 흐르는 빛 효과 */
 .node-preview-loading-state .node-preview-loading-textarea {
     background: linear-gradient(90deg, #f5f5f5 0%, #f9f9f9 50%, #f5f5f5 100%); /* 그라데이션 배경 */
-    background-size: 200% 100%;                    /* 배경 크기 2배 (애니메이션용) */
+    background-size: 200% 100%; /* 배경 크기 2배 (애니메이션용) */
     animation: node-preview-shimmer 1.5s ease-in-out infinite; /* shimmer 애니메이션 반복 */
 }
 
 /* Shimmer 애니메이션: 배경이 좌우로 흐르는 효과 */
 @keyframes node-preview-shimmer {
-    0% {                                           /* 시작 상태 */
-        background-position: -200% 0;             /* 배경을 왼쪽 밖에 배치 */
+    0% {
+        /* 시작 상태 */
+        background-position: -200% 0; /* 배경을 왼쪽 밖에 배치 */
     }
-    100% {                                         /* 끝 상태 */
-        background-position: 200% 0;               /* 배경을 오른쪽 밖에 배치 */
+    100% {
+        /* 끝 상태 */
+        background-position: 200% 0; /* 배경을 오른쪽 밖에 배치 */
     }
 }

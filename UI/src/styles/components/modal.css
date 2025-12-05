@@ -4,74 +4,76 @@
 
 /* 모달 배경: 모달 뒤에 표시되는 어두운 배경 */
 .modal {
-    display: none;                                 /* 기본적으로 숨김 */
-    position: fixed;                               /* 화면에 고정 */
-    z-index: 2000;                                /* 다른 요소들 위에 표시 */
-    left: 0;                                       /* 왼쪽 끝 */
-    top: 0;                                        /* 상단 끝 */
-    width: 100%;                                   /* 전체 너비 */
-    height: 100%;                                  /* 전체 높이 */
-    background-color: rgba(0, 0, 0, 0.8);         /* 반투명 검은색 배경 */
-    backdrop-filter: blur(5px);                    /* 배경 블러 효과 */
+    display: none; /* 기본적으로 숨김 */
+    position: fixed; /* 화면에 고정 */
+    z-index: 2000; /* 다른 요소들 위에 표시 */
+    left: 0; /* 왼쪽 끝 */
+    top: 0; /* 상단 끝 */
+    width: 100%; /* 전체 너비 */
+    height: 100%; /* 전체 높이 */
+    background-color: rgba(0, 0, 0, 0.8); /* 반투명 검은색 배경 */
+    backdrop-filter: blur(5px); /* 배경 블러 효과 */
 }
 
 /* 모달 콘텐츠: 모달 안에 표시되는 실제 내용 영역 */
 .modal-content {
-    background-color: #2d3748;                     /* 어두운 회색 배경 */
-    margin: 5% auto;                               /* 상하 5% 여백, 좌우 자동 (가운데 정렬) */
-    padding: 2rem;                                 /* 내부 여백 2rem */
-    border-radius: 12px;                           /* 둥근 모서리 */
-    width: 80%;                                    /* 너비 80% */
-    max-width: 600px;                              /* 최대 너비 600px */
-    position: relative;                             /* 상대 위치 (닫기 버튼 위치 기준) */
-    border: 1px solid #4a5568;                    /* 회색 테두리 */
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);  /* 그림자 효과 */
-    animation: modalSlideIn 0.3s ease-out;        /* 슬라이드인 애니메이션 */
+    background-color: #2d3748; /* 어두운 회색 배경 */
+    margin: 5% auto; /* 상하 5% 여백, 좌우 자동 (가운데 정렬) */
+    padding: 2rem; /* 내부 여백 2rem */
+    border-radius: 12px; /* 둥근 모서리 */
+    width: 80%; /* 너비 80% */
+    max-width: 600px; /* 최대 너비 600px */
+    position: relative; /* 상대 위치 (닫기 버튼 위치 기준) */
+    border: 1px solid #4a5568; /* 회색 테두리 */
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); /* 그림자 효과 */
+    animation: modalSlideIn 0.3s ease-out; /* 슬라이드인 애니메이션 */
 }
 
 /* 모달 슬라이드인 애니메이션: 모달이 나타날 때 위에서 아래로 슬라이드 */
 @keyframes modalSlideIn {
-    from {                                         /* 시작 상태 */
-        opacity: 0;                                 /* 투명 */
-        transform: translateY(-50px) scale(0.9);   /* 위로 50px 이동, 90% 크기 */
+    from {
+        /* 시작 상태 */
+        opacity: 0; /* 투명 */
+        transform: translateY(-50px) scale(0.9); /* 위로 50px 이동, 90% 크기 */
     }
-    to {                                           /* 끝 상태 */
-        opacity: 1;                                 /* 완전히 불투명 */
-        transform: translateY(0) scale(1);         /* 원래 위치, 100% 크기 */
+    to {
+        /* 끝 상태 */
+        opacity: 1; /* 완전히 불투명 */
+        transform: translateY(0) scale(1); /* 원래 위치, 100% 크기 */
     }
 }
 
 /* 모달 닫기 버튼: 모달 오른쪽 상단에 표시되는 X 버튼 */
 .close {
-    color: #a0aec0;                                /* 회색 텍스트 */
-    float: right;                                   /* 오른쪽 정렬 */
-    font-size: 28px;                               /* 큰 글씨 크기 28px */
-    font-weight: bold;                              /* 굵은 글씨 */
-    cursor: pointer;                                /* 클릭 가능한 커서 */
-    position: absolute;                             /* 절대 위치 */
-    right: 1rem;                                   /* 오른쪽에서 1rem */
-    top: 1rem;                                     /* 상단에서 1rem */
-    transition: color 0.3s ease;                   /* 색상 전환 효과 */
+    color: #a0aec0; /* 회색 텍스트 */
+    float: right; /* 오른쪽 정렬 */
+    font-size: 28px; /* 큰 글씨 크기 28px */
+    font-weight: bold; /* 굵은 글씨 */
+    cursor: pointer; /* 클릭 가능한 커서 */
+    position: absolute; /* 절대 위치 */
+    right: 1rem; /* 오른쪽에서 1rem */
+    top: 1rem; /* 상단에서 1rem */
+    transition: color 0.3s ease; /* 색상 전환 효과 */
 }
 
 /* 모달 닫기 버튼 호버 효과: 마우스를 올렸을 때 */
 .close:hover {
-    color: #ffffff;                                /* 흰색 텍스트 */
+    color: #ffffff; /* 흰색 텍스트 */
 }
 
 /* 모달 제목: 모달 상단에 표시되는 제목 텍스트 */
 .modal-content h3 {
-    color: #667eea;                                /* 파란색 텍스트 */
-    margin-bottom: 1.5rem;                         /* 하단 여백 1.5rem */
-    font-size: 1.5rem;                             /* 큰 글씨 크기 */
-    font-weight: 600;                              /* 중간 굵기 */
+    color: #667eea; /* 파란색 텍스트 */
+    margin-bottom: 1.5rem; /* 하단 여백 1.5rem */
+    font-size: 1.5rem; /* 큰 글씨 크기 */
+    font-weight: 600; /* 중간 굵기 */
 }
 
 /* 모달 본문: 모달 안에 표시되는 설명 텍스트 */
 .modal-content p {
-    color: #e2e8f0;                                /* 연한 회색 텍스트 */
-    line-height: 1.6;                              /* 줄 간격 1.6배 */
-    white-space: pre-line;                          /* 줄바꿈 문자(\n)를 실제 줄바꿈으로 표시 */
+    color: #e2e8f0; /* 연한 회색 텍스트 */
+    line-height: 1.6; /* 줄 간격 1.6배 */
+    white-space: pre-line; /* 줄바꿈 문자(\n)를 실제 줄바꿈으로 표시 */
 }
 
 /* ========================================== */
@@ -80,62 +82,62 @@
 
 /* 모달 내부 폼 그룹: 모달 안의 입력 필드 그룹 */
 .modal .form-group {
-    margin-bottom: 1.5rem;                         /* 하단 여백 1.5rem */
+    margin-bottom: 1.5rem; /* 하단 여백 1.5rem */
 }
 
 /* 모달 내부 폼 라벨: 모달 안의 입력 필드 라벨 */
 .modal .form-group label {
-    display: block;                                /* 블록 요소로 변경 */
-    margin-bottom: 0.5rem;                        /* 하단 여백 0.5rem */
-    color: #e2e8f0;                               /* 연한 회색 텍스트 */
-    font-weight: 500;                             /* 중간 굵기 */
-    font-size: 0.9rem;                            /* 작은 글씨 크기 */
+    display: block; /* 블록 요소로 변경 */
+    margin-bottom: 0.5rem; /* 하단 여백 0.5rem */
+    color: #e2e8f0; /* 연한 회색 텍스트 */
+    font-weight: 500; /* 중간 굵기 */
+    font-size: 0.9rem; /* 작은 글씨 크기 */
 }
 
 /* 모달 내부 입력 필드: 모달 안의 input, select, textarea */
 .modal .form-group input,
 .modal .form-group select,
 .modal .form-group textarea {
-    width: 100%;                                  /* 전체 너비 사용 */
-    padding: 0.75rem;                             /* 내부 여백 0.75rem */
-    border: 1px solid #4a5568;                   /* 회색 테두리 */
-    border-radius: 6px;                           /* 둥근 모서리 */
-    background-color: #1a202c;                    /* 어두운 배경 */
-    color: #ffffff;                               /* 흰색 텍스트 */
-    font-size: 0.9rem;                            /* 작은 글씨 크기 */
-    transition: all 0.3s ease;                    /* 부드러운 전환 효과 */
+    width: 100%; /* 전체 너비 사용 */
+    padding: 0.75rem; /* 내부 여백 0.75rem */
+    border: 1px solid #4a5568; /* 회색 테두리 */
+    border-radius: 6px; /* 둥근 모서리 */
+    background-color: #1a202c; /* 어두운 배경 */
+    color: #ffffff; /* 흰색 텍스트 */
+    font-size: 0.9rem; /* 작은 글씨 크기 */
+    transition: all 0.3s ease; /* 부드러운 전환 효과 */
 }
 
 /* 모달 내부 입력 필드 포커스 효과: 입력 필드에 포커스가 있을 때 */
 .modal .form-group input:focus,
 .modal .form-group select:focus,
 .modal .form-group textarea:focus {
-    outline: none;                                 /* 기본 아웃라인 제거 */
-    border-color: #667eea;                        /* 파란색 테두리 */
+    outline: none; /* 기본 아웃라인 제거 */
+    border-color: #667eea; /* 파란색 테두리 */
     box-shadow: 0 0 8px rgba(102, 126, 234, 0.3); /* 파란색 발광 효과 */
-    background-color: #2d3748;                    /* 더 밝은 배경 */
+    background-color: #2d3748; /* 더 밝은 배경 */
 }
 
 /* 모달 내부 텍스트 영역: 모달 안의 textarea */
 .modal .form-group textarea {
-    resize: vertical;                               /* 세로 방향 크기 조절만 가능 */
-    min-height: 80px;                              /* 최소 높이 80px */
+    resize: vertical; /* 세로 방향 크기 조절만 가능 */
+    min-height: 80px; /* 최소 높이 80px */
 }
 
 /* 모달 내부 폼 액션 버튼들: 모달 하단의 저장/취소 버튼 영역 */
 .modal .form-actions {
-    display: flex;                                 /* 플렉스박스 레이아웃 */
-    gap: 1rem;                                     /* 버튼들 사이 간격 1rem */
-    justify-content: flex-end;                     /* 오른쪽 정렬 */
-    margin-top: 2rem;                              /* 상단 여백 2rem */
-    padding-top: 1rem;                             /* 상단 패딩 1rem */
-    border-top: 1px solid #4a5568;                /* 상단 회색 테두리 */
+    display: flex; /* 플렉스박스 레이아웃 */
+    gap: 1rem; /* 버튼들 사이 간격 1rem */
+    justify-content: flex-end; /* 오른쪽 정렬 */
+    margin-top: 2rem; /* 상단 여백 2rem */
+    padding-top: 1rem; /* 상단 패딩 1rem */
+    border-top: 1px solid #4a5568; /* 상단 회색 테두리 */
 }
 
 /* 모달 내부 폼 액션 버튼: 모달 안의 버튼 */
 .modal .form-actions .btn {
-    padding: 0.75rem 1.5rem;                       /* 내부 여백 상하 0.75rem, 좌우 1.5rem */
-    font-size: 0.9rem;                             /* 작은 글씨 크기 */
+    padding: 0.75rem 1.5rem; /* 내부 여백 상하 0.75rem, 좌우 1.5rem */
+    font-size: 0.9rem; /* 작은 글씨 크기 */
 }
 
 /* ========================================== */
@@ -144,32 +146,36 @@
 
 /* 모달 표시 상태: 모달이 보일 때 */
 .modal.show {
-    display: block;                                /* 블록 요소로 표시 */
-    animation: modalFadeIn 0.3s ease-out;         /* 페이드인 애니메이션 */
+    display: block; /* 블록 요소로 표시 */
+    animation: modalFadeIn 0.3s ease-out; /* 페이드인 애니메이션 */
 }
 
 /* 모달 숨김 상태: 모달이 사라질 때 */
 .modal.hide {
-    animation: modalFadeOut 0.3s ease-out;        /* 페이드아웃 애니메이션 */
+    animation: modalFadeOut 0.3s ease-out; /* 페이드아웃 애니메이션 */
 }
 
 /* 모달 페이드인 애니메이션: 모달이 나타날 때 */
 @keyframes modalFadeIn {
-    from {                                         /* 시작 상태 */
-        opacity: 0;                                 /* 투명 */
+    from {
+        /* 시작 상태 */
+        opacity: 0; /* 투명 */
     }
-    to {                                           /* 끝 상태 */
-        opacity: 1;                                 /* 완전히 불투명 */
+    to {
+        /* 끝 상태 */
+        opacity: 1; /* 완전히 불투명 */
     }
 }
 
 /* 모달 페이드아웃 애니메이션: 모달이 사라질 때 */
 @keyframes modalFadeOut {
-    from {                                         /* 시작 상태 */
-        opacity: 1;                                 /* 완전히 불투명 */
+    from {
+        /* 시작 상태 */
+        opacity: 1; /* 완전히 불투명 */
     }
-    to {                                           /* 끝 상태 */
-        opacity: 0;                                 /* 투명 */
+    to {
+        /* 끝 상태 */
+        opacity: 0; /* 투명 */
     }
 }
 
@@ -181,27 +187,27 @@
 @media (max-width: 768px) {
     /* 모바일에서 모달 콘텐츠 여백 및 크기 조정 */
     .modal-content {
-        margin: 10% auto;                           /* 상하 10% 여백 */
-        padding: 1.5rem;                            /* 내부 여백 1.5rem로 축소 */
-        width: 90%;                                 /* 너비 90%로 확대 */
-        max-width: none;                            /* 최대 너비 제한 없음 */
+        margin: 10% auto; /* 상하 10% 여백 */
+        padding: 1.5rem; /* 내부 여백 1.5rem로 축소 */
+        width: 90%; /* 너비 90%로 확대 */
+        max-width: none; /* 최대 너비 제한 없음 */
     }
-    
+
     /* 모바일에서 버튼들을 세로로 배치 */
     .modal .form-actions {
-        flex-direction: column;                     /* 세로 방향 배치 */
+        flex-direction: column; /* 세로 방향 배치 */
     }
-    
+
     /* 모바일에서 버튼 전체 너비 사용 */
     .modal .form-actions .btn {
-        width: 100%;                                /* 전체 너비 */
+        width: 100%; /* 전체 너비 */
     }
-    
+
     /* 모바일에서 닫기 버튼 크기 및 위치 조정 */
     .close {
-        font-size: 24px;                            /* 크기 24px로 축소 */
-        right: 0.75rem;                             /* 오른쪽에서 0.75rem */
-        top: 0.75rem;                               /* 상단에서 0.75rem */
+        font-size: 24px; /* 크기 24px로 축소 */
+        right: 0.75rem; /* 오른쪽에서 0.75rem */
+        top: 0.75rem; /* 상단에서 0.75rem */
     }
 }
 
@@ -209,13 +215,13 @@
 @media (max-width: 480px) {
     /* 작은 모바일에서 모달 콘텐츠 여백 및 크기 조정 */
     .modal-content {
-        margin: 5% auto;                            /* 상하 5% 여백 */
-        padding: 1rem;                              /* 내부 여백 1rem로 축소 */
-        width: 95%;                                 /* 너비 95%로 확대 */
+        margin: 5% auto; /* 상하 5% 여백 */
+        padding: 1rem; /* 내부 여백 1rem로 축소 */
+        width: 95%; /* 너비 95%로 확대 */
     }
-    
+
     /* 작은 모바일에서 모달 제목 크기 축소 */
     .modal-content h3 {
-        font-size: 1.25rem;                         /* 크기 1.25rem로 축소 */
+        font-size: 1.25rem; /* 크기 1.25rem로 축소 */
     }
 }

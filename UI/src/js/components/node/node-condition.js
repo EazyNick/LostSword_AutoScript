@@ -55,7 +55,7 @@
             }
         }
     };
-    
+
     // 즉시 시도
     checkAndRegister();
 })();

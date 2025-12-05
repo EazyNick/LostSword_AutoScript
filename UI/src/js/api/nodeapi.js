@@ -18,7 +18,7 @@ export const NodeAPI = {
     async getNodesByScript(scriptId) {
         return await apiCall(`/api/nodes/script/${scriptId}`);
     },
-    
+
     /**
      * 노드 생성
      * @param {number} scriptId - 스크립트 ID
@@ -28,10 +28,10 @@ export const NodeAPI = {
     async createNode(scriptId, nodeData) {
         return await apiCall(`/api/nodes/script/${scriptId}`, {
             method: 'POST',
-            body: JSON.stringify(nodeData),
+            body: JSON.stringify(nodeData)
         });
     },
-    
+
     /**
      * 여러 노드 일괄 업데이트
      * @param {number} scriptId - 스크립트 ID
@@ -42,10 +42,10 @@ export const NodeAPI = {
     async updateNodesBatch(scriptId, nodes, connections = []) {
         return await apiCall(`/api/nodes/script/${scriptId}/batch`, {
             method: 'PUT',
-            body: JSON.stringify({ nodes, connections }),
+            body: JSON.stringify({ nodes, connections })
         });
     },
-    
+
     /**
      * 노드 업데이트
      * @param {number} scriptId - 스크립트 ID
@@ -56,10 +56,10 @@ export const NodeAPI = {
     async updateNode(scriptId, nodeId, nodeData) {
         return await apiCall(`/api/nodes/script/${scriptId}/node/${nodeId}`, {
             method: 'PUT',
-            body: JSON.stringify(nodeData),
+            body: JSON.stringify(nodeData)
         });
     },
-    
+
     /**
      * 노드 삭제
      * @param {number} scriptId - 스크립트 ID
@@ -68,9 +68,9 @@ export const NodeAPI = {
      */
     async deleteNode(scriptId, nodeId) {
         return await apiCall(`/api/nodes/script/${scriptId}/node/${nodeId}`, {
-            method: 'DELETE',
+            method: 'DELETE'
         });
-    },
+    }
 };
 
 // 전역 호환성을 위한 설정 (다른 파일과의 호환성 유지)

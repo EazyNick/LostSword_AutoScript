@@ -43,7 +43,7 @@ export class AddNodeModal {
                 }
                 return `<option value="${value}">${label}</option>`;
             })
-            .filter(opt => opt !== '')
+            .filter((opt) => opt !== '')
             .join('');
 
         return `
@@ -95,7 +95,7 @@ export class AddNodeModal {
             const updateCustomSettings = () => {
                 const selectedType = nodeTypeSelect.value;
                 const config = registry.getConfig(selectedType);
-                
+
                 if (config && config.requiresFolderPath) {
                     // 폴더 경로가 필요한 노드 (예: image-touch)
                     customSettings.innerHTML = `
@@ -107,7 +107,7 @@ export class AddNodeModal {
                         <small style="color: #666; font-size: 12px;">이미지 파일 이름 순서대로 화면에서 찾아 터치합니다.</small>
                     `;
                     customSettings.style.display = 'block';
-                    
+
                     // 폴더 선택 버튼 이벤트 리스너 재설정
                     const browseBtn = document.getElementById('browse-folder-btn');
                     if (browseBtn) {
@@ -132,10 +132,10 @@ export class AddNodeModal {
                         <small style="color: #666; font-size: 12px;">화면에 보이는 프로세스만 표시됩니다. 선택한 프로세스가 실행 시 화면 최상단에 포커스됩니다.</small>
                     `;
                     customSettings.style.display = 'block';
-                    
+
                     // 프로세스 목록 로드
                     this.loadProcessListForAddModal();
-                    
+
                     // 새로고침 버튼 이벤트
                     const refreshBtn = document.getElementById('refresh-processes-btn');
                     if (refreshBtn) {
@@ -148,7 +148,7 @@ export class AddNodeModal {
                             });
                         });
                     }
-                    
+
                     // 프로세스 선택 이벤트
                     const processSelect = document.getElementById('node-process-select');
                     if (processSelect) {
@@ -176,7 +176,7 @@ export class AddNodeModal {
                     customSettings.innerHTML = '';
                     customSettings.style.display = 'none';
                 }
-                
+
                 // 기본 제목 설정 (nodes.config.js의 title 사용)
                 const titleInput = document.getElementById('node-title');
                 if (titleInput && config) {
@@ -186,7 +186,7 @@ export class AddNodeModal {
                     // config가 없어도 기본값 설정
                     titleInput.value = getDefaultTitle(selectedType);
                 }
-                
+
                 // 기본 설명 설정 (nodes.config.js의 description 사용)
                 const descriptionInput = document.getElementById('node-description');
                 if (descriptionInput && config) {
@@ -196,14 +196,14 @@ export class AddNodeModal {
                     // config가 없어도 기본값 설정
                     descriptionInput.value = getDefaultDescription(selectedType);
                 }
-                
+
                 // 기본 색상 설정
                 const colorSelect = document.getElementById('node-color');
                 if (colorSelect && config) {
                     colorSelect.value = config.color || 'blue';
                 }
             };
-            
+
             nodeTypeSelect.addEventListener('change', updateCustomSettings);
             // 초기 설정
             updateCustomSettings();
@@ -284,7 +284,7 @@ export class AddNodeModal {
     async handleAddNode() {
         const nodeType = document.getElementById('node-type').value;
         const nodeManager = this.workflowPage.getNodeManager();
-        
+
         // 시작/종료 노드 개수 검증
         const validation = NodeValidationUtils.validateBoundaryNodeCount(nodeType, nodeManager);
         if (!validation.canAdd) {
@@ -296,7 +296,7 @@ export class AddNodeModal {
             }
             return;
         }
-        
+
         let nodeTitle = document.getElementById('node-title').value.trim();
         let nodeDescription = document.getElementById('node-description').value.trim();
         let nodeColor = document.getElementById('node-color').value;
@@ -306,12 +306,12 @@ export class AddNodeModal {
         const config = registry.getConfig(nodeType);
         const defaultTitle = config?.title || getDefaultTitle(nodeType);
         const defaultDescription = config?.description || getDefaultDescription(nodeType);
-        
+
         // 제목이 비어있으면 nodes.config.js의 title 사용
         if (!nodeTitle) {
             nodeTitle = defaultTitle;
         }
-        
+
         // 설명이 비어있으면 nodes.config.js의 description 사용
         if (!nodeDescription) {
             nodeDescription = defaultDescription;
@@ -319,14 +319,17 @@ export class AddNodeModal {
 
         // 시작/종료 노드는 기본 색상 설정
         if (nodeType === NODE_TYPES.START) {
-            if (!nodeColor || nodeColor === 'blue') nodeColor = getDefaultColor(NODE_TYPES.START);
+            if (!nodeColor || nodeColor === 'blue') {
+                nodeColor = getDefaultColor(NODE_TYPES.START);
+            }
         } else if (nodeType === NODE_TYPES.END) {
-            if (!nodeColor || nodeColor === 'blue') nodeColor = getDefaultColor(NODE_TYPES.END);
+            if (!nodeColor || nodeColor === 'blue') {
+                nodeColor = getDefaultColor(NODE_TYPES.END);
+            }
         }
 
         const nodeData = {
-            id: nodeType === NODE_TYPES.START ? 'start' : 
-                (nodeType === NODE_TYPES.END ? 'end' : `node_${Date.now()}`),
+            id: nodeType === NODE_TYPES.START ? 'start' : nodeType === NODE_TYPES.END ? 'end' : `node_${Date.now()}`,
             type: nodeType,
             title: nodeTitle,
             description: nodeDescription,
@@ -352,12 +355,12 @@ export class AddNodeModal {
             const hwnd = document.getElementById('node-process-hwnd')?.value;
             const processName = document.getElementById('node-process-name')?.value;
             const windowTitle = document.getElementById('node-window-title')?.value;
-            
+
             if (!processId) {
                 alert('프로세스를 선택해주세요.');
                 return;
             }
-            
+
             nodeData.process_id = parseInt(processId);
             if (hwnd) {
                 nodeData.hwnd = parseInt(hwnd);
@@ -392,7 +395,9 @@ export class AddNodeModal {
      */
     async loadProcessListForAddModal() {
         const selectElement = document.getElementById('node-process-select');
-        if (!selectElement) return;
+        if (!selectElement) {
+            return;
+        }
 
         try {
             const apiBaseUrl = window.API_BASE_URL || 'http://localhost:8000';
@@ -406,18 +411,19 @@ export class AddNodeModal {
                 }
 
                 // 프로세스 목록 추가
-                data.processes.forEach(process => {
+                data.processes.forEach((process) => {
                     process.windows.forEach((window, index) => {
                         const option = document.createElement('option');
                         const value = `${process.process_id}|${window.hwnd}`;
                         option.value = value;
                         option.dataset.processName = process.process_name;
                         option.dataset.windowTitle = window.title;
-                        
+
                         // 표시 텍스트: 프로세스명 - 창제목 (여러 창이면 인덱스 표시)
-                        const displayText = process.window_count > 1 
-                            ? `${process.process_name} - ${window.title} (${index + 1})`
-                            : `${process.process_name} - ${window.title}`;
+                        const displayText =
+                            process.window_count > 1
+                                ? `${process.process_name} - ${window.title} (${index + 1})`
+                                : `${process.process_name} - ${window.title}`;
                         option.textContent = displayText;
 
                         selectElement.appendChild(option);
@@ -432,4 +438,3 @@ export class AddNodeModal {
         }
     }
 }
-

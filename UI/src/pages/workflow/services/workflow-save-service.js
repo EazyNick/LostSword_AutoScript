@@ -61,9 +61,9 @@ export class WorkflowSaveService {
      * 노드 데이터를 API 형식으로 변환
      */
     prepareNodesForAPI(nodes, nodeManager) {
-        return nodes.map(node => {
+        return nodes.map((node) => {
             // parameters 추출 (노드 실행에 필요한 핵심 매개변수만)
-            let parameters = {};
+            const parameters = {};
             if (nodeManager && nodeManager.nodeData && nodeManager.nodeData[node.id]) {
                 const nodeData = nodeManager.nodeData[node.id];
                 const nodeType = nodeData.type || node.type;
@@ -125,10 +125,10 @@ export class WorkflowSaveService {
      * 연결 데이터를 API 형식으로 변환
      */
     prepareConnectionsForAPI(connections) {
-        return connections.map(conn => ({
+        return connections.map((conn) => ({
             from: conn.from || conn.fromNodeId,
             to: conn.to || conn.toNodeId,
-            outputType: conn.outputType || null  // 조건 노드의 경우 'true' 또는 'false'
+            outputType: conn.outputType || null // 조건 노드의 경우 'true' 또는 'false'
         }));
     }
 
@@ -166,4 +166,3 @@ export class WorkflowSaveService {
         }
     }
 }
-

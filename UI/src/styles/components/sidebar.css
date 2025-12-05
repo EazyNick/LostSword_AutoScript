@@ -108,7 +108,10 @@
     padding-top: 25px;
     margin-top: 8px;
     transform: translateY(8px);
-    transition: transform 0.2s ease, padding 0.2s ease, margin 0.2s ease;
+    transition:
+        transform 0.2s ease,
+        padding 0.2s ease,
+        margin 0.2s ease;
 }
 
 /* 스크립트 항목 드래그 오버 하단: 다른 항목 아래쪽에 드롭할 위치 표시 */
@@ -117,7 +120,10 @@
     padding-bottom: 25px;
     margin-bottom: 8px;
     transform: translateY(-8px);
-    transition: transform 0.2s ease, padding 0.2s ease, margin 0.2s ease;
+    transition:
+        transform 0.2s ease,
+        padding 0.2s ease,
+        margin 0.2s ease;
 }
 
 /* 스크립트 드래그 핸들: 스크립트를 드래그할 수 있는 점 6개(⋮⋮) 아이콘 */
@@ -337,23 +343,23 @@
         width: 100%;
         height: 200px;
     }
-    
+
     /* 모바일에서 스크립트 목록 패딩 축소 */
     .script-list {
         padding: 15px;
     }
-    
+
     /* 모바일에서 스크립트 항목 패딩 및 마진 축소 */
     .script-item {
         padding: 15px;
         margin-bottom: 10px;
     }
-    
+
     /* 모바일에서 스크립트 이름 폰트 크기 축소 */
     .script-name {
         font-size: 14px;
     }
-    
+
     /* 모바일에서 스크립트 설명 폰트 크기 축소 */
     .script-desc {
         font-size: 12px;
