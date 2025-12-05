@@ -42,9 +42,7 @@ export class AddNodeModal {
             }
             return `<option value="${value}">${label}</option>`;
         });
-        const nodeTypeOptions = (await Promise.all(nodeTypeOptionsPromises))
-            .filter((opt) => opt !== '')
-            .join('');
+        const nodeTypeOptions = (await Promise.all(nodeTypeOptionsPromises)).filter((opt) => opt !== '').join('');
 
         return `
             <h3>노드 추가</h3>
@@ -206,7 +204,7 @@ export class AddNodeModal {
 
             nodeTypeSelect.addEventListener('change', updateCustomSettings);
             // 초기 설정
-            updateCustomSettings().catch(err => console.error('updateCustomSettings error:', err));
+            updateCustomSettings().catch((err) => console.error('updateCustomSettings error:', err));
         }
 
         // 폴더 선택 버튼은 동적으로 생성되므로 updateCustomSettings에서 처리됨

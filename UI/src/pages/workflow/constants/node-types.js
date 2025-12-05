@@ -46,6 +46,6 @@ export async function isBoundaryNode(type) {
 }
 
 // 초기화 (모듈 로드 시 자동 실행)
-initializeNodeTypes().catch(err => {
+initializeNodeTypes().catch((err) => {
     console.error('[node-types] 노드 타입 초기화 실패:', err);
 });

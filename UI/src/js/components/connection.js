@@ -185,7 +185,11 @@ export class ConnectionManager {
 
             logger.log('[ConnectionManager] 입력 커넥터 바인딩 완료:', nodeId);
         } else {
-            logger.warn('[ConnectionManager] 입력 커넥터를 찾을 수 없습니다:', nodeId);
+            // 시작 노드는 입력이 없으므로 경고 출력하지 않음
+            const nodeType = nodeElement.dataset.nodeType || (nodeId === 'start' ? 'start' : null);
+            if (nodeType !== 'start' && nodeId !== 'start') {
+                logger.warn('[ConnectionManager] 입력 커넥터를 찾을 수 없습니다:', nodeId);
+            }
         }
 
         // 일반 출력 커넥터
@@ -225,7 +229,11 @@ export class ConnectionManager {
 
             logger.log('[ConnectionManager] 출력 커넥터 바인딩 완료:', nodeId);
         } else {
-            logger.warn('[ConnectionManager] 출력 커넥터를 찾을 수 없습니다:', nodeId);
+            // 종료 노드는 출력이 없으므로 경고 출력하지 않음
+            const nodeType = nodeElement.dataset.nodeType || (nodeId === 'end' ? 'end' : null);
+            if (nodeType !== 'end' && nodeId !== 'end') {
+                logger.warn('[ConnectionManager] 출력 커넥터를 찾을 수 없습니다:', nodeId);
+            }
         }
 
         // 조건 노드용 True/False 출력 커넥터

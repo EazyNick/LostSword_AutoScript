@@ -95,14 +95,14 @@ export class NodeRegistry {
         if (!config) {
             console.warn(
                 `[NodeRegistry] 노드 타입 '${nodeType}'가 등록되지 않았습니다. ` +
-                    `서버의 nodes_config.py에 노드 설정을 추가하세요.`
+                    '서버의 nodes_config.py에 노드 설정을 추가하세요.'
             );
             return;
         }
         if (!config.script) {
             console.warn(
                 `[NodeRegistry] 노드 타입 '${nodeType}'의 'script' 필드가 설정되지 않았습니다. ` +
-                    `서버의 nodes_config.py에서 'script' 필드를 확인하세요.`
+                    "서버의 nodes_config.py에서 'script' 필드를 확인하세요."
             );
             return;
         }
