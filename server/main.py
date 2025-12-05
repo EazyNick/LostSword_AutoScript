@@ -129,13 +129,16 @@ else:
     logger.warning("UI 경로를 찾을 수 없습니다. API만 사용 가능합니다.")
 
 
-# HTML 파일에 환경 변수 주입하는 헬퍼 함수
+# HTML 파일에 클라이언트 설정 주입하는 헬퍼 함수
 def inject_env_to_html(html_content: str) -> str:
-    """HTML 내용에 환경 변수를 주입"""
-    # <head> 태그 안에 스크립트 추가
-    # DEV_MODE를 boolean으로 주입 (ENVIRONMENT 기반)
+    """
+    HTML 내용에 클라이언트에 필요한 최소한의 설정만 주입
+
+    보안: ENVIRONMENT 같은 서버 내부 정보는 클라이언트에 노출하지 않음
+    """
+    # 클라이언트에 필요한 최소한의 정보만 주입
+    # 민감한 정보(ENVIRONMENT 등)는 제외
     dev_mode_value = "true" if DEV_MODE else "false"
-    environment_value = ENVIRONMENT
     api_host = settings.API_HOST
     api_port = settings.API_PORT
 
@@ -144,13 +147,11 @@ def inject_env_to_html(html_content: str) -> str:
 
     script_tag = f"""
     <script>
-        // 환경 변수 주입 (.env 파일에서 읽은 값)
+        // 클라이언트에 필요한 최소한의 정보만 주입
         window.DEV_MODE = {dev_mode_value};
-        window.ENVIRONMENT = '{environment_value}';
         window.API_HOST = '{client_api_host}';
         window.API_PORT = {api_port};
-        console.log('[Server] 환경 변수 주입됨:', {{
-            ENVIRONMENT: window.ENVIRONMENT,
+        console.log('[Server] 클라이언트 설정 주입됨:', {{
             DEV_MODE: window.DEV_MODE,
             API_HOST: window.API_HOST,
             API_PORT: window.API_PORT
@@ -168,12 +169,12 @@ def inject_env_to_html(html_content: str) -> str:
         html_content = html_content.replace("<body>", script_tag + "<body>")
 
     logger.debug(
-        f"HTML에 환경 변수 주입 완료: ENVIRONMENT={environment_value}, DEV_MODE={dev_mode_value}, API_HOST={client_api_host}, API_PORT={api_port}"
+        f"HTML에 클라이언트 설정 주입 완료: DEV_MODE={dev_mode_value}, API_HOST={client_api_host}, API_PORT={api_port}"
     )
     return html_content
 
 
-# 기본 라우트 - 웹 UI 제공 (환경 변수 주입)
+# 기본 라우트 - 웹 UI 제공 (클라이언트 설정 주입)
 @app.get("/")
 async def root() -> Response:
     ui_file = os.path.join(ui_path, "index.html")

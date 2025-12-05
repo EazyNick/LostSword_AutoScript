@@ -4,14 +4,25 @@
 
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
+
+from config.nodes_config import get_action_node_types
 
 
 class ActionRequest(BaseModel):
     """액션 실행 요청 모델"""
 
-    action_type: str
-    parameters: dict[str, Any] | None = {}
+    action_type: str = Field(..., min_length=1, max_length=100)
+    parameters: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("action_type")
+    @classmethod
+    def validate_action_type(cls, v: str) -> str:
+        """허용된 액션 타입만 허용 (서버 노드 설정 기반)"""
+        allowed_actions = get_action_node_types()
+        if v not in allowed_actions:
+            raise ValueError(f"액션 타입은 다음 중 하나여야 합니다: {', '.join(allowed_actions)}")
+        return v
 
 
 class ActionResponse(BaseModel):

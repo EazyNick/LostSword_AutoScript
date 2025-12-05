@@ -1,16 +1,69 @@
 /**
  * 노드 레지스트리 서비스
  *
- * nodes.config.js 파일을 읽어서 노드 타입을 동적으로 등록하고
+ * 서버에서 노드 설정을 가져와서 노드 타입을 동적으로 등록하고
  * 각 노드의 스크립트를 동적으로 로드합니다.
  */
 
-import { NODES_CONFIG, getAllNodeTypes, getNodeConfig } from '../config/nodes.config.js';
+// 폴백 설정 (서버에서 가져오기 실패 시 사용)
+const FALLBACK_NODES_CONFIG = {
+    start: {
+        label: '시작 노드',
+        title: '시작',
+        description: '워크플로우의 시작점입니다.',
+        color: 'green',
+        script: 'node-start.js',
+        isBoundary: true,
+        category: 'system'
+    },
+    end: {
+        label: '종료 노드',
+        title: '종료',
+        description: '워크플로우의 종료점입니다.',
+        color: 'gray',
+        script: 'node-end.js',
+        isBoundary: true,
+        category: 'system'
+    }
+};
 
 export class NodeRegistry {
     constructor() {
         this.loadedScripts = new Set();
-        this.nodeConfigs = NODES_CONFIG;
+        this.nodeConfigs = null; // 서버에서 로드될 때까지 null
+    }
+
+    /**
+     * 서버에서 노드 설정 가져오기
+     * @returns {Promise<Object>}
+     */
+    async loadNodeConfigs() {
+        try {
+            const response = await fetch('/api/config/nodes');
+            if (response.ok) {
+                const data = await response.json();
+                this.nodeConfigs = data.nodes || {};
+                console.log('[NodeRegistry] 서버에서 노드 설정 로드 완료:', Object.keys(this.nodeConfigs).length, '개');
+                return this.nodeConfigs;
+            } else {
+                throw new Error(`HTTP ${response.status}`);
+            }
+        } catch (error) {
+            console.warn('[NodeRegistry] 서버에서 노드 설정 로드 실패, 폴백 사용:', error);
+            this.nodeConfigs = FALLBACK_NODES_CONFIG;
+            return this.nodeConfigs;
+        }
+    }
+
+    /**
+     * 노드 설정 가져오기 (로드되지 않았으면 로드)
+     * @returns {Promise<Object>}
+     */
+    async getNodeConfigs() {
+        if (!this.nodeConfigs) {
+            await this.loadNodeConfigs();
+        }
+        return this.nodeConfigs;
     }
 
     /**
@@ -18,7 +71,8 @@ export class NodeRegistry {
      * @returns {Promise<void>}
      */
     async loadAllNodeScripts() {
-        const nodeTypes = getAllNodeTypes();
+        const configs = await this.getNodeConfigs();
+        const nodeTypes = Object.keys(configs);
         const loadPromises = nodeTypes.map((nodeType) => this.loadNodeScript(nodeType));
         await Promise.all(loadPromises);
     }
@@ -33,9 +87,23 @@ export class NodeRegistry {
      * @returns {Promise<void>}
      */
     async loadNodeScript(nodeType) {
-        const config = getNodeConfig(nodeType);
-        if (!config || !config.script) {
-            console.warn(`[NodeRegistry] 노드 타입 '${nodeType}'의 스크립트가 설정되지 않았습니다.`);
+        const configs = await this.getNodeConfigs();
+        const config = configs[nodeType];
+        // script 필드: 서버의 nodes_config.py에서 정의된 JavaScript 파일명
+        // 예: "script": "node-click.js" → /static/js/components/node/node-click.js 파일을 로드
+        // 이 파일이 없으면 해당 노드를 UI에서 렌더링할 수 없음
+        if (!config) {
+            console.warn(
+                `[NodeRegistry] 노드 타입 '${nodeType}'가 등록되지 않았습니다. ` +
+                    `서버의 nodes_config.py에 노드 설정을 추가하세요.`
+            );
+            return;
+        }
+        if (!config.script) {
+            console.warn(
+                `[NodeRegistry] 노드 타입 '${nodeType}'의 'script' 필드가 설정되지 않았습니다. ` +
+                    `서버의 nodes_config.py에서 'script' 필드를 확인하세요.`
+            );
             return;
         }
 
@@ -73,26 +141,28 @@ export class NodeRegistry {
     /**
      * 노드 설정 가져오기
      * @param {string} nodeType - 노드 타입
-     * @returns {Object|null}
+     * @returns {Promise<Object|null>}
      */
-    getConfig(nodeType) {
-        return getNodeConfig(nodeType);
+    async getConfig(nodeType) {
+        const configs = await this.getNodeConfigs();
+        return configs[nodeType] || null;
     }
 
     /**
      * 모든 노드 설정 가져오기
-     * @returns {Object}
+     * @returns {Promise<Object>}
      */
-    getAllConfigs() {
-        return this.nodeConfigs;
+    async getAllConfigs() {
+        return await this.getNodeConfigs();
     }
 
     /**
      * 노드 타입 목록 가져오기
-     * @returns {string[]}
+     * @returns {Promise<string[]>}
      */
-    getNodeTypes() {
-        return getAllNodeTypes();
+    async getNodeTypes() {
+        const configs = await this.getNodeConfigs();
+        return Object.keys(configs);
     }
 }
 

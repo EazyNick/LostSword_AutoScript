@@ -15,7 +15,9 @@ class Settings:
     DEV_MODE: bool = os.getenv("ENVIRONMENT", "prd").lower() == "dev"
 
     # API 설정
-    API_HOST: str = os.getenv("API_HOST", "0.0.0.0")
+    # 보안: 기본값을 127.0.0.1로 설정하여 로컬호스트에서만 접근 가능하도록 함
+    # 내부망 접근을 차단하려면 .env 파일에서 API_HOST=127.0.0.1로 설정하거나 기본값 사용
+    API_HOST: str = os.getenv("API_HOST", "127.0.0.1")
     API_PORT: int = int(os.getenv("API_PORT", "8000"))
     DEBUG: bool = os.getenv("DEBUG", "False").lower() == "true"
 

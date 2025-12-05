@@ -35,7 +35,7 @@ pip install -r requirements.txt
 ### 4. 서버 실행
 ```bash
 cd server
-python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
+python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
 ```
 
 ### 5. 웹 브라우저에서 접속
@@ -75,6 +75,7 @@ python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ### 사용자 가이드
 - **[노드 목록](docs/node.md)**: 사용 가능한 모든 노드 타입 설명
 - **[데이터베이스 사용 가이드](docs/database.md)**: 데이터베이스 사용 및 샘플 데이터 삽입 방법
+- **[보안 가이드](docs/security/README.md)**: 보안 취약점 및 개선 방안
 
 ### 개발자 가이드
 - **[개발 환경 설정](docs/dev/development.md)**: 개발 환경 설정, 서버 실행, 배포 방법
