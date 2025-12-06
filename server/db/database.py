@@ -150,9 +150,7 @@ class DatabaseManager:
 
         try:
             # script_executions 테이블이 존재하는지 확인
-            cursor.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name='script_executions'"
-            )
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='script_executions'")
             table_exists = cursor.fetchone() is not None
 
             if table_exists:

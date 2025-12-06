@@ -242,8 +242,7 @@ class ScriptRepository:
         # 삭제된 스크립트보다 큰 execution_order를 가진 모든 스크립트의 execution_order를 -1씩 감소
         if deleted_order is not None:
             cursor.execute(
-                "UPDATE scripts SET execution_order = execution_order - 1 WHERE execution_order > ?",
-                (deleted_order,)
+                "UPDATE scripts SET execution_order = execution_order - 1 WHERE execution_order > ?", (deleted_order,)
             )
 
         return True
@@ -271,7 +270,7 @@ class ScriptRepository:
             if script_id is not None and execution_order is not None:
                 cursor.execute(
                     "UPDATE scripts SET execution_order = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                    (execution_order, script_id)
+                    (execution_order, script_id),
                 )
         return True
 

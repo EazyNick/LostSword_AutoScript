@@ -290,11 +290,7 @@ async def execute_script(script_id: int, request: NodeExecutionRequest) -> dict[
 
         # 에러가 발생했으면 success: False 반환
         if has_error:
-            return {
-                "success": False,
-                "message": f"스크립트 실행 중 오류 발생: {error_message}",
-                "results": results
-            }
+            return {"success": False, "message": f"스크립트 실행 중 오류 발생: {error_message}", "results": results}
 
         return {"success": True, "message": "스크립트 실행 완료", "results": results}
 
@@ -305,10 +301,14 @@ async def execute_script(script_id: int, request: NodeExecutionRequest) -> dict[
 
 
 @router.patch("/scripts/{script_id}/active", response_model=dict)
-async def toggle_script_active(script_id: int, request: Request, active: bool = Body(..., embed=True)) -> dict[str, Any]:
+async def toggle_script_active(
+    script_id: int, request: Request, active: bool = Body(..., embed=True)
+) -> dict[str, Any]:
     """스크립트 활성/비활성 상태 토글"""
     client_ip = request.client.host if request.client else "unknown"
-    logger.info(f"[API] 스크립트 활성 상태 변경 요청 - 스크립트 ID: {script_id}, 활성: {active}, 클라이언트 IP: {client_ip}")
+    logger.info(
+        f"[API] 스크립트 활성 상태 변경 요청 - 스크립트 ID: {script_id}, 활성: {active}, 클라이언트 IP: {client_ip}"
+    )
 
     try:
         # 스크립트 존재 확인
@@ -327,7 +327,9 @@ async def toggle_script_active(script_id: int, request: Request, active: bool = 
 
         if success:
             logger.info(f"[DB 저장] 스크립트 활성 상태 업데이트 완료 - 스크립트 ID: {script_id}, 활성: {active}")
-            logger.info(f"[API] 스크립트 활성 상태 변경 성공 - 스크립트 ID: {script_id}, 이름: {script_name}, 활성: {active}")
+            logger.info(
+                f"[API] 스크립트 활성 상태 변경 성공 - 스크립트 ID: {script_id}, 이름: {script_name}, 활성: {active}"
+            )
             return {"message": "스크립트 활성 상태가 변경되었습니다.", "active": active}
         logger.error(f"[DB 저장] 스크립트 활성 상태 업데이트 실패 - 스크립트 ID: {script_id}")
         raise HTTPException(status_code=500, detail="스크립트 활성 상태 변경 실패")

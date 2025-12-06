@@ -43,10 +43,16 @@ class UserSettingsRepository:
         try:
             if user_id is None:
                 # 기존 방식: user_id가 NULL인 설정 조회 (기존 코드 호환성)
-                cursor.execute("SELECT setting_value FROM user_settings WHERE setting_key = ? AND (user_id IS NULL OR user_id = '')", (setting_key,))
+                cursor.execute(
+                    "SELECT setting_value FROM user_settings WHERE setting_key = ? AND (user_id IS NULL OR user_id = '')",
+                    (setting_key,),
+                )
             else:
                 # 새로운 방식: 특정 사용자의 설정 조회
-                cursor.execute("SELECT setting_value FROM user_settings WHERE setting_key = ? AND user_id = ?", (setting_key, user_id))
+                cursor.execute(
+                    "SELECT setting_value FROM user_settings WHERE setting_key = ? AND user_id = ?",
+                    (setting_key, user_id),
+                )
             result = cursor.fetchone()
 
             if result:
@@ -73,7 +79,9 @@ class UserSettingsRepository:
         )
         return result
 
-    def _save_setting_impl(self, cursor: sqlite3.Cursor, setting_key: str, setting_value: str, user_id: str | None = None) -> bool:
+    def _save_setting_impl(
+        self, cursor: sqlite3.Cursor, setting_key: str, setting_value: str, user_id: str | None = None
+    ) -> bool:
         """설정 저장 구현"""
         if user_id is None:
             # 기존 방식: user_id를 NULL로 저장 (기존 코드 호환성)
@@ -117,7 +125,9 @@ class UserSettingsRepository:
         try:
             if user_id is None:
                 # 기존 방식: user_id가 NULL인 설정만 조회 (기존 코드 호환성)
-                cursor.execute("SELECT setting_key, setting_value FROM user_settings WHERE user_id IS NULL OR user_id = ''")
+                cursor.execute(
+                    "SELECT setting_key, setting_value FROM user_settings WHERE user_id IS NULL OR user_id = ''"
+                )
             else:
                 # 새로운 방식: 특정 사용자의 설정만 조회
                 cursor.execute("SELECT setting_key, setting_value FROM user_settings WHERE user_id = ?", (user_id,))
@@ -146,7 +156,9 @@ class UserSettingsRepository:
         """설정 삭제 구현"""
         if user_id is None:
             # 기존 방식: user_id가 NULL인 설정 삭제 (기존 코드 호환성)
-            cursor.execute("DELETE FROM user_settings WHERE setting_key = ? AND (user_id IS NULL OR user_id = '')", (setting_key,))
+            cursor.execute(
+                "DELETE FROM user_settings WHERE setting_key = ? AND (user_id IS NULL OR user_id = '')", (setting_key,)
+            )
         else:
             # 새로운 방식: 특정 사용자의 설정 삭제
             cursor.execute("DELETE FROM user_settings WHERE setting_key = ? AND user_id = ?", (setting_key, user_id))

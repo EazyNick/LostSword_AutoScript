@@ -46,11 +46,21 @@ class TableManager:
                 )
             """)
             # 스크립트 인덱스 추가
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_scripts_name ON scripts(name)")  # 이름 검색 및 중복 체크 성능 향상
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_scripts_updated_at ON scripts(updated_at DESC)")  # ORDER BY updated_at DESC 정렬 최적화 (현재 사용 중)
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_scripts_active ON scripts(active) WHERE active = 1")  # 활성 스크립트만 필터링 시 성능 향상
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_scripts_last_executed ON scripts(last_executed_at DESC)")  # 최근 실행 순 정렬 최적화 (대시보드용)
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_scripts_execution_order ON scripts(execution_order ASC)")  # 실행 순서 기준 정렬 최적화 (전체 실행 시 사용)
+            cursor.execute(
+                "CREATE INDEX IF NOT EXISTS idx_scripts_name ON scripts(name)"
+            )  # 이름 검색 및 중복 체크 성능 향상
+            cursor.execute(
+                "CREATE INDEX IF NOT EXISTS idx_scripts_updated_at ON scripts(updated_at DESC)"
+            )  # ORDER BY updated_at DESC 정렬 최적화 (현재 사용 중)
+            cursor.execute(
+                "CREATE INDEX IF NOT EXISTS idx_scripts_active ON scripts(active) WHERE active = 1"
+            )  # 활성 스크립트만 필터링 시 성능 향상
+            cursor.execute(
+                "CREATE INDEX IF NOT EXISTS idx_scripts_last_executed ON scripts(last_executed_at DESC)"
+            )  # 최근 실행 순 정렬 최적화 (대시보드용)
+            cursor.execute(
+                "CREATE INDEX IF NOT EXISTS idx_scripts_execution_order ON scripts(execution_order ASC)"
+            )  # 실행 순서 기준 정렬 최적화 (전체 실행 시 사용)
 
             # 노드 테이블 생성
             cursor.execute("""
@@ -72,7 +82,9 @@ class TableManager:
                 )
             """)
             # 노드 인덱스 및 제약조건 추가
-            cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_nodes_script_node_unique ON nodes(script_id, node_id)")
+            cursor.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_nodes_script_node_unique ON nodes(script_id, node_id)"
+            )
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_nodes_script_id ON nodes(script_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_nodes_type ON nodes(node_type)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_nodes_script_type ON nodes(script_id, node_type)")
@@ -116,7 +128,9 @@ class TableManager:
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_executions_script_id ON script_executions(script_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_executions_status ON script_executions(status)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_executions_started_at ON script_executions(started_at DESC)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_executions_script_status ON script_executions(script_id, status)")
+            cursor.execute(
+                "CREATE INDEX IF NOT EXISTS idx_executions_script_status ON script_executions(script_id, status)"
+            )
 
             # 태그 테이블 생성 (스크립트 분류 및 검색용)
             cursor.execute("""
@@ -207,7 +221,9 @@ class TableManager:
                 cursor.execute("ALTER TABLE scripts ADD COLUMN execution_order INTEGER DEFAULT NULL")
                 # 기존 display_order가 있으면 execution_order로 데이터 이전
                 with contextlib.suppress(sqlite3.OperationalError):
-                    cursor.execute("UPDATE scripts SET execution_order = display_order WHERE execution_order IS NULL AND display_order IS NOT NULL")
+                    cursor.execute(
+                        "UPDATE scripts SET execution_order = display_order WHERE execution_order IS NULL AND display_order IS NOT NULL"
+                    )
                 # 기존 스크립트의 execution_order를 id로 초기화
                 cursor.execute("UPDATE scripts SET execution_order = id WHERE execution_order IS NULL")
             # execution_order 인덱스 추가
@@ -231,7 +247,9 @@ class TableManager:
             with contextlib.suppress(sqlite3.OperationalError):
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_scripts_last_executed ON scripts(last_executed_at DESC)")
             with contextlib.suppress(sqlite3.OperationalError):
-                cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_nodes_script_node_unique ON nodes(script_id, node_id)")
+                cursor.execute(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS idx_nodes_script_node_unique ON nodes(script_id, node_id)"
+                )
             with contextlib.suppress(sqlite3.OperationalError):
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_nodes_script_id ON nodes(script_id)")
             with contextlib.suppress(sqlite3.OperationalError):

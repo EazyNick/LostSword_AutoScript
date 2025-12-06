@@ -27,4 +27,3 @@ async def get_dashboard_stats(request: Request) -> dict[str, Any]:
     except Exception as e:
         logger.error(f"[API] 대시보드 통계 조회 실패: {e!s}")
         raise HTTPException(status_code=500, detail=f"대시보드 통계 조회 실패: {e!s}")
-

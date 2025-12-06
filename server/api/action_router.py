@@ -57,7 +57,9 @@ async def execute_nodes(request: NodeExecutionRequest) -> ActionResponse:
             node_id = node.get("id", f"node_{i}")
             node_type = node.get("type", "unknown")
             node_name = node.get("data", {}).get("title") or node.get("data", {}).get("name") or node_id
-            logger.info(f"[API] 노드 {i + 1}/{len(request.nodes)} 실행 시작 - ID: {node_id}, 타입: {node_type}, 이름: {node_name}")
+            logger.info(
+                f"[API] 노드 {i + 1}/{len(request.nodes)} 실행 시작 - ID: {node_id}, 타입: {node_type}, 이름: {node_name}"
+            )
             try:
                 # 실행 컨텍스트와 함께 노드 실행
                 result = await action_service.process_node(node, context)
@@ -77,14 +79,20 @@ async def execute_nodes(request: NodeExecutionRequest) -> ActionResponse:
                     error_msg = result.get("error") or result.get("message") or "노드 실행 실패"
                     if not error_message:
                         error_message = error_msg
-                    logger.error(f"[API] 노드 {i + 1}/{len(request.nodes)} 실행 실패 (status: failed) - ID: {node_id}, 타입: {node_type}, 이름: {node_name}, 에러: {error_msg}")
+                    logger.error(
+                        f"[API] 노드 {i + 1}/{len(request.nodes)} 실행 실패 (status: failed) - ID: {node_id}, 타입: {node_type}, 이름: {node_name}, 에러: {error_msg}"
+                    )
                 else:
-                    logger.info(f"[API] 노드 {i + 1}/{len(request.nodes)} 실행 성공 - ID: {node_id}, 타입: {node_type}, 이름: {node_name}, 상태: {result.get('status', 'completed')}")
+                    logger.info(
+                        f"[API] 노드 {i + 1}/{len(request.nodes)} 실행 성공 - ID: {node_id}, 타입: {node_type}, 이름: {node_name}, 상태: {result.get('status', 'completed')}"
+                    )
 
                 results.append(result)
                 logger.debug(f"[API] 노드 {i + 1} 실행 결과: {result}")
             except Exception as node_error:
-                logger.error(f"[API] 노드 {i + 1}/{len(request.nodes)} 실행 실패 (예외 발생) - ID: {node_id}, 타입: {node_type}, 이름: {node_name}, 에러: {node_error}")
+                logger.error(
+                    f"[API] 노드 {i + 1}/{len(request.nodes)} 실행 실패 (예외 발생) - ID: {node_id}, 타입: {node_type}, 이름: {node_name}, 에러: {node_error}"
+                )
                 node_id = node.get("id", f"node_{i}")
                 node_name = node.get("data", {}).get("title") or node.get("data", {}).get("name")
                 error_msg = str(node_error)
@@ -111,7 +119,9 @@ async def execute_nodes(request: NodeExecutionRequest) -> ActionResponse:
         # 병렬 실행 로직 (향후 구현)
         raise HTTPException(status_code=501, detail="병렬 실행은 아직 지원되지 않습니다.")
 
-    logger.info(f"[API] 모든 노드 실행 완료 - 총 {len(request.nodes)}개 노드, 성공: {len([r for r in results if r.get('status') != 'failed' and not r.get('error')])}개, 실패: {len([r for r in results if r.get('status') == 'failed' or r.get('error')])}개")
+    logger.info(
+        f"[API] 모든 노드 실행 완료 - 총 {len(request.nodes)}개 노드, 성공: {len([r for r in results if r.get('status') != 'failed' and not r.get('error')])}개, 실패: {len([r for r in results if r.get('status') == 'failed' or r.get('error')])}개"
+    )
     logger.debug(f"[API] 실행 결과 상세: {results}")
 
     # 에러가 발생했으면 success: False 반환

@@ -124,4 +124,3 @@ class DashboardStatsRepository:
                 (stat_key, stat_value),
             )
         return True
-
