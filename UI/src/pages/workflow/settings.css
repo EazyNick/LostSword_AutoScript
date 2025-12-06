@@ -319,10 +319,10 @@
     transform: translateX(24px);
 }
 
-/* 단축키 목록 */
+/* 단축키 목록 - 한 줄에 2개씩 배치 */
 .shortcuts-list {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
     gap: 12px;
 }
 

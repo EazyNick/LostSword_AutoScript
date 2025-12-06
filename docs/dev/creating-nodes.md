@@ -23,7 +23,6 @@ NODES_CONFIG: dict[str, dict[str, Any]] = {
         "label": "내 노드",
         "title": "내 노드",
         "description": "노드 설명",
-        "color": "blue",
         "script": "node-my-node.js",  # 노드 스크립트 파일명
         "is_boundary": False,          # 경계 노드 여부 (시작/종료 노드는 True)
         "category": "action",           # 노드 카테고리 (action, logic, system 등)
@@ -35,7 +34,6 @@ NODES_CONFIG: dict[str, dict[str, Any]] = {
 - `label`: 노드의 표시 이름
 - `title`: 노드의 제목 (기본값)
 - `description`: 노드 설명
-- `color`: 노드 색상 (`blue`, `green`, `orange`, `purple`, `red`, `yellow`, `gray` 등)
 - `script`: 클라이언트에서 사용할 JavaScript 파일명 (`node-{이름}.js`)
 - `is_boundary`: 경계 노드 여부 (`True`면 시작/종료 노드)
 - `category`: 노드 카테고리 (`action`, `logic`, `system`, `image` 등)
@@ -72,14 +70,23 @@ NODES_CONFIG: dict[str, dict[str, Any]] = {
              * @param {Object} nodeData - 노드 데이터
              */
             renderContent(nodeData) {
+                // 노드 아이콘은 node-icons.config.js에서 중앙 관리
+                const NodeIcons = window.NodeIcons || {};
+                const icon = NodeIcons.getIcon('my-node', nodeData) || NodeIcons.icons?.default || '⚙';
+                
                 return `
                     <div class="node-input"></div>
                     <div class="node-content">
-                        <div class="node-title">${this.escapeHtml(nodeData.title || '내 노드')}</div>
-                        <div class="node-description">${this.escapeHtml(nodeData.description || '')}</div>
+                        <div class="node-icon-box">
+                            <div class="node-icon">${icon}</div>
+                        </div>
+                        <div class="node-text-area">
+                            <div class="node-title">${this.escapeHtml(nodeData.title || '내 노드')}</div>
+                            <div class="node-description">${this.escapeHtml(nodeData.description || '')}</div>
+                        </div>
                     </div>
                     <div class="node-output"></div>
-                    <div class="node-settings">⚙</div>
+                    <div class="node-settings"></div>
                 `;
             }
         });
