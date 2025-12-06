@@ -24,7 +24,7 @@ export const NODES_CONFIG = {
         label: '시작 노드',
         title: '시작',
         description: '워크플로우의 시작점입니다.',
-        color: 'green',
+        color: 'teal', // 색상 변경: green → teal (청록색)
         script: 'node-start.js',
         isBoundary: true,
         category: 'system'
@@ -33,7 +33,7 @@ export const NODES_CONFIG = {
         label: '종료 노드',
         title: '종료',
         description: '워크플로우의 종료점입니다.',
-        color: 'gray',
+        color: 'red', // 색상 변경: gray → red (빨간색)
         script: 'node-end.js',
         isBoundary: true,
         category: 'system'
@@ -67,9 +67,9 @@ export const NODES_CONFIG = {
     },
     wait: {
         label: '대기 노드',
-        title: '대기 노드',
+        title: '대기',
         description: '일정 시간 대기하는 노드입니다.',
-        color: 'purple',
+        color: 'orange', // 색상 변경: purple → orange (주황색)
         script: 'node-wait.js',
         isBoundary: false,
         category: 'action'

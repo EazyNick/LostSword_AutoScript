@@ -350,6 +350,9 @@ export class NodeManager {
             // 5. 캔버스에 추가
             this.addNodeToCanvas(nodeElement);
 
+            // 5-1. 노드 크기 조정 (텍스트 길이에 따라)
+            this.adjustNodeSize(nodeElement);
+
             // 6. 노드 데이터 저장
             this.saveNodeData(nodeData);
 
@@ -415,10 +418,17 @@ export class NodeManager {
 
         log(`[NodeManager] ⚠️ 노드 타입 '${nodeData.type}'에 대한 렌더러를 찾을 수 없음. 기본 형태로 렌더링`);
         // 어떠한 정의도 등록되어 있지 않을 경우 기본 형태로 렌더링
+        const icon = window.NodeIcons ? window.NodeIcons.getIcon('default', nodeData) : '⚙';
         return `
             <div class="node-input"></div>
             <div class="node-content">
-                <div class="node-title">${this.escapeHtml(nodeData.title)}</div>
+                <div class="node-icon-box">
+                    <div class="node-icon">${icon}</div>
+                </div>
+                <div class="node-text-area">
+                    <div class="node-title">${this.escapeHtml(nodeData.title)}</div>
+                    <div class="node-description">${this.escapeHtml(nodeData.description || '')}</div>
+                </div>
             </div>
             <div class="node-output"></div>
             <div class="node-settings"></div>
@@ -1780,6 +1790,54 @@ export class NodeManager {
             this.canvas.appendChild(nodeElement);
             log(`노드 ${nodeElement.dataset.nodeId} 를 캔버스에 직접 추가 완료 (canvas-content 없음)`);
         }
+    }
+
+    /**
+     * 노드 크기 조정 (텍스트 길이에 따라)
+     * 최대 5줄까지 높이 증가, 그 이상이면 가로 확장
+     * @param {HTMLElement} nodeElement - 노드 요소
+     */
+    adjustNodeSize(nodeElement) {
+        // DOM이 완전히 렌더링될 때까지 대기
+        requestAnimationFrame(() => {
+            const textArea = nodeElement.querySelector('.node-text-area');
+            if (!textArea) {
+                return;
+            }
+
+            const titleElement = textArea.querySelector('.node-title');
+            const descriptionElement = textArea.querySelector('.node-description');
+
+            // 텍스트 영역의 실제 높이 계산
+            const titleHeight = titleElement ? titleElement.scrollHeight : 0;
+            const descriptionHeight = descriptionElement ? descriptionElement.scrollHeight : 0;
+            const totalTextHeight = titleHeight + descriptionHeight;
+
+            // 한 줄 높이 (line-height 기준)
+            const lineHeight = 1.4; // CSS에서 설정한 line-height
+            const fontSize = 14; // 제목 폰트 크기
+            const oneLineHeight = fontSize * lineHeight;
+            const maxHeight = oneLineHeight * 5; // 최대 5줄 높이
+
+            // 5줄을 넘으면 가로로 확장
+            if (totalTextHeight > maxHeight) {
+                nodeElement.classList.add('text-overflow');
+                // 높이 제한 제거
+                nodeElement.style.maxHeight = 'none';
+                // 제목과 설명의 줄 제한 제거
+                if (titleElement) {
+                    titleElement.style.maxHeight = 'none';
+                    titleElement.style.webkitLineClamp = 'none';
+                }
+                if (descriptionElement) {
+                    descriptionElement.style.maxHeight = 'none';
+                    descriptionElement.style.webkitLineClamp = 'none';
+                }
+            } else {
+                // 5줄 이내면 높이 자동 조정
+                nodeElement.style.height = 'auto';
+            }
+        });
     }
 
     /**

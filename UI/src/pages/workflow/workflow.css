@@ -120,15 +120,18 @@
 /* 워크플로우 노드 기본 스타일 */
 .workflow-node {
     position: absolute; /* 절대 위치 (캔버스 내에서 자유 배치) */
-    width: 200px; /* 노드 너비 */
-    height: 80px; /* 노드 높이 */
+    min-width: 200px; /* 최소 노드 너비 */
+    width: auto; /* 너비 자동 조정 */
+    min-height: 80px; /* 최소 노드 높이 */
+    height: auto; /* 높이 자동 조정 */
+    max-height: calc(1.2em * 5 + 40px); /* 최대 5줄까지 높이 증가 (제목+설명 최대 5줄 + 아이콘박스+패딩) */
     border-radius: 12px; /* 둥근 모서리 */
     cursor: move; /* 드래그 가능함을 나타내는 커서 */
     transition: all 0.3s ease; /* 부드러운 전환 효과 */
     display: flex; /* 플렉스박스 레이아웃 */
     align-items: center; /* 세로 중앙 정렬 */
-    justify-content: space-between; /* 요소들 사이에 공간 배분 */
-    padding: 0 15px; /* 좌우 여백 */
+    justify-content: flex-start; /* 왼쪽 정렬 (아이콘 왼쪽, 텍스트 오른쪽) */
+    padding: 12px 15px; /* 상하좌우 여백 */
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); /* 그림자 효과 */
     animation: fadeIn 0.5s ease-out; /* 생성 시 페이드인 애니메이션 */
 }
@@ -167,7 +170,7 @@
     border: 2px solid #6b46c1; /* 진한 보라색 테두리 */
 }
 
-/* 빨간색 노드: 에러 처리 노드 */
+/* 빨간색 노드: 에러 처리 노드 및 종료 노드 */
 .node-red {
     background: #e53e3e; /* 빨간색 배경 */
     border: 2px solid #c53030; /* 진한 빨간색 테두리 */
@@ -177,6 +180,18 @@
 .node-gray {
     background: #718096; /* 회색 배경 */
     border: 2px solid #4a5568; /* 진한 회색 테두리 */
+}
+
+/* 청록색 노드: 시작 노드 (색상 변경: green → teal) */
+.node-teal {
+    background: #14b8a6; /* 청록색 배경 */
+    border: 2px solid #0d9488; /* 진한 청록색 테두리 */
+}
+
+/* 청록색 노드: 시작 노드 */
+.node-teal {
+    background: #14b8a6; /* 청록색 배경 */
+    border: 2px solid #0d9488; /* 진한 청록색 테두리 */
 }
 
 /* ========================================== */
@@ -221,16 +236,41 @@
     flex: 1; /* 남은 공간을 모두 차지 */
     display: flex; /* 플렉스박스 레이아웃 */
     align-items: center; /* 세로 중앙 정렬 */
-    gap: 10px; /* 요소들 사이 간격 */
+    gap: 12px; /* 아이콘 박스와 텍스트 사이 간격 */
     padding: 0 10px; /* 좌우 여백 */
+    flex-direction: row; /* 가로 방향 배치 */
+}
+
+/* 노드 아이콘 박스 (왼쪽 색상 박스) */
+.node-icon-box {
+    width: 40px; /* 아이콘 박스 너비 */
+    height: 40px; /* 아이콘 박스 높이 */
+    display: flex; /* 플렉스박스 */
+    align-items: center; /* 세로 중앙 정렬 */
+    justify-content: center; /* 가로 중앙 정렬 */
+    border-radius: 8px; /* 둥근 모서리 */
+    background-color: rgba(255, 255, 255, 0.2); /* 반투명 흰색 배경 */
+    flex-shrink: 0; /* 크기 고정 */
 }
 
 /* 노드 아이콘 (조건 노드 등에 사용) */
 .node-icon {
     font-size: 20px; /* 아이콘 크기 */
-    margin-right: 8px; /* 오른쪽 여백 */
     display: flex; /* 플렉스박스 */
     align-items: center; /* 세로 중앙 정렬 */
+    justify-content: center; /* 가로 중앙 정렬 */
+    color: #ffffff; /* 흰색 아이콘 */
+}
+
+/* 노드 텍스트 영역 (오른쪽) */
+.node-text-area {
+    display: flex; /* 플렉스박스 */
+    flex-direction: column; /* 세로 방향 배치 */
+    align-items: flex-start; /* 왼쪽 정렬 */
+    justify-content: center; /* 세로 중앙 정렬 */
+    flex: 1; /* 남은 공간 차지 */
+    min-width: 0; /* 텍스트 영역이 축소될 수 있도록 */
+    overflow: hidden; /* 넘치는 텍스트 숨김 */
 }
 
 /* 노드 제목 */
@@ -238,7 +278,56 @@
     font-size: 14px; /* 제목 크기 */
     font-weight: 600; /* 굵은 글씨 */
     color: #ffffff; /* 흰색 텍스트 */
-    text-align: center; /* 가운데 정렬 */
+    text-align: left; /* 왼쪽 정렬 */
+    line-height: 1.4; /* 줄 간격 */
+    word-wrap: break-word; /* 긴 단어 줄바꿈 */
+    overflow-wrap: break-word; /* 긴 단어 줄바꿈 */
+    white-space: normal; /* 줄바꿈 허용 */
+    width: 100%; /* 전체 너비 사용 */
+    max-height: calc(1.4em * 3); /* 최대 3줄 (제목) */
+    overflow: hidden; /* 넘치는 텍스트 숨김 */
+    display: -webkit-box; /* 웹킷 박스 모델 */
+    -webkit-line-clamp: 3; /* 최대 3줄 */
+    -webkit-box-orient: vertical; /* 세로 방향 */
+}
+
+/* 노드 설명 (서브타이틀) */
+.node-description {
+    font-size: 11px; /* 설명 크기 */
+    font-weight: 400; /* 일반 글씨 */
+    color: rgba(255, 255, 255, 0.9); /* 반투명 흰색 텍스트 */
+    text-align: left; /* 왼쪽 정렬 */
+    margin-top: 4px; /* 제목과 간격 */
+    line-height: 1.4; /* 줄 간격 */
+    word-wrap: break-word; /* 긴 단어 줄바꿈 */
+    overflow-wrap: break-word; /* 긴 단어 줄바꿈 */
+    white-space: normal; /* 줄바꿈 허용 */
+    width: 100%; /* 전체 너비 사용 */
+    max-height: calc(1.4em * 2); /* 최대 2줄 (설명) */
+    overflow: hidden; /* 넘치는 텍스트 숨김 */
+    display: -webkit-box; /* 웹킷 박스 모델 */
+    -webkit-line-clamp: 2; /* 최대 2줄 */
+    -webkit-box-orient: vertical; /* 세로 방향 */
+}
+
+/* 노드가 5줄을 넘을 때 가로 확장 (텍스트 길이에 따른 동적 크기 조정) */
+.workflow-node.text-overflow {
+    max-height: none !important; /* 높이 제한 제거 */
+    width: auto; /* 가로로 확장 */
+}
+
+/* 5줄 초과 시 제목 줄 제한 해제 */
+.workflow-node.text-overflow .node-title {
+    max-height: none !important; /* 높이 제한 제거 */
+    -webkit-line-clamp: unset !important; /* 줄 수 제한 해제 */
+    display: block !important; /* 블록 표시 */
+}
+
+/* 5줄 초과 시 설명 줄 제한 해제 */
+.workflow-node.text-overflow .node-description {
+    max-height: none !important; /* 높이 제한 제거 */
+    -webkit-line-clamp: unset !important; /* 줄 수 제한 해제 */
+    display: block !important; /* 블록 표시 */
 }
 
 /* 출력 연결점: 이 노드에서 다른 노드로 연결되는 지점 */
@@ -415,10 +504,24 @@
 
 /* 연결선 기본 스타일 */
 .connection-line {
-    stroke: #9ca3af; /* 회색 선 */
+    stroke: #60a5fa; /* 청록색 선 (이미지와 유사한 색상) */
     stroke-width: 2; /* 선 두께 */
     fill: none; /* 채우기 없음 */
-    stroke-dasharray: none; /* 점선 없음 */
+    stroke-dasharray: 5, 5; /* 점선 패턴 */
+    stroke-linecap: round; /* 선 끝 둥글게 */
+    stroke-linejoin: round; /* 선 연결 부분 둥글게 */
+    animation: dash-flow 1s linear infinite; /* 점선 흐르는 애니메이션 (반대 방향) */
+    /* 화살표 제거: marker-end 속성 제거됨 */
+}
+
+/* 점선이 흐르는 애니메이션 (반대 방향: 위에서 아래로 흐름) */
+@keyframes dash-flow {
+    0% {
+        stroke-dashoffset: 10; /* 시작 위치 (점선 패턴 크기만큼 이동) */
+    }
+    100% {
+        stroke-dashoffset: 0; /* 끝 위치 (원래 위치로) */
+    }
 }
 
 /* 실행 중인 연결선 */

@@ -12,8 +12,9 @@ from config.server_config import settings
 from db.database import db_manager
 from log import log_manager
 
+# 실행 명령어
 # cd server
-# python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
+# python -m uvicorn main:app --reload --host 127.0.0.1 --port 8001
 
 # Ensure correct MIME types (fix: .js/.mjs served as application/javascript)
 mimetypes.add_type("application/javascript", ".js")

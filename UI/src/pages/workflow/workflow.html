@@ -220,10 +220,13 @@
         <script type="module" src="../../js/components/sidebar.js"></script>
         <script type="module" src="../../js/components/connection.js"></script>
 
-        <!-- 4. 연결 핸들러 (NodeManager보다 먼저 로드) -->
+        <!-- 4. 노드 아이콘 설정 (NodeManager보다 먼저 로드) -->
+        <script src="../../js/components/node/node-icons.config.js"></script>
+
+        <!-- 5. 연결 핸들러 (NodeManager보다 먼저 로드) -->
         <script src="../../js/components/node/node-connection-handler.js"></script>
 
-        <!-- 5. 공통 NodeManager -->
+        <!-- 6. 공통 NodeManager -->
         <script src="../../js/components/node/node.js"></script>
 
         <!-- 6. 노드 레지스트리 및 동적 로드 (nodes.config.js 기반) -->
