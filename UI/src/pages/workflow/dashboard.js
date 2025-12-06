@@ -26,8 +26,8 @@ export class DashboardManager {
         this.executionStats = {
             totalScripts: 0,
             todayExecutions: 0,
-            successRate: 0,
-            failedTests: 0
+            todayFailed: 0,
+            inactiveScripts: 0
         };
     }
 
@@ -52,6 +52,7 @@ export class DashboardManager {
         try {
             // 스크립트 목록 로드
             if (ScriptAPI && typeof ScriptAPI.getAllScripts === 'function') {
+                // 서버에서 이미 execution_order 기준으로 정렬되어 반환되므로 별도 정렬 불필요
                 this.scripts = await ScriptAPI.getAllScripts();
                 logger.log('[Dashboard] 스크립트 목록 로드 완료:', this.scripts.length);
             } else {
@@ -59,11 +60,44 @@ export class DashboardManager {
                 this.scripts = [];
             }
 
-            // 통계 데이터 계산 (실제로는 서버에서 가져와야 함)
-            this.calculateStats();
+            // 대시보드 통계 데이터 로드
+            await this.loadDashboardStats();
         } catch (error) {
             logger.error('[Dashboard] 데이터 로드 실패:', error);
             this.scripts = [];
+            this.calculateStats();
+        }
+    }
+
+    /**
+     * 대시보드 통계 데이터 로드
+     */
+    async loadDashboardStats() {
+        const logger = getLogger();
+        logger.log('[Dashboard] 대시보드 통계 데이터 로드 시작');
+
+        try {
+            const apiHost = window.API_HOST || 'localhost';
+            const apiPort = window.API_PORT || 8001;
+            const response = await fetch(`http://${apiHost}:${apiPort}/api/dashboard/stats`);
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const stats = await response.json();
+            logger.log('[Dashboard] 대시보드 통계 데이터 로드 완료:', stats);
+
+            // 통계 데이터 설정
+            this.executionStats = {
+                totalScripts: stats.total_scripts || 0,
+                todayExecutions: stats.today_executions || 0,
+                todayFailed: stats.today_failed || 0,
+                inactiveScripts: stats.inactive_scripts || 0
+            };
+        } catch (error) {
+            logger.error('[Dashboard] 대시보드 통계 데이터 로드 실패:', error);
+            // 실패 시 로컬 계산
             this.calculateStats();
         }
     }
@@ -75,8 +109,8 @@ export class DashboardManager {
         this.executionStats.totalScripts = this.scripts.length;
         // TODO: 실제 실행 기록 데이터를 서버에서 가져와서 계산
         this.executionStats.todayExecutions = 0; // 임시값
-        this.executionStats.successRate = 0; // 임시값
-        this.executionStats.failedTests = 0; // 임시값
+        // 비활성 스크립트 개수 계산
+        this.executionStats.inactiveScripts = this.scripts.filter((script) => !script.active).length;
     }
 
     /**
@@ -117,27 +151,21 @@ export class DashboardManager {
             }
         }
 
-        // 성공률 카드
-        const successRateCard = document.querySelector('.stat-card:nth-child(3)');
-        if (successRateCard) {
-            const valueEl = successRateCard.querySelector('.stat-value');
+        // 오늘 실패한 스크립트 카드
+        const todayFailedCard = document.querySelector('.stat-card:nth-child(3)');
+        if (todayFailedCard) {
+            const valueEl = todayFailedCard.querySelector('.stat-value');
             if (valueEl) {
-                valueEl.textContent = `${stats.successRate.toFixed(1)}%`;
-            }
-            // 변화량 표시 (임시로 +2.1% 설정)
-            const changeEl = successRateCard.querySelector('.stat-change');
-            if (changeEl) {
-                changeEl.innerHTML =
-                    '<span class="change-icon">↑</span><span class="change-text">~+2.1% 지난주 대비</span>';
+                valueEl.textContent = stats.todayFailed;
             }
         }
 
-        // 실패한 테스트 카드
-        const failedTestsCard = document.querySelector('.stat-card:nth-child(4)');
-        if (failedTestsCard) {
-            const valueEl = failedTestsCard.querySelector('.stat-value');
+        // 비활성 스크립트 카드
+        const inactiveScriptsCard = document.querySelector('.stat-card:nth-child(4)');
+        if (inactiveScriptsCard) {
+            const valueEl = inactiveScriptsCard.querySelector('.stat-value');
             if (valueEl) {
-                valueEl.textContent = stats.failedTests;
+                valueEl.textContent = stats.inactiveScripts;
             }
         }
     }
@@ -174,20 +202,13 @@ export class DashboardManager {
         const card = document.createElement('div');
         card.className = 'script-card';
 
-        // 상태에 따른 클래스 및 텍스트 결정
-        const status = script.status || 'active';
-        const statusText =
-            {
-                active: '활성',
-                paused: '일시정지',
-                draft: '초안'
-            }[status] || '활성';
+        // active 필드가 있으면 사용, 없으면 기본값 true
+        const isActive = script.active !== undefined ? script.active : true;
+        const status = isActive ? 'active' : 'inactive';
+        const statusText = isActive ? '활성' : '비활성';
 
-        // 마지막 실행 시간 포맷팅
-        const lastRun = script.lastRun ? this.formatLastRun(script.lastRun) : null;
-
-        // 성공률 표시
-        const successRate = script.successRate !== undefined ? script.successRate : null;
+        // 마지막 실행 시간 포맷팅 (last_executed_at 필드 사용)
+        const lastRun = script.last_executed_at ? this.formatLastRun(script.last_executed_at) : null;
 
         card.innerHTML = `
             <div class="script-card-header">
@@ -196,9 +217,10 @@ export class DashboardManager {
                     <h3 class="script-card-title">${this.escapeHtml(script.name)}</h3>
                     <p class="script-card-description">${this.escapeHtml(script.description || '')}</p>
                     <div class="script-card-meta">
-                        <span class="script-card-status status-${status}">${statusText}</span>
+                        <button class="btn-toggle-active ${status}" data-script-id="${script.id}" data-active="${isActive}">
+                            ${statusText}
+                        </button>
                         ${lastRun ? `<span class="script-card-last-run">🕐 ${lastRun}</span>` : ''}
-                        ${successRate !== null ? `<span class="script-card-success-rate">✓ ${successRate}%</span>` : ''}
                     </div>
                 </div>
             </div>
@@ -229,7 +251,44 @@ export class DashboardManager {
             });
         }
 
+        // 활성/비활성 토글 버튼 클릭 이벤트
+        const toggleBtn = card.querySelector('.btn-toggle-active');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', async () => {
+                await this.toggleScriptActive(script.id, !isActive);
+            });
+        }
+
         return card;
+    }
+
+    /**
+     * 스크립트 활성/비활성 상태 토글
+     */
+    async toggleScriptActive(scriptId, newActive) {
+        const logger = getLogger();
+        logger.log('[Dashboard] 스크립트 활성 상태 토글:', scriptId, newActive);
+
+        try {
+            if (ScriptAPI && typeof ScriptAPI.toggleScriptActive === 'function') {
+                await ScriptAPI.toggleScriptActive(scriptId, newActive);
+
+                // 로컬 스크립트 데이터 업데이트
+                const script = this.scripts.find((s) => s.id === scriptId);
+                if (script) {
+                    script.active = newActive;
+                }
+
+                // 대시보드 다시 렌더링
+                this.calculateStats();
+                this.renderDashboard();
+            } else {
+                logger.warn('[Dashboard] ScriptAPI.toggleScriptActive를 사용할 수 없습니다.');
+            }
+        } catch (error) {
+            logger.error('[Dashboard] 스크립트 활성 상태 토글 실패:', error);
+            // 에러 메시지 표시 (선택사항)
+        }
     }
 
     /**

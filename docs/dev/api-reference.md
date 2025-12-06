@@ -8,18 +8,28 @@
 
 ## 주요 엔드포인트
 
-### 액션 실행
+### 노드 실행
 ```http
-POST /api/action/execute
+POST /api/execute-nodes
 Content-Type: application/json
 
 {
-  "action_type": "click",
-  "parameters": {"x": 100, "y": 200}
+  "nodes": [
+    {
+      "id": "node1",
+      "type": "click",
+      "data": {"x": 100, "y": 200}
+    }
+  ],
+  "execution_mode": "sequential"
 }
 ```
 
-**지원 액션**: `click`, `image_touch`, `wait`, `process_focus` 등
+**응답 형식**:
+- 성공: `{"success": true, "message": "...", "data": {"results": [...]}}`
+- 실패: `{"success": false, "message": "노드 실행 중 오류 발생: ...", "data": {"results": [...]}}`
+
+**지원 노드 타입**: `click`, `image-touch`, `wait`, `condition`, `process-focus` 등
 
 ### 스크립트 관리
 ```http

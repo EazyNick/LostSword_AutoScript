@@ -8,6 +8,7 @@ from typing import Any
 # 직접 실행 시와 모듈로 import 시 모두 지원
 try:
     from .connection import DatabaseConnection
+    from .dashboard_stats_repository import DashboardStatsRepository
     from .node_repository import NodeRepository
     from .script_repository import ScriptRepository
     from .table_manager import TableManager
@@ -16,6 +17,7 @@ except ImportError:
     # 직접 실행 시 절대 import 사용
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from db.connection import DatabaseConnection
+    from db.dashboard_stats_repository import DashboardStatsRepository
     from db.node_repository import NodeRepository
     from db.script_repository import ScriptRepository
     from db.table_manager import TableManager
@@ -23,7 +25,10 @@ except ImportError:
 
 
 class DatabaseManager:
-    """통합 데이터베이스 관리자 클래스"""
+    """
+    통합 데이터베이스 관리자 클래스
+    모든 데이터베이스 작업을 통합 관리합니다.
+    """
 
     def __init__(self, db_path: str | None = None) -> None:
         """
@@ -32,18 +37,19 @@ class DatabaseManager:
         Args:
             db_path: 데이터베이스 파일 경로. None이면 기본 경로 사용
         """
-        # 연결 관리
+        # 데이터베이스 연결 관리
         self.connection = DatabaseConnection(db_path)
 
-        # 테이블 관리
+        # 테이블 생성 및 마이그레이션 관리
         self.table_manager = TableManager(self.connection)
 
-        # 리포지토리들
-        self.user_settings = UserSettingsRepository(self.connection)
-        self.scripts = ScriptRepository(self.connection)
-        self.nodes = NodeRepository(self.connection)
+        # 리포지토리 인스턴스 (각 테이블별 데이터 접근)
+        self.user_settings = UserSettingsRepository(self.connection)  # 사용자 설정
+        self.scripts = ScriptRepository(self.connection)  # 스크립트
+        self.nodes = NodeRepository(self.connection)  # 노드
+        self.dashboard_stats = DashboardStatsRepository(self.connection)  # 대시보드 통계
 
-        # 데이터베이스 초기화
+        # 데이터베이스 초기화 (테이블 생성)
         self.init_database()
 
     def init_database(self) -> None:
@@ -77,30 +83,48 @@ class DatabaseManager:
         return self.scripts.get_all_scripts()
 
     def get_script(self, script_id: int) -> dict[str, Any] | None:
-        """특정 스크립트 조회 (노드 및 연결 정보 포함)"""
-        # 기본 스크립트 정보 조회
+        """
+        특정 스크립트 조회 (노드 및 연결 정보 포함)
+
+        Args:
+            script_id: 스크립트 ID
+
+        Returns:
+            스크립트 정보 딕셔너리 (nodes, connections 포함) 또는 None
+        """
+        # 1. 기본 스크립트 정보 조회
         script_info = self.scripts.get_script(script_id)
         if not script_info:
             return None
 
-        # 노드 정보 조회
+        # 2. 노드 정보 조회
         nodes = self.nodes.get_nodes_by_script_id(script_id)
 
-        # 중복 경계 노드 정리
+        # 3. 중복 경계 노드 정리 (start/end 노드 중복 방지)
         nodes = self.nodes.cleanup_duplicate_boundary_nodes(script_id, nodes)
 
-        # 연결 정보 생성
+        # 4. 연결 정보 생성 (노드의 connected_to에서)
         connections = self.nodes.build_connections_from_nodes(nodes)
 
         return {**script_info, "nodes": nodes, "connections": connections}
 
     def save_script_data(self, script_id: int, nodes: list[dict[str, Any]], connections: list[dict[str, Any]]) -> bool:
-        """스크립트의 노드와 연결 정보 저장"""
-        # 노드 저장
+        """
+        스크립트의 노드와 연결 정보 저장
+
+        Args:
+            script_id: 스크립트 ID
+            nodes: 노드 목록
+            connections: 연결 정보 목록
+
+        Returns:
+            저장 성공 여부
+        """
+        # 1. 노드 저장 (연결 정보도 함께 저장)
         success = self.nodes.save_nodes(script_id, nodes, connections)
 
         if success:
-            # 업데이트 시간 갱신
+            # 2. 스크립트 업데이트 시간 갱신
             self.scripts.update_script_timestamp(script_id)
 
         return success
@@ -108,6 +132,84 @@ class DatabaseManager:
     def delete_script(self, script_id: int) -> bool:
         """스크립트 삭제"""
         return self.scripts.delete_script(script_id)
+
+    def update_script_active(self, script_id: int, active: bool) -> bool:
+        """스크립트 활성/비활성 상태 업데이트"""
+        return self.scripts.update_script_active(script_id, active)
+
+    def update_script_order(self, script_orders: list[dict[str, int]]) -> bool:
+        """스크립트 순서 업데이트"""
+        return self.scripts.update_script_order(script_orders)
+
+    # 대시보드 통계 메서드들
+    def get_dashboard_stats(self) -> dict[str, int]:
+        """대시보드 통계 조회"""
+        return self.dashboard_stats.get_all_stats()
+
+    def update_dashboard_stats(self, stats: dict[str, int]) -> bool:
+        """대시보드 통계 업데이트"""
+        return self.dashboard_stats.update_all_stats(stats)
+
+    def calculate_and_update_dashboard_stats(self) -> dict[str, int]:
+        """
+        대시보드 통계 계산 및 업데이트
+        - 전체 스크립트 개수
+        - 오늘 실행 횟수
+        - 오늘 실패한 스크립트 개수
+        - 비활성 스크립트 개수
+        """
+        # 전체 스크립트 개수
+        all_scripts = self.get_all_scripts()
+        total_scripts = len(all_scripts)
+
+        # 비활성 스크립트 개수
+        inactive_scripts = sum(1 for script in all_scripts if not script.get("active", True))
+
+        # 오늘 실행 횟수 및 실패한 스크립트 개수
+        conn = self.connection.get_connection()
+        cursor = self.connection.get_cursor(conn)
+
+        try:
+            # script_executions 테이블이 존재하는지 확인
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='script_executions'")
+            table_exists = cursor.fetchone() is not None
+
+            if table_exists:
+                # 오늘 실행 횟수 (SQLite datetime 함수 사용)
+                cursor.execute(
+                    """
+                    SELECT COUNT(*) FROM script_executions
+                    WHERE date(started_at) = date('now')
+                    """
+                )
+                today_executions = cursor.fetchone()[0] or 0
+
+                # 오늘 실패한 스크립트 개수
+                cursor.execute(
+                    """
+                    SELECT COUNT(DISTINCT script_id) FROM script_executions
+                    WHERE date(started_at) = date('now') AND status = 'error'
+                    """
+                )
+                today_failed = cursor.fetchone()[0] or 0
+            else:
+                # 테이블이 없으면 0으로 설정
+                today_executions = 0
+                today_failed = 0
+        finally:
+            conn.close()
+
+        stats = {
+            "total_scripts": total_scripts,
+            "today_executions": today_executions,
+            "today_failed": today_failed,
+            "inactive_scripts": inactive_scripts,
+        }
+
+        # 통계 업데이트
+        self.update_dashboard_stats(stats)
+
+        return stats
 
     def seed_example_data(self, logger: logging.Logger | None = None) -> None:
         """

@@ -9,4 +9,5 @@ This folder contains implementation tasks organized by feature area.
 - `04-execution-logs.md` - Execution log management
 - `05-execution-reports.md` - Execution report generation
 - `06-settings-features.md` - Settings page features
+- `07-tag-notes.md` - Tag/Notes feature (화면에 note처럼 주석을 달 수 있는 기능)
 

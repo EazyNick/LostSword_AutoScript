@@ -240,6 +240,12 @@
     background-color: #2d3748;
 }
 
+/* 스크립트 항목 비활성화 상태: DB에서 active = 0인 스크립트 */
+.script-item.inactive {
+    opacity: 0.5;
+    filter: grayscale(0.3);
+}
+
 /* 스크립트 아이콘: 각 스크립트 항목 왼쪽에 표시되는 문서 아이콘(📄) */
 .script-icon {
     font-size: 24px;

@@ -103,6 +103,26 @@ body.theme-light .script-item.active {
     background-color: #eff6ff;
 }
 
+/* 비활성화된 스크립트 (라이트 모드): 더 어둡게 표시 */
+body.theme-light .script-item.inactive {
+    opacity: 0.4;
+    background-color: #f3f4f6;
+    border-color: #d1d5db;
+    filter: grayscale(0.5);
+}
+
+body.theme-light .script-item.inactive .script-name {
+    color: #9ca3af;
+}
+
+body.theme-light .script-item.inactive .script-desc {
+    color: #d1d5db;
+}
+
+body.theme-light .script-item.inactive .script-date {
+    color: #d1d5db;
+}
+
 /* 스크립트 이름 */
 body.theme-light .script-name {
     color: #1f2937;

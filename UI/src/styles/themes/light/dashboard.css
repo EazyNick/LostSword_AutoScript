@@ -66,6 +66,24 @@ body.theme-light .script-card-success-rate {
     color: #22c55e;
 }
 
+body.theme-light .btn-toggle-active {
+    background-color: #22c55e;
+    color: #ffffff;
+}
+
+body.theme-light .btn-toggle-active:hover {
+    background-color: #16a34a;
+}
+
+body.theme-light .btn-toggle-active.inactive {
+    background-color: #6b7280;
+    color: #ffffff;
+}
+
+body.theme-light .btn-toggle-active.inactive:hover {
+    background-color: #4b5563;
+}
+
 body.theme-light .btn-edit {
     background-color: transparent;
     color: #6b7280;

@@ -7,7 +7,15 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 import uvicorn
 
-from api import action_node_router, action_router, config_router, node_router, script_router, state_router
+from api import (
+    action_node_router,
+    action_router,
+    config_router,
+    dashboard_router,
+    node_router,
+    script_router,
+    state_router,
+)
 from config.server_config import settings
 from db.database import db_manager
 from log import log_manager
@@ -20,9 +28,9 @@ from log import log_manager
 mimetypes.add_type("application/javascript", ".js")
 mimetypes.add_type("application/javascript", ".mjs")
 
-# 환경 변수는 config.py에서 관리
-ENVIRONMENT = settings.ENVIRONMENT
-DEV_MODE = settings.DEV_MODE
+# 환경 변수 (config.py에서 관리)
+ENVIRONMENT = settings.ENVIRONMENT  # 실행 환경 (development/production)
+DEV_MODE = settings.DEV_MODE  # 개발 모드 여부
 
 # 로거 초기화 (싱글톤 패턴)
 logger = log_manager.logger
@@ -32,31 +40,30 @@ logger.info(f"환경: {ENVIRONMENT}")
 logger.info(f"개발 모드: {DEV_MODE}")
 
 
-# 데이터베이스 초기화 및 기본 데이터 생성
 def initialize_database() -> None:
-    """데이터베이스가 없으면 생성하고 기본 데이터 삽입"""
+    """
+    데이터베이스 초기화 및 기본 데이터 생성
+    서버 시작 시 한 번만 실행됩니다.
+    """
     db_path = db_manager.connection.db_path
-
-    # 데이터베이스 파일이 존재하는지 확인
-    is_new_db = not os.path.exists(db_path)
+    is_new_db = not os.path.exists(db_path)  # 새 데이터베이스 여부
 
     if is_new_db:
+        # 새 데이터베이스인 경우: 테이블 생성 및 기본 데이터 삽입
         logger.info(f"데이터베이스 파일이 없습니다. 생성 중... ({db_path})")
         try:
-            # 데이터베이스 초기화 (테이블 생성)
-            db_manager.init_database()
+            db_manager.init_database()  # 테이블 생성
             logger.info("✅ 데이터베이스 테이블 생성 완료")
 
-            # 기본 데이터 삽입 (logger 전달)
-            db_manager.seed_example_data(logger=logger)
+            db_manager.seed_example_data(logger=logger)  # 예시 데이터 삽입
             logger.info("✅ 기본 데이터 삽입 완료")
         except Exception as e:
             logger.error(f"❌ 데이터베이스 초기화 실패: {e}")
             raise e
     else:
+        # 기존 데이터베이스인 경우: 설정값 확인 및 추가
         logger.info(f"기존 데이터베이스 파일 발견: {db_path}")
         try:
-            # 스크립트 개수 확인
             scripts = db_manager.get_all_scripts()
             script_count = len(scripts)
 
@@ -65,26 +72,26 @@ def initialize_database() -> None:
                 logger.info("데이터베이스에 스크립트가 없습니다. 예시 데이터 생성 중...")
                 db_manager.seed_example_data(logger=logger)
                 logger.info("✅ 예시 데이터 생성 완료")
-                # 스크립트 다시 조회 (생성된 스크립트 ID를 얻기 위해)
-                scripts = db_manager.get_all_scripts()
+                scripts = db_manager.get_all_scripts()  # 생성된 스크립트 ID를 얻기 위해 재조회
 
             # 기본 설정값 확인 및 추가
             import json
 
+            # 사이드바 너비 기본값 설정
             sidebar_width = db_manager.get_user_setting("sidebar-width")
             if sidebar_width is None:
                 db_manager.save_user_setting("sidebar-width", "300")
                 logger.info("✅ 기본 설정값 추가: sidebar-width")
 
-            # script-order 설정 확인 및 추가
+            # 스크립트 순서 기본값 설정
             script_order = db_manager.get_user_setting("script-order")
             if script_order is None:
                 if len(scripts) > 0:
-                    # 스크립트가 있으면 현재 스크립트 ID 순서로 저장
+                    # 기존 스크립트 ID 순서로 저장
                     script_ids = [script["id"] for script in scripts]
                     script_order_json = json.dumps(script_ids, ensure_ascii=False)
                 else:
-                    # 스크립트가 없으면 빈 배열로 초기화
+                    # 스크립트가 없으면 빈 배열
                     script_order_json = "[]"
                 db_manager.save_user_setting("script-order", script_order_json)
                 logger.info(f"✅ 기본 설정값 추가: script-order = {script_order_json}")
@@ -120,6 +127,7 @@ app.include_router(state_router)
 app.include_router(node_router)
 app.include_router(config_router)
 app.include_router(action_node_router)
+app.include_router(dashboard_router)
 
 # 정적 파일 서빙 설정 (개발 환경)
 ui_path = os.path.join(os.path.dirname(__file__), "..", "UI", "src")

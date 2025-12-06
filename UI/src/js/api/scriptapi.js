@@ -223,6 +223,65 @@ export const ScriptAPI = {
             });
             throw error;
         }
+    },
+
+    /**
+     * 스크립트 활성/비활성 상태 토글
+     * @param {number} scriptId - 스크립트 ID
+     * @param {boolean} active - 활성화 여부
+     * @returns {Promise<Object>} 업데이트 결과
+     */
+    async toggleScriptActive(scriptId, active) {
+        const logger = getLogger();
+        logger.log('[ScriptAPI] toggleScriptActive() 호출됨');
+        logger.log('[ScriptAPI] 스크립트 ID:', scriptId);
+        logger.log('[ScriptAPI] 활성 상태:', active);
+        logger.log('[ScriptAPI] API 요청 시작: PATCH /api/scripts/' + scriptId + '/active');
+
+        try {
+            const startTime = performance.now();
+            const result = await apiCall(`/api/scripts/${scriptId}/active`, {
+                method: 'PATCH',
+                body: JSON.stringify({ active: active })
+            });
+            const endTime = performance.now();
+
+            logger.log('[ScriptAPI] ✅ API 응답 받음:', result);
+            logger.log(`[ScriptAPI] 응답 시간: ${(endTime - startTime).toFixed(2)}ms`);
+            logger.log(`[ScriptAPI] 업데이트된 활성 상태: ${result.active}`);
+
+            return result;
+        } catch (error) {
+            logger.error('[ScriptAPI] ❌ API 요청 실패:', error);
+            logger.error('[ScriptAPI] 에러 상세:', {
+                message: error.message,
+                stack: error.stack
+            });
+            throw error;
+        }
+    },
+
+    async updateScriptOrder(scriptOrders) {
+        const logger = getLogger();
+        logger.log('[ScriptAPI] updateScriptOrder() 호출됨');
+        logger.log('[ScriptAPI] 스크립트 순서:', scriptOrders);
+        logger.log('[ScriptAPI] API 요청 시작: PATCH /api/scripts/order');
+
+        try {
+            const startTime = performance.now();
+            const result = await apiCall('/api/scripts/order', {
+                method: 'PATCH',
+                body: JSON.stringify(scriptOrders)
+            });
+            const endTime = performance.now();
+
+            logger.log('[ScriptAPI] ✅ API 응답 받음:', result);
+            logger.log(`[ScriptAPI] 응답 시간: ${(endTime - startTime).toFixed(2)}ms`);
+            return result;
+        } catch (error) {
+            logger.error('[ScriptAPI] ❌ API 요청 실패:', error);
+            throw error;
+        }
     }
 };
 

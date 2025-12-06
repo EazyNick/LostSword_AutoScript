@@ -41,19 +41,25 @@ async def execute_nodes(request: NodeExecutionRequest) -> ActionResponse:
     노드 기반 워크플로우를 실행합니다.
     노드 간 데이터 전달을 지원합니다.
     """
-    logger.debug(f"execute_nodes 호출됨 - 요청 데이터: {request}")
-    logger.debug(f"실행 모드: {request.execution_mode}")
-    logger.debug(f"노드 개수: {len(request.nodes)}")
+    logger.info(f"[API] execute_nodes 호출됨 - 노드 개수: {len(request.nodes)}, 실행 모드: {request.execution_mode}")
+    logger.debug(f"[API] 요청 데이터: {request}")
 
     # 노드 실행 컨텍스트 생성 (데이터 전달)
     context = NodeExecutionContext()
 
     results = []
+    has_error = False
+    error_message = None
 
     if request.execution_mode == "sequential":
-        logger.debug("순차 실행 시작")
+        logger.info("[API] 순차 실행 시작")
         for i, node in enumerate(request.nodes):
-            logger.debug(f"노드 {i + 1} 실행 중: {node}")
+            node_id = node.get("id", f"node_{i}")
+            node_type = node.get("type", "unknown")
+            node_name = node.get("data", {}).get("title") or node.get("data", {}).get("name") or node_id
+            logger.info(
+                f"[API] 노드 {i + 1}/{len(request.nodes)} 실행 시작 - ID: {node_id}, 타입: {node_type}, 이름: {node_name}"
+            )
             try:
                 # 실행 컨텍스트와 함께 노드 실행
                 result = await action_service.process_node(node, context)
@@ -66,18 +72,41 @@ async def execute_nodes(request: NodeExecutionRequest) -> ActionResponse:
                 if not isinstance(result, dict):
                     result = {"action": node.get("type", "unknown"), "status": "completed", "output": result}
 
+                # 결과의 status가 "failed"인지 확인 (NodeExecutor가 에러를 catch해서 dict로 반환하는 경우)
+                if result.get("status") == "failed" or result.get("error"):
+                    # 에러 발생 플래그 설정
+                    has_error = True
+                    error_msg = result.get("error") or result.get("message") or "노드 실행 실패"
+                    if not error_message:
+                        error_message = error_msg
+                    logger.error(
+                        f"[API] 노드 {i + 1}/{len(request.nodes)} 실행 실패 (status: failed) - ID: {node_id}, 타입: {node_type}, 이름: {node_name}, 에러: {error_msg}"
+                    )
+                else:
+                    logger.info(
+                        f"[API] 노드 {i + 1}/{len(request.nodes)} 실행 성공 - ID: {node_id}, 타입: {node_type}, 이름: {node_name}, 상태: {result.get('status', 'completed')}"
+                    )
+
                 results.append(result)
-                logger.debug(f"노드 {i + 1} 실행 완료: {result}")
+                logger.debug(f"[API] 노드 {i + 1} 실행 결과: {result}")
             except Exception as node_error:
-                logger.error(f"노드 {i + 1} 실행 실패: {node_error}")
+                logger.error(
+                    f"[API] 노드 {i + 1}/{len(request.nodes)} 실행 실패 (예외 발생) - ID: {node_id}, 타입: {node_type}, 이름: {node_name}, 에러: {node_error}"
+                )
                 node_id = node.get("id", f"node_{i}")
                 node_name = node.get("data", {}).get("title") or node.get("data", {}).get("name")
+                error_msg = str(node_error)
+
+                # 에러 발생 플래그 설정
+                has_error = True
+                if not error_message:
+                    error_message = error_msg
 
                 # 에러 결과도 항상 dict로 반환
                 error_result = {
                     "action": node.get("type", "unknown"),
                     "status": "failed",
-                    "error": str(node_error),
+                    "error": error_msg,
                     "node_id": node_id,
                     "output": None,
                 }
@@ -90,8 +119,24 @@ async def execute_nodes(request: NodeExecutionRequest) -> ActionResponse:
         # 병렬 실행 로직 (향후 구현)
         raise HTTPException(status_code=501, detail="병렬 실행은 아직 지원되지 않습니다.")
 
-    logger.debug(f"모든 노드 실행 완료 - 결과: {results}")
+    logger.info(
+        f"[API] 모든 노드 실행 완료 - 총 {len(request.nodes)}개 노드, 성공: {len([r for r in results if r.get('status') != 'failed' and not r.get('error')])}개, 실패: {len([r for r in results if r.get('status') == 'failed' or r.get('error')])}개"
+    )
+    logger.debug(f"[API] 실행 결과 상세: {results}")
 
+    # 에러가 발생했으면 success: False 반환
+    if has_error:
+        logger.warning(f"[API] 노드 실행 중 오류 발생 - 에러 메시지: {error_message}")
+        return ActionResponse(
+            success=False,
+            message=f"노드 실행 중 오류 발생: {error_message}",
+            data={
+                "results": results,
+                "context": context.to_dict(),  # 컨텍스트 정보도 반환 (디버깅용)
+            },
+        )
+
+    logger.info(f"[API] 모든 노드 실행 성공 - {len(request.nodes)}개 노드 모두 성공")
     return ActionResponse(
         success=True,
         message=f"{len(request.nodes)}개 노드 실행 완료",

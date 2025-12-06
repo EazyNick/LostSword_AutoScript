@@ -270,6 +270,9 @@ async def execute_script(script_id: int, request: NodeExecutionRequest) -> dict[
 
         # 노드들 순차 실행
         results = []
+        has_error = False
+        error_message = None
+
         for node in request.nodes:
             try:
                 # 실제 노드 실행 로직
@@ -277,7 +280,17 @@ async def execute_script(script_id: int, request: NodeExecutionRequest) -> dict[
                 results.append(result)
 
             except Exception as e:
-                results.append({"error": str(e)})
+                # 노드 실행 중 에러 발생
+                error_msg = str(e)
+                results.append({"error": error_msg})
+                has_error = True
+                if not error_message:
+                    error_message = error_msg
+                logger.error(f"[API] 노드 실행 실패 - 노드 타입: {node.get('type', 'unknown')}, 에러: {error_msg}")
+
+        # 에러가 발생했으면 success: False 반환
+        if has_error:
+            return {"success": False, "message": f"스크립트 실행 중 오류 발생: {error_message}", "results": results}
 
         return {"success": True, "message": "스크립트 실행 완료", "results": results}
 
@@ -285,3 +298,62 @@ async def execute_script(script_id: int, request: NodeExecutionRequest) -> dict[
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"스크립트 실행 실패: {e!s}")
+
+
+@router.patch("/scripts/{script_id}/active", response_model=dict)
+async def toggle_script_active(
+    script_id: int, request: Request, active: bool = Body(..., embed=True)
+) -> dict[str, Any]:
+    """스크립트 활성/비활성 상태 토글"""
+    client_ip = request.client.host if request.client else "unknown"
+    logger.info(
+        f"[API] 스크립트 활성 상태 변경 요청 - 스크립트 ID: {script_id}, 활성: {active}, 클라이언트 IP: {client_ip}"
+    )
+
+    try:
+        # 스크립트 존재 확인
+        logger.info(f"[DB 조회] 스크립트 조회 시작 - 스크립트 ID: {script_id}")
+        script = db_manager.get_script(script_id)
+        if not script:
+            logger.warning(f"[DB 조회] 스크립트를 찾을 수 없음 - 스크립트 ID: {script_id}")
+            raise HTTPException(status_code=404, detail="스크립트를 찾을 수 없습니다.")
+
+        script_name = script.get("name", "N/A")
+        logger.info(f"[DB 조회] 스크립트 조회 완료 - 스크립트 ID: {script_id}, 이름: {script_name}")
+
+        # 활성 상태 업데이트
+        logger.info(f"[DB 저장] 스크립트 활성 상태 업데이트 시작 - 스크립트 ID: {script_id}, 활성: {active}")
+        success = db_manager.update_script_active(script_id, active)
+
+        if success:
+            logger.info(f"[DB 저장] 스크립트 활성 상태 업데이트 완료 - 스크립트 ID: {script_id}, 활성: {active}")
+            logger.info(
+                f"[API] 스크립트 활성 상태 변경 성공 - 스크립트 ID: {script_id}, 이름: {script_name}, 활성: {active}"
+            )
+            return {"message": "스크립트 활성 상태가 변경되었습니다.", "active": active}
+        logger.error(f"[DB 저장] 스크립트 활성 상태 업데이트 실패 - 스크립트 ID: {script_id}")
+        raise HTTPException(status_code=500, detail="스크립트 활성 상태 변경 실패")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[API] 스크립트 활성 상태 변경 실패 - 스크립트 ID: {script_id}, 에러: {e!s}")
+        raise HTTPException(status_code=500, detail=f"스크립트 활성 상태 변경 실패: {e!s}")
+
+
+@router.patch("/scripts/order", response_model=dict)
+async def update_script_order(request: Request, script_orders: list[dict[str, int]] = Body(...)) -> dict[str, Any]:
+    """스크립트 순서 업데이트"""
+    client_ip = request.client.host if request.client else "unknown"
+    logger.info(f"[API] 스크립트 순서 업데이트 요청 받음 - 클라이언트 IP: {client_ip}, 순서: {script_orders}")
+    try:
+        success = db_manager.update_script_order(script_orders)
+        if success:
+            logger.info(f"[API] 스크립트 순서 업데이트 성공 - 순서: {script_orders}")
+            return {"message": "스크립트 순서가 업데이트되었습니다.", "orders": script_orders}
+        raise HTTPException(status_code=500, detail="스크립트 순서 업데이트 실패")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[API] 스크립트 순서 업데이트 실패 - 에러: {e!s}")
+        raise HTTPException(status_code=500, detail=f"스크립트 순서 업데이트 실패: {e!s}")

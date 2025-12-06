@@ -109,26 +109,21 @@ export class SidebarManager {
                 log('[Sidebar] ✅ 서버에서 스크립트 목록 받음:', scripts);
                 log(`[Sidebar] 받은 스크립트 개수: ${scripts.length}개`);
 
+                // 서버에서 이미 execution_order 기준으로 정렬되어 반환되므로 별도 정렬 불필요
+
                 // 서버 데이터를 사이드바 형식으로 변환
+                // DB의 active 필드를 유지 (서버에서 받은 active 값 사용)
                 this.scripts = scripts.map((script, index) => ({
                     id: script.id,
                     name: script.name,
                     description: script.description || '',
                     date: this.formatDate(script.updated_at || script.created_at),
-                    active: index === 0 // 첫 번째 스크립트를 기본 선택
+                    active: index === 0, // 첫 번째 스크립트를 기본 선택 (로컬 선택 상태)
+                    dbActive: script.active !== undefined ? script.active : true // DB의 active 필드 (실제 활성화 상태)
                 }));
 
-                // 저장된 순서 적용 (비동기)
-                const savedOrder = await this.loadScriptOrder();
-                if (savedOrder) {
-                    this.applyScriptOrder(savedOrder);
-                } else {
-                    // 최초 실행 시 저장된 순서가 없으면 현재 스크립트 순서를 DB에 저장
-                    if (this.scripts.length > 0) {
-                        log('[Sidebar] 최초 실행: 현재 스크립트 순서를 DB에 저장');
-                        await this.saveScriptOrder();
-                    }
-                }
+                // DB에서 받은 순서가 이미 execution_order로 정렬되어 있으므로 별도 순서 적용 불필요
+                // (서버에서 ORDER BY execution_order로 정렬하여 반환)
 
                 // 저장된 포커스된 스크립트 ID 복원
                 let focusedScriptIndex = 0; // 기본값: 첫 번째 스크립트
@@ -548,7 +543,10 @@ export class SidebarManager {
             log(`[Sidebar] 스크립트 ${index + 1} 렌더링 중: ${script.name}`);
 
             const scriptItem = document.createElement('div');
-            scriptItem.className = `script-item ${script.active ? 'active' : ''}`;
+            // DB의 active 필드를 기준으로 비활성화 클래스 추가
+            const isDbActive = script.dbActive !== undefined ? script.dbActive : true;
+            const isDbActiveValue = isDbActive === true || isDbActive === 1;
+            scriptItem.className = `script-item ${script.active ? 'active' : ''} ${!isDbActiveValue ? 'inactive' : ''}`;
             scriptItem.draggable = true;
             scriptItem.dataset.scriptIndex = index;
 
@@ -718,17 +716,47 @@ export class SidebarManager {
         // UI 업데이트
         this.loadScripts();
 
-        // 순서 저장 (비동기)
-        this.saveScriptOrder().catch((error) => {
+        // 순서 저장 (비동기) - DB에 execution_order 업데이트
+        this.saveScriptOrderToDB().catch((error) => {
             const logger = getLogger();
-            logger.error('[Sidebar] 스크립트 순서 저장 실패:', error);
+            logger.error('[Sidebar] 스크립트 실행 순서 DB 저장 실패:', error);
         });
 
         log('[Sidebar] ✅ 스크립트 순서 변경 완료');
     }
 
     /**
-     * 스크립트 순서를 서버에 저장
+     * 스크립트 실행 순서를 DB에 저장 (execution_order 업데이트)
+     */
+    async saveScriptOrderToDB() {
+        const logger = getLogger();
+        const log = logger.log;
+        const logWarn = logger.warn;
+        const logError = logger.error;
+
+        // 현재 순서대로 execution_order 설정 (0부터 시작)
+        // 이 순서는 '전체 실행' 시에도 사용됨
+        const scriptOrders = this.scripts.map((script, index) => ({
+            id: script.id,
+            order: index
+        }));
+
+        try {
+            // ScriptAPI를 통해 DB에 실행 순서 업데이트
+            if (ScriptAPI && typeof ScriptAPI.updateScriptOrder === 'function') {
+                await ScriptAPI.updateScriptOrder(scriptOrders);
+                log('[Sidebar] 스크립트 실행 순서 DB에 저장됨:', scriptOrders);
+            } else {
+                logWarn('[Sidebar] ScriptAPI.updateScriptOrder를 사용할 수 없습니다.');
+            }
+        } catch (error) {
+            logError('[Sidebar] 스크립트 실행 순서 DB 저장 실패:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * 스크립트 순서를 서버에 저장 (기존 방식 - 호환성 유지)
      */
     async saveScriptOrder() {
         const logger = getLogger();
@@ -1291,15 +1319,6 @@ export class SidebarManager {
 
         log('[Sidebar] runAllScripts() 호출됨');
 
-        if (this.scripts.length === 0) {
-            logWarn('[Sidebar] 실행할 스크립트가 없습니다.');
-            const modalManager = getModalManagerInstance();
-            if (modalManager) {
-                modalManager.showAlert('알림', '실행할 스크립트가 없습니다.');
-            }
-            return;
-        }
-
         // 실행 중 플래그 설정 (중복 실행 방지 / 취소 처리)
         if (this.isRunningAllScripts === true) {
             // 실행 중인 경우 취소 처리
@@ -1314,11 +1333,45 @@ export class SidebarManager {
         // 버튼 상태 설정 (다른 버튼 비활성화, 실행 중인 버튼 활성화)
         this.setButtonsState('running', 'run-all-scripts-btn');
 
+        // 서버에서 최신 스크립트 목록 조회 (DB의 active 필드 기준)
+        log('[Sidebar] 서버에서 최신 스크립트 목록 조회 중...');
+        let allScripts = [];
+        try {
+            if (ScriptAPI && typeof ScriptAPI.getAllScripts === 'function') {
+                allScripts = await ScriptAPI.getAllScripts();
+                log(`[Sidebar] 서버에서 ${allScripts.length}개 스크립트 조회 완료`);
+            } else {
+                logWarn('[Sidebar] ScriptAPI를 사용할 수 없습니다. 로컬 스크립트 목록 사용');
+                allScripts = this.scripts;
+            }
+        } catch (error) {
+            logError('[Sidebar] 스크립트 목록 조회 실패, 로컬 스크립트 목록 사용:', error);
+            allScripts = this.scripts;
+        }
+
+        // DB의 active 필드를 기준으로 활성화된 스크립트만 필터링
+        // active가 true이거나 undefined인 경우 활성으로 간주 (기본값 1)
+        const activeScripts = allScripts.filter((script) => {
+            const isActive = script.active !== undefined ? script.active : true;
+            return isActive === true || isActive === 1;
+        });
+
+        if (activeScripts.length === 0) {
+            logWarn('[Sidebar] 실행할 활성화된 스크립트가 없습니다.');
+            const modalManager = getModalManagerInstance();
+            if (modalManager) {
+                modalManager.showAlert('알림', '실행할 활성화된 스크립트가 없습니다.');
+            }
+            this.isRunningAllScripts = false;
+            this.setButtonsState('idle');
+            return;
+        }
+
         // 스크립트 개수 기준 카운터 (try-catch 블록 밖에서 선언)
         let successCount = 0;
         let failCount = 0;
         let cancelledCount = 0;
-        const totalCount = this.scripts.length;
+        const totalCount = activeScripts.length;
 
         // WorkflowPage 인스턴스 가져오기 (finally 블록에서도 접근 가능하도록 밖에서 정의)
         const getWorkflowPage = () => {
@@ -1336,10 +1389,10 @@ export class SidebarManager {
         try {
             const modalManager = getModalManagerInstance();
 
-            log(`[Sidebar] 총 ${totalCount}개 스크립트 실행 시작`);
+            log(`[Sidebar] 총 ${totalCount}개 활성화된 스크립트 실행 시작`);
 
-            // 최상단 스크립트부터 순차적으로 실행
-            for (let i = 0; i < this.scripts.length; i++) {
+            // 최상단 스크립트부터 순차적으로 실행 (활성화된 스크립트만)
+            for (let i = 0; i < activeScripts.length; i++) {
                 // 취소 플래그 체크
                 if (this.isCancelled) {
                     log('[Sidebar] 실행이 취소되었습니다.');
@@ -1354,13 +1407,40 @@ export class SidebarManager {
                     break;
                 }
 
-                const script = this.scripts[i];
-                log(`[Sidebar] 스크립트 ${i + 1}/${this.scripts.length} 실행 중: ${script.name} (ID: ${script.id})`);
+                const script = activeScripts[i];
+                log(`[Sidebar] 스크립트 ${i + 1}/${activeScripts.length} 실행 중: ${script.name} (ID: ${script.id})`);
 
                 try {
                     // 1. 스크립트 선택 (포커스)
-                    log(`[Sidebar] 스크립트 "${script.name}" 선택 중...`);
-                    this.selectScript(i);
+                    // allScripts 배열에서 실제 인덱스를 찾아야 함
+                    const actualIndex = allScripts.findIndex((s) => s.id === script.id);
+                    if (actualIndex === -1) {
+                        logWarn(
+                            `[Sidebar] 스크립트 "${script.name}" (ID: ${script.id})를 스크립트 목록에서 찾을 수 없습니다. 건너뜀.`
+                        );
+                        failCount++;
+                        continue;
+                    }
+                    log(`[Sidebar] 스크립트 "${script.name}" 선택 중... (실제 인덱스: ${actualIndex})`);
+                    // selectScript는 this.scripts 배열의 인덱스를 기대하므로,
+                    // 먼저 this.scripts를 업데이트한 후 선택
+                    const localIndex = this.scripts.findIndex((s) => s.id === script.id);
+                    if (localIndex !== -1) {
+                        this.selectScript(localIndex);
+                    } else {
+                        // 로컬에 없으면 서버에서 다시 로드
+                        await this.loadScriptsFromServer();
+                        const newLocalIndex = this.scripts.findIndex((s) => s.id === script.id);
+                        if (newLocalIndex !== -1) {
+                            this.selectScript(newLocalIndex);
+                        } else {
+                            logWarn(
+                                `[Sidebar] 스크립트 "${script.name}" (ID: ${script.id})를 로컬에서 찾을 수 없습니다. 건너뜀.`
+                            );
+                            failCount++;
+                            continue;
+                        }
+                    }
 
                     // 2. 스크립트 로드 완료 대기 (노드들이 화면에 렌더링될 때까지)
                     await new Promise((resolve) => setTimeout(resolve, 500));
@@ -1426,7 +1506,7 @@ export class SidebarManager {
                     }
 
                     // 스크립트 간 대기 시간 (선택적, 필요시 조정)
-                    if (i < this.scripts.length - 1) {
+                    if (i < activeScripts.length - 1) {
                         await new Promise((resolve) => setTimeout(resolve, 500));
                     }
                 } catch (error) {

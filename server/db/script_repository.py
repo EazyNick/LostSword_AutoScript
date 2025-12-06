@@ -54,10 +54,19 @@ class ScriptRepository:
 
     def _create_script_impl(self, cursor: sqlite3.Cursor, name: str, description: str) -> int:
         """스크립트 생성 구현"""
+        # 현재 스크립트 개수 조회
+        cursor.execute("SELECT COUNT(*) FROM scripts")
+        script_count = cursor.fetchone()[0]
+
+        # 스크립트 생성
         cursor.execute("INSERT INTO scripts (name, description) VALUES (?, ?)", (name, description))
         rowid = cursor.lastrowid
         if rowid is None:
             raise ValueError("스크립트 생성 실패: lastrowid가 None입니다")
+
+        # execution_order를 (스크립트 개수 + 1)로 설정 (새 스크립트는 맨 뒤에 배치)
+        new_execution_order = script_count + 1
+        cursor.execute("UPDATE scripts SET execution_order = ? WHERE id = ?", (new_execution_order, rowid))
         return rowid
 
     def get_all_scripts(self) -> list[dict[str, Any]]:
@@ -71,16 +80,36 @@ class ScriptRepository:
         cursor = self.connection.get_cursor(conn)
 
         try:
+            # active, last_executed_at, execution_order 필드 포함 (컬럼이 없을 수 있으므로 COALESCE 사용)
+            # execution_order 기준으로 정렬 (NULL이면 id 사용)하여 대시보드와 스크립트 페이지의 순서를 일치시킴
+            # 이 순서는 '전체 실행' 시에도 사용됨
             cursor.execute("""
-                SELECT id, name, description, created_at, updated_at
+                SELECT
+                    id,
+                    name,
+                    description,
+                    COALESCE(active, 1) as active,
+                    COALESCE(execution_order, id) as execution_order,
+                    last_executed_at,
+                    created_at,
+                    updated_at
                 FROM scripts
-                ORDER BY updated_at DESC
+                ORDER BY COALESCE(execution_order, id) ASC, id ASC
             """)
 
             scripts = []
             for row in cursor.fetchall():
                 scripts.append(
-                    {"id": row[0], "name": row[1], "description": row[2], "created_at": row[3], "updated_at": row[4]}
+                    {
+                        "id": row[0],
+                        "name": row[1],
+                        "description": row[2],
+                        "active": bool(row[3]) if row[3] is not None else True,
+                        "execution_order": row[4] if row[4] is not None else row[0],  # execution_order가 없으면 id 사용
+                        "last_executed_at": row[5],
+                        "created_at": row[6],
+                        "updated_at": row[7],
+                    }
                 )
 
             return scripts
@@ -101,9 +130,21 @@ class ScriptRepository:
         cursor = self.connection.get_cursor(conn)
 
         try:
-            # 스크립트 정보 조회
+            # 스크립트 정보 조회 (active, last_executed_at 필드 포함)
             cursor.execute(
-                "SELECT id, name, description, created_at, updated_at FROM scripts WHERE id = ?", (script_id,)
+                """
+                SELECT
+                    id,
+                    name,
+                    description,
+                    COALESCE(active, 1) as active,
+                    last_executed_at,
+                    created_at,
+                    updated_at
+                FROM scripts
+                WHERE id = ?
+                """,
+                (script_id,),
             )
             script_row = cursor.fetchone()
 
@@ -116,8 +157,10 @@ class ScriptRepository:
                 "id": script_row[0],
                 "name": script_row[1],
                 "description": script_row[2],
-                "created_at": script_row[3],
-                "updated_at": script_row[4],
+                "active": bool(script_row[3]) if script_row[3] is not None else True,
+                "last_executed_at": script_row[4],
+                "created_at": script_row[5],
+                "updated_at": script_row[6],
             }
         finally:
             conn.close()
@@ -142,6 +185,30 @@ class ScriptRepository:
         cursor.execute("UPDATE scripts SET updated_at = CURRENT_TIMESTAMP WHERE id = ?", (script_id,))
         return True
 
+    def update_script_active(self, script_id: int, active: bool) -> bool:
+        """
+        스크립트 활성/비활성 상태 업데이트
+
+        Args:
+            script_id: 스크립트 ID
+            active: 활성화 여부 (True: 활성, False: 비활성)
+
+        Returns:
+            성공 여부
+        """
+        result: bool = self.connection.execute_with_connection(
+            lambda _conn, cursor: self._update_active_impl(cursor, script_id, active)
+        )
+        return result
+
+    def _update_active_impl(self, cursor: sqlite3.Cursor, script_id: int, active: bool) -> bool:
+        """활성 상태 업데이트 구현"""
+        cursor.execute(
+            "UPDATE scripts SET active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (1 if active else 0, script_id),
+        )
+        return cursor.rowcount > 0
+
     def delete_script(self, script_id: int) -> bool:
         """
         스크립트 삭제
@@ -159,8 +226,53 @@ class ScriptRepository:
 
     def _delete_script_impl(self, cursor: sqlite3.Cursor, script_id: int) -> bool:
         """스크립트 삭제 구현"""
+        # 삭제 전에 execution_order 조회
+        cursor.execute("SELECT execution_order FROM scripts WHERE id = ?", (script_id,))
+        result = cursor.fetchone()
+        if not result:
+            return False
+
+        deleted_order = result[0]
+
+        # 스크립트 삭제
         cursor.execute("DELETE FROM scripts WHERE id = ?", (script_id,))
-        return cursor.rowcount > 0
+        if cursor.rowcount == 0:
+            return False
+
+        # 삭제된 스크립트보다 큰 execution_order를 가진 모든 스크립트의 execution_order를 -1씩 감소
+        if deleted_order is not None:
+            cursor.execute(
+                "UPDATE scripts SET execution_order = execution_order - 1 WHERE execution_order > ?", (deleted_order,)
+            )
+
+        return True
+
+    def update_script_order(self, script_orders: list[dict[str, int]]) -> bool:
+        """
+        스크립트 실행 순서 업데이트
+
+        Args:
+            script_orders: [{"id": script_id, "order": execution_order}, ...] 형식의 리스트
+
+        Returns:
+            성공 여부
+        """
+        result: bool = self.connection.execute_with_connection(
+            lambda _conn, cursor: self._update_script_order_impl(cursor, script_orders)
+        )
+        return result
+
+    def _update_script_order_impl(self, cursor: sqlite3.Cursor, script_orders: list[dict[str, int]]) -> bool:
+        """스크립트 실행 순서 업데이트 구현"""
+        for script_order in script_orders:
+            script_id = script_order.get("id")
+            execution_order = script_order.get("order")
+            if script_id is not None and execution_order is not None:
+                cursor.execute(
+                    "UPDATE scripts SET execution_order = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                    (execution_order, script_id),
+                )
+        return True
 
 
 # ============================================================================

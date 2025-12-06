@@ -8,33 +8,49 @@ import { NODE_TYPES } from '../constants/node-types.js';
 import { ScriptAPI } from '../../../js/api/scriptapi.js';
 
 export class WorkflowLoadService {
+    /**
+     * 워크플로우 로드 서비스
+     * 서버에서 스크립트 데이터를 가져와 화면에 렌더링합니다.
+     */
     constructor(workflowPage) {
-        this.workflowPage = workflowPage;
+        this.workflowPage = workflowPage; // WorkflowPage 인스턴스 참조
+        this.isLoading = false; // 중복 로드 방지 플래그
     }
 
     /**
      * 스크립트 데이터 로드
-     * @param {Object} script - 스크립트 정보
+     * 서버에서 노드 및 연결 정보를 가져와 화면에 표시합니다.
+     * @param {Object} script - 스크립트 정보 {id, name, description}
      */
     async load(script) {
         const logger = this.workflowPage.getLogger();
         const log = logger.log;
         const logError = logger.error;
 
+        // 중복 로드 방지
+        if (this.isLoading) {
+            log('[WorkflowPage] ⚠️ 이미 로딩 중입니다. 중복 로드 방지');
+            return;
+        }
+
         log('[WorkflowPage] loadScriptData() 호출됨');
         log('[WorkflowPage] 로드할 스크립트:', { id: script?.id, name: script?.name });
 
+        // 유효성 검사
         if (!script || !script.id) {
             logError('[WorkflowPage] ⚠️ 유효하지 않은 스크립트 정보:', script);
             return;
         }
 
-        // 연결선 매니저 초기화 확인
+        // 로딩 시작
+        this.isLoading = true;
+
+        // 1. 연결선 매니저 초기화 확인
         this.workflowPage.ensureConnectionManagerInitialized();
 
         const nodeManager = this.workflowPage.getNodeManager();
 
-        // 기존 노드들 제거
+        // 2. 기존 노드들 제거 (스크립트 전환 시)
         this.clearExistingNodes(nodeManager);
 
         try {
@@ -75,13 +91,16 @@ export class WorkflowLoadService {
         } catch (error) {
             logError('[WorkflowPage] ❌ 노드 데이터 로드 실패:', error);
             this.workflowPage.createDefaultBoundaryNodes();
+        } finally {
+            // 로딩 완료
+            this.isLoading = false;
         }
     }
 
     /**
      * 기존 노드들 제거
-     * 스크립트 전환 시 또는 초기 로드 시 호출됩니다.
-     * 스크립트 전환 시이므로 시작/종료 노드도 포함하여 모든 노드를 강제 삭제합니다.
+     * 스크립트 전환 시 화면의 모든 노드를 제거합니다.
+     * @param {NodeManager} nodeManager - 노드 관리자 인스턴스
      */
     clearExistingNodes(nodeManager) {
         const logger = this.workflowPage.getLogger();
@@ -94,15 +113,15 @@ export class WorkflowLoadService {
             return;
         }
 
-        // nodeManager의 nodes 배열에서 제거 (스크립트 전환 시이므로 강제 삭제)
+        // 1. NodeManager의 nodes 배열에서 제거
         if (nodeManager.nodes && nodeManager.nodes.length > 0) {
-            const nodesToDelete = [...nodeManager.nodes]; // 복사본 생성
+            const nodesToDelete = [...nodeManager.nodes]; // 배열 복사 (반복 중 수정 방지)
             log(`[WorkflowPage] NodeManager에서 제거할 노드 개수: ${nodesToDelete.length}개`);
 
             nodesToDelete.forEach((nodeObj) => {
                 if (nodeObj && nodeObj.element) {
                     try {
-                        // 스크립트 전환 시이므로 시작/종료 노드도 강제 삭제
+                        // true: 시작/종료 노드도 포함하여 강제 삭제
                         nodeManager.deleteNode(nodeObj.element, true);
                     } catch (error) {
                         log(`[WorkflowPage] 노드 삭제 중 오류: ${error}`);
@@ -111,14 +130,13 @@ export class WorkflowLoadService {
             });
         }
 
-        // DOM에서도 직접 제거 (혹시 남아있는 경우)
+        // 2. DOM에서 직접 제거 (혹시 남아있는 경우)
         const existingNodes = document.querySelectorAll('.workflow-node');
         if (existingNodes.length > 0) {
             log(`[WorkflowPage] DOM에서 추가로 제거할 노드 개수: ${existingNodes.length}개`);
             existingNodes.forEach((node) => {
                 try {
                     if (nodeManager) {
-                        // 스크립트 전환 시이므로 시작/종료 노드도 강제 삭제
                         nodeManager.deleteNode(node, true);
                     } else {
                         node.remove();
@@ -129,7 +147,7 @@ export class WorkflowLoadService {
             });
         }
 
-        // nodeData도 초기화
+        // 3. nodeData 초기화
         if (nodeManager.nodeData) {
             nodeManager.nodeData = {};
             log('[WorkflowPage] nodeData 초기화 완료');
@@ -140,6 +158,9 @@ export class WorkflowLoadService {
 
     /**
      * 노드들의 연결 정보로부터 connections 배열 생성
+     * 하위 호환성을 위해 노드의 connected_to 필드에서 연결 정보를 추출합니다.
+     * @param {Array} nodes - 노드 배열
+     * @returns {Array} connections 배열
      */
     buildConnectionsFromNodes(nodes) {
         const logger = this.workflowPage.getLogger();
@@ -251,6 +272,9 @@ export class WorkflowLoadService {
 
     /**
      * 서버 데이터로부터 노드 생성
+     * 서버에서 받은 노드 데이터를 NodeManager 형식으로 변환하여 생성합니다.
+     * @param {Object} nodeData - 서버에서 받은 노드 데이터
+     * @param {NodeManager} nodeManager - 노드 관리자 인스턴스
      */
     async createNodeFromServerData(nodeData, nodeManager) {
         const originalX = nodeData.position?.x || 0;
@@ -351,6 +375,9 @@ export class WorkflowLoadService {
 
     /**
      * 연결선 복원
+     * 저장된 연결 정보를 화면에 다시 그립니다.
+     * @param {Array} connections - 연결 정보 배열 [{from, to, outputType}, ...]
+     * @param {NodeManager} nodeManager - 노드 관리자 인스턴스
      */
     restoreConnections(connections, nodeManager) {
         const logger = this.workflowPage.getLogger();
