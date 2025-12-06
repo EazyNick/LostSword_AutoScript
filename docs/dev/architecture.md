@@ -50,9 +50,10 @@
 
 ## 데이터 흐름
 
-1. **저장**: 클라이언트 → `POST /api/scripts/save` → DB
-2. **실행**: 클라이언트 → `POST /api/action/execute` → 노드 실행 → Windows API
+1. **저장**: 클라이언트 → `PUT /api/scripts/{id}` → DB
+2. **실행**: 클라이언트 → `POST /api/execute-nodes` → 노드 실행 → Windows API
 3. **로드**: 클라이언트 → `GET /api/scripts/{id}` → DB → 클라이언트
+4. **통계**: 클라이언트 → `GET /api/dashboard/stats` → DB → 클라이언트
 
 ## 기술 스택
 

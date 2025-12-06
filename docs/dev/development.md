@@ -50,7 +50,7 @@ python -m uvicorn main:app
 
 ```bash
 # API 문서 확인
-# 브라우저: http://localhost:8000/docs
+# 브라우저: http://localhost:8001/docs (기본 포트 8001)
 
 # 포트 변경 (.env 파일 수정)
 API_PORT=8001
