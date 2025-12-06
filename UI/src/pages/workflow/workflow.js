@@ -57,14 +57,26 @@ const getConnectionManager = () => ConnectionManager;
  * 워크플로우 편집 페이지의 전체적인 흐름을 관리합니다.
  */
 export class WorkflowPage {
+    /**
+     * 워크플로우 페이지 관리 클래스
+     * 노드 편집, 저장, 로드, 실행 등의 기능을 통합 관리합니다.
+     */
     constructor() {
-        this.addNodeModal = null;
-        this.nodeSettingsModal = null;
-        this.saveService = null;
-        this.loadService = null;
-        this.executionService = null;
-        this.updateService = null;
-        this.creationService = null;
+        // 모달 인스턴스
+        this.addNodeModal = null; // 노드 추가 모달
+        this.nodeSettingsModal = null; // 노드 설정 모달
+
+        // 서비스 인스턴스
+        this.saveService = null; // 워크플로우 저장 서비스
+        this.loadService = null; // 워크플로우 로드 서비스
+        this.executionService = null; // 워크플로우 실행 서비스
+        this.updateService = null; // 노드 업데이트 서비스
+        this.creationService = null; // 노드 생성 서비스
+
+        // 내부 상태 플래그
+        this._initialized = false; // 중복 초기화 방지 플래그
+        this._eventListenersSetup = false; // 이벤트 리스너 중복 등록 방지 플래그
+        this._scriptChangedHandler = null; // scriptChanged 이벤트 핸들러 (중복 등록 방지용)
 
         this.init();
     }
@@ -95,6 +107,13 @@ export class WorkflowPage {
      * 초기화 메서드
      */
     async init() {
+        // 중복 초기화 방지
+        if (this._initialized) {
+            const logger = this.getLogger();
+            logger.log('[WorkflowPage] 이미 초기화되었습니다. 중복 초기화 방지');
+            return;
+        }
+
         // 페이지 라우터 초기화
         const pageRouter = getPageRouterInstance();
         this.pageRouter = pageRouter;
@@ -119,6 +138,8 @@ export class WorkflowPage {
         if (this.pageRouter.currentPage === 'editor') {
             this.createInitialNodes();
         }
+
+        this._initialized = true;
     }
 
     /**
@@ -158,23 +179,33 @@ export class WorkflowPage {
 
     /**
      * 이벤트 리스너 설정
+     * 버튼 클릭 이벤트를 등록합니다.
      */
     setupEventListeners() {
+        // 중복 등록 방지
+        if (this._eventListenersSetup) {
+            const logger = this.getLogger();
+            logger.log('[WorkflowPage] 이벤트 리스너가 이미 등록되었습니다. 중복 등록 방지');
+            return;
+        }
+
+        // 기본 버튼 이벤트 등록
         document.querySelector('.save-btn')?.addEventListener('click', () => this.saveWorkflow());
         document.querySelector('.add-node-btn')?.addEventListener('click', () => this.showAddNodeModal());
         document.querySelector('.run-btn')?.addEventListener('click', () => this.runWorkflow());
 
-        // 전체 스크립트 실행 버튼 (헤더에 있는 버튼)
+        // 전체 스크립트 실행 버튼 (헤더)
         const runAllBtn = document.querySelector('.header-right .run-all-scripts-btn');
         if (runAllBtn) {
             runAllBtn.addEventListener('click', async () => {
                 const sidebarManager = this.getSidebarManager();
                 if (sidebarManager && typeof sidebarManager.runAllScripts === 'function') {
-                    // runAllScripts() 내부에서 중복 실행 방지 체크를 하므로 여기서는 체크하지 않음
                     await sidebarManager.runAllScripts();
                 }
             });
         }
+
+        this._eventListenersSetup = true;
     }
 
     /**
@@ -185,18 +216,24 @@ export class WorkflowPage {
         const log = logger.log;
 
         // sidebar.js는 document에 이벤트를 dispatch하므로 document에 리스너 등록
-        document.addEventListener('scriptChanged', (e) => {
-            log('[WorkflowPage] scriptChanged 이벤트 받음:', e.detail);
-            this.onScriptChanged(e);
-        });
+        // 중복 등록 방지
+        if (!this._scriptChangedHandler) {
+            this._scriptChangedHandler = (e) => {
+                log('[WorkflowPage] scriptChanged 이벤트 받음:', e.detail);
+                this.onScriptChanged(e);
+            };
+            document.addEventListener('scriptChanged', this._scriptChangedHandler);
+        }
 
         log('[WorkflowPage] ✅ 컴포넌트 이벤트 리스너 설정 완료');
     }
 
     /**
      * 컴포넌트 통합 설정
+     * NodeManager와 WorkflowPage 간의 상호 참조를 설정합니다.
      */
     setupComponentIntegration() {
+        // DOM 로드 완료 대기
         setTimeout(() => {
             const logger = this.getLogger();
             const log = logger.log;
@@ -206,24 +243,12 @@ export class WorkflowPage {
 
             log('[WorkflowPage] setupComponentIntegration() 실행');
 
+            // NodeManager에 WorkflowPage 인스턴스 설정 (양방향 참조)
             if (nodeManager) {
                 nodeManager.setWorkflowPage(this);
                 log('[WorkflowPage] ✅ NodeManager에 WorkflowPage 설정 완료');
             } else {
                 log('[WorkflowPage] ⚠️ NodeManager를 찾을 수 없습니다');
-            }
-
-            if (sidebarManager) {
-                const current = sidebarManager.getCurrentScript();
-                log('[WorkflowPage] 현재 스크립트:', current);
-                if (current) {
-                    log('[WorkflowPage] 초기 스크립트 로드 시작');
-                    this.loadService.load(current);
-                } else {
-                    log('[WorkflowPage] ⚠️ 현재 스크립트가 없습니다');
-                }
-            } else {
-                log('[WorkflowPage] ⚠️ SidebarManager를 찾을 수 없습니다');
             }
         }, 100);
     }
@@ -478,6 +503,8 @@ export class WorkflowPage {
 
     /**
      * 스크립트 변경 처리
+     * 사이드바에서 스크립트 선택 시 호출됩니다.
+     * @param {Event} event - scriptChanged 이벤트 객체
      */
     onScriptChanged(event) {
         const logger = this.getLogger();
@@ -489,12 +516,20 @@ export class WorkflowPage {
         log('[WorkflowPage] 현재 스크립트:', script);
         log('[WorkflowPage] 이전 스크립트:', previousScript);
 
+        // 중복 로드 방지
+        if (this.loadService && this.loadService.isLoading) {
+            log('[WorkflowPage] ⚠️ 이미 로딩 중입니다. 중복 로드 방지');
+            return;
+        }
+
+        // 이전 스크립트가 있으면 저장 후 새 스크립트 로드
         if (previousScript) {
             this.saveWorkflowForScript(previousScript);
             setTimeout(() => {
                 this.loadScriptData(script);
             }, 100);
         } else {
+            // 첫 로드인 경우 바로 로드
             this.loadScriptData(script);
         }
     }
@@ -580,6 +615,15 @@ let workflowPageInstance = null;
  * WorkflowPage 인스턴스 가져오기
  */
 export function getWorkflowPageInstance() {
+    // 이미 인스턴스가 있으면 반환
+    if (workflowPageInstance) {
+        return workflowPageInstance;
+    }
+
+    // 없으면 새로 생성
+    workflowPageInstance = new WorkflowPage();
+    window.workflowPage = workflowPageInstance; // 전역 접근을 위해 window에 노출
+
     return workflowPageInstance;
 }
 
@@ -587,6 +631,16 @@ export function getWorkflowPageInstance() {
  * WorkflowPage 초기화
  */
 export function initializeWorkflowPage(options = {}) {
+    // 중복 초기화 방지
+    if (workflowPageInstance && workflowPageInstance._initialized) {
+        const logger = workflowPageInstance.getLogger();
+        logger.log('[WorkflowPage] 이미 초기화된 인스턴스가 있습니다. 기존 인스턴스 반환');
+        if (options.onReady) {
+            options.onReady(workflowPageInstance);
+        }
+        return workflowPageInstance;
+    }
+
     const workflowPage = new WorkflowPage();
     workflowPage.setupKeyboardShortcuts();
 
@@ -604,6 +658,11 @@ export function initializeWorkflowPage(options = {}) {
  * 자동 초기화 (기존 방식과의 호환성 유지)
  */
 export function autoInitializeWorkflowPage() {
+    // 이미 초기화되었으면 건너뛰기
+    if (workflowPageInstance && workflowPageInstance._initialized) {
+        return;
+    }
+
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
             initializeWorkflowPage();

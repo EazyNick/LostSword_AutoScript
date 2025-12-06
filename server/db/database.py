@@ -25,7 +25,10 @@ except ImportError:
 
 
 class DatabaseManager:
-    """통합 데이터베이스 관리자 클래스"""
+    """
+    통합 데이터베이스 관리자 클래스
+    모든 데이터베이스 작업을 통합 관리합니다.
+    """
 
     def __init__(self, db_path: str | None = None) -> None:
         """
@@ -34,19 +37,19 @@ class DatabaseManager:
         Args:
             db_path: 데이터베이스 파일 경로. None이면 기본 경로 사용
         """
-        # 연결 관리
+        # 데이터베이스 연결 관리
         self.connection = DatabaseConnection(db_path)
 
-        # 테이블 관리
+        # 테이블 생성 및 마이그레이션 관리
         self.table_manager = TableManager(self.connection)
 
-        # 리포지토리들
-        self.user_settings = UserSettingsRepository(self.connection)
-        self.scripts = ScriptRepository(self.connection)
-        self.nodes = NodeRepository(self.connection)
-        self.dashboard_stats = DashboardStatsRepository(self.connection)
+        # 리포지토리 인스턴스 (각 테이블별 데이터 접근)
+        self.user_settings = UserSettingsRepository(self.connection)  # 사용자 설정
+        self.scripts = ScriptRepository(self.connection)  # 스크립트
+        self.nodes = NodeRepository(self.connection)  # 노드
+        self.dashboard_stats = DashboardStatsRepository(self.connection)  # 대시보드 통계
 
-        # 데이터베이스 초기화
+        # 데이터베이스 초기화 (테이블 생성)
         self.init_database()
 
     def init_database(self) -> None:
@@ -80,30 +83,48 @@ class DatabaseManager:
         return self.scripts.get_all_scripts()
 
     def get_script(self, script_id: int) -> dict[str, Any] | None:
-        """특정 스크립트 조회 (노드 및 연결 정보 포함)"""
-        # 기본 스크립트 정보 조회
+        """
+        특정 스크립트 조회 (노드 및 연결 정보 포함)
+
+        Args:
+            script_id: 스크립트 ID
+
+        Returns:
+            스크립트 정보 딕셔너리 (nodes, connections 포함) 또는 None
+        """
+        # 1. 기본 스크립트 정보 조회
         script_info = self.scripts.get_script(script_id)
         if not script_info:
             return None
 
-        # 노드 정보 조회
+        # 2. 노드 정보 조회
         nodes = self.nodes.get_nodes_by_script_id(script_id)
 
-        # 중복 경계 노드 정리
+        # 3. 중복 경계 노드 정리 (start/end 노드 중복 방지)
         nodes = self.nodes.cleanup_duplicate_boundary_nodes(script_id, nodes)
 
-        # 연결 정보 생성
+        # 4. 연결 정보 생성 (노드의 connected_to에서)
         connections = self.nodes.build_connections_from_nodes(nodes)
 
         return {**script_info, "nodes": nodes, "connections": connections}
 
     def save_script_data(self, script_id: int, nodes: list[dict[str, Any]], connections: list[dict[str, Any]]) -> bool:
-        """스크립트의 노드와 연결 정보 저장"""
-        # 노드 저장
+        """
+        스크립트의 노드와 연결 정보 저장
+
+        Args:
+            script_id: 스크립트 ID
+            nodes: 노드 목록
+            connections: 연결 정보 목록
+
+        Returns:
+            저장 성공 여부
+        """
+        # 1. 노드 저장 (연결 정보도 함께 저장)
         success = self.nodes.save_nodes(script_id, nodes, connections)
 
         if success:
-            # 업데이트 시간 갱신
+            # 2. 스크립트 업데이트 시간 갱신
             self.scripts.update_script_timestamp(script_id)
 
         return success
