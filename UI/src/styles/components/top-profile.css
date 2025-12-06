@@ -1,0 +1,105 @@
+/* ========================================== */
+/* 좌측 최상단 프로필 영역 스타일 */
+/* ========================================== */
+
+/* 좌측 최상단 프로필 컨테이너 */
+.top-left-profile {
+    position: fixed; /* 고정 위치 */
+    top: 0; /* 최상단 */
+    left: 0; /* 최좌측 */
+    width: 350px; /* 사이드바와 동일한 너비 (기본값) */
+    min-width: 250px; /* 최소 너비 */
+    max-width: 600px; /* 최대 너비 */
+    height: 80px; /* 헤더와 동일한 높이 */
+    background: #2d3748; /* 단색 배경 (그라데이션 대신) */
+    background-image: linear-gradient(135deg, #2d3748 0%, #1a202c 100%); /* 그라데이션 오버레이 */
+    background-size: 100% 100%; /* 배경 크기 고정 */
+    background-repeat: no-repeat; /* 배경 반복 없음 */
+    border-bottom: 1px solid #4a5568; /* 하단 테두리 */
+    border-right: 1px solid #4a5568; /* 우측 테두리 */
+    display: flex; /* 플렉스박스 레이아웃 */
+    align-items: center; /* 세로 중앙 정렬 */
+    padding: 0 20px; /* 좌우 여백 */
+    gap: 12px; /* 요소들 사이 간격 */
+    z-index: 10000; /* 헤더보다 위에 표시 */
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3); /* 그림자 효과 */
+    overflow: hidden; /* 넘치는 컨텐츠 숨김 */
+    will-change: width; /* 성능 최적화: 너비 변경 예고 */
+    transition: width 0.15s ease-out; /* 너비 변경 시 빠른 전환 */
+}
+
+/* 리사이즈 중일 때 transition 비활성화 */
+.top-left-profile.resizing {
+    transition: none !important; /* 리사이즈 중에는 전환 효과 없음 */
+}
+
+/* 좌측 최상단 프로필 아바타 */
+.top-profile-avatar {
+    width: 48px; /* 아바타 크기 48px */
+    height: 48px; /* 아바타 높이 48px */
+    border-radius: 50%; /* 원형 */
+    background-color: #3182ce; /* 파란색 배경 */
+    display: flex; /* 플렉스박스 */
+    align-items: center; /* 세로 중앙 정렬 */
+    justify-content: center; /* 가로 중앙 정렬 */
+    font-size: 24px; /* 아이콘 크기 */
+    flex-shrink: 0; /* 크기 고정 */
+}
+
+/* 좌측 최상단 프로필 정보 */
+.top-profile-info {
+    display: flex; /* 플렉스박스 */
+    flex-direction: column; /* 세로 방향 배치 */
+    gap: 4px; /* 요소들 사이 간격 */
+    flex: 1; /* 남은 공간 차지 */
+    min-width: 0; /* 텍스트 영역이 축소될 수 있도록 */
+}
+
+/* 좌측 최상단 프로필 이름 */
+.top-profile-name {
+    font-size: 16px; /* 이름 크기 16px */
+    font-weight: 600; /* 중간 굵기 */
+    color: #ffffff; /* 흰색 텍스트 */
+    white-space: nowrap; /* 줄바꿈 없음 */
+    overflow: hidden; /* 넘치는 텍스트 숨김 */
+    text-overflow: ellipsis; /* 말줄임표 표시 */
+}
+
+/* 좌측 최상단 프로필 이메일 */
+.top-profile-email {
+    font-size: 12px; /* 이메일 크기 12px */
+    color: #a0aec0; /* 회색 텍스트 */
+    white-space: nowrap; /* 줄바꿈 없음 */
+    overflow: hidden; /* 넘치는 텍스트 숨김 */
+    text-overflow: ellipsis; /* 말줄임표 표시 */
+}
+
+/* ========================================== */
+/* 반응형 디자인 */
+/* ========================================== */
+
+/* 작은 화면 (768px 이하) */
+@media (max-width: 768px) {
+    /* 모바일에서 좌측 최상단 프로필 이메일 숨김 */
+    .top-profile-email {
+        display: none; /* 이메일 숨김 */
+    }
+
+    /* 모바일에서 좌측 최상단 프로필 패딩 축소 */
+    .top-left-profile {
+        padding: 0 15px; /* 좌우 여백 축소 */
+        height: 70px; /* 높이 축소 */
+    }
+
+    /* 모바일에서 좌측 최상단 프로필 아바타 크기 축소 */
+    .top-profile-avatar {
+        width: 40px; /* 아바타 크기 40px로 축소 */
+        height: 40px; /* 아바타 높이 40px로 축소 */
+        font-size: 20px; /* 아이콘 크기 축소 */
+    }
+
+    /* 모바일에서 좌측 최상단 프로필 이름 크기 축소 */
+    .top-profile-name {
+        font-size: 14px; /* 이름 크기 14px로 축소 */
+    }
+}

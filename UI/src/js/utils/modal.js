@@ -50,11 +50,25 @@ export class ModalManager {
         this.modal.style.display = 'block';
         this.modal.classList.add('show');
 
+        // 사이드바 너비를 CSS 변수로 설정 (모달 콘텐츠 위치 계산용)
+        this.updateModalPosition();
+
         // 포커스 관리
         const firstInput = this.modalBody.querySelector('input, select, textarea');
         if (firstInput) {
             setTimeout(() => firstInput.focus(), 100);
         }
+    }
+
+    /**
+     * 사이드바를 제외한 메인 캔버스 기준으로 모달 위치 업데이트
+     */
+    updateModalPosition() {
+        const sidebar = document.querySelector('.sidebar');
+        const sidebarWidth = sidebar ? sidebar.offsetWidth : 350; // 기본값 350px
+
+        // CSS 변수로 사이드바 너비 설정
+        document.documentElement.style.setProperty('--sidebar-width', `${sidebarWidth}px`);
     }
 
     close() {

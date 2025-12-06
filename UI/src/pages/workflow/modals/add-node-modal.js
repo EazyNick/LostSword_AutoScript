@@ -4,7 +4,7 @@
  */
 
 import { NODE_TYPES, NODE_TYPE_LABELS } from '../constants/node-types.js';
-import { getDefaultTitle, getDefaultColor, getDefaultDescription } from '../config/node-defaults.js';
+import { getDefaultTitle, getDefaultDescription } from '../config/node-defaults.js';
 import { NodeValidationUtils } from '../utils/node-validation-utils.js';
 import { getNodeRegistry } from '../services/node-registry.js';
 
@@ -16,14 +16,14 @@ export class AddNodeModal {
     /**
      * 노드 추가 모달 표시
      */
-    show() {
+    async show() {
         const modalManager = this.workflowPage.getModalManager();
         if (!modalManager) {
             console.error('ModalManager를 사용할 수 없습니다.');
             return;
         }
 
-        const content = this.generateModalContent();
+        const content = await this.generateModalContent();
         modalManager.show(content);
 
         this.setupEventListeners();
@@ -32,19 +32,17 @@ export class AddNodeModal {
     /**
      * 모달 HTML 콘텐츠 생성
      */
-    generateModalContent() {
+    async generateModalContent() {
         const registry = getNodeRegistry();
-        const nodeTypeOptions = Object.entries(NODE_TYPE_LABELS)
-            .map(([value, label]) => {
-                const config = registry.getConfig(value);
-                // 경계 노드는 선택 목록에서 제외 (자동 생성되므로)
-                if (config && config.isBoundary) {
-                    return '';
-                }
-                return `<option value="${value}">${label}</option>`;
-            })
-            .filter((opt) => opt !== '')
-            .join('');
+        const nodeTypeOptionsPromises = Object.entries(NODE_TYPE_LABELS).map(async ([value, label]) => {
+            const config = await registry.getConfig(value);
+            // 경계 노드는 선택 목록에서 제외 (자동 생성되므로)
+            if (config && config.isBoundary) {
+                return '';
+            }
+            return `<option value="${value}">${label}</option>`;
+        });
+        const nodeTypeOptions = (await Promise.all(nodeTypeOptionsPromises)).filter((opt) => opt !== '').join('');
 
         return `
             <h3>노드 추가</h3>
@@ -65,15 +63,6 @@ export class AddNodeModal {
             <div class="form-group" id="node-custom-settings" style="display: none;">
                 <!-- 동적으로 생성되는 노드별 특수 설정 영역 -->
             </div>
-            <div class="form-group">
-                <label for="node-color">노드 색상:</label>
-                <select id="node-color">
-                    <option value="blue">파란색</option>
-                    <option value="orange">주황색</option>
-                    <option value="green">초록색</option>
-                    <option value="purple">보라색</option>
-                </select>
-            </div>
             <div class="form-actions">
                 <button id="add-node-confirm" class="btn btn-primary">추가</button>
                 <button id="add-node-cancel" class="btn btn-secondary">취소</button>
@@ -92,9 +81,9 @@ export class AddNodeModal {
 
         // 노드 타입 변경 시 특수 설정 표시/숨김
         if (nodeTypeSelect && customSettings) {
-            const updateCustomSettings = () => {
+            const updateCustomSettings = async () => {
                 const selectedType = nodeTypeSelect.value;
-                const config = registry.getConfig(selectedType);
+                const config = await registry.getConfig(selectedType);
 
                 if (config && config.requiresFolderPath) {
                     // 폴더 경로가 필요한 노드 (예: image-touch)
@@ -196,17 +185,11 @@ export class AddNodeModal {
                     // config가 없어도 기본값 설정
                     descriptionInput.value = getDefaultDescription(selectedType);
                 }
-
-                // 기본 색상 설정
-                const colorSelect = document.getElementById('node-color');
-                if (colorSelect && config) {
-                    colorSelect.value = config.color || 'blue';
-                }
             };
 
             nodeTypeSelect.addEventListener('change', updateCustomSettings);
             // 초기 설정
-            updateCustomSettings();
+            updateCustomSettings().catch((err) => console.error('updateCustomSettings error:', err));
         }
 
         // 폴더 선택 버튼은 동적으로 생성되므로 updateCustomSettings에서 처리됨
@@ -299,11 +282,10 @@ export class AddNodeModal {
 
         let nodeTitle = document.getElementById('node-title').value.trim();
         let nodeDescription = document.getElementById('node-description').value.trim();
-        let nodeColor = document.getElementById('node-color').value;
 
         // nodes.config.js에서 기본 제목 가져오기
         const registry = getNodeRegistry();
-        const config = registry.getConfig(nodeType);
+        const config = await registry.getConfig(nodeType);
         const defaultTitle = config?.title || getDefaultTitle(nodeType);
         const defaultDescription = config?.description || getDefaultDescription(nodeType);
 
@@ -317,23 +299,11 @@ export class AddNodeModal {
             nodeDescription = defaultDescription;
         }
 
-        // 시작/종료 노드는 기본 색상 설정
-        if (nodeType === NODE_TYPES.START) {
-            if (!nodeColor || nodeColor === 'blue') {
-                nodeColor = getDefaultColor(NODE_TYPES.START);
-            }
-        } else if (nodeType === NODE_TYPES.END) {
-            if (!nodeColor || nodeColor === 'blue') {
-                nodeColor = getDefaultColor(NODE_TYPES.END);
-            }
-        }
-
         const nodeData = {
             id: nodeType === NODE_TYPES.START ? 'start' : nodeType === NODE_TYPES.END ? 'end' : `node_${Date.now()}`,
             type: nodeType,
             title: nodeTitle,
             description: nodeDescription,
-            color: nodeColor,
             x: Math.random() * 400 + 100,
             y: Math.random() * 300 + 100
         };

@@ -10,7 +10,6 @@
  *      label: '내 노드',
  *      title: '내 노드',
  *      description: '내 노드 설명',
- *      color: 'blue',
  *      script: 'node-my-node.js',
  *      isBoundary: false
  *    }
@@ -24,7 +23,6 @@ export const NODES_CONFIG = {
         label: '시작 노드',
         title: '시작',
         description: '워크플로우의 시작점입니다.',
-        color: 'green',
         script: 'node-start.js',
         isBoundary: true,
         category: 'system'
@@ -33,7 +31,6 @@ export const NODES_CONFIG = {
         label: '종료 노드',
         title: '종료',
         description: '워크플로우의 종료점입니다.',
-        color: 'gray',
         script: 'node-end.js',
         isBoundary: true,
         category: 'system'
@@ -42,7 +39,6 @@ export const NODES_CONFIG = {
         label: '액션 노드',
         title: '액션 노드',
         description: '액션을 수행하는 노드입니다.',
-        color: 'blue',
         script: 'node-action.js',
         isBoundary: false,
         category: 'action'
@@ -51,7 +47,6 @@ export const NODES_CONFIG = {
         label: '조건 노드',
         title: '조건 노드',
         description: '조건을 확인하는 노드입니다.',
-        color: 'orange',
         script: 'node-condition.js',
         isBoundary: false,
         category: 'logic'
@@ -60,16 +55,14 @@ export const NODES_CONFIG = {
         label: '반복 노드',
         title: '반복 노드',
         description: '반복 작업을 수행하는 노드입니다.',
-        color: 'purple',
         script: 'node-loop.js',
         isBoundary: false,
         category: 'logic'
     },
     wait: {
         label: '대기 노드',
-        title: '대기 노드',
+        title: '대기',
         description: '일정 시간 대기하는 노드입니다.',
-        color: 'purple',
         script: 'node-wait.js',
         isBoundary: false,
         category: 'action'
@@ -78,7 +71,6 @@ export const NODES_CONFIG = {
         label: '이미지 터치 노드',
         title: '이미지 터치',
         description: '이미지를 찾아 터치하는 노드입니다.',
-        color: 'blue',
         script: 'node-image-touch.js',
         isBoundary: false,
         category: 'action',
@@ -89,7 +81,6 @@ export const NODES_CONFIG = {
         label: '화면 포커스',
         title: '화면 포커스',
         description: '선택한 프로세스의 창을 화면 최상단에 포커스합니다.',
-        color: 'green',
         script: 'node-process-focus.js',
         isBoundary: false,
         category: 'action'

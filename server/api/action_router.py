@@ -10,6 +10,10 @@ from fastapi import APIRouter, HTTPException
 from api.router_wrapper import api_handler
 from log import log_manager
 from models import ActionRequest, ActionResponse, NodeExecutionRequest
+from models.folder_path_models import FolderPathParams  # Pydantic 모델로 경로 검증 (경로 조작 공격 방지)
+from models.process_focus_models import (
+    ProcessFocusParams,  # Pydantic 모델로 입력 검증 (process_id 또는 hwnd 중 하나는 필수)
+)
 from services.action_service import ActionService
 from services.node_execution_context import NodeExecutionContext
 
@@ -130,22 +134,20 @@ async def get_image_list(folder_path: str) -> dict[str, Any]:
     특정 폴더의 이미지 파일 목록을 가져옵니다.
     파일 이름 순서대로 정렬하여 반환합니다.
     """
-    if not folder_path:
-        raise HTTPException(status_code=400, detail="폴더 경로가 필요합니다.")
-
-    if not os.path.exists(folder_path):
-        raise HTTPException(status_code=404, detail=f"폴더를 찾을 수 없습니다: {folder_path}")
-
-    if not os.path.isdir(folder_path):
-        raise HTTPException(status_code=400, detail=f"경로가 폴더가 아닙니다: {folder_path}")
+    # Pydantic 모델로 경로 검증 (경로 조작 공격 방지, 존재 여부 확인, 디렉토리 확인 포함)
+    try:
+        params = FolderPathParams(folder_path=folder_path)
+        validated_path = params.folder_path
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"경로 검증 실패: {e!s}")
 
     # 지원하는 이미지 확장자
     image_extensions = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".tiff", ".webp"}
 
     # 이미지 파일 목록 가져오기
     image_files = []
-    for filename in os.listdir(folder_path):
-        file_path = os.path.join(folder_path, filename)
+    for filename in os.listdir(validated_path):
+        file_path = os.path.join(validated_path, filename)
         if os.path.isfile(file_path):
             _, ext = os.path.splitext(filename.lower())
             if ext in image_extensions:
@@ -160,7 +162,7 @@ async def get_image_list(folder_path: str) -> dict[str, Any]:
     # 파일 이름 순서대로 정렬
     image_files.sort(key=lambda x: x["filename"])
 
-    return {"success": True, "folder_path": folder_path, "count": len(image_files), "images": image_files}
+    return {"success": True, "folder_path": validated_path, "count": len(image_files), "images": image_files}
 
 
 @router.get("/processes/list")
@@ -249,11 +251,12 @@ async def focus_process(request: dict[str, Any]) -> dict[str, Any]:
     except ImportError:
         raise HTTPException(status_code=500, detail="Windows 전용 기능입니다. pywin32 패키지가 필요합니다.")
 
-    process_id = request.get("process_id")
-    hwnd = request.get("hwnd")
-
-    if not process_id and not hwnd:
-        raise HTTPException(status_code=400, detail="process_id 또는 hwnd가 필요합니다.")
+    try:
+        params = ProcessFocusParams(**request)
+        process_id = params.process_id
+        hwnd = params.hwnd
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"파라미터 검증 실패: {e!s}")
 
     # hwnd가 있으면 직접 사용, 없으면 process_id로 찾기
     if hwnd:

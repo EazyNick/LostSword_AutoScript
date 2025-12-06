@@ -24,7 +24,7 @@ cd UI && npm install                        # JavaScript
 
 ```bash
 cd server
-python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
+python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
 ```
 
 브라우저에서 `http://localhost:8000` 접속

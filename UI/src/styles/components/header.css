@@ -2,7 +2,7 @@
 /* 헤더 컴포넌트 스타일 */
 /* ========================================== */
 
-/* 상단 헤더: 페이지 최상단에 위치한 헤더 영역 */
+/* 상단 헤더: 우측 상단에 위치한 헤더 영역 */
 .top-header {
     background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%); /* 어두운 회색 그라데이션 배경 */
     height: 80px; /* 고정 높이 80px */
@@ -12,29 +12,29 @@
     padding: 0 30px; /* 좌우 여백 30px */
     border-bottom: 1px solid #4a5568; /* 하단 회색 테두리 */
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3); /* 그림자 효과 */
-    position: relative; /* 상대 위치 (z-index 기준) */
+    position: fixed; /* 고정 위치 */
+    top: 0; /* 최상단 */
+    left: 350px; /* 사이드바 너비만큼 왼쪽에서 떨어짐 */
+    right: 0; /* 우측 끝까지 */
     z-index: 9999; /* 다른 요소들 위에 표시 */
 }
 
-/* 헤더 왼쪽 영역: 로고와 제목이 표시되는 영역 */
+/* 헤더 왼쪽 영역: 메인 아이콘이 표시되는 영역 */
 .header-left {
     display: flex; /* 플렉스박스 레이아웃 */
     align-items: center; /* 세로 중앙 정렬 */
-    gap: 15px; /* 요소들 사이 간격 15px */
-    flex: 0 0 auto; /* 크기 고정 (축소/확대 안됨) */
-    min-width: 200px; /* 최소 너비 200px */
+    justify-content: center; /* 가로 중앙 정렬 */
+    flex: 0 0 auto; /* 크기 고정 */
+    padding: 0 20px; /* 좌우 여백 */
 }
 
-/* 문서 아이콘: 헤더 왼쪽에 표시되는 문서 아이콘 */
-.document-icon {
-    font-size: 24px; /* 아이콘 크기 24px */
-}
-
-/* 헤더 제목: "자동화 도구" 같은 앱 제목 텍스트 */
-.header-title {
-    font-size: 18px; /* 제목 크기 18px */
-    font-weight: 600; /* 중간 굵기 */
-    color: #e2e8f0; /* 연한 회색 텍스트 */
+/* 헤더 메인 아이콘 */
+.header-main-icon {
+    max-height: 60px; /* 최대 높이 60px */
+    max-width: 200px; /* 최대 너비 200px */
+    width: auto; /* 너비 자동 조정 */
+    height: auto; /* 높이 자동 조정 */
+    object-fit: contain; /* 비율 유지하며 크기 조정 */
 }
 
 /* 헤더 중앙 영역: 스크립트 제목과 설명이 표시되는 영역 */
@@ -124,7 +124,8 @@
     background-color: #ed8936; /* 주황색 배경 */
     color: #ffffff; /* 흰색 텍스트 */
     padding: 10px 30px; /* 내부 여백 상하 10px, 좌우 30px */
-    min-width: 140px; /* 최소 너비 140px */
+    min-width: 160px; /* 최소 너비 160px (텍스트 한 줄 표시) */
+    white-space: nowrap; /* 텍스트 줄바꿈 방지 */
 }
 
 /* 전체 실행 버튼 호버 효과: 마우스를 올렸을 때 */
@@ -220,7 +221,7 @@
         height: 70px; /* 높이 70px로 축소 */
     }
 
-    /* 모바일에서 버튼들 사이 간격 축소 */
+    /* 모바일에서 헤더 오른쪽 영역 간격 축소 */
     .header-right {
         gap: 10px; /* 간격 10px로 축소 */
     }

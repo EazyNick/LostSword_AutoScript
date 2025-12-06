@@ -25,6 +25,7 @@ import { ViewportUtils } from './utils/viewport-utils.js';
 import { StorageUtils } from './utils/storage-utils.js';
 import { getNodeType, getNodeData, escapeHtml } from './utils/node-utils.js';
 import { getNodeRegistry } from './services/node-registry.js';
+import { getPageRouterInstance } from './page-router.js';
 
 /**
  * 로거 유틸리티 가져오기 (전역 fallback 포함)
@@ -94,6 +95,10 @@ export class WorkflowPage {
      * 초기화 메서드
      */
     async init() {
+        // 페이지 라우터 초기화
+        const pageRouter = getPageRouterInstance();
+        this.pageRouter = pageRouter;
+
         // 노드 레지스트리 초기화 및 노드 스크립트 동적 로드
         await this.loadNodeScripts();
 
@@ -109,7 +114,11 @@ export class WorkflowPage {
         this.setupComponentEventListeners();
         this.setupComponentIntegration();
         this.setupKeyboardShortcuts();
-        this.createInitialNodes();
+
+        // 스크립트 페이지로 전환 시에만 초기 노드 생성
+        if (this.pageRouter.currentPage === 'editor') {
+            this.createInitialNodes();
+        }
     }
 
     /**

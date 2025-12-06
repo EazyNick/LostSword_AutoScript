@@ -1,0 +1,452 @@
+/* ========================================== */
+/* 설정 페이지 스타일 */
+/* ========================================== */
+
+/* 설정 컨테이너 */
+.settings-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px;
+}
+
+/* 설정 섹션 */
+.settings-section {
+    margin-bottom: 40px;
+    background-color: #2d3748;
+    border-radius: 12px;
+    padding: 24px;
+    border: 1px solid #4a5568;
+}
+
+/* 설정 섹션 헤더 */
+.settings-section-header {
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #4a5568;
+}
+
+/* 설정 섹션 제목 */
+.settings-section-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 4px;
+}
+
+/* 설정 섹션 부제목 */
+.settings-section-subtitle {
+    font-size: 14px;
+    color: #a0aec0;
+}
+
+/* 설정 섹션 컨텐츠 */
+.settings-section-content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* 설정 항목 */
+.settings-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    background-color: #1a202c;
+    border-radius: 8px;
+    border: 1px solid #4a5568;
+    transition: all 0.2s ease;
+}
+
+/* 설정 항목 호버 효과 */
+.settings-item:hover {
+    border-color: #14b8a6;
+    background-color: #2d3748;
+}
+
+/* 설정 항목 정보 영역 */
+.settings-item-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex: 1;
+    min-width: 0;
+}
+
+/* 설정 항목 아이콘 */
+.settings-item-icon {
+    font-size: 24px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* 설정 항목 텍스트 영역 */
+.settings-item-text {
+    flex: 1;
+    min-width: 0;
+}
+
+/* 설정 항목 라벨 */
+.settings-item-label {
+    font-size: 16px;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 4px;
+}
+
+/* 설정 항목 설명 */
+.settings-item-description {
+    font-size: 14px;
+    color: #a0aec0;
+    line-height: 1.4;
+}
+
+/* 설정 항목 컨트롤 영역 */
+.settings-item-control {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+/* 테마 버튼 그룹 */
+.theme-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+/* 테마 버튼 */
+.theme-btn {
+    padding: 8px 16px;
+    border: 1px solid #4a5568;
+    border-radius: 6px;
+    background-color: #1a202c;
+    color: #a0aec0;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+/* 테마 버튼 호버 */
+.theme-btn:hover {
+    border-color: #14b8a6;
+    color: #ffffff;
+    background-color: #2d3748;
+}
+
+/* 테마 버튼 활성화 */
+.theme-btn.active {
+    background-color: #14b8a6;
+    border-color: #14b8a6;
+    color: #ffffff;
+}
+
+/* 설정 선택 박스 */
+.settings-select {
+    padding: 8px 12px;
+    border: 1px solid #4a5568;
+    border-radius: 6px;
+    background-color: #1a202c;
+    color: #ffffff;
+    font-size: 14px;
+    min-width: 120px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+/* 설정 선택 박스 호버 */
+.settings-select:hover {
+    border-color: #14b8a6;
+}
+
+/* 설정 선택 박스 포커스 */
+.settings-select:focus {
+    outline: none;
+    border-color: #14b8a6;
+    box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.2);
+}
+
+/* 설정 입력 필드 */
+.settings-input {
+    padding: 8px 12px;
+    border: 1px solid #4a5568;
+    border-radius: 6px;
+    background-color: #1a202c;
+    color: #ffffff;
+    font-size: 14px;
+    min-width: 200px;
+    transition: all 0.2s ease;
+}
+
+/* 설정 입력 필드 호버 */
+.settings-input:hover {
+    border-color: #14b8a6;
+}
+
+/* 설정 입력 필드 포커스 */
+.settings-input:focus {
+    outline: none;
+    border-color: #14b8a6;
+    box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.2);
+}
+
+/* 슬라이더 컨테이너 */
+.slider-container {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    min-width: 200px;
+}
+
+/* 설정 슬라이더 */
+.settings-slider {
+    flex: 1;
+    height: 6px;
+    border-radius: 3px;
+    background: #4a5568;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+/* 슬라이더 핸들 (Webkit) */
+.settings-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #14b8a6;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+/* 슬라이더 핸들 호버 */
+.settings-slider::-webkit-slider-thumb:hover {
+    background: #0d9488;
+    transform: scale(1.1);
+}
+
+/* 슬라이더 핸들 (Firefox) */
+.settings-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #14b8a6;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s ease;
+}
+
+/* 슬라이더 핸들 호버 (Firefox) */
+.settings-slider::-moz-range-thumb:hover {
+    background: #0d9488;
+    transform: scale(1.1);
+}
+
+/* 슬라이더 값 표시 */
+.slider-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: #14b8a6;
+    min-width: 50px;
+    text-align: right;
+}
+
+/* 토글 스위치 */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 26px;
+    cursor: pointer;
+}
+
+/* 토글 스위치 입력 숨김 */
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+/* 토글 슬라이더 */
+.toggle-slider {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #4a5568;
+    border-radius: 26px;
+    transition: all 0.3s ease;
+}
+
+/* 토글 슬라이더 호버 */
+.toggle-slider:hover {
+    background-color: #5a6578;
+}
+
+/* 토글 슬라이더 원형 핸들 */
+.toggle-slider::before {
+    content: '';
+    position: absolute;
+    height: 20px;
+    width: 20px;
+    left: 3px;
+    bottom: 3px;
+    background-color: #ffffff;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+/* 토글 스위치 활성화 */
+.toggle-switch input:checked + .toggle-slider {
+    background-color: #14b8a6;
+}
+
+/* 토글 스위치 활성화 호버 */
+.toggle-switch input:checked + .toggle-slider:hover {
+    background-color: #0d9488;
+}
+
+/* 토글 스위치 활성화 시 핸들 위치 */
+.toggle-switch input:checked + .toggle-slider::before {
+    transform: translateX(24px);
+}
+
+/* 단축키 목록 - 한 줄에 2개씩 배치 */
+.shortcuts-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+/* 단축키 항목 */
+.shortcut-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background-color: #1a202c;
+    border-radius: 8px;
+    border: 1px solid #4a5568;
+}
+
+/* 단축키 라벨 */
+.shortcut-label {
+    font-size: 14px;
+    color: #ffffff;
+    font-weight: 500;
+}
+
+/* 단축키 키 조합 */
+.shortcut-keys {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* 단축키 키 */
+.shortcut-keys kbd {
+    padding: 4px 8px;
+    background-color: #2d3748;
+    border: 1px solid #4a5568;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #ffffff;
+    font-family: monospace;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* 설정 푸터 */
+.settings-footer {
+    display: flex;
+    justify-content: flex-end;
+    padding: 24px 0;
+    margin-top: 20px;
+}
+
+/* 설정 저장 버튼 */
+.btn-save-settings {
+    padding: 12px 24px;
+    background-color: #14b8a6;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+/* 설정 저장 버튼 호버 */
+.btn-save-settings:hover {
+    background-color: #0d9488;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(20, 184, 166, 0.3);
+}
+
+/* 설정 저장 버튼 활성화 */
+.btn-save-settings:active {
+    transform: translateY(0);
+}
+
+/* 설정 알림 메시지 */
+.settings-notification {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    padding: 16px 24px;
+    background-color: #14b8a6;
+    color: #ffffff;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+    z-index: 10001;
+}
+
+/* 설정 알림 메시지 표시 */
+.settings-notification.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* ========================================== */
+/* 반응형 디자인 */
+/* ========================================== */
+
+/* 작은 화면 (768px 이하) */
+@media (max-width: 768px) {
+    .settings-container {
+        padding: 20px;
+    }
+
+    .settings-section {
+        padding: 16px;
+    }
+
+    .settings-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+    }
+
+    .settings-item-control {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    .slider-container {
+        width: 100%;
+    }
+}

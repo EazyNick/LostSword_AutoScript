@@ -8,11 +8,17 @@
         if (window.NodeManager && window.NodeManager.registerNodeType) {
             window.NodeManager.registerNodeType('condition', {
                 renderContent(nodeData) {
+                    const icon = window.NodeIcons ? window.NodeIcons.getIcon('condition', nodeData) : '🔐';
                     return `
                         <div class="node-input"></div>
                         <div class="node-content">
-                            <div class="node-icon">🔐</div>
-                            <div class="node-title">${this.escapeHtml(nodeData.title)}</div>
+                            <div class="node-icon-box">
+                                <div class="node-icon">${icon}</div>
+                            </div>
+                            <div class="node-text-area">
+                                <div class="node-title">${this.escapeHtml(nodeData.title)}</div>
+                                <div class="node-description">${this.escapeHtml(nodeData.description || '조건을 확인합니다')}</div>
+                            </div>
                         </div>
                         <div class="node-outputs">
                             <div class="node-output true-output" title="True - 조건이 참일 때 실행">

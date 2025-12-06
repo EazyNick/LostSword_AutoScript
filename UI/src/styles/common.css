@@ -31,6 +31,7 @@ body {
     height: 100vh; /* 전체 화면 높이 */
     display: flex; /* 플렉스박스 레이아웃 */
     flex-direction: column; /* 세로 방향 배치 */
+    position: relative; /* 상대 위치 */
 }
 
 /* ========================================== */

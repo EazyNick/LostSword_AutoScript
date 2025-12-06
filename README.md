@@ -5,41 +5,10 @@
 ## 📸 웹 UI 미리보기
 ![웹 UI 스크린샷](assets/readme/web_ui.png)
 
-## 시스템 요구사항
+## 시작하기
 
-- **Python**: 3.10.6 이상
-- **운영체제**: Windows 10/11
-- **메모리**: 최소 4GB RAM 권장
-- **디스크**: 최소 1GB 권장
-
-## 설치 및 실행
-
-### 1. 저장소 클론
-```bash
-git clone <repository-url>
-cd AutoScript
-```
-
-### 2. 가상환경 생성 및 활성화
-```bash
-python -m venv venv
-venv\Scripts\activate
-```
-
-### 3. 패키지 설치
-```bash
-cd server
-pip install -r requirements.txt
-```
-
-### 4. 서버 실행
-```bash
-cd server
-python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
-
-### 5. 웹 브라우저에서 접속
-브라우저에서 `http://localhost:8000` 접속
+- **[설치 및 실행 가이드](INSTALLATION.md)**: 시스템 요구사항 및 설치 방법
+- **[개발 가이드](CONTRIBUTING.md)**: 개발 환경 설정 및 기여 방법
 
 ## 사용 방법
 
@@ -60,8 +29,11 @@ python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ### 키보드 단축키
 - `Ctrl+N`: 노드 추가
 - `Ctrl+S`: 워크플로우 저장
+- `Ctrl+Z`: 실행 취소
+- `Ctrl+Y`: 다시 실행
 - `F5` / `Ctrl+R`: 워크플로우 실행
 - `Delete`: 선택한 노드 삭제
+- `Esc`: 실행 중지
 
 ## 주요 기능
 
@@ -69,12 +41,17 @@ python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
 - **다양한 노드 타입**: 클릭, 이미지 터치, 대기, 조건 분기, 루프 등
 - **실시간 실행 모니터링**: 실행 중인 노드를 시각적으로 확인
 - **워크플로우 저장/로드**: 생성한 워크플로우를 저장하고 나중에 불러오기
+- **대시보드**: 스크립트 통계 및 관리
+- **설정 페이지**: 테마, 실행 설정, 스크린샷, 알림 등 다양한 설정 관리
+- **라이트/다크 모드**: 시스템 설정에 따른 자동 테마 전환 지원
+- **SPA 구조**: 페이지 전환 없이 부드러운 사용자 경험
 
 ## 문서
 
 ### 사용자 가이드
 - **[노드 목록](docs/node.md)**: 사용 가능한 모든 노드 타입 설명
 - **[데이터베이스 사용 가이드](docs/database.md)**: 데이터베이스 사용 및 샘플 데이터 삽입 방법
+- **[보안 가이드](docs/security/README.md)**: 보안 취약점 및 개선 방안
 
 ### 개발자 가이드
 - **[개발 환경 설정](docs/dev/development.md)**: 개발 환경 설정, 서버 실행, 배포 방법

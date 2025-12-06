@@ -230,6 +230,13 @@ export class SidebarManager {
         // 저장된 사이드바 너비 로드
         this.loadSidebarWidth();
 
+        // 초기 CSS 변수 설정
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar) {
+            const initialWidth = sidebar.offsetWidth || 350;
+            document.documentElement.style.setProperty('--sidebar-width', `${initialWidth}px`);
+        }
+
         // 모든 스크립트 실행 버튼은 workflow.js에서 등록하므로 여기서는 제거
         // (헤더의 버튼은 workflow.js에서, 사이드바의 버튼이 있다면 여기서 등록)
         // 현재는 헤더에만 버튼이 있으므로 여기서는 등록하지 않음
@@ -315,6 +322,8 @@ export class SidebarManager {
             newWidth = Math.max(minWidth, Math.min(maxWidth, newWidth));
 
             sidebar.style.width = `${newWidth}px`;
+            // 관련 요소들도 함께 조정 (리사이즈 중이므로 transition 비활성화)
+            this.adjustLayoutForSidebarWidth(newWidth, true);
 
             e.preventDefault();
         });
@@ -326,6 +335,10 @@ export class SidebarManager {
                 sidebar.classList.remove('resizing');
                 document.body.style.cursor = '';
                 document.body.style.userSelect = '';
+
+                // 리사이즈 완료 후 transition 복원
+                const finalWidth = sidebar.offsetWidth;
+                this.adjustLayoutForSidebarWidth(finalWidth, false);
 
                 // 워크플로우 캔버스의 커서 스타일 및 이벤트 복원
                 const workflowCanvas = document.querySelector('.workflow-canvas');
@@ -377,6 +390,56 @@ export class SidebarManager {
         });
 
         log('[Sidebar] 리사이즈 핸들 설정 완료');
+    }
+
+    /**
+     * 사이드바 너비 변경 시 관련 요소들도 함께 조정
+     */
+    adjustLayoutForSidebarWidth(width, isResizing = false) {
+        // 좌측 최상단 프로필 영역 너비 조정
+        const topProfile = document.querySelector('.top-left-profile');
+        if (topProfile) {
+            // 리사이즈 중일 때는 transition 비활성화 및 클래스 추가
+            if (isResizing) {
+                topProfile.classList.add('resizing');
+                topProfile.style.transition = 'none';
+            } else {
+                topProfile.classList.remove('resizing');
+                topProfile.style.transition = '';
+            }
+            topProfile.style.width = `${width}px`;
+        }
+
+        // 헤더의 left 값 조정
+        const header = document.querySelector('.top-header');
+        if (header) {
+            if (isResizing) {
+                header.style.transition = 'none';
+            } else {
+                header.style.transition = '';
+            }
+            header.style.left = `${width}px`;
+        }
+
+        // 메인 컨텐츠의 left와 width 조정
+        const mainContent = document.querySelector('.main-content');
+        if (mainContent) {
+            if (isResizing) {
+                mainContent.style.transition = 'none';
+            } else {
+                mainContent.style.transition = '';
+            }
+            mainContent.style.left = `${width}px`;
+            mainContent.style.width = `calc(100vw - ${width}px)`;
+        }
+
+        // CSS 변수로 사이드바 너비 설정 (토스트/모달 위치 계산용)
+        document.documentElement.style.setProperty('--sidebar-width', `${width}px`);
+
+        // 토스트 위치 업데이트
+        if (window.toastManager && typeof window.toastManager.updatePosition === 'function') {
+            window.toastManager.updatePosition();
+        }
     }
 
     /**
@@ -442,6 +505,8 @@ export class SidebarManager {
                     if (sidebar) {
                         sidebar.style.width = `${width}px`;
                         log(`[Sidebar] 사이드바 너비 적용됨: ${width}px`);
+                        // 관련 요소들도 함께 조정
+                        this.adjustLayoutForSidebarWidth(width);
                     }
                 }
             }
@@ -806,9 +871,20 @@ export class SidebarManager {
     }
 
     updateHeader() {
-        const selectedScript = this.scripts[this.currentScriptIndex];
-        document.querySelector('.script-title').textContent = selectedScript.name;
-        document.querySelector('.script-description').textContent = selectedScript.description;
+        // 에디터 페이지일 때만 헤더 업데이트
+        if (window.pageRouter && window.pageRouter.currentPage === 'editor') {
+            const selectedScript = this.scripts[this.currentScriptIndex];
+            if (selectedScript) {
+                const titleEl = document.querySelector('.script-title');
+                const descEl = document.querySelector('.script-description');
+                if (titleEl) {
+                    titleEl.textContent = selectedScript.name || '스크립트';
+                }
+                if (descEl) {
+                    descEl.textContent = selectedScript.description || '워크플로우를 편집하세요';
+                }
+            }
+        }
     }
 
     showAddScriptModal() {

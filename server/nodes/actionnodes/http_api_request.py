@@ -9,9 +9,10 @@ from typing import Any
 
 import aiohttp
 
+from models.http_api_request_models import HttpApiRequestParams
 from nodes.base_node import BaseNode
 from nodes.node_executor_wrapper import NodeExecutor
-from utils import create_failed_result, get_parameter
+from utils import create_failed_result
 
 
 class HttpApiRequestNode(BaseNode):
@@ -34,16 +35,22 @@ class HttpApiRequestNode(BaseNode):
         Returns:
             실행 결과 딕셔너리
         """
-        url = get_parameter(parameters, "url")
-        if not url:
+        # Pydantic 모델로 입력 검증 (SSRF 방지 포함)
+        try:
+            validated_params = HttpApiRequestParams(**parameters)
+        except Exception as e:
             return create_failed_result(
-                action="http-api-request", reason="no_url", message="URL이 제공되지 않았습니다."
+                action="http-api-request",
+                reason="validation_error",
+                message=f"파라미터 검증 실패: {e!s}",
             )
 
-        method = get_parameter(parameters, "method", default="GET").upper()
-        headers = get_parameter(parameters, "headers", default={})
-        body = get_parameter(parameters, "body")
-        timeout = get_parameter(parameters, "timeout", default=30)
+        # 검증된 파라미터 사용
+        url = validated_params.url
+        method = validated_params.method
+        headers = validated_params.headers
+        body = validated_params.body
+        timeout = validated_params.timeout
 
         # headers가 문자열이면 JSON 파싱
         if isinstance(headers, str):

@@ -8,6 +8,7 @@ from typing import Any
 
 from fastapi import APIRouter, Body, HTTPException, Request
 
+from config.nodes_config import NODES_CONFIG
 from config.server_config import settings
 from db.database import db_manager
 from log import log_manager
@@ -19,13 +20,35 @@ logger = log_manager.logger
 @router.get("/")
 async def get_config() -> dict[str, Any]:
     """서버 설정 정보 조회 (server_config 기반)"""
-    logger.info(f"[API] 설정 조회 요청 - ENVIRONMENT: {settings.ENVIRONMENT}, DEV_MODE: {settings.DEV_MODE}")
+    logger.info(f"[API] 설정 조회 요청 - DEV_MODE: {settings.DEV_MODE}")
 
+    # 보안: ENVIRONMENT는 서버 내부 정보이므로 클라이언트에 노출하지 않음
     return {
         "dev_mode": settings.DEV_MODE,
-        "environment": settings.ENVIRONMENT,
-        "env": {"ENVIRONMENT": settings.ENVIRONMENT},
     }
+
+
+@router.get("/nodes")
+async def get_nodes_config() -> dict[str, Any]:
+    """노드 설정 정보 조회"""
+    logger.info("[API] 노드 설정 조회 요청")
+
+    # 클라이언트용으로 변환 (snake_case -> camelCase)
+    nodes_config_client = {}
+    for node_type, config in NODES_CONFIG.items():
+        nodes_config_client[node_type] = {
+            "label": config.get("label"),
+            "title": config.get("title"),
+            "description": config.get("description"),
+            "script": config.get("script"),
+            "isBoundary": config.get("is_boundary", False),
+            "category": config.get("category"),
+        }
+        # 추가 속성이 있으면 포함
+        if "requires_folder_path" in config:
+            nodes_config_client[node_type]["requiresFolderPath"] = config["requires_folder_path"]
+
+    return {"nodes": nodes_config_client}
 
 
 @router.get("/user-settings")

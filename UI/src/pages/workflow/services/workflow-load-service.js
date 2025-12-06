@@ -261,7 +261,6 @@ export class WorkflowLoadService {
             id: nodeData.id,
             title: nodeData.data?.title || nodeData.id,
             type: nodeData.type,
-            color: nodeData.data?.color || 'blue',
             x: originalX,
             y: originalY,
             ...nodeData.data

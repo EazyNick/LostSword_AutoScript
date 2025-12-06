@@ -185,7 +185,11 @@ export class ConnectionManager {
 
             logger.log('[ConnectionManager] 입력 커넥터 바인딩 완료:', nodeId);
         } else {
-            logger.warn('[ConnectionManager] 입력 커넥터를 찾을 수 없습니다:', nodeId);
+            // 시작 노드는 입력이 없으므로 경고 출력하지 않음
+            const nodeType = nodeElement.dataset.nodeType || (nodeId === 'start' ? 'start' : null);
+            if (nodeType !== 'start' && nodeId !== 'start') {
+                logger.warn('[ConnectionManager] 입력 커넥터를 찾을 수 없습니다:', nodeId);
+            }
         }
 
         // 일반 출력 커넥터
@@ -225,7 +229,11 @@ export class ConnectionManager {
 
             logger.log('[ConnectionManager] 출력 커넥터 바인딩 완료:', nodeId);
         } else {
-            logger.warn('[ConnectionManager] 출력 커넥터를 찾을 수 없습니다:', nodeId);
+            // 종료 노드는 출력이 없으므로 경고 출력하지 않음
+            const nodeType = nodeElement.dataset.nodeType || (nodeId === 'end' ? 'end' : null);
+            if (nodeType !== 'end' && nodeId !== 'end') {
+                logger.warn('[ConnectionManager] 출력 커넥터를 찾을 수 없습니다:', nodeId);
+            }
         }
 
         // 조건 노드용 True/False 출력 커넥터
@@ -1469,23 +1477,27 @@ export class ConnectionManager {
         // 연결 경로 생성
         const path = this.createCurvedPath(fromPos.x, fromPos.y, toPos.x, toPos.y);
 
+        // 연결선 스타일 설정 (조건 노드의 경우 true/false에 따라 색상 구분)
+        let strokeColor = '#60a5fa'; // 기본 청록색 (이미지와 유사)
+        let strokeWidth = '2';
+
+        if (outputType === 'true') {
+            strokeColor = '#22c55e'; // 초록색 (True)
+            strokeWidth = '2.5';
+        } else if (outputType === 'false') {
+            strokeColor = '#ef4444'; // 빨간색 (False)
+            strokeWidth = '2.5';
+        }
+
         const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         line.setAttribute('d', path);
         line.setAttribute('class', 'connection-line');
         line.setAttribute('data-connection-id', `${fromNodeId}-${toNodeId}`);
         line.setAttribute('data-output-type', outputType || 'default'); // 출력 타입 저장
 
-        // 연결선 스타일 설정 (조건 노드의 경우 true/false에 따라 색상 구분)
-        let strokeColor = '#007AFF'; // 기본 파란색
-        let strokeWidth = '2';
-
         if (outputType === 'true') {
-            strokeColor = '#22c55e'; // 초록색 (True)
-            strokeWidth = '2.5';
             line.classList.add('connection-true');
         } else if (outputType === 'false') {
-            strokeColor = '#ef4444'; // 빨간색 (False)
-            strokeWidth = '2.5';
             line.classList.add('connection-false');
         }
 
@@ -1494,6 +1506,7 @@ export class ConnectionManager {
         line.setAttribute('fill', 'none');
         line.setAttribute('stroke-linecap', 'round');
         line.setAttribute('stroke-linejoin', 'round');
+        // 화살표 제거: marker-end 속성 제거됨 (점선만 표시)
 
         // 연결선 클릭 시 삭제 이벤트
         line.style.pointerEvents = 'stroke';
@@ -1509,8 +1522,8 @@ export class ConnectionManager {
         });
 
         line.addEventListener('mouseleave', (e) => {
-            line.setAttribute('stroke', '#007AFF');
-            line.setAttribute('stroke-width', '2');
+            line.setAttribute('stroke', strokeColor);
+            line.setAttribute('stroke-width', strokeWidth);
         });
 
         this.svgContainer.appendChild(line);

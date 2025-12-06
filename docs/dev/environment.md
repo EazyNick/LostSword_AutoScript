@@ -14,7 +14,7 @@ ENVIRONMENT=dev
 ENVIRONMENT=prd
 
 # API 설정
-API_HOST=0.0.0.0
+API_HOST=127.0.0.1  # 보안: 로컬호스트에서만 접근 가능 (기본값)
 API_PORT=8000
 ```
 
@@ -22,7 +22,7 @@ API_PORT=8000
 
 - `ENVIRONMENT=dev`: 개발 모드 (모든 로그 출력)
 - `ENVIRONMENT=prd`: 프로덕션 모드 (에러만 출력, 기본값)
-- `API_HOST`: 서버 호스트 (기본값: `0.0.0.0`)
+- `API_HOST`: 서버 호스트 (기본값: `127.0.0.1` - 로컬호스트만 접근 가능)
 - `API_PORT`: 서버 포트 (기본값: `8000`)
 
 ## 동작 원리

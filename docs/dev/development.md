@@ -22,7 +22,7 @@ pip install -r server/requirements-dev.txt
 ```bash
 # .env 파일 생성 (프로젝트 루트)
 ENVIRONMENT=dev
-API_HOST=0.0.0.0
+API_HOST=127.0.0.1  # 보안: 로컬호스트에서만 접근 가능 (기본값)
 API_PORT=8000
 ```
 

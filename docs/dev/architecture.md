@@ -26,9 +26,21 @@
 ### 주요 모듈
 - **js/api/**: API 클라이언트 (`window.API_BASE_URL` 동적 사용)
 - **js/components/node/**: 노드 렌더링 컴포넌트
-- **pages/workflow/**: 워크플로우 편집기
+  - `node-icons.config.js`: 노드 아이콘 중앙 관리
+- **pages/workflow/**: 워크플로우 편집기 및 페이지 라우팅
+  - `page-router.js`: SPA 페이지 라우팅 관리
+  - `dashboard.js`: 대시보드 페이지
+  - `settings.js`: 설정 페이지
+  - `workflow.js`: 워크플로우 편집기
   - **services/**: 저장/로드/실행 로직
   - **modals/**: 노드 추가/설정 모달
+- **js/utils/**: 유틸리티
+  - `theme-manager.js`: 라이트/다크 모드 테마 관리
+  - `toast.js`: 토스트 알림 관리
+  - `modal.js`: 모달 창 관리
+- **styles/themes/**: 테마별 스타일
+  - `dark/`: 다크 모드 스타일
+  - `light/`: 라이트 모드 스타일
 
 ## 설정
 

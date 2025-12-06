@@ -112,7 +112,6 @@ export class WorkflowSaveService {
                 },
                 data: {
                     title: node.title,
-                    color: node.color,
                     ...node
                 },
                 parameters: parameters,

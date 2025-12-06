@@ -9,14 +9,12 @@ import { NODES_CONFIG, getAllNodeTypes, getNodeConfig } from './nodes.config.js'
 const nodeTypes = getAllNodeTypes();
 
 export const NODE_DEFAULT_DESCRIPTIONS = {};
-export const NODE_DEFAULT_COLORS = {};
 export const NODE_DEFAULT_TITLES = {};
 
 nodeTypes.forEach((type) => {
     const config = getNodeConfig(type);
     if (config) {
         NODE_DEFAULT_DESCRIPTIONS[type] = config.description || '노드에 대한 설명을 입력하세요.';
-        NODE_DEFAULT_COLORS[type] = config.color || 'blue';
         NODE_DEFAULT_TITLES[type] = config.title || `${type} 노드`;
     }
 });
@@ -28,15 +26,6 @@ nodeTypes.forEach((type) => {
  */
 export function getDefaultDescription(type) {
     return NODE_DEFAULT_DESCRIPTIONS[type] || '노드에 대한 설명을 입력하세요.';
-}
-
-/**
- * 노드 타입별 기본 색상 가져오기
- * @param {string} type - 노드 타입
- * @returns {string} 기본 색상
- */
-export function getDefaultColor(type) {
-    return NODE_DEFAULT_COLORS[type] || 'blue';
 }
 
 /**
