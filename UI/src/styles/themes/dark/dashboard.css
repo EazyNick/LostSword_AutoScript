@@ -1,0 +1,396 @@
+/* ========================================== */
+/* 다크모드 대시보드 스타일 */
+/* ========================================== */
+
+/* 대시보드 컨테이너 */
+.dashboard-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 40px;
+}
+
+/* 대시보드 헤더 */
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 40px;
+}
+
+/* 대시보드 제목 */
+.dashboard-title {
+    font-size: 32px;
+    font-weight: 700;
+    color: #ffffff;
+    margin: 0 0 8px 0;
+}
+
+/* 대시보드 부제목 */
+.dashboard-subtitle {
+    font-size: 16px;
+    color: #a0aec0;
+    margin: 0;
+}
+
+/* 새 워크플로우 버튼 */
+.btn-new-workflow {
+    padding: 12px 24px;
+    background-color: #3182ce;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+}
+
+.btn-new-workflow:hover {
+    background-color: #2c5282;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(49, 130, 206, 0.3);
+}
+
+/* 통계 카드 그리드 */
+.dashboard-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 24px;
+    margin-bottom: 40px;
+}
+
+/* 통계 카드 */
+.stat-card {
+    background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+    border: 1px solid #4a5568;
+    border-radius: 12px;
+    padding: 24px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #14b8a6 0%, #0d9488 100%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.stat-card:hover {
+    border-color: #14b8a6;
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.stat-card:hover::before {
+    opacity: 1;
+}
+
+/* 통계 카드 아이콘 */
+.stat-card-icon {
+    font-size: 32px;
+    margin-bottom: 12px;
+    opacity: 0.8;
+}
+
+/* 통계 라벨 */
+.stat-label {
+    font-size: 14px;
+    color: #a0aec0;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+/* 통계 값 */
+.stat-value {
+    font-size: 36px;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 8px;
+}
+
+/* 통계 변화 */
+.stat-change {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.stat-change.positive {
+    color: #22c55e;
+}
+
+.stat-change.negative {
+    color: #ef4444;
+}
+
+.stat-change-icon {
+    font-size: 14px;
+}
+
+/* 워크플로우 섹션 */
+.dashboard-scripts {
+    margin-top: 40px;
+}
+
+.section-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* 워크플로우 그리드 */
+.scripts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 24px;
+}
+
+/* 워크플로우 카드 */
+.script-card {
+    background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+    border: 1px solid #4a5568;
+    border-radius: 12px;
+    padding: 20px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.script-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #3182ce 0%, #2c5282 100%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.script-card:hover {
+    border-color: #3182ce;
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.script-card:hover::before {
+    opacity: 1;
+}
+
+/* 워크플로우 카드 헤더 */
+.script-card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+/* 워크플로우 카드 아이콘 */
+.script-card-icon {
+    font-size: 40px;
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #3182ce 0%, #2c5282 100%);
+    border-radius: 12px;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.script-card-icon::after {
+    content: '▶';
+    position: absolute;
+    font-size: 16px;
+    color: rgba(255, 255, 255, 0.8);
+    bottom: 4px;
+    right: 4px;
+}
+
+/* 워크플로우 카드 컨텐츠 */
+.script-card-content {
+    flex: 1;
+    min-width: 0;
+}
+
+/* 워크플로우 카드 제목 */
+.script-card-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 6px;
+    line-height: 1.4;
+}
+
+/* 워크플로우 카드 설명 */
+.script-card-description {
+    font-size: 14px;
+    color: #a0aec0;
+    line-height: 1.5;
+    margin-bottom: 16px;
+}
+
+/* 워크플로우 카드 메타 정보 */
+.script-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+/* 워크플로우 카드 상태 */
+.script-card-status {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.script-card-status.status-active {
+    background-color: rgba(34, 197, 94, 0.2);
+    color: #22c55e;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.script-card-status.status-paused {
+    background-color: rgba(156, 163, 175, 0.2);
+    color: #9ca3af;
+    border: 1px solid rgba(156, 163, 175, 0.3);
+}
+
+.script-card-status.status-draft {
+    background-color: rgba(251, 191, 36, 0.2);
+    color: #fbbf24;
+    border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+/* 마지막 실행 시간 */
+.script-card-last-run {
+    font-size: 12px;
+    color: #a0aec0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* 성공률 */
+.script-card-success-rate {
+    font-size: 12px;
+    color: #22c55e;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 600;
+}
+
+/* 워크플로우 카드 푸터 */
+.script-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 16px;
+    border-top: 1px solid #4a5568;
+}
+
+/* 워크플로우 카드 액션 버튼 */
+.script-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* 편집 버튼 */
+.btn-edit {
+    padding: 8px 16px;
+    background-color: transparent;
+    color: #a0aec0;
+    border: 1px solid #4a5568;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-edit:hover {
+    background-color: #374151;
+    border-color: #6b7280;
+    color: #ffffff;
+}
+
+/* 실행 버튼 */
+.btn-run {
+    padding: 8px 16px;
+    background-color: #3182ce;
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.btn-run:hover {
+    background-color: #2c5282;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(49, 130, 206, 0.3);
+}
+
+/* 빈 메시지 */
+.empty-message {
+    text-align: center;
+    padding: 60px 20px;
+    color: #a0aec0;
+    font-size: 16px;
+}
+
+/* ========================================== */
+/* 반응형 디자인 */
+/* ========================================== */
+
+/* 작은 화면 (768px 이하) */
+@media (max-width: 768px) {
+    .dashboard-container {
+        padding: 20px;
+    }
+
+    .dashboard-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .scripts-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .dashboard-header {
+        flex-direction: column;
+        gap: 16px;
+    }
+}

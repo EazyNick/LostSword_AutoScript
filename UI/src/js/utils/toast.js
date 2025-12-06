@@ -20,10 +20,31 @@ export class ToastManager {
         // Toast 컨테이너 생성
         this.container = document.createElement('div');
         this.container.id = 'toast-container';
+        this.updatePosition();
+
+        document.body.appendChild(this.container);
+    }
+
+    /**
+     * 사이드바를 제외한 메인 캔버스 기준으로 위치 업데이트
+     */
+    updatePosition() {
+        if (!this.container) {
+            return;
+        }
+
+        // 사이드바 너비 가져오기
+        const sidebar = document.querySelector('.sidebar');
+        const sidebarWidth = sidebar ? sidebar.offsetWidth : 350; // 기본값 350px
+
+        // 메인 캔버스 영역의 중앙 계산
+        const mainAreaWidth = window.innerWidth - sidebarWidth;
+        const centerX = sidebarWidth + mainAreaWidth / 2;
+
         this.container.style.cssText = `
             position: fixed;
             top: 100px;
-            left: 50%;
+            left: ${centerX}px;
             transform: translateX(-50%);
             z-index: 10000;
             pointer-events: none;
@@ -32,8 +53,6 @@ export class ToastManager {
             align-items: center;
             gap: 10px;
         `;
-
-        document.body.appendChild(this.container);
     }
 
     /**
@@ -46,6 +65,9 @@ export class ToastManager {
         if (!this.container) {
             this.init();
         }
+
+        // 위치 업데이트 (사이드바 너비 변경 대응)
+        this.updatePosition();
 
         // Toast 요소 생성
         const toast = document.createElement('div');
@@ -153,6 +175,8 @@ let toastManagerInstance = null;
 export function getToastManagerInstance() {
     if (!toastManagerInstance) {
         toastManagerInstance = new ToastManager();
+        // 전역 접근을 위해 window에 노출
+        window.toastManager = toastManagerInstance;
     }
     return toastManagerInstance;
 }

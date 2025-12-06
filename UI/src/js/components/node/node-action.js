@@ -15,8 +15,8 @@
             const icon = window.NodeIcons ? window.NodeIcons.getIcon('action', nodeData) : '⚙';
             // 클릭 노드인 경우 설명 변경
             const isClickNode = nodeData.title && (nodeData.title.includes('클릭') || nodeData.title.includes('Click'));
-            const description = isClickNode ? '화면 좌표 또는 요소 클릭' : (nodeData.description || '액션을 수행합니다');
-            
+            const description = isClickNode ? '화면 좌표 또는 요소 클릭' : nodeData.description || '액션을 수행합니다';
+
             return `
                 <div class="node-input"></div>
                 <div class="node-content">

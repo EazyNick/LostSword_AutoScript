@@ -1,0 +1,52 @@
+/* ========================================== */
+/* 라이트 모드 워크플로우 스타일 */
+/* ========================================== */
+
+/* 워크플로우 캔버스 */
+body.theme-light .workflow-canvas {
+    background-color: #f5f5f5;
+    background-image:
+        linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
+/* 워크플로우 노드 */
+body.theme-light .workflow-node {
+    background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+    border: 2px solid #e5e7eb;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+body.theme-light .workflow-node:hover {
+    border-color: #3182ce;
+    box-shadow: 0 6px 20px rgba(49, 130, 206, 0.2);
+}
+
+/* 노드 아이콘 박스 */
+body.theme-light .node-icon-box {
+    background-color: rgba(49, 130, 206, 0.1);
+}
+
+/* 노드 제목 */
+body.theme-light .node-title {
+    color: #1f2937;
+}
+
+/* 노드 설명 */
+body.theme-light .node-description {
+    color: #6b7280;
+}
+
+/* 연결선 */
+body.theme-light .connection-line {
+    stroke: #3182ce;
+}
+
+body.theme-light .connection-line.connection-true {
+    stroke: #22c55e;
+}
+
+body.theme-light .connection-line.connection-false {
+    stroke: #ef4444;
+}

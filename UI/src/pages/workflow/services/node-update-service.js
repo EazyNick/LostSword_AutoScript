@@ -88,8 +88,6 @@ export class NodeUpdateService {
             }
         }
 
-        const newColor = document.getElementById('edit-node-color').value;
-
         // 실제 노드 종류 가져오기
         const actionNodeTypeSelect = document.getElementById('edit-action-node-type');
         const newActionNodeType = actionNodeTypeSelect ? actionNodeTypeSelect.value : null;
@@ -104,7 +102,6 @@ export class NodeUpdateService {
             type: newType,
             title: newTitle,
             action_node_type: newActionNodeType || undefined,
-            color: newColor,
             x: position.x,
             y: position.y
         };
@@ -233,9 +230,9 @@ export class NodeUpdateService {
      * 노드 DOM 업데이트
      */
     updateNodeDOM(nodeElement, nodeData, nodeManager) {
-        // 색상 클래스 업데이트
+        // 노드 클래스 업데이트 (색상 클래스 제거)
         nodeElement.className = nodeElement.className.replace(/node-\w+/g, '');
-        nodeElement.classList.add('workflow-node', `node-${nodeData.color}`);
+        nodeElement.classList.add('workflow-node');
 
         // 노드 타입별 콘텐츠 재생성
         const nodeContent = nodeManager.generateNodeContent(nodeData);

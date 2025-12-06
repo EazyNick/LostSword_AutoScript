@@ -116,7 +116,6 @@ export class NodeCreationService {
                 id: 'start',
                 type: 'start',
                 title: '시작',
-                color: 'green',
                 x: baseX - 200,
                 y: baseY
             });
@@ -128,7 +127,6 @@ export class NodeCreationService {
                 id: 'end',
                 type: 'end',
                 title: '종료',
-                color: 'gray',
                 x: baseX + 200,
                 y: baseY
             });

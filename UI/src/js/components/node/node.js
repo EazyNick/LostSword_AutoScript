@@ -325,7 +325,6 @@ export class NodeManager {
      * @param {string} nodeData.id - 노드 ID
      * @param {string} nodeData.title - 노드 제목
      * @param {string} nodeData.type - 노드 타입('action' | 'condition' 등)
-     * @param {string} nodeData.color - 노드 색상 키
      * @param {number} nodeData.x - X 좌표
      * @param {number} nodeData.y - Y 좌표
      * @returns {HTMLElement} 생성된 노드 요소
@@ -381,7 +380,7 @@ export class NodeManager {
      */
     createNodeElement(nodeData) {
         const nodeElement = document.createElement('div');
-        nodeElement.className = `workflow-node node-${nodeData.color}`;
+        nodeElement.className = 'workflow-node';
         nodeElement.id = nodeData.id;
         nodeElement.dataset.nodeId = nodeData.id;
         // 노드 타입을 data 속성에 저장 (연결 검증 시 사용)
@@ -1956,7 +1955,6 @@ export class NodeManager {
                 id: nodeId,
                 title: latestTitle || latestData.title || n.data.title, // DOM 제목 우선 사용
                 type: latestData.type || n.data.type,
-                color: latestData.color || n.data.color, // 최신 색상 우선 사용
                 x: parseInt(nodeElement.style.left, 10),
                 y: parseInt(nodeElement.style.top, 10)
             };

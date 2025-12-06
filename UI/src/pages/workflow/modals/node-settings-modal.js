@@ -37,7 +37,6 @@ export class NodeSettingsModal {
         // 노드 타입 확인
         const nodeType = nodeData?.type || getNodeType(nodeElement);
         const currentTitle = nodeElement.querySelector('.node-title')?.textContent || '';
-        const currentColor = nodeElement.className.match(/node-(\w+)/)?.[1] || 'blue';
         const currentActionNodeType = nodeData?.action_node_type || '';
 
         // description이 없으면 기본 설명 사용
@@ -54,7 +53,6 @@ export class NodeSettingsModal {
         const content = this.generateModalContent(
             nodeType,
             currentTitle,
-            currentColor,
             currentDescription,
             typeSpecificSettings,
             currentActionNodeType
@@ -320,14 +318,7 @@ export class NodeSettingsModal {
     /**
      * 모달 콘텐츠 생성
      */
-    generateModalContent(
-        nodeType,
-        currentTitle,
-        currentColor,
-        currentDescription,
-        typeSpecificSettings,
-        currentActionNodeType = ''
-    ) {
+    generateModalContent(nodeType, currentTitle, currentDescription, typeSpecificSettings, currentActionNodeType = '') {
         const nodeTypeSelect = isBoundaryNode(nodeType)
             ? `<input type="text" value="${NODE_TYPE_LABELS[nodeType] || nodeType}" disabled class="node-settings-disabled-input">
                <small class="node-settings-help-text">시작/종료 노드는 타입을 변경할 수 없습니다.</small>`
@@ -356,17 +347,6 @@ export class NodeSettingsModal {
             <div class="form-group node-settings-form-group">
                 <label for="edit-node-description" class="node-settings-label">설명:</label>
                 <textarea id="edit-node-description" rows="3" placeholder="노드에 대한 설명을 입력하세요 (선택사항)" class="node-settings-textarea">${escapeHtml(currentDescription)}</textarea>
-            </div>
-            <div class="form-group node-settings-form-group">
-                <label for="edit-node-color" class="node-settings-label">노드 색상:</label>
-                <select id="edit-node-color" class="node-settings-select">
-                    <option value="blue" ${currentColor === 'blue' ? 'selected' : ''}>파란색</option>
-                    <option value="orange" ${currentColor === 'orange' ? 'selected' : ''}>주황색</option>
-                    <option value="green" ${currentColor === 'green' ? 'selected' : ''}>초록색</option>
-                    <option value="purple" ${currentColor === 'purple' ? 'selected' : ''}>보라색</option>
-                    <option value="red" ${currentColor === 'red' ? 'selected' : ''}>빨간색</option>
-                    <option value="gray" ${currentColor === 'gray' ? 'selected' : ''}>회색</option>
-                </select>
             </div>
             <div class="form-group node-settings-form-group node-settings-section-divider">
                 <label class="node-settings-label node-settings-preview-label">입력 미리보기:</label>

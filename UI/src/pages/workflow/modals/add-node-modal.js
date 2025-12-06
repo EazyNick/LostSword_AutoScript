@@ -4,7 +4,7 @@
  */
 
 import { NODE_TYPES, NODE_TYPE_LABELS } from '../constants/node-types.js';
-import { getDefaultTitle, getDefaultColor, getDefaultDescription } from '../config/node-defaults.js';
+import { getDefaultTitle, getDefaultDescription } from '../config/node-defaults.js';
 import { NodeValidationUtils } from '../utils/node-validation-utils.js';
 import { getNodeRegistry } from '../services/node-registry.js';
 
@@ -62,15 +62,6 @@ export class AddNodeModal {
             </div>
             <div class="form-group" id="node-custom-settings" style="display: none;">
                 <!-- 동적으로 생성되는 노드별 특수 설정 영역 -->
-            </div>
-            <div class="form-group">
-                <label for="node-color">노드 색상:</label>
-                <select id="node-color">
-                    <option value="blue">파란색</option>
-                    <option value="orange">주황색</option>
-                    <option value="green">초록색</option>
-                    <option value="purple">보라색</option>
-                </select>
             </div>
             <div class="form-actions">
                 <button id="add-node-confirm" class="btn btn-primary">추가</button>
@@ -194,12 +185,6 @@ export class AddNodeModal {
                     // config가 없어도 기본값 설정
                     descriptionInput.value = getDefaultDescription(selectedType);
                 }
-
-                // 기본 색상 설정
-                const colorSelect = document.getElementById('node-color');
-                if (colorSelect && config) {
-                    colorSelect.value = config.color || 'blue';
-                }
             };
 
             nodeTypeSelect.addEventListener('change', updateCustomSettings);
@@ -297,7 +282,6 @@ export class AddNodeModal {
 
         let nodeTitle = document.getElementById('node-title').value.trim();
         let nodeDescription = document.getElementById('node-description').value.trim();
-        let nodeColor = document.getElementById('node-color').value;
 
         // nodes.config.js에서 기본 제목 가져오기
         const registry = getNodeRegistry();
@@ -315,23 +299,11 @@ export class AddNodeModal {
             nodeDescription = defaultDescription;
         }
 
-        // 시작/종료 노드는 기본 색상 설정
-        if (nodeType === NODE_TYPES.START) {
-            if (!nodeColor || nodeColor === 'blue') {
-                nodeColor = getDefaultColor(NODE_TYPES.START);
-            }
-        } else if (nodeType === NODE_TYPES.END) {
-            if (!nodeColor || nodeColor === 'blue') {
-                nodeColor = getDefaultColor(NODE_TYPES.END);
-            }
-        }
-
         const nodeData = {
             id: nodeType === NODE_TYPES.START ? 'start' : nodeType === NODE_TYPES.END ? 'end' : `node_${Date.now()}`,
             type: nodeType,
             title: nodeTitle,
             description: nodeDescription,
-            color: nodeColor,
             x: Math.random() * 400 + 100,
             y: Math.random() * 300 + 100
         };

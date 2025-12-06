@@ -242,6 +242,10 @@ class NodeRepository:
 
             description = node.get("description") or None
 
+            # node_data에서 color 필드 제거
+            node_data = node.get("data", {}).copy()
+            node_data.pop("color", None)
+
             cursor.execute(
                 """
                 INSERT INTO nodes (script_id, node_id, node_type, position_x, position_y, node_data, connected_to, connected_from, parameters, description)
@@ -253,7 +257,7 @@ class NodeRepository:
                     node["type"],
                     node["position"]["x"],
                     node["position"]["y"],
-                    json.dumps(node["data"], ensure_ascii=False),
+                    json.dumps(node_data, ensure_ascii=False),
                     connected_to_json,
                     connected_from_json,
                     parameters_json,
@@ -381,14 +385,14 @@ if __name__ == "__main__":
             "id": "start",
             "type": "start",
             "position": {"x": 0.0, "y": 0.0},
-            "data": {"title": "시작", "color": "green"},
+            "data": {"title": "시작"},
             "parameters": {},
         },
         {
             "id": "node1",
             "type": "action",
             "position": {"x": 300.0, "y": 0.0},
-            "data": {"title": "액션 노드", "color": "blue"},
+            "data": {"title": "액션 노드"},
             "parameters": {"action": "click"},
             "description": "클릭 액션 노드",
         },
@@ -396,7 +400,7 @@ if __name__ == "__main__":
             "id": "node2",
             "type": "condition",
             "position": {"x": 600.0, "y": 0.0},
-            "data": {"title": "조건 노드", "color": "orange"},
+            "data": {"title": "조건 노드"},
             "parameters": {"condition": "check_value"},
             "description": "값 확인 조건 노드",
         },
@@ -404,14 +408,14 @@ if __name__ == "__main__":
             "id": "node3",
             "type": "action",
             "position": {"x": 900.0, "y": 0.0},
-            "data": {"title": "액션 노드 2", "color": "blue"},
+            "data": {"title": "액션 노드 2"},
             "parameters": {},
         },
         {
             "id": "end",
             "type": "end",
             "position": {"x": 1200.0, "y": 0.0},
-            "data": {"title": "종료", "color": "gray"},
+            "data": {"title": "종료"},
             "parameters": {},
         },
     ]
@@ -502,7 +506,7 @@ if __name__ == "__main__":
             "id": "start",
             "type": "start",
             "position": {"x": 0.0, "y": 0.0},
-            "data": {"title": "시작 1", "color": "green"},
+            "data": {"title": "시작 1"},
             "parameters": {},
             "_db_id": 1,
         },
@@ -510,7 +514,7 @@ if __name__ == "__main__":
             "id": "start",
             "type": "start",
             "position": {"x": 100.0, "y": 100.0},
-            "data": {"title": "시작 2", "color": "green"},
+            "data": {"title": "시작 2"},
             "parameters": {},
             "_db_id": 2,
         },
@@ -518,7 +522,7 @@ if __name__ == "__main__":
             "id": "end",
             "type": "end",
             "position": {"x": 1200.0, "y": 0.0},
-            "data": {"title": "종료 1", "color": "gray"},
+            "data": {"title": "종료 1"},
             "parameters": {},
             "_db_id": 3,
         },
@@ -526,7 +530,7 @@ if __name__ == "__main__":
             "id": "end",
             "type": "end",
             "position": {"x": 1300.0, "y": 100.0},
-            "data": {"title": "종료 2", "color": "gray"},
+            "data": {"title": "종료 2"},
             "parameters": {},
             "_db_id": 4,
         },

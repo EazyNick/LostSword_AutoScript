@@ -11,7 +11,6 @@ const FALLBACK_NODES_CONFIG = {
         label: '시작 노드',
         title: '시작',
         description: '워크플로우의 시작점입니다.',
-        color: 'green',
         script: 'node-start.js',
         isBoundary: true,
         category: 'system'
@@ -20,7 +19,6 @@ const FALLBACK_NODES_CONFIG = {
         label: '종료 노드',
         title: '종료',
         description: '워크플로우의 종료점입니다.',
-        color: 'gray',
         script: 'node-end.js',
         isBoundary: true,
         category: 'system'

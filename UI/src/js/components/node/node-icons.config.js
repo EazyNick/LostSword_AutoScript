@@ -34,9 +34,7 @@ const NODE_ICONS = {
 function getNodeIcon(nodeType, nodeData = {}) {
     // 클릭 노드인 경우 특별 처리
     if (nodeType === 'action') {
-        const isClickNode =
-            nodeData.title &&
-            (nodeData.title.includes('클릭') || nodeData.title.includes('Click'));
+        const isClickNode = nodeData.title && (nodeData.title.includes('클릭') || nodeData.title.includes('Click'));
         if (isClickNode) {
             return NODE_ICONS['action-click'];
         }
@@ -56,4 +54,3 @@ window.NodeIcons = {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { NODE_ICONS, getNodeIcon };
 }
-

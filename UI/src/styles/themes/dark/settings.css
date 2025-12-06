@@ -1,0 +1,165 @@
+/* ========================================== */
+/* 다크 모드 설정 페이지 스타일 */
+/* ========================================== */
+
+/* 설정 섹션 */
+body.theme-dark .settings-section {
+    background-color: #2d3748;
+    border: 1px solid #4a5568;
+}
+
+body.theme-dark .settings-section-title {
+    color: #ffffff;
+}
+
+body.theme-dark .settings-section-subtitle {
+    color: #a0aec0;
+}
+
+body.theme-dark .settings-section-header {
+    border-bottom: 1px solid #4a5568;
+}
+
+/* 설정 항목 */
+body.theme-dark .settings-item {
+    background-color: #1a202c;
+    border: 1px solid #4a5568;
+}
+
+body.theme-dark .settings-item:hover {
+    border-color: #14b8a6;
+    background-color: #2d3748;
+}
+
+body.theme-dark .settings-item-label {
+    color: #ffffff;
+}
+
+body.theme-dark .settings-item-description {
+    color: #a0aec0;
+}
+
+/* 테마 버튼 */
+body.theme-dark .theme-btn {
+    background-color: #1a202c;
+    border: 1px solid #4a5568;
+    color: #a0aec0;
+}
+
+body.theme-dark .theme-btn:hover {
+    border-color: #14b8a6;
+    color: #ffffff;
+    background-color: #2d3748;
+}
+
+body.theme-dark .theme-btn.active {
+    background-color: #14b8a6;
+    border-color: #14b8a6;
+    color: #ffffff;
+}
+
+/* 설정 선택 박스 */
+body.theme-dark .settings-select {
+    background-color: #1a202c;
+    border: 1px solid #4a5568;
+    color: #ffffff;
+}
+
+body.theme-dark .settings-select:hover {
+    border-color: #14b8a6;
+}
+
+body.theme-dark .settings-select:focus {
+    border-color: #14b8a6;
+    box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.2);
+}
+
+/* 설정 입력 필드 */
+body.theme-dark .settings-input {
+    background-color: #1a202c;
+    border: 1px solid #4a5568;
+    color: #ffffff;
+}
+
+body.theme-dark .settings-input:hover {
+    border-color: #14b8a6;
+}
+
+body.theme-dark .settings-input:focus {
+    border-color: #14b8a6;
+    box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.2);
+}
+
+/* 슬라이더 */
+body.theme-dark .settings-slider {
+    background: #4a5568;
+}
+
+body.theme-dark .settings-slider::-webkit-slider-thumb {
+    background: #14b8a6;
+}
+
+body.theme-dark .settings-slider::-webkit-slider-thumb:hover {
+    background: #0d9488;
+}
+
+body.theme-dark .settings-slider::-moz-range-thumb {
+    background: #14b8a6;
+}
+
+body.theme-dark .settings-slider::-moz-range-thumb:hover {
+    background: #0d9488;
+}
+
+body.theme-dark .slider-value {
+    color: #14b8a6;
+}
+
+/* 토글 스위치 */
+body.theme-dark .toggle-slider {
+    background-color: #4a5568;
+}
+
+body.theme-dark .toggle-slider:hover {
+    background-color: #5a6578;
+}
+
+body.theme-dark .toggle-switch input:checked + .toggle-slider {
+    background-color: #14b8a6;
+}
+
+body.theme-dark .toggle-switch input:checked + .toggle-slider:hover {
+    background-color: #0d9488;
+}
+
+/* 단축키 항목 */
+body.theme-dark .shortcut-item {
+    background-color: #1a202c;
+    border: 1px solid #4a5568;
+}
+
+body.theme-dark .shortcut-label {
+    color: #ffffff;
+}
+
+body.theme-dark .shortcut-keys kbd {
+    background-color: #2d3748;
+    border: 1px solid #4a5568;
+    color: #ffffff;
+}
+
+/* 설정 저장 버튼 */
+body.theme-dark .btn-save-settings {
+    background-color: #14b8a6;
+    color: #ffffff;
+}
+
+body.theme-dark .btn-save-settings:hover {
+    background-color: #0d9488;
+}
+
+/* 설정 알림 */
+body.theme-dark .settings-notification {
+    background-color: #14b8a6;
+    color: #ffffff;
+}

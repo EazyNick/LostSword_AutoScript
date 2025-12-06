@@ -1,0 +1,166 @@
+/* ========================================== */
+/* 라이트 모드 설정 페이지 스타일 */
+/* ========================================== */
+
+/* 설정 섹션 - 라이트 모드용 밝은 배경 */
+body.theme-light .settings-section {
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb;
+}
+
+body.theme-light .settings-section-title {
+    color: #1f2937;
+}
+
+body.theme-light .settings-section-subtitle {
+    color: #6b7280;
+}
+
+body.theme-light .settings-section-header {
+    border-bottom: 1px solid #e5e7eb;
+}
+
+/* 설정 항목 - 라이트 모드용 밝은 배경 */
+body.theme-light .settings-item {
+    background-color: #f9fafb;
+    border: 1px solid #e5e7eb;
+}
+
+body.theme-light .settings-item:hover {
+    border-color: #3182ce;
+    background-color: #ffffff;
+}
+
+body.theme-light .settings-item-label {
+    color: #1f2937;
+}
+
+body.theme-light .settings-item-description {
+    color: #6b7280;
+}
+
+/* 테마 버튼 - 라이트 모드용 */
+body.theme-light .theme-btn {
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb;
+    color: #6b7280;
+}
+
+body.theme-light .theme-btn:hover {
+    border-color: #3182ce;
+    color: #1f2937;
+    background-color: #f9fafb;
+}
+
+body.theme-light .theme-btn.active {
+    background-color: #3182ce;
+    border-color: #3182ce;
+    color: #ffffff;
+}
+
+/* 설정 선택 박스 - 라이트 모드용 */
+body.theme-light .settings-select {
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb;
+    color: #1f2937;
+}
+
+body.theme-light .settings-select:hover {
+    border-color: #3182ce;
+}
+
+body.theme-light .settings-select:focus {
+    border-color: #3182ce;
+    box-shadow: 0 0 0 2px rgba(49, 130, 206, 0.2);
+}
+
+/* 설정 입력 필드 - 라이트 모드용 */
+body.theme-light .settings-input {
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb;
+    color: #1f2937;
+}
+
+body.theme-light .settings-input:hover {
+    border-color: #3182ce;
+}
+
+body.theme-light .settings-input:focus {
+    border-color: #3182ce;
+    box-shadow: 0 0 0 2px rgba(49, 130, 206, 0.2);
+}
+
+/* 슬라이더 - 라이트 모드용 */
+body.theme-light .settings-slider {
+    background: #e5e7eb;
+}
+
+body.theme-light .settings-slider::-webkit-slider-thumb {
+    background: #3182ce;
+}
+
+body.theme-light .settings-slider::-webkit-slider-thumb:hover {
+    background: #2c5282;
+}
+
+body.theme-light .settings-slider::-moz-range-thumb {
+    background: #3182ce;
+}
+
+body.theme-light .settings-slider::-moz-range-thumb:hover {
+    background: #2c5282;
+}
+
+body.theme-light .slider-value {
+    color: #3182ce;
+}
+
+/* 토글 스위치 - 라이트 모드용 */
+body.theme-light .toggle-slider {
+    background-color: #d1d5db;
+}
+
+body.theme-light .toggle-slider:hover {
+    background-color: #9ca3af;
+}
+
+body.theme-light .toggle-switch input:checked + .toggle-slider {
+    background-color: #3182ce;
+}
+
+body.theme-light .toggle-switch input:checked + .toggle-slider:hover {
+    background-color: #2c5282;
+}
+
+/* 단축키 항목 - 라이트 모드용 */
+body.theme-light .shortcut-item {
+    background-color: #f9fafb;
+    border: 1px solid #e5e7eb;
+}
+
+body.theme-light .shortcut-label {
+    color: #1f2937;
+}
+
+body.theme-light .shortcut-keys kbd {
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb;
+    color: #1f2937;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* 설정 저장 버튼 - 라이트 모드용 */
+body.theme-light .btn-save-settings {
+    background-color: #3182ce;
+    color: #ffffff;
+}
+
+body.theme-light .btn-save-settings:hover {
+    background-color: #2c5282;
+}
+
+/* 설정 알림 - 라이트 모드용 */
+body.theme-light .settings-notification {
+    background-color: #3182ce;
+    color: #ffffff;
+}

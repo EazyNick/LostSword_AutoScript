@@ -7,27 +7,57 @@
         <link
             rel="icon"
             type="image/svg+xml"
-            href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNCIgZmlsbD0iIzI2NzNlYSIvPgo8cGF0aCBkPSJNOCAxMkgxNlYyMEg4VjEyWiIgZmlsbD0iI2ZmZmZmZiIvPgo8cGF0aCBkPSJNMTYgMTJIMjRWMjBIMTZWMTJaIiBmaWxsPSIjZmZmZmZmIi8+CjxwYXRoIGQ9Ik04IDIwSDE2VjI4SDhWMjBaIiBmaWxsPSIjZmZmZmZmIi8+CjxwYXRoIGQ9Ik0xNiAyMEgyNFYyOEgxNlYyMFoiIGZpbGw9IiNmZmZmZmYiLz4KPC9zdmc+"
+            href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNCIgZmlsbD0iIzI2NzNlYSIvPgo8cGF0aCBkPSJNOCAxMkgxNlYyMEg4VjEyWiIgZmlsbD0iI2ZmZmZmZiIvPgo8cGF0aCBkPSJNMTYgMTJIMjRWMjBIMTZWMjBaIiBmaWxsPSIjZmZmZmZmIi8+CjxwYXRoIGQ9Ik04IDIwSDE2VjI4SDhWMjBaIiBmaWxsPSIjZmZmZmZmIi8+CjxwYXRoIGQ9Ik0xNiAyMEgyNFYyOEgxNlYyMFoiIGZpbGw9IiNmZmZmZmYiLz4KPC9zdmc+"
         />
+        <!-- CSS 파일들 로드 -->
         <link rel="stylesheet" href="/static/styles/common.css" />
         <link rel="stylesheet" href="/static/styles/components/header.css" />
         <link rel="stylesheet" href="/static/styles/components/sidebar.css" />
+        <link rel="stylesheet" href="/static/styles/components/top-profile.css" />
         <link rel="stylesheet" href="/static/styles/components/modal.css" />
-        <link rel="stylesheet" href="/static/styles/components/node.css" />
+        <link rel="stylesheet" href="/static/styles/components/node-settings-modal.css" />
         <link rel="stylesheet" href="/static/pages/workflow/workflow.css" />
+        <link rel="stylesheet" href="/static/pages/workflow/dashboard.css" />
+        <link rel="stylesheet" href="/static/pages/workflow/settings.css" />
+        <!-- 테마 스타일 -->
+        <!-- 다크 모드 -->
+        <link rel="stylesheet" href="/static/styles/themes/dark/common.css" />
+        <link rel="stylesheet" href="/static/styles/themes/dark/components.css" />
+        <link rel="stylesheet" href="/static/styles/themes/dark/dashboard.css" />
+        <link rel="stylesheet" href="/static/styles/themes/dark/settings.css" />
+        <link rel="stylesheet" href="/static/styles/themes/dark/workflow.css" />
+        <!-- 라이트 모드 -->
+        <link rel="stylesheet" href="/static/styles/themes/light/common.css" />
+        <link rel="stylesheet" href="/static/styles/themes/light/components.css" />
+        <link rel="stylesheet" href="/static/styles/themes/light/dashboard.css" />
+        <link rel="stylesheet" href="/static/styles/themes/light/settings.css" />
+        <link rel="stylesheet" href="/static/styles/themes/light/workflow.css" />
     </head>
     <body>
+        <!-- 메인 앱 컨테이너 -->
         <div id="app">
-            <!-- 상단 헤더 -->
-            <header class="top-header">
-                <div class="header-left">
-                    <div class="document-icon">📄</div>
-                    <span class="header-title">테스트 스크립트</span>
+            <!-- ========================================== -->
+            <!-- 좌측 최상단 영역: 프로필 및 닉네임 -->
+            <!-- ========================================== -->
+            <div class="top-left-profile">
+                <div class="top-profile-avatar">👤</div>
+                <div class="top-profile-info">
+                    <div class="top-profile-name">사용자</div>
+                    <div class="top-profile-email">user@example.com</div>
                 </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- 상단 헤더 영역 -->
+            <!-- ========================================== -->
+            <header class="top-header">
+                <!-- 헤더 중앙: 스크립트 제목 및 설명 -->
                 <div class="header-center">
                     <h1 class="script-title">로그인 테스트</h1>
                     <p class="script-description">사용자 로그인 프로세스 검증</p>
                 </div>
+
+                <!-- 헤더 오른쪽: 액션 버튼들 -->
                 <div class="header-right">
                     <!-- 전체 스크립트 실행 버튼: 모든 스크립트를 순차적으로 실행 -->
                     <button class="header-btn run-all-scripts-btn" title="모든 스크립트 실행">
@@ -35,14 +65,19 @@
                         <span class="btn-text">전체 실행</span>
                     </button>
 
+                    <!-- 저장 버튼: 현재 워크플로우를 로컬 스토리지에 저장 -->
                     <button class="header-btn save-btn">
                         <span class="btn-icon">💾</span>
                         <span class="btn-text">저장</span>
                     </button>
+
+                    <!-- 노드 추가 버튼: 새 워크플로우 노드를 추가 -->
                     <button class="header-btn add-node-btn">
                         <span class="btn-icon">+</span>
                         <span class="btn-text">노드 추가</span>
                     </button>
+
+                    <!-- 실행 버튼: 워크플로우를 실행 -->
                     <button class="header-btn run-btn">
                         <span class="btn-icon">▶</span>
                         <span class="btn-text">실행</span>
@@ -50,68 +85,174 @@
                 </div>
             </header>
 
-            <!-- 메인 컨텐츠 -->
-            <main class="main-content">
-                <!-- 왼쪽 사이드바 -->
-                <aside class="sidebar">
+            <!-- ========================================== -->
+            <!-- 왼쪽 사이드바: 네비게이션 및 스크립트 목록 -->
+            <!-- ========================================== -->
+            <aside class="sidebar">
+                <!-- 네비게이션 메뉴 -->
+                <nav class="sidebar-nav">
+                    <button class="nav-item active" data-page="dashboard">
+                        <span class="nav-icon">📊</span>
+                        <span class="nav-text">대시보드</span>
+                    </button>
+                    <button class="nav-item" data-page="editor">
+                        <span class="nav-icon">⚙</span>
+                        <span class="nav-text">스크립트</span>
+                    </button>
+                    <button class="nav-item" data-page="history">
+                        <span class="nav-icon">🕐</span>
+                        <span class="nav-text">실행 기록</span>
+                    </button>
+                    <button class="nav-item" data-page="settings">
+                        <span class="nav-icon">⚙</span>
+                        <span class="nav-text">설정</span>
+                    </button>
+                </nav>
+
+                <!-- 스크립트 목록 섹션 (에디터 페이지에서만 표시) -->
+                <div class="sidebar-scripts-section" id="sidebar-scripts-section">
                     <div class="sidebar-header">
-                        <h2>테스트 스크립트</h2>
-                        <button class="add-script-btn">+</button>
+                        <h2>스크립트</h2>
+                        <div class="sidebar-header-buttons">
+                            <!-- 새 스크립트 추가 버튼 -->
+                            <button class="add-script-btn">+</button>
+                        </div>
                     </div>
 
+                    <!-- 스크립트 목록 (동적으로 로드됨) -->
                     <div class="script-list">
-                        <div class="script-item active">
-                            <div class="script-icon">📄</div>
-                            <div class="script-info">
-                                <div class="script-name">로그인 테스트</div>
-                                <div class="script-desc">사용자 로그인 프로세스 검증</div>
-                                <div class="script-date">
-                                    <span class="date-icon">🕐</span>
-                                    <span class="date-text">2024. 1. 1.</span>
+                        <!-- 스크립트 목록은 sidebar.js에서 동적으로 생성됩니다 -->
+                    </div>
+                </div>
+
+                <!-- 사이드바 리사이즈 핸들: 경계선을 드래그하여 사이드바 크기 조절 -->
+                <div class="sidebar-resize-handle" id="sidebar-resize-handle"></div>
+            </aside>
+
+            <!-- ========================================== -->
+            <!-- 메인 컨텐츠 영역 -->
+            <!-- ========================================== -->
+            <main class="main-content">
+                <!-- ========================================== -->
+                <!-- 메인 컨텐츠 영역 (페이지별로 전환) -->
+                <!-- ========================================== -->
+                
+                <!-- 대시보드 페이지 -->
+                <div class="page-content" id="page-dashboard">
+                    <div class="dashboard-container">
+                        <div class="dashboard-header">
+                            <h1 class="dashboard-title">대시보드</h1>
+                            <p class="dashboard-subtitle">워크플로우 현황을 확인하세요</p>
+                            <button class="btn-new-workflow">
+                                <span class="btn-icon">+</span>
+                                <span class="btn-text">새 워크플로우</span>
+                            </button>
+                        </div>
+
+                        <!-- 통계 카드 -->
+                        <div class="dashboard-stats">
+                            <div class="stat-card">
+                                <div class="stat-card-icon">📄</div>
+                                <div class="stat-label">전체 워크플로우</div>
+                                <div class="stat-value" id="stat-total-scripts">0</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-card-icon">▶</div>
+                                <div class="stat-label">오늘 실행 횟수</div>
+                                <div class="stat-value" id="stat-today-executions">0</div>
+                                <div class="stat-change positive" id="stat-execution-change">
+                                    <span class="change-icon">↑</span>
+                                    <span class="change-text">+0% 어제 대비</span>
                                 </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-card-icon">✓</div>
+                                <div class="stat-label">성공률</div>
+                                <div class="stat-value" id="stat-success-rate">0%</div>
+                                <div class="stat-change positive" id="stat-success-change">
+                                    <span class="change-icon">↑</span>
+                                    <span class="change-text">+0% 지난주 대비</span>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-card-icon">✗</div>
+                                <div class="stat-label">실패한 테스트</div>
+                                <div class="stat-value" id="stat-failed-tests">0</div>
                             </div>
                         </div>
 
-                        <div class="script-item">
-                            <div class="script-icon">📄</div>
-                            <div class="script-info">
-                                <div class="script-name">결제 프로세스 테스트</div>
-                                <div class="script-desc">온라인 결제 과정 검증</div>
-                                <div class="script-date">
-                                    <span class="date-icon">🕐</span>
-                                    <span class="date-text">2024. 1. 2.</span>
-                                </div>
+                        <!-- 스크립트 목록 -->
+                        <div class="dashboard-scripts">
+                            <h2 class="section-title">스크립트</h2>
+                            <div class="scripts-grid" id="dashboard-scripts-grid">
+                                <!-- 스크립트 카드들이 동적으로 생성됩니다 -->
                             </div>
                         </div>
                     </div>
-                </aside>
+                </div>
 
-                <!-- 메인 워크플로우 영역 -->
-                <div class="workflow-area">
-                    <div class="workflow-canvas" id="workflow-canvas">
-                        <!-- 노드들이 여기에 동적으로 추가됩니다 -->
+                <!-- 에디터 페이지 (기존 워크플로우 영역) -->
+                <div class="page-content workflow-area" id="page-editor" style="display: none;">
+                    <!-- 워크플로우 캔버스: 노드들이 배치되는 메인 영역 -->
+                    <!-- tabindex="0": 키보드 포커스 가능하게 설정 (줌 기능을 위해 필요) -->
+                    <div class="workflow-canvas" id="workflow-canvas" tabindex="0">
+                        <!-- 캔버스 내부 콘텐츠 컨테이너 (피그마 방식) -->
+                        <div class="canvas-content" id="canvas-content">
+                            <!-- 노드들이 여기에 동적으로 추가됩니다 -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 실행 기록 페이지 -->
+                <div class="page-content" id="page-history" style="display: none;">
+                    <div class="history-container">
+                        <h1 class="page-title">실행 기록</h1>
+                        <p class="page-subtitle">과거 실행 내역을 확인하세요</p>
+                        <div class="history-list" id="history-list">
+                            <!-- 실행 기록 목록이 동적으로 생성됩니다 -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 설정 페이지 -->
+                <div class="page-content" id="page-settings" style="display: none;">
+                    <div class="settings-container">
+                        <h1 class="page-title">설정</h1>
+                        <p class="page-subtitle">애플리케이션 설정을 관리하세요</p>
+                        <div class="settings-content" id="settings-content">
+                            <!-- 설정 내용이 동적으로 생성됩니다 -->
+                        </div>
                     </div>
                 </div>
             </main>
         </div>
 
-        <!-- 모달 -->
+        <!-- ========================================== -->
+        <!-- 모달 창: 팝업 형태의 대화상자 -->
+        <!-- ========================================== -->
         <div id="modal" class="modal">
             <div class="modal-content">
+                <!-- 모달 닫기 버튼 -->
                 <span class="close">&times;</span>
+                <!-- 모달 내용이 동적으로 삽입되는 영역 -->
                 <div id="modal-body"></div>
             </div>
         </div>
 
-        <!-- 스크립트 로드 -->
+        <!-- ========================================== -->
+        <!-- JavaScript 파일들 로드 -->
+        <!-- ========================================== -->
+
         <!-- 1. 유틸 -->
         <script src="/static/js/utils/logger.js"></script>
+        <script type="module" src="/static/js/utils/theme-manager.js"></script>
         <script type="module" src="/static/js/utils/modal.js"></script>
 
         <!-- 2. API 유틸리티 (ES6 모듈) -->
         <script type="module" src="/static/js/api/api.js"></script>
         <script type="module" src="/static/js/api/scriptapi.js"></script>
         <script type="module" src="/static/js/api/nodeapi.js"></script>
+        <script type="module" src="/static/js/api/user-settings-api.js"></script>
 
         <!-- 3. NodeManager가 의존하는 서브 컨트롤러들 -->
         <script src="/static/js/components/node/node-selection.js"></script>
@@ -121,13 +262,16 @@
         <script type="module" src="/static/js/components/sidebar.js"></script>
         <script type="module" src="/static/js/components/connection.js"></script>
 
-        <!-- 4. 연결 핸들러 (NodeManager보다 먼저 로드) -->
+        <!-- 4. 노드 아이콘 설정 (NodeManager보다 먼저 로드) -->
+        <script src="/static/js/components/node/node-icons.config.js"></script>
+
+        <!-- 5. 연결 핸들러 (NodeManager보다 먼저 로드) -->
         <script src="/static/js/components/node/node-connection-handler.js"></script>
 
-        <!-- 5. 공통 NodeManager -->
+        <!-- 6. 공통 NodeManager -->
         <script type="module" src="/static/js/components/node/node.js"></script>
 
-        <!-- 6. 각 노드 타입 정의 (NodeManager.registerNodeType 사용) -->
+        <!-- 7. 각 노드 타입 정의 (NodeManager.registerNodeType 사용) -->
         <script src="/static/js/components/node/node-start.js"></script>
         <script src="/static/js/components/node/node-end.js"></script>
         <script src="/static/js/components/node/node-action.js"></script>
@@ -135,8 +279,15 @@
         <script src="/static/js/components/node/node-loop.js"></script>
         <script src="/static/js/components/node/node-wait.js"></script>
         <script src="/static/js/components/node/node-image-touch.js"></script>
+        <script src="/static/js/components/node/node-process-focus.js"></script>
 
-        <!-- 7. 페이지 전체 로직 (ES6 모듈) -->
+        <!-- 8. 페이지 라우터 -->
+        <script type="module" src="/static/pages/workflow/page-router.js"></script>
+
+        <!-- 9. 설정 페이지 -->
+        <script type="module" src="/static/pages/workflow/settings.js"></script>
+
+        <!-- 10. 페이지 전체 로직 -->
         <script type="module" src="/static/pages/workflow/workflow.js"></script>
     </body>
 </html>

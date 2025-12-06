@@ -1,0 +1,129 @@
+/* ========================================== */
+/* 라이트 모드 컴포넌트 스타일 */
+/* ========================================== */
+
+/* 사이드바 */
+body.theme-light .sidebar {
+    background-color: #ffffff;
+    border-right: 1px solid #e5e7eb;
+}
+
+body.theme-light .nav-item {
+    color: #4b5563;
+}
+
+body.theme-light .nav-item:hover {
+    background-color: #f3f4f6;
+    color: #1f2937;
+}
+
+body.theme-light .nav-item.active {
+    background-color: #3182ce;
+    color: #ffffff;
+}
+
+/* 헤더 */
+body.theme-light .top-header {
+    background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+    border-bottom: 1px solid #e5e7eb;
+}
+
+body.theme-light .script-title {
+    color: #1f2937;
+}
+
+body.theme-light .script-description {
+    color: #6b7280;
+}
+
+/* 프로필 영역 */
+body.theme-light .top-left-profile {
+    background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+    border-bottom: 1px solid #e5e7eb;
+    border-right: 1px solid #e5e7eb;
+}
+
+body.theme-light .top-profile-name {
+    color: #1f2937;
+}
+
+body.theme-light .top-profile-email {
+    color: #6b7280;
+}
+
+/* 페이지 컨텐츠 */
+body.theme-light .page-content {
+    background-color: #f5f5f5;
+}
+
+/* 페이지 제목 및 부제목 */
+body.theme-light .page-title,
+body.theme-light .dashboard-title {
+    color: #1f2937;
+}
+
+body.theme-light .page-subtitle,
+body.theme-light .dashboard-subtitle {
+    color: #6b7280;
+}
+
+/* 설정 컨테이너 */
+body.theme-light .settings-container,
+body.theme-light .history-container {
+    background-color: #f5f5f5;
+}
+
+/* ========================================== */
+/* 사이드바 스크립트 목록 */
+/* ========================================== */
+
+/* 사이드바 헤더 */
+body.theme-light .sidebar-header {
+    border-bottom: 1px solid #e5e7eb;
+}
+
+body.theme-light .sidebar-header h2 {
+    color: #1f2937;
+}
+
+/* 스크립트 항목 */
+body.theme-light .script-item {
+    background-color: #ffffff;
+    border: 2px solid #e5e7eb;
+}
+
+body.theme-light .script-item:hover {
+    background-color: #f9fafb;
+    border-color: #d1d5db;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+body.theme-light .script-item.active {
+    border-color: #3182ce;
+    background-color: #eff6ff;
+}
+
+/* 스크립트 이름 */
+body.theme-light .script-name {
+    color: #1f2937;
+}
+
+/* 스크립트 설명 */
+body.theme-light .script-desc {
+    color: #6b7280;
+}
+
+/* 스크립트 날짜 */
+body.theme-light .date-text {
+    color: #9ca3af;
+}
+
+/* 스크립트 드래그 핸들 */
+body.theme-light .script-drag-handle {
+    color: #9ca3af;
+}
+
+/* 스크립트 삭제 버튼 */
+body.theme-light .script-delete-btn:hover {
+    background-color: rgba(239, 68, 68, 0.1);
+}

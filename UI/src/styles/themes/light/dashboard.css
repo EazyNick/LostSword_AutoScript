@@ -1,0 +1,112 @@
+/* ========================================== */
+/* 라이트 모드 대시보드 스타일 */
+/* ========================================== */
+
+/* 통계 카드 - 라이트 모드용 밝은 배경 */
+body.theme-light .stat-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+    border: 1px solid #e5e7eb;
+}
+
+body.theme-light .stat-card:hover {
+    border-color: #3182ce;
+}
+
+body.theme-light .stat-card::before {
+    background: linear-gradient(90deg, #3182ce 0%, #2c5282 100%);
+}
+
+body.theme-light .stat-label {
+    color: #6b7280;
+}
+
+body.theme-light .stat-value {
+    color: #1f2937;
+}
+
+body.theme-light .stat-change.positive {
+    color: #22c55e;
+}
+
+body.theme-light .stat-change.negative {
+    color: #ef4444;
+}
+
+/* 워크플로우 카드 - 라이트 모드용 밝은 배경 */
+body.theme-light .script-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+    border: 1px solid #e5e7eb;
+}
+
+body.theme-light .script-card:hover {
+    border-color: #3182ce;
+}
+
+body.theme-light .script-card::before {
+    background: linear-gradient(90deg, #3182ce 0%, #2c5282 100%);
+}
+
+body.theme-light .script-card-title {
+    color: #1f2937;
+}
+
+body.theme-light .script-card-description {
+    color: #6b7280;
+}
+
+body.theme-light .script-card-footer {
+    border-top: 1px solid #e5e7eb;
+}
+
+body.theme-light .script-card-last-run {
+    color: #6b7280;
+}
+
+body.theme-light .script-card-success-rate {
+    color: #22c55e;
+}
+
+body.theme-light .btn-edit {
+    background-color: transparent;
+    color: #6b7280;
+    border: 1px solid #e5e7eb;
+}
+
+body.theme-light .btn-edit:hover {
+    background-color: #f3f4f6;
+    border-color: #d1d5db;
+    color: #1f2937;
+}
+
+body.theme-light .btn-run {
+    background-color: #3182ce;
+    color: #ffffff;
+}
+
+body.theme-light .btn-run:hover {
+    background-color: #2c5282;
+}
+
+body.theme-light .empty-message {
+    color: #6b7280;
+}
+
+/* 섹션 제목 */
+body.theme-light .section-title {
+    color: #1f2937;
+}
+
+/* 대시보드 스크립트 섹션 */
+body.theme-light .dashboard-scripts {
+    background-color: transparent;
+}
+
+/* 새 워크플로우 버튼 */
+body.theme-light .btn-new-workflow {
+    background-color: #3182ce;
+    color: #ffffff;
+}
+
+body.theme-light .btn-new-workflow:hover {
+    background-color: #2c5282;
+}

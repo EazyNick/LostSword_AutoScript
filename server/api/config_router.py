@@ -40,7 +40,6 @@ async def get_nodes_config() -> dict[str, Any]:
             "label": config.get("label"),
             "title": config.get("title"),
             "description": config.get("description"),
-            "color": config.get("color"),
             "script": config.get("script"),
             "isBoundary": config.get("is_boundary", False),
             "category": config.get("category"),
