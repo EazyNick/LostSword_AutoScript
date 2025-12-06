@@ -287,6 +287,35 @@
     border: 1px solid rgba(251, 191, 36, 0.3);
 }
 
+/* 활성/비활성 토글 버튼 */
+.btn-toggle-active {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background-color: #22c55e;
+    color: #ffffff;
+}
+
+.btn-toggle-active:hover {
+    opacity: 0.9;
+    transform: scale(1.05);
+}
+
+.btn-toggle-active.inactive {
+    background-color: #6b7280;
+    color: #ffffff;
+}
+
+.btn-toggle-active.inactive:hover {
+    background-color: #4b5563;
+}
+
 /* 마지막 실행 시간 */
 .script-card-last-run {
     font-size: 12px;

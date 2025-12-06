@@ -183,16 +183,23 @@ export class PageRouter {
     /**
      * 스크립트 페이지 초기화
      */
-    initEditor() {
+    async initEditor() {
         const logger = getLogger();
         logger.log('[PageRouter] 스크립트 페이지 초기화');
+
+        // 서버에서 최신 스크립트 목록 다시 조회 (비활성화 상태 반영을 위해)
+        const sidebarManager = window.sidebarManager;
+        if (sidebarManager && typeof sidebarManager.loadScriptsFromServer === 'function') {
+            logger.log('[PageRouter] 서버에서 최신 스크립트 목록 조회 중...');
+            await sidebarManager.loadScriptsFromServer();
+            logger.log('[PageRouter] 최신 스크립트 목록 조회 완료');
+        }
 
         // 헤더 업데이트 (현재 스크립트 정보 반영)
         this.updateHeader('editor');
 
         // 워크플로우 페이지가 있으면 현재 스크립트 로드
         if (window.workflowPage && window.workflowPage.loadService) {
-            const sidebarManager = window.sidebarManager;
             if (sidebarManager) {
                 const currentScript = sidebarManager.getCurrentScript();
                 if (currentScript) {

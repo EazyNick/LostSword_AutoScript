@@ -38,10 +38,19 @@ class TableManager:
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name TEXT NOT NULL UNIQUE,
                     description TEXT,
+                    active INTEGER DEFAULT 1,
+                    execution_order INTEGER DEFAULT NULL,
+                    last_executed_at TIMESTAMP,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+            # 스크립트 인덱스 추가
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_scripts_name ON scripts(name)")  # 이름 검색 및 중복 체크 성능 향상
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_scripts_updated_at ON scripts(updated_at DESC)")  # ORDER BY updated_at DESC 정렬 최적화 (현재 사용 중)
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_scripts_active ON scripts(active) WHERE active = 1")  # 활성 스크립트만 필터링 시 성능 향상
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_scripts_last_executed ON scripts(last_executed_at DESC)")  # 최근 실행 순 정렬 최적화 (대시보드용)
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_scripts_execution_order ON scripts(execution_order ASC)")  # 실행 순서 기준 정렬 최적화 (전체 실행 시 사용)
 
             # 노드 테이블 생성
             cursor.execute("""
@@ -55,12 +64,20 @@ class TableManager:
                     node_data TEXT NOT NULL,
                     connected_to TEXT DEFAULT '[]',
                     connected_from TEXT DEFAULT '[]',
+                    parameters TEXT DEFAULT '{}',
+                    description TEXT,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (script_id) REFERENCES scripts (id) ON DELETE CASCADE
                 )
             """)
+            # 노드 인덱스 및 제약조건 추가
+            cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_nodes_script_node_unique ON nodes(script_id, node_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_nodes_script_id ON nodes(script_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_nodes_type ON nodes(node_type)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_nodes_script_type ON nodes(script_id, node_type)")
 
-            # 사용자 설정 테이블 생성
+            # 사용자 설정 테이블 생성 (개선: 향후 인증 시스템 대비)
             # 사용자별 설정을 키-값 쌍으로 저장
             # 주요 설정 키:
             #   - focused-script-id: 마지막으로 포커스된 스크립트 ID
@@ -71,15 +88,96 @@ class TableManager:
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS user_settings (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    setting_key TEXT NOT NULL UNIQUE,
+                    user_id TEXT DEFAULT NULL,
+                    setting_key TEXT NOT NULL,
                     setting_value TEXT NOT NULL,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(user_id, setting_key)
+                )
+            """)
+            # 사용자 설정 인덱스 추가
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_user_settings_user_id ON user_settings(user_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_user_settings_key ON user_settings(setting_key)")
+
+            # 실행 기록 테이블 생성 (실행 로그 관리용)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS script_executions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    script_id INTEGER NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'running',
+                    started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    finished_at TIMESTAMP,
+                    error_message TEXT,
+                    execution_time_ms INTEGER,
+                    FOREIGN KEY (script_id) REFERENCES scripts(id) ON DELETE CASCADE
+                )
+            """)
+            # 실행 기록 인덱스 추가
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_executions_script_id ON script_executions(script_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_executions_status ON script_executions(status)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_executions_started_at ON script_executions(started_at DESC)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_executions_script_status ON script_executions(script_id, status)")
+
+            # 태그 테이블 생성 (스크립트 분류 및 검색용)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS tags (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL UNIQUE,
+                    color TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_tags_name ON tags(name)")
+
+            # 스크립트-태그 관계 테이블
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS script_tags (
+                    script_id INTEGER NOT NULL,
+                    tag_id INTEGER NOT NULL,
+                    PRIMARY KEY (script_id, tag_id),
+                    FOREIGN KEY (script_id) REFERENCES scripts(id) ON DELETE CASCADE,
+                    FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+                )
+            """)
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_script_tags_script ON script_tags(script_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_script_tags_tag ON script_tags(tag_id)")
+
+            # 대시보드 통계 테이블 생성
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS dashboard_stats (
+                    stat_key TEXT PRIMARY KEY,
+                    stat_value INTEGER NOT NULL DEFAULT 0,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_dashboard_stats_key ON dashboard_stats(stat_key)")
+
+            # 통계 뷰 생성 (대시보드용)
+            self._create_views(cursor)
 
             conn.commit()
         finally:
             conn.close()
+
+    def _create_views(self, cursor: sqlite3.Cursor) -> None:
+        """성능 최적화를 위한 뷰 생성"""
+        # 스크립트 통계 뷰 (대시보드용)
+        cursor.execute("""
+            CREATE VIEW IF NOT EXISTS script_stats AS
+            SELECT
+                s.id,
+                s.name,
+                s.active,
+                s.last_executed_at,
+                COUNT(e.id) AS total_executions,
+                SUM(CASE WHEN e.status = 'success' THEN 1 ELSE 0 END) AS success_count,
+                SUM(CASE WHEN e.status = 'error' THEN 1 ELSE 0 END) AS error_count,
+                AVG(e.execution_time_ms) AS avg_execution_time_ms,
+                MAX(e.started_at) AS last_execution_at
+            FROM scripts s
+            LEFT JOIN script_executions e ON s.id = e.script_id
+            GROUP BY s.id, s.name, s.active, s.last_executed_at
+        """)
 
     def migrate_tables(self) -> None:
         """기존 테이블에 컬럼 추가 (마이그레이션)"""
@@ -87,21 +185,63 @@ class TableManager:
         cursor = self.connection.get_cursor(conn)
 
         try:
-            # connected_to 컬럼 추가
+            # nodes 테이블 마이그레이션
             with contextlib.suppress(sqlite3.OperationalError):
                 cursor.execute("ALTER TABLE nodes ADD COLUMN connected_to TEXT DEFAULT '[]'")
-
-            # connected_from 컬럼 추가
             with contextlib.suppress(sqlite3.OperationalError):
                 cursor.execute("ALTER TABLE nodes ADD COLUMN connected_from TEXT DEFAULT '[]'")
-
-            # parameters 컬럼 추가
             with contextlib.suppress(sqlite3.OperationalError):
                 cursor.execute("ALTER TABLE nodes ADD COLUMN parameters TEXT DEFAULT '{}'")
-
-            # description 컬럼 추가
             with contextlib.suppress(sqlite3.OperationalError):
                 cursor.execute("ALTER TABLE nodes ADD COLUMN description TEXT DEFAULT NULL")
+            with contextlib.suppress(sqlite3.OperationalError):
+                cursor.execute("ALTER TABLE nodes ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+
+            # scripts 테이블 마이그레이션
+            with contextlib.suppress(sqlite3.OperationalError):
+                cursor.execute("ALTER TABLE scripts ADD COLUMN active INTEGER DEFAULT 1")
+            with contextlib.suppress(sqlite3.OperationalError):
+                cursor.execute("ALTER TABLE scripts ADD COLUMN last_executed_at TIMESTAMP")
+            with contextlib.suppress(sqlite3.OperationalError):
+                # display_order를 execution_order로 변경 (기존 컬럼이 있으면 이름 변경)
+                cursor.execute("ALTER TABLE scripts ADD COLUMN execution_order INTEGER DEFAULT NULL")
+                # 기존 display_order가 있으면 execution_order로 데이터 이전
+                with contextlib.suppress(sqlite3.OperationalError):
+                    cursor.execute("UPDATE scripts SET execution_order = display_order WHERE execution_order IS NULL AND display_order IS NOT NULL")
+                # 기존 스크립트의 execution_order를 id로 초기화
+                cursor.execute("UPDATE scripts SET execution_order = id WHERE execution_order IS NULL")
+            # execution_order 인덱스 추가
+            with contextlib.suppress(sqlite3.OperationalError):
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_scripts_execution_order ON scripts(execution_order ASC)")
+
+            # user_settings 테이블 마이그레이션
+            with contextlib.suppress(sqlite3.OperationalError):
+                cursor.execute("ALTER TABLE user_settings ADD COLUMN user_id TEXT DEFAULT NULL")
+                # 기존 UNIQUE 제약조건 제거 후 새로운 복합 제약조건 추가
+                # SQLite는 ALTER TABLE로 UNIQUE 제약조건을 직접 수정할 수 없으므로
+                # 인덱스를 통해 처리 (이미 create_tables에서 처리됨)
+
+            # 인덱스 마이그레이션 (기존 테이블에 인덱스 추가)
+            with contextlib.suppress(sqlite3.OperationalError):
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_scripts_name ON scripts(name)")
+            with contextlib.suppress(sqlite3.OperationalError):
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_scripts_updated_at ON scripts(updated_at DESC)")
+            with contextlib.suppress(sqlite3.OperationalError):
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_scripts_active ON scripts(active) WHERE active = 1")
+            with contextlib.suppress(sqlite3.OperationalError):
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_scripts_last_executed ON scripts(last_executed_at DESC)")
+            with contextlib.suppress(sqlite3.OperationalError):
+                cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_nodes_script_node_unique ON nodes(script_id, node_id)")
+            with contextlib.suppress(sqlite3.OperationalError):
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_nodes_script_id ON nodes(script_id)")
+            with contextlib.suppress(sqlite3.OperationalError):
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_nodes_type ON nodes(node_type)")
+            with contextlib.suppress(sqlite3.OperationalError):
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_nodes_script_type ON nodes(script_id, node_type)")
+            with contextlib.suppress(sqlite3.OperationalError):
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_user_settings_user_id ON user_settings(user_id)")
+            with contextlib.suppress(sqlite3.OperationalError):
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_user_settings_key ON user_settings(setting_key)")
 
             conn.commit()
         finally:
@@ -153,10 +293,17 @@ if __name__ == "__main__":
     # 생성된 테이블 확인
     db_conn = conn.get_connection()
     cursor = conn.get_cursor(db_conn)
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
     tables = [row[0] for row in cursor.fetchall()]
+
+    # 생성된 뷰 확인
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='view' ORDER BY name")
+    views = [row[0] for row in cursor.fetchall()]
     db_conn.close()
-    print(f"   - 생성된 테이블: {', '.join(tables)}\n")
+    print(f"   - 생성된 테이블: {', '.join(tables)}")
+    if views:
+        print(f"   - 생성된 뷰: {', '.join(views)}")
+    print()
 
     # [3] 각 테이블의 구조 확인
     print("[3] 테이블 구조 확인 테스트...")
@@ -202,15 +349,38 @@ if __name__ == "__main__":
     nodes_columns_after = cursor.fetchall()
     db_conn.close()
 
-    # connected_to, connected_from, parameters, description 컬럼 확인
+    # connected_to, connected_from, parameters, description, updated_at 컬럼 확인
     column_names = [col[1] for col in nodes_columns_after]
-    expected_columns = ["connected_to", "connected_from", "parameters", "description"]
+    expected_columns = ["connected_to", "connected_from", "parameters", "description", "updated_at"]
     print("   - 마이그레이션 후 nodes 테이블 컬럼 확인:")
     for col_name in expected_columns:
         if col_name in column_names:
             print(f"     ✅ {col_name} 컬럼 존재")
         else:
             print(f"     ❌ {col_name} 컬럼 없음")
+
+    # scripts 테이블 마이그레이션 확인
+    cursor.execute("PRAGMA table_info(scripts)")
+    scripts_columns_after = cursor.fetchall()
+    scripts_column_names = [col[1] for col in scripts_columns_after]
+    expected_scripts_columns = ["active", "last_executed_at"]
+    print("   - 마이그레이션 후 scripts 테이블 컬럼 확인:")
+    for col_name in expected_scripts_columns:
+        if col_name in scripts_column_names:
+            print(f"     ✅ {col_name} 컬럼 존재")
+        else:
+            print(f"     ❌ {col_name} 컬럼 없음")
+
+    # user_settings 테이블 마이그레이션 확인
+    cursor.execute("PRAGMA table_info(user_settings)")
+    settings_columns_after = cursor.fetchall()
+    settings_column_names = [col[1] for col in settings_columns_after]
+    if "user_id" in settings_column_names:
+        print("   - 마이그레이션 후 user_settings 테이블:")
+        print("     ✅ user_id 컬럼 존재")
+    else:
+        print("   - 마이그레이션 후 user_settings 테이블:")
+        print("     ❌ user_id 컬럼 없음")
     print()
 
     # [5] initialize 메서드 테스트 (전체 초기화)

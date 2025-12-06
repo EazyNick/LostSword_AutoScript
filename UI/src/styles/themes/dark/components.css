@@ -55,3 +55,26 @@ body.theme-dark .top-profile-email {
 body.theme-dark .page-content {
     background-color: #1a202c;
 }
+
+/* 비활성화된 스크립트 (다크 모드): 연하게 표시 */
+body.theme-dark .script-item.inactive {
+    opacity: 0.5;
+    filter: grayscale(0.3);
+}
+
+body.theme-dark .script-item.inactive .script-name {
+    color: #718096;
+}
+
+body.theme-dark .script-item.inactive .script-desc {
+    color: #4a5568;
+}
+
+body.theme-dark .script-item.inactive .script-date {
+    color: #4a5568;
+}
+
+body.theme-dark .script-item.inactive:hover {
+    opacity: 0.6;
+    background-color: #2d3748;
+}

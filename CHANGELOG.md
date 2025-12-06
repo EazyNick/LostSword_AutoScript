@@ -2,6 +2,47 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.3] - 2025-12-07
+
+### Added
+- Script activation/deactivation feature with toggle button in dashboard
+- Dashboard statistics table (`dashboard_stats`) for performance optimization
+- Dashboard statistics API endpoint (`GET /api/dashboard/stats`)
+- Script execution history table (`script_executions`) for tracking script runs
+- Tag system (`tags`, `script_tags` tables) for script categorization
+- Script statistics view (`script_stats`) for aggregated dashboard data
+- "Today's failed scripts" stat card in dashboard
+- "Inactive scripts" stat card in dashboard
+- Script active status management in database (`scripts.active` column)
+- Dashboard statistics repository for efficient stat management
+- Script execution order management (`scripts.execution_order` column) - determines order for "Run All" execution
+- Index for execution order (`idx_scripts_execution_order`) for optimized sorting
+- API endpoint for updating script execution order (`PATCH /api/scripts/order`)
+- Detailed logging for node execution in `/api/execute-nodes` endpoint
+
+### Changed
+- "Run All" button now queries active scripts from server before execution
+- "Run All" button only executes scripts with `active = 1` in database
+- "Run All" button executes scripts in `execution_order` sequence
+- Dashboard and script page now display scripts in the same order (based on `execution_order`)
+- Script order is now stored in database (`execution_order` column) instead of user settings
+- Dashboard statistics are calculated and cached in database
+- Script card status display changed from text to toggle button
+- Database schema updated with new tables and columns
+- Node execution error handling: Server returns `success: False` when node execution fails
+- Node counting logic: Start node always counted as success, End node counted as success on normal completion
+- Condition nodes: Counted as success regardless of True/False branch (if no error occurs)
+- Unexecuted branch paths from condition nodes are not counted as cancelled
+
+### Fixed
+- "Run All" button bug where only 1 script executed instead of all active scripts
+- Index mismatch issue when selecting scripts during "Run All" execution
+- Dashboard statistics API 500 error (missing method implementation)
+- Script order synchronization between dashboard and script page
+- Frontend showing success message when server-side node execution fails
+- Node counting bug: `failCount` was incremented twice (once in error detection, once in catch block)
+- Incorrect cancelled node count due to End node and condition branch paths
+
 ## [0.0.2] - 2025-12-06
 
 ### Added

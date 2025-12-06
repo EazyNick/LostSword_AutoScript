@@ -25,13 +25,14 @@ class UserSettingsRepository:
         """
         self.connection = connection
 
-    def get_setting(self, setting_key: str, default_value: str | None = None) -> str | None:
+    def get_setting(self, setting_key: str, default_value: str | None = None, user_id: str | None = None) -> str | None:
         """
         사용자 설정 조회
 
         Args:
             setting_key: 설정 키
             default_value: 기본값
+            user_id: 사용자 ID (None이면 기존처럼 동작)
 
         Returns:
             설정 값 또는 기본값
@@ -40,7 +41,12 @@ class UserSettingsRepository:
         cursor = self.connection.get_cursor(conn)
 
         try:
-            cursor.execute("SELECT setting_value FROM user_settings WHERE setting_key = ?", (setting_key,))
+            if user_id is None:
+                # 기존 방식: user_id가 NULL인 설정 조회 (기존 코드 호환성)
+                cursor.execute("SELECT setting_value FROM user_settings WHERE setting_key = ? AND (user_id IS NULL OR user_id = '')", (setting_key,))
+            else:
+                # 새로운 방식: 특정 사용자의 설정 조회
+                cursor.execute("SELECT setting_value FROM user_settings WHERE setting_key = ? AND user_id = ?", (setting_key, user_id))
             result = cursor.fetchone()
 
             if result:
@@ -50,39 +56,57 @@ class UserSettingsRepository:
         finally:
             conn.close()
 
-    def save_setting(self, setting_key: str, setting_value: str) -> bool:
+    def save_setting(self, setting_key: str, setting_value: str, user_id: str | None = None) -> bool:
         """
         사용자 설정 저장
 
         Args:
             setting_key: 설정 키
             setting_value: 설정 값
+            user_id: 사용자 ID (None이면 기존처럼 동작)
 
         Returns:
             성공 여부
         """
         result: bool = self.connection.execute_with_connection(
-            lambda _conn, cursor: self._save_setting_impl(cursor, setting_key, setting_value)
+            lambda _conn, cursor: self._save_setting_impl(cursor, setting_key, setting_value, user_id)
         )
         return result
 
-    def _save_setting_impl(self, cursor: sqlite3.Cursor, setting_key: str, setting_value: str) -> bool:
+    def _save_setting_impl(self, cursor: sqlite3.Cursor, setting_key: str, setting_value: str, user_id: str | None = None) -> bool:
         """설정 저장 구현"""
-        cursor.execute(
-            """
-            INSERT INTO user_settings (setting_key, setting_value, updated_at)
-            VALUES (?, ?, CURRENT_TIMESTAMP)
-            ON CONFLICT(setting_key) DO UPDATE SET
-                setting_value = excluded.setting_value,
-                updated_at = CURRENT_TIMESTAMP
-        """,
-            (setting_key, setting_value),
-        )
+        if user_id is None:
+            # 기존 방식: user_id를 NULL로 저장 (기존 코드 호환성)
+            cursor.execute(
+                """
+                INSERT INTO user_settings (user_id, setting_key, setting_value, updated_at)
+                VALUES (NULL, ?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(user_id, setting_key) DO UPDATE SET
+                    setting_value = excluded.setting_value,
+                    updated_at = CURRENT_TIMESTAMP
+            """,
+                (setting_key, setting_value),
+            )
+        else:
+            # 새로운 방식: 특정 사용자의 설정 저장
+            cursor.execute(
+                """
+                INSERT INTO user_settings (user_id, setting_key, setting_value, updated_at)
+                VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(user_id, setting_key) DO UPDATE SET
+                    setting_value = excluded.setting_value,
+                    updated_at = CURRENT_TIMESTAMP
+            """,
+                (user_id, setting_key, setting_value),
+            )
         return True
 
-    def get_all_settings(self) -> dict[str, str]:
+    def get_all_settings(self, user_id: str | None = None) -> dict[str, str]:
         """
         모든 사용자 설정 조회
+
+        Args:
+            user_id: 사용자 ID (None이면 기존처럼 모든 설정 조회)
 
         Returns:
             설정 딕셔너리
@@ -91,30 +115,41 @@ class UserSettingsRepository:
         cursor = self.connection.get_cursor(conn)
 
         try:
-            cursor.execute("SELECT setting_key, setting_value FROM user_settings")
+            if user_id is None:
+                # 기존 방식: user_id가 NULL인 설정만 조회 (기존 코드 호환성)
+                cursor.execute("SELECT setting_key, setting_value FROM user_settings WHERE user_id IS NULL OR user_id = ''")
+            else:
+                # 새로운 방식: 특정 사용자의 설정만 조회
+                cursor.execute("SELECT setting_key, setting_value FROM user_settings WHERE user_id = ?", (user_id,))
             results = cursor.fetchall()
             return dict(results)
         finally:
             conn.close()
 
-    def delete_setting(self, setting_key: str) -> bool:
+    def delete_setting(self, setting_key: str, user_id: str | None = None) -> bool:
         """
         사용자 설정 삭제
 
         Args:
             setting_key: 설정 키
+            user_id: 사용자 ID (None이면 기존처럼 동작)
 
         Returns:
             삭제 성공 여부
         """
         result: bool = self.connection.execute_with_connection(
-            lambda _conn, cursor: self._delete_setting_impl(cursor, setting_key)
+            lambda _conn, cursor: self._delete_setting_impl(cursor, setting_key, user_id)
         )
         return result
 
-    def _delete_setting_impl(self, cursor: sqlite3.Cursor, setting_key: str) -> bool:
+    def _delete_setting_impl(self, cursor: sqlite3.Cursor, setting_key: str, user_id: str | None = None) -> bool:
         """설정 삭제 구현"""
-        cursor.execute("DELETE FROM user_settings WHERE setting_key = ?", (setting_key,))
+        if user_id is None:
+            # 기존 방식: user_id가 NULL인 설정 삭제 (기존 코드 호환성)
+            cursor.execute("DELETE FROM user_settings WHERE setting_key = ? AND (user_id IS NULL OR user_id = '')", (setting_key,))
+        else:
+            # 새로운 방식: 특정 사용자의 설정 삭제
+            cursor.execute("DELETE FROM user_settings WHERE setting_key = ? AND user_id = ?", (setting_key, user_id))
         return cursor.rowcount > 0
 
 

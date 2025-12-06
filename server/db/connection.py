@@ -24,11 +24,15 @@ class DatabaseConnection:
     def get_connection(self) -> sqlite3.Connection:
         """
         데이터베이스 연결 반환
+        외래키 제약조건을 활성화하여 데이터 무결성을 보장합니다.
 
         Returns:
             sqlite3.Connection: 데이터베이스 연결 객체
         """
-        return sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path)
+        # SQLite는 기본적으로 외래키 제약조건이 비활성화되어 있으므로 활성화
+        conn.execute("PRAGMA foreign_keys = ON")
+        return conn
 
     def get_cursor(self, conn: sqlite3.Connection) -> sqlite3.Cursor:
         """

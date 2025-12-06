@@ -66,14 +66,75 @@ export class WorkflowExecutionService {
         this.isExecuting = true;
         this.isCancelled = false; // 취소 플래그 초기화
 
+        // 전체 노드 개수 계산 (start와 end 포함)
+        // prepareWorkflowData에서 start와 end를 제외하므로, 실제 화면의 모든 노드 개수를 계산
+        const allNodes = document.querySelectorAll('.workflow-node');
+
+        // 조건 노드의 분기 경로 중 실행되지 않은 경로 노드들을 제외한 실제 실행 가능한 노드 수 계산
+        // 조건 노드에서 분기가 일어나면 한 경로만 실행되므로, 실행 안 된 경로는 카운팅하지 않음
+        const executedNodeIds = new Set(); // 실행 대상 노드 ID
+        workflowData.nodes.forEach((node) => {
+            executedNodeIds.add(node.id);
+        });
+
+        // 조건 노드의 분기 경로 중 실행 안 된 경로 노드 찾기
+        const conditionBranchNodes = new Set(); // 조건 노드의 실행 안 된 분기 경로 노드 ID
+        const nodeManager = this.workflowPage.getNodeManager();
+        const connections =
+            nodeManager && nodeManager.connectionManager ? nodeManager.connectionManager.getConnections() : [];
+
+        // 모든 노드에서 조건 노드 찾기
+        allNodes.forEach((node) => {
+            const nodeId = node.id || node.dataset.nodeId;
+            const nodeType = this.workflowPage.getNodeType(node);
+
+            if (nodeType === 'condition') {
+                // 조건 노드에서 나가는 모든 연결 찾기
+                const branchConnections = connections.filter((c) => c.from === nodeId);
+                branchConnections.forEach((conn) => {
+                    // 실행 대상에 포함되지 않은 분기 경로 노드 (end 제외)
+                    if (!executedNodeIds.has(conn.to) && conn.to !== 'end') {
+                        conditionBranchNodes.add(conn.to);
+                    }
+                });
+            }
+        });
+
+        // 전체 노드 수에서 조건 노드의 실행 안 된 분기 경로 노드만 제외
+        // End 노드는 포함 (정상 완료 시 성공으로 카운팅, 에러 발생 시 중단으로 카운팅)
+        const totalNodeCount = allNodes.length - conditionBranchNodes.size;
+
+        // End 노드 존재 여부 확인 (정상 완료 시 성공으로 카운팅하기 위해)
+        const endNodeExists = Array.from(allNodes).some((node) => {
+            const nodeId = node.id || node.dataset.nodeId;
+            const nodeType = this.workflowPage.getNodeType(node);
+            const title = node.querySelector('.node-title')?.textContent || '';
+            return nodeId === 'end' || nodeType === 'end' || title.includes('종료');
+        });
+
+        // 디버깅: 노드 카운팅 정보 로깅
+        const logger = this.workflowPage.getLogger();
+        logger.log('[WorkflowExecutionService] 노드 카운팅 초기화:', {
+            전체노드수: allNodes.length,
+            조건분기제외: conditionBranchNodes.size,
+            End노드존재: endNodeExists,
+            최종노드수: totalNodeCount,
+            실행대상노드: executedNodeIds.size,
+            조건분기노드목록: Array.from(conditionBranchNodes)
+        });
+
         let successCount = 0;
         let failCount = 0;
         let cancelledCount = 0;
-        const totalNodeCount = workflowData.nodes.length;
+        let currentNodeIndex = -1; // 현재 실행 중인 노드 인덱스 추적
+
+        // Start 노드는 항상 성공으로 카운팅 (실행은 안 하지만 성공으로 간주)
+        successCount = 1;
 
         try {
             // 노드를 순차적으로 실행
             for (let i = 0; i < workflowData.nodes.length; i++) {
+                currentNodeIndex = i; // 현재 노드 인덱스 업데이트
                 // 취소 플래그 체크
                 if (this.isCancelled) {
                     const logger = this.workflowPage.getLogger();
@@ -128,64 +189,85 @@ export class WorkflowExecutionService {
                     const result = await response.json();
 
                     // 3. 실행 완료 UI 표시
-                    if (result.success) {
-                        const nodeResult = result.data?.results?.[0];
+                    const nodeResult = result.data?.results?.[0];
 
-                        if (nodeResult?.error) {
-                            // 에러 발생 시
-                            this.showNodeError(nodeElement);
+                    // 노드 결과에서 에러 확인 (status가 "failed"이거나 error 필드가 있는 경우)
+                    const isNodeFailed =
+                        nodeResult?.status === 'failed' ||
+                        nodeResult?.error ||
+                        (nodeResult?.output && nodeResult.output.error);
 
-                            const nodeTitle = nodeData.data?.title || nodeData.type || nodeData.id;
-                            const errorMessage = nodeResult.error || '알 수 없는 오류';
-
-                            // 이미지 터치 노드의 폴더 경로 관련 에러인지 확인
-                            const isImageTouchError =
-                                errorMessage.includes('폴더') ||
-                                errorMessage.includes('folder_path') ||
-                                nodeData.type === 'image-touch';
-
-                            if (isImageTouchError && modalManager) {
-                                modalManager.showAlert(`이미지 터치 노드 오류: ${nodeTitle}`, errorMessage);
-                            } else if (modalManager) {
-                                modalManager.showAlert(`노드 실행 오류: ${nodeTitle}`, errorMessage);
-                            }
-
-                            // 에러 발생 시 실행 중단 (에러를 throw하여 상위로 전파)
-                            failCount++;
-                            throw new Error(`노드 "${nodeTitle}" 실행 중 오류: ${errorMessage}`);
-                        } else {
-                            // 성공 시
-                            successCount++;
-                            this.showNodeCompleted(nodeElement);
-                        }
-                    } else {
-                        // 서버 레벨 에러
+                    // 서버 레벨 에러 또는 노드 레벨 에러 확인
+                    if (result.success === false || isNodeFailed) {
+                        // 에러 발생 시
                         this.showNodeError(nodeElement);
-                        const nodeTitle = nodeData.data?.title || nodeData.type || nodeData.id;
-                        const errorMessage = result.detail || result.message || '노드 실행 중 오류가 발생했습니다.';
 
-                        if (modalManager) {
-                            modalManager.showAlert(`노드 실행 실패: ${nodeTitle}`, errorMessage);
+                        const nodeTitle = nodeData.data?.title || nodeData.type || nodeData.id;
+                        let errorMessage = '알 수 없는 오류';
+
+                        // 에러 메시지 추출 (우선순위: nodeResult.error > nodeResult.output.error > nodeResult.message > result.message)
+                        if (nodeResult?.error) {
+                            errorMessage = nodeResult.error;
+                        } else if (nodeResult?.output?.error) {
+                            errorMessage = nodeResult.output.error;
+                        } else if (nodeResult?.message) {
+                            errorMessage = nodeResult.message;
+                        } else if (result.message) {
+                            errorMessage = result.message;
+                        } else if (result.detail) {
+                            errorMessage = result.detail;
+                        }
+
+                        // 이미지 터치 노드의 폴더 경로 관련 에러인지 확인
+                        const isImageTouchError =
+                            errorMessage.includes('폴더') ||
+                            errorMessage.includes('folder_path') ||
+                            nodeData.type === 'image-touch';
+
+                        if (isImageTouchError && modalManager) {
+                            modalManager.showAlert(`이미지 터치 노드 오류: ${nodeTitle}`, errorMessage);
+                        } else if (modalManager) {
+                            modalManager.showAlert(`노드 실행 오류: ${nodeTitle}`, errorMessage);
                         }
 
                         // 에러 발생 시 실행 중단 (에러를 throw하여 상위로 전파)
+                        // failCount는 catch 블록에서 증가시키므로 여기서는 증가하지 않음
                         throw new Error(`노드 "${nodeTitle}" 실행 실패: ${errorMessage}`);
+                    } else {
+                        // 성공 시
+                        successCount++;
+                        this.showNodeCompleted(nodeElement);
                     }
                 } catch (error) {
-                    // 네트워크 에러 등
-                    console.error(`노드 실행 오류 (${nodeData.id}):`, error);
+                    // 네트워크 에러 또는 서버 에러 등
+                    const logger = this.workflowPage.getLogger();
+                    logger.error(`[WorkflowExecutionService] 노드 실행 오류 (${nodeData.id}):`, error);
                     this.showNodeError(nodeElement);
 
                     const nodeTitle = nodeData.data?.title || nodeData.type || nodeData.id;
                     const errorMessage = error.message || '알 수 없는 오류';
 
-                    if (modalManager) {
-                        modalManager.showAlert(`노드 실행 오류: ${nodeTitle}`, `네트워크 오류: ${errorMessage}`);
+                    // 이미지 터치 노드의 폴더 경로 관련 에러인지 확인
+                    const isImageTouchError =
+                        errorMessage.includes('폴더') ||
+                        errorMessage.includes('folder_path') ||
+                        nodeData.type === 'image-touch';
+
+                    // 모달이 아직 표시되지 않은 경우에만 표시 (위에서 이미 표시했을 수 있음)
+                    // 이미 위의 if 블록에서 모달을 표시했을 수 있으므로 중복 방지
+                    const modalAlreadyShown = document.querySelector('.modal.show') !== null;
+                    if (!modalAlreadyShown) {
+                        if (isImageTouchError && modalManager) {
+                            modalManager.showAlert(`이미지 터치 노드 오류: ${nodeTitle}`, errorMessage);
+                        } else if (modalManager) {
+                            modalManager.showAlert(`노드 실행 오류: ${nodeTitle}`, errorMessage);
+                        }
                     }
 
                     // 에러 발생 시 실행 중단 (에러를 throw하여 상위로 전파)
+                    // failCount는 여기서 한 번만 증가 (중복 방지)
                     failCount++;
-                    throw new Error(`노드 "${nodeTitle}" 실행 중 네트워크 오류: ${errorMessage}`);
+                    throw error; // 원본 에러를 그대로 전파
                 }
 
                 // 취소 플래그 체크
@@ -220,6 +302,14 @@ export class WorkflowExecutionService {
 
             // 중단된 노드 개수 계산 (취소되지 않았으면 0)
             if (!this.isCancelled) {
+                // 모든 노드가 정상적으로 실행 완료된 경우, End 노드를 성공으로 카운팅
+                // End 노드는 실행 대상에서 제외되지만, 워크플로우 완료 시 성공으로 간주
+                if (endNodeExists && failCount === 0) {
+                    // 에러가 없고 End 노드가 있으면 End 노드를 성공으로 카운팅
+                    successCount++;
+                    logger.log('[WorkflowExecutionService] End 노드를 성공으로 카운팅');
+                }
+
                 cancelledCount = totalNodeCount - successCount - failCount;
             }
 
@@ -256,7 +346,22 @@ export class WorkflowExecutionService {
         } catch (error) {
             console.error('워크플로우 실행 오류:', error);
             // 중단된 노드 개수 계산
+            // 에러가 발생한 노드는 이미 failCount에 포함되어 있음
+            // 에러 발생 시 End 노드는 중단으로 카운팅 (성공으로 카운팅하지 않음)
+            // 성공한 노드 + 실패한 노드 + 중단된 노드 = 총 노드 수
+            // 따라서: 중단 노드 = 총 노드 수 - 성공 노드 - 실패 노드
             cancelledCount = totalNodeCount - successCount - failCount;
+
+            // 디버깅: 계산 결과 확인
+            const logger = this.workflowPage.getLogger();
+            logger.log('[WorkflowExecutionService] 노드 카운팅 계산:', {
+                totalNodeCount: `전체 노드(Start/End 포함): ${totalNodeCount}`,
+                successCount: `Start(1) + 실행 성공(${successCount - 1}) = ${successCount}`,
+                failCount,
+                cancelledCount: `실행 안 된 노드들(대기, 종료 등): ${cancelledCount}`,
+                currentNodeIndex,
+                계산: `${totalNodeCount} - ${successCount} - ${failCount} = ${cancelledCount}`
+            });
             // 전체 스크립트 실행 중이면 토스트만 표시
             if (this.isRunningAllScripts) {
                 if (toastManager) {
