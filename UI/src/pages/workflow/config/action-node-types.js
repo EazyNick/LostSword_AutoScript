@@ -1,54 +1,95 @@
 /**
- * 실제 노드 종류 정의
- * 노드 타입(대분류)별로 사용 가능한 실제 노드 종류를 정의합니다.
+ * 상세 노드 타입 관리
+ *
+ * 서버의 nodes_config.py에서 정의된 상세 노드 타입 정보를 사용합니다.
+ * 서버에서 대분류 노드 타입 아래에 detailTypes 필드로 정의된 하위 카테고리를 가져옵니다.
+ *
+ * @module action-node-types
  */
 
-export const ACTION_NODE_TYPES = {
-    action: {
-        'http-api-request': {
-            label: 'HTTP API 요청',
-            description: '외부 API에 HTTP 요청을 보냅니다.',
-            icon: '🌐'
-        }
-        // 향후 추가될 액션 노드들:
-        // "file-read": {...},
-        // "file-write": {...},
-    },
-    condition: {
-        // 조건 노드 종류들
-    },
-    wait: {
-        // 대기 노드 종류들
-    }
-};
+import { getNodeRegistry } from '../services/node-registry.js';
 
 /**
- * 특정 노드 타입의 실제 노드 종류 목록 가져오기
+ * 특정 노드 타입의 상세 노드 타입 목록 가져오기
+ *
+ * 서버의 nodes_config.py에서 정의된 detailTypes를 가져옵니다.
+ *
  * @param {string} nodeType - 노드 타입 (예: "action")
- * @returns {Object} 실제 노드 종류 딕셔너리
+ * @returns {Promise<Object>} 상세 노드 타입 딕셔너리
+ * @example
+ * const detailTypes = await getDetailNodeTypes('action');
+ * // { click: { label: '클릭', description: '...', icon: '🖱️' }, ... }
+ */
+export async function getDetailNodeTypes(nodeType) {
+    const registry = getNodeRegistry();
+    const configs = await registry.getNodeConfigs();
+    const config = configs[nodeType];
+
+    if (!config || !config.detailTypes) {
+        return {};
+    }
+
+    return config.detailTypes || {};
+}
+
+/**
+ * 특정 상세 노드 타입의 설정 가져오기
+ *
+ * @param {string} nodeType - 노드 타입 (예: "action")
+ * @param {string} detailNodeType - 상세 노드 타입 (예: "http-api-request")
+ * @returns {Promise<Object|null>} 노드 설정 객체 또는 null
+ * @example
+ * const config = await getDetailNodeConfig('action', 'http-api-request');
+ * // { label: 'HTTP API 요청', description: '...', icon: '🌐' }
+ */
+export async function getDetailNodeConfig(nodeType, detailNodeType) {
+    const detailTypes = await getDetailNodeTypes(nodeType);
+    return detailTypes[detailNodeType] || null;
+}
+
+/**
+ * 모든 노드 타입별 상세 노드 타입 가져오기
+ *
+ * @returns {Promise<Object>} 모든 상세 노드 타입 딕셔너리
+ * @example
+ * const allDetailTypes = await getAllDetailNodeTypes();
+ * // { action: { click: {...}, combat: {...}, ... }, ... }
+ */
+export async function getAllDetailNodeTypes() {
+    const registry = getNodeRegistry();
+    const configs = await registry.getNodeConfigs();
+    const result = {};
+
+    for (const [nodeType, config] of Object.entries(configs)) {
+        if (config.detailTypes) {
+            result[nodeType] = config.detailTypes;
+        }
+    }
+
+    return result;
+}
+
+/**
+ * @deprecated 이 함수는 하위 호환성을 위해 유지됩니다. getDetailNodeTypes를 사용하세요.
+ * 특정 노드 타입의 상세 노드 타입 목록 가져오기 (동기 버전)
+ *
+ * @param {string} nodeType - 노드 타입 (예: "action")
+ * @returns {Object} 상세 노드 타입 딕셔너리 (빈 객체 반환, 비동기 버전 사용 권장)
  */
 export function getActionNodeTypes(nodeType) {
-    return ACTION_NODE_TYPES[nodeType] || {};
+    console.warn('[action-node-types] getActionNodeTypes는 deprecated되었습니다. getDetailNodeTypes를 사용하세요.');
+    return {};
 }
 
 /**
- * 특정 실제 노드 종류의 설정 가져오기
+ * @deprecated 이 함수는 하위 호환성을 위해 유지됩니다. getDetailNodeConfig를 사용하세요.
+ * 특정 상세 노드 타입의 설정 가져오기 (동기 버전)
+ *
  * @param {string} nodeType - 노드 타입 (예: "action")
- * @param {string} actionNodeType - 실제 노드 종류 (예: "http-api-request")
- * @returns {Object|null} 노드 설정 객체 또는 null
+ * @param {string} actionNodeType - 상세 노드 타입 (예: "http-api-request")
+ * @returns {Object|null} 노드 설정 객체 또는 null (비동기 버전 사용 권장)
  */
 export function getActionNodeConfig(nodeType, actionNodeType) {
-    const actionNodes = ACTION_NODE_TYPES[nodeType];
-    if (!actionNodes) {
-        return null;
-    }
-    return actionNodes[actionNodeType] || null;
-}
-
-/**
- * 모든 노드 타입별 실제 노드 종류 가져오기
- * @returns {Object} 모든 실제 노드 종류 딕셔너리
- */
-export function getAllActionNodeTypes() {
-    return ACTION_NODE_TYPES;
+    console.warn('[action-node-types] getActionNodeConfig는 deprecated되었습니다. getDetailNodeConfig를 사용하세요.');
+    return null;
 }

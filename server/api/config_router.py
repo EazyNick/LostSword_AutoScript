@@ -48,6 +48,17 @@ async def get_nodes_config() -> SuccessResponse:
         if "requires_folder_path" in config:
             nodes_config_client[node_type]["requiresFolderPath"] = config["requires_folder_path"]
 
+        # 상세 노드 타입이 있으면 포함 (대분류 노드 타입 아래의 하위 카테고리)
+        if "detail_types" in config:
+            detail_types_client = {}
+            for detail_type_key, detail_type_config in config["detail_types"].items():
+                detail_types_client[detail_type_key] = {
+                    "label": detail_type_config.get("label"),
+                    "description": detail_type_config.get("description"),
+                    "icon": detail_type_config.get("icon", ""),
+                }
+            nodes_config_client[node_type]["detailTypes"] = detail_types_client
+
     return success_response({"nodes": nodes_config_client}, "노드 설정 조회 완료")
 
 
