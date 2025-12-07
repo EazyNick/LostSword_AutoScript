@@ -233,7 +233,7 @@ export class WorkflowExecutionService {
                                 modalManager.showAlert(`노드 실행 오류: ${nodeTitle}`, errorMessage);
                             }
                         }
-                        
+
                         failCount++;
                         throw new Error(`노드 "${nodeTitle}" 실행 실패: ${errorMessage}`);
                     } else {

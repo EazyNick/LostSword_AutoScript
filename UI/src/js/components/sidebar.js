@@ -1507,9 +1507,7 @@ export class SidebarManager {
                 }
             }
 
-            log(
-                `[Sidebar] 모든 스크립트 실행 완료 - 성공: ${successCount}개, 실패: ${failCount}개`
-            );
+            log(`[Sidebar] 모든 스크립트 실행 완료 - 성공: ${successCount}개, 실패: ${failCount}개`);
 
             // 실행 결과 알림 (0개여도 모두 표시, 스크립트 개수 기준)
             if (modalManager) {
