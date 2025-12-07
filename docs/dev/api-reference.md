@@ -6,6 +6,56 @@
 - **Content-Type**: `application/json`
 - **API 문서**: `http://{API_HOST}:{API_PORT}/docs` (Swagger UI)
 
+## API 응답 형식
+
+모든 API 엔드포인트는 일관된 응답 형식을 사용합니다.
+
+### 성공 응답 (SuccessResponse)
+
+```json
+{
+  "success": true,
+  "message": "작업이 완료되었습니다.",
+  "data": {
+    // 실제 데이터
+  }
+}
+```
+
+### 리스트 응답 (ListResponse)
+
+```json
+{
+  "success": true,
+  "message": "조회 완료",
+  "data": [
+    // 리스트 데이터
+  ],
+  "count": 10
+}
+```
+
+### 에러 응답 (ErrorResponse)
+
+비즈니스 로직 에러의 경우:
+
+```json
+{
+  "success": false,
+  "message": "에러 메시지",
+  "error": "상세 에러 정보",
+  "error_code": "ERROR_CODE"
+}
+```
+
+HTTP 에러(4xx, 5xx)의 경우 FastAPI의 기본 형식:
+
+```json
+{
+  "detail": "에러 메시지"
+}
+```
+
 ## 주요 엔드포인트
 
 ### 1. 노드 실행
@@ -35,9 +85,9 @@ Content-Type: application/json
 }
 ```
 
-#### 노드 기반 워크플로우 실행
+#### 스크립트 실행
 ```http
-POST /api/execute-nodes
+POST /api/scripts/{script_id}/execute
 Content-Type: application/json
 
 {
@@ -58,8 +108,7 @@ Content-Type: application/json
         "wait_time": 2
       }
     }
-  ],
-  "execution_mode": "sequential"
+  ]
 }
 ```
 
@@ -113,20 +162,25 @@ Content-Type: application/json
 GET /api/scripts
 ```
 
-**응답**: 스크립트 배열 직접 반환
+**응답 (ListResponse)**:
 ```json
-[
-  {
-    "id": 1,
-    "name": "테스트 스크립트",
-    "description": "설명",
-    "active": true,
-    "execution_order": 1,
-    "last_executed_at": "2025-01-01T00:00:00",
-    "created_at": "2025-01-01T00:00:00",
-    "updated_at": "2025-01-01T00:00:00"
-  }
-]
+{
+  "success": true,
+  "message": "스크립트 목록 조회 완료",
+  "data": [
+    {
+      "id": 1,
+      "name": "테스트 스크립트",
+      "description": "설명",
+      "active": true,
+      "execution_order": 1,
+      "last_executed_at": "2025-01-01T00:00:00",
+      "created_at": "2025-01-01T00:00:00",
+      "updated_at": "2025-01-01T00:00:00"
+    }
+  ],
+  "count": 1
+}
 ```
 
 #### 스크립트 조회
@@ -173,15 +227,18 @@ Content-Type: application/json
 }
 ```
 
-**응답**:
+**응답 (SuccessResponse)**:
 ```json
 {
-  "id": 1,
-  "name": "새 스크립트",
-  "description": "설명",
-  "created_at": "2025-01-01T00:00:00",
-  "updated_at": "2025-01-01T00:00:00",
-  "message": "스크립트가 생성되었습니다."
+  "success": true,
+  "message": "스크립트가 생성되었습니다.",
+  "data": {
+    "id": 1,
+    "name": "새 스크립트",
+    "description": "설명",
+    "created_at": "2025-01-01T00:00:00",
+    "updated_at": "2025-01-01T00:00:00"
+  }
 }
 ```
 
@@ -198,10 +255,12 @@ Content-Type: application/json
 }
 ```
 
-**응답**:
+**응답 (SuccessResponse)**:
 ```json
 {
-  "message": "스크립트가 업데이트되었습니다."
+  "success": true,
+  "message": "스크립트가 업데이트되었습니다.",
+  "data": null
 }
 ```
 
@@ -210,11 +269,14 @@ Content-Type: application/json
 DELETE /api/scripts/{script_id}
 ```
 
-**응답**:
+**응답 (SuccessResponse)**:
 ```json
 {
+  "success": true,
   "message": "스크립트가 삭제되었습니다.",
-  "id": 1
+  "data": {
+    "id": 1
+  }
 }
 ```
 
@@ -228,11 +290,14 @@ Content-Type: application/json
 }
 ```
 
-**응답**:
+**응답 (SuccessResponse)**:
 ```json
 {
+  "success": true,
   "message": "스크립트 활성 상태가 변경되었습니다.",
-  "active": true
+  "data": {
+    "active": true
+  }
 }
 ```
 
@@ -249,14 +314,64 @@ Content-Type: application/json
 }
 ```
 
-**응답**:
+**응답 (SuccessResponse)**:
 ```json
 {
+  "success": true,
   "message": "스크립트 순서가 업데이트되었습니다.",
-  "orders": [
-    {"id": 1, "order": 0},
-    {"id": 2, "order": 1}
-  ]
+  "data": {
+    "orders": [
+      {"id": 1, "order": 0},
+      {"id": 2, "order": 1}
+    ]
+  }
+}
+```
+
+#### 스크립트 실행
+```http
+POST /api/scripts/{script_id}/execute
+Content-Type: application/json
+
+{
+  "nodes": [
+    {
+      "id": "node1",
+      "type": "image-touch",
+      "data": {
+        "title": "이미지 터치",
+        "folder_path": "C:/images"
+      }
+    }
+  ],
+  "execution_mode": "sequential"
+}
+```
+
+**응답 (성공, StandardResponseType)**:
+```json
+{
+  "success": true,
+  "message": "스크립트 실행 완료",
+  "data": {
+    "results": [
+      {
+        "action": "image-touch",
+        "status": "completed",
+        "output": {...}
+      }
+    ]
+  }
+}
+```
+
+**응답 (실패, StandardResponseType)**:
+```json
+{
+  "success": false,
+  "message": "스크립트 실행 중 오류 발생: 폴더를 찾을 수 없습니다",
+  "error": "폴더를 찾을 수 없습니다",
+  "error_code": "SCRIPT_EXECUTION_ERROR"
 }
 ```
 
@@ -267,29 +382,239 @@ Content-Type: application/json
 GET /api/dashboard/stats
 ```
 
-**응답**: 통계 딕셔너리 직접 반환
+**응답 (SuccessResponse)**:
 ```json
 {
-  "total_scripts": 10,
-  "today_executions": 5,
-  "today_failed_scripts": 1,
-  "inactive_scripts": 2
+  "success": true,
+  "message": "대시보드 통계 조회 완료",
+  "data": {
+    "total_scripts": 10,
+    "today_executions": 5,
+    "today_failed_scripts": 1,
+    "inactive_scripts": 2
+  }
 }
 ```
 
-### 4. 노드 관리
+### 4. 파일 및 프로세스 관리
+
+#### 폴더 선택
+```http
+POST /api/folder/select
+```
+
+**응답 (StandardResponseType)**:
+```json
+{
+  "success": true,
+  "message": "폴더가 선택되었습니다.",
+  "data": {
+    "folder_path": "C:/images"
+  }
+}
+```
+
+**에러 응답**:
+```json
+{
+  "success": false,
+  "message": "폴더가 선택되지 않았습니다.",
+  "error": "폴더가 선택되지 않았습니다."
+}
+```
+
+#### 이미지 목록 조회
+```http
+GET /api/images/list?folder_path={folder_path}
+```
+
+**응답 (ListResponse)**:
+```json
+{
+  "success": true,
+  "message": "이미지 목록 조회 완료",
+  "data": [
+    {
+      "filename": "button.png",
+      "path": "C:/images/button.png",
+      "name": "button"
+    }
+  ],
+  "count": 1,
+  "folder_path": "C:/images"
+}
+```
+
+#### 프로세스 목록 조회
+```http
+GET /api/processes/list
+```
+
+**응답 (ListResponse)**:
+```json
+{
+  "success": true,
+  "message": "프로세스 목록 조회 완료",
+  "data": [
+    {
+      "process_name": "notepad.exe",
+      "process_id": 1234,
+      "exe_path": "C:/Windows/notepad.exe",
+      "window_count": 1,
+      "windows": [
+        {
+          "title": "메모장",
+          "hwnd": 123456
+        }
+      ],
+      "hwnd": 123456
+    }
+  ],
+  "count": 1
+}
+```
+
+#### 프로세스 포커스
+```http
+POST /api/processes/focus
+Content-Type: application/json
+
+{
+  "process_id": 1234,
+  "hwnd": 123456
+}
+```
+
+**응답 (SuccessResponse)**:
+```json
+{
+  "success": true,
+  "message": "프로세스에 포커스를 주었습니다.",
+  "data": {
+    "process_id": 1234,
+    "hwnd": 123456
+  }
+}
+```
+
+### 5. 애플리케이션 상태
+
+#### 애플리케이션 상태 조회
+```http
+GET /api/state
+```
+
+**응답 (SuccessResponse)**:
+```json
+{
+  "success": true,
+  "message": "애플리케이션 상태 조회 완료",
+  "data": {
+    "application_running": true,
+    "current_scene": "main_menu",
+    "status": "active"
+  }
+}
+```
+
+### 6. 노드 관리
 
 #### 스크립트의 노드 조회
 ```http
 GET /api/nodes/script/{script_id}
 ```
 
-**응답**:
+**응답 (SuccessResponse)**:
 ```json
 {
-  "script_id": 1,
-  "nodes": [...],
-  "connections": [...]
+  "success": true,
+  "message": "노드 목록 조회 완료",
+  "data": {
+    "script_id": 1,
+    "nodes": [...],
+    "connections": [...]
+  }
+}
+```
+
+#### 노드 생성
+```http
+POST /api/nodes/script/{script_id}
+Content-Type: application/json
+
+{
+  "id": "node1",
+  "type": "image-touch",
+  "position": {"x": 100, "y": 100},
+  "data": {
+    "title": "이미지 터치"
+  }
+}
+```
+
+**응답 (SuccessResponse)**:
+```json
+{
+  "success": true,
+  "message": "노드가 생성되었습니다.",
+  "data": {
+    "node": {
+      "id": "node1",
+      "type": "image-touch",
+      "position": {"x": 100, "y": 100},
+      "data": {
+        "title": "이미지 터치"
+      }
+    }
+  }
+}
+```
+
+#### 노드 업데이트
+```http
+PUT /api/nodes/script/{script_id}/node/{node_id}
+Content-Type: application/json
+
+{
+  "type": "image-touch",
+  "position": {"x": 200, "y": 200},
+  "data": {
+    "title": "수정된 이미지 터치"
+  }
+}
+```
+
+**응답 (SuccessResponse)**:
+```json
+{
+  "success": true,
+  "message": "노드가 업데이트되었습니다.",
+  "data": {
+    "node": {
+      "id": "node1",
+      "type": "image-touch",
+      "position": {"x": 200, "y": 200},
+      "data": {
+        "title": "수정된 이미지 터치"
+      }
+    }
+  }
+}
+```
+
+#### 노드 삭제
+```http
+DELETE /api/nodes/script/{script_id}/node/{node_id}
+```
+
+**응답 (SuccessResponse)**:
+```json
+{
+  "success": true,
+  "message": "노드가 삭제되었습니다.",
+  "data": {
+    "node_id": "node1"
+  }
 }
 ```
 
@@ -304,26 +629,33 @@ Content-Type: application/json
 }
 ```
 
-**응답**:
+**응답 (SuccessResponse)**:
 ```json
 {
+  "success": true,
   "message": "노드들이 업데이트되었습니다.",
-  "node_count": 5,
-  "connection_count": 4
+  "data": {
+    "node_count": 5,
+    "connection_count": 4
+  }
 }
 ```
 
-### 5. 설정 관리
+### 7. 설정 관리
 
 #### 서버 설정 조회
 ```http
 GET /api/config/
 ```
 
-**응답**:
+**응답 (SuccessResponse)**:
 ```json
 {
-  "dev_mode": true
+  "success": true,
+  "message": "설정 조회 완료",
+  "data": {
+    "dev_mode": true
+  }
 }
 ```
 
@@ -332,17 +664,21 @@ GET /api/config/
 GET /api/config/nodes
 ```
 
-**응답**:
+**응답 (SuccessResponse)**:
 ```json
 {
-  "nodes": {
-    "start": {
-      "label": "시작",
-      "title": "시작",
-      "description": "...",
-      "script": "node-start.js",
-      "isBoundary": true,
-      "category": "boundary"
+  "success": true,
+  "message": "노드 설정 조회 완료",
+  "data": {
+    "nodes": {
+      "start": {
+        "label": "시작",
+        "title": "시작",
+        "description": "...",
+        "script": "node-start.js",
+        "isBoundary": true,
+        "category": "boundary"
+      }
     }
   }
 }
@@ -353,12 +689,16 @@ GET /api/config/nodes
 GET /api/config/user-settings
 ```
 
-**응답**: 설정 딕셔너리 직접 반환
+**응답 (SuccessResponse)**:
 ```json
 {
-  "sidebar-width": "300",
-  "script-order": "[1,2,3]",
-  "focused-script": "1"
+  "success": true,
+  "message": "사용자 설정 조회 완료",
+  "data": {
+    "sidebar-width": "300",
+    "script-order": "[1,2,3]",
+    "focused-script": "1"
+  }
 }
 ```
 
@@ -367,31 +707,37 @@ GET /api/config/user-settings
 GET /api/config/user-settings/{setting_key}
 ```
 
-**응답**:
+**응답 (SuccessResponse)**:
 ```json
 {
-  "key": "sidebar-width",
-  "value": "300"
+  "success": true,
+  "message": "사용자 설정 조회 완료",
+  "data": {
+    "key": "sidebar-width",
+    "value": "300"
+  }
 }
 ```
 
 #### 사용자 설정 저장
 ```http
-POST /api/config/user-settings
+PUT /api/config/user-settings/{setting_key}
 Content-Type: application/json
 
 {
-  "key": "sidebar-width",
   "value": "350"
 }
 ```
 
-**응답**:
+**응답 (SuccessResponse)**:
 ```json
 {
+  "success": true,
   "message": "설정이 저장되었습니다.",
-  "key": "sidebar-width",
-  "value": "350"
+  "data": {
+    "key": "sidebar-width",
+    "value": "350"
+  }
 }
 ```
 
@@ -400,24 +746,48 @@ Content-Type: application/json
 DELETE /api/config/user-settings/{setting_key}
 ```
 
-**응답**:
+**응답 (SuccessResponse)**:
 ```json
 {
+  "success": true,
   "message": "설정이 삭제되었습니다.",
-  "key": "sidebar-width"
+  "data": {
+    "key": "sidebar-width"
+  }
 }
 ```
 
 ## 에러 응답
 
-FastAPI의 기본 에러 응답 형식:
+### 비즈니스 로직 에러 (ErrorResponse)
+
+일부 엔드포인트는 비즈니스 로직 에러의 경우 `ErrorResponse` 형식을 반환합니다:
+
+```json
+{
+  "success": false,
+  "message": "에러 메시지",
+  "error": "상세 에러 정보",
+  "error_code": "ERROR_CODE"
+}
+```
+
+예시:
+- `/api/folder/select`: 폴더가 선택되지 않은 경우
+- `/api/scripts/{script_id}/execute`: 스크립트 실행 중 오류 발생 시
+
+### HTTP 에러 (HTTPException)
+
+대부분의 에러는 FastAPI의 기본 에러 응답 형식을 사용합니다:
+
 ```json
 {
   "detail": "에러 메시지"
 }
 ```
 
-HTTP 상태 코드:
+### HTTP 상태 코드
+
 - `200`: 성공
 - `400`: 잘못된 요청 (Bad Request)
 - `404`: 리소스를 찾을 수 없음 (Not Found)

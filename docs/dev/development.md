@@ -23,7 +23,7 @@ pip install -r server/requirements-dev.txt
 # .env 파일 생성 (프로젝트 루트)
 ENVIRONMENT=dev
 API_HOST=127.0.0.1  # 보안: 로컬호스트에서만 접근 가능 (기본값)
-API_PORT=8000
+API_PORT=8001  # 기본 포트 8001
 ```
 
 ## 서버 실행

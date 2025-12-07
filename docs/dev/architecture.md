@@ -3,7 +3,7 @@
 ## 전체 구조
 
 ```
-클라이언트 (브라우저) ←→ FastAPI 서버
+클라이언트 (브라우저) ←→ FastAPI 서버 ←→ SQLLite(DB)
 ```
 
 ## 백엔드
@@ -48,10 +48,21 @@
 - **서버 설정**: `server/config/server_config.py`에서 중앙 관리
 - **클라이언트**: `window.API_HOST`, `window.API_PORT`로 동적 API URL 생성
 
+## API 응답 형식
+
+모든 API 엔드포인트는 일관된 응답 형식을 사용합니다:
+
+- **성공 응답** (`SuccessResponse`): `{success: true, message: string | null, data: object | null}`
+- **에러 응답** (`ErrorResponse`): `{success: false, message: string | null, error: string | null, error_code: string | null}`
+- **리스트 응답** (`ListResponse`): `{success: true, message: string | null, data: array, count: number | null}`
+- **페이지네이션 응답** (`PaginatedResponse`): `ListResponse` + `{page, page_size, total, total_pages}`
+
+자세한 내용은 [API 참조 문서](api-reference.md)를 참고하세요.
+
 ## 데이터 흐름
 
 1. **저장**: 클라이언트 → `PUT /api/scripts/{id}` → DB
-2. **실행**: 클라이언트 → `POST /api/execute-nodes` → 노드 실행 → Windows API
+2. **실행**: 클라이언트 → `POST /api/scripts/{id}/execute` → 노드 실행 → Windows API
 3. **로드**: 클라이언트 → `GET /api/scripts/{id}` → DB → 클라이언트
 4. **통계**: 클라이언트 → `GET /api/dashboard/stats` → DB → 클라이언트
 
