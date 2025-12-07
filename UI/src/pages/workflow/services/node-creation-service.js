@@ -40,10 +40,11 @@ export class NodeCreationService {
             const response = await fetch(
                 `${window.API_BASE_URL || 'http://localhost:8000'}/api/images/list?folder_path=${encodeURIComponent(nodeData.folder_path)}`
             );
-            const data = await response.json();
+            const result = await response.json();
 
-            if (data.success && nodeElement) {
-                const count = data.count || 0;
+            // 변경된 응답 형식: {success: true, message: "...", data: [...], count: N}
+            if (result.success && nodeElement) {
+                const count = result.count || result.data?.length || 0;
                 nodeData.image_count = count;
 
                 // NodeManager의 노드 데이터에도 이미지 개수 저장

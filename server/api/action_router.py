@@ -7,13 +7,22 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
+from api.response_helpers import error_response, list_response, success_response
 from api.router_wrapper import api_handler
 from log import log_manager
-from models import ActionRequest, ActionResponse, NodeExecutionRequest
+from models import (
+    ActionRequest,
+    ActionResponse,
+    BaseResponse,
+    NodeExecutionRequest,
+    StandardResponseType,
+    SuccessResponse,
+)
 from models.folder_path_models import FolderPathParams  # Pydantic 모델로 경로 검증 (경로 조작 공격 방지)
 from models.process_focus_models import (
     ProcessFocusParams,  # Pydantic 모델로 입력 검증 (process_id 또는 hwnd 중 하나는 필수)
 )
+from models.response_models import ListResponse
 from services.action_service import ActionService
 from services.node_execution_context import NodeExecutionContext
 
@@ -147,9 +156,9 @@ async def execute_nodes(request: NodeExecutionRequest) -> ActionResponse:
     )
 
 
-@router.post("/folder/select")
+@router.post("/folder/select", response_model=BaseResponse)
 @api_handler
-async def select_folder() -> dict[str, Any]:
+async def select_folder() -> StandardResponseType:
     """
     폴더 선택 다이얼로그를 띄우고 선택된 폴더 경로를 반환합니다.
     """
@@ -167,14 +176,14 @@ async def select_folder() -> dict[str, Any]:
     root.destroy()  # 루트 윈도우 제거
 
     if not folder_path:
-        return {"success": False, "message": "폴더가 선택되지 않았습니다."}
+        return error_response("폴더가 선택되지 않았습니다.")
 
-    return {"success": True, "folder_path": folder_path}
+    return success_response({"folder_path": folder_path}, "폴더가 선택되었습니다.")
 
 
-@router.get("/images/list")
+@router.get("/images/list", response_model=ListResponse)
 @api_handler
-async def get_image_list(folder_path: str) -> dict[str, Any]:
+async def get_image_list(folder_path: str) -> ListResponse:
     """
     특정 폴더의 이미지 파일 목록을 가져옵니다.
     파일 이름 순서대로 정렬하여 반환합니다.
@@ -207,12 +216,16 @@ async def get_image_list(folder_path: str) -> dict[str, Any]:
     # 파일 이름 순서대로 정렬
     image_files.sort(key=lambda x: x["filename"])
 
-    return {"success": True, "folder_path": validated_path, "count": len(image_files), "images": image_files}
+    return list_response(
+        image_files,
+        "이미지 목록 조회 완료",
+        folder_path=validated_path,
+    )
 
 
-@router.get("/processes/list")
+@router.get("/processes/list", response_model=ListResponse)
 @api_handler
-async def get_process_list() -> dict[str, Any]:
+async def get_process_list() -> ListResponse:
     """
     화면에 보이는 프로세스 목록을 가져옵니다.
     백그라운드 프로세스는 제외하고 실제 창이 있는 프로세스만 반환합니다.
@@ -281,12 +294,12 @@ async def get_process_list() -> dict[str, Any]:
     # 프로세스 이름으로 정렬
     processes.sort(key=lambda x: x["process_name"].lower())
 
-    return {"success": True, "count": len(processes), "processes": processes}
+    return list_response(processes, "프로세스 목록 조회 완료")
 
 
-@router.post("/processes/focus")
+@router.post("/processes/focus", response_model=SuccessResponse)
 @api_handler
-async def focus_process(request: dict[str, Any]) -> dict[str, Any]:
+async def focus_process(request: dict[str, Any]) -> SuccessResponse:
     """
     선택한 프로세스에 포커스를 줍니다.
     """
@@ -329,9 +342,7 @@ async def focus_process(request: dict[str, Any]) -> dict[str, Any]:
     win32gui.SetForegroundWindow(target_hwnd)
     win32gui.BringWindowToTop(target_hwnd)
 
-    return {
-        "success": True,
-        "message": "프로세스에 포커스를 주었습니다.",
-        "process_id": process_id,
-        "hwnd": target_hwnd,
-    }
+    return success_response(
+        {"process_id": process_id, "hwnd": target_hwnd},
+        "프로세스에 포커스를 주었습니다.",
+    )

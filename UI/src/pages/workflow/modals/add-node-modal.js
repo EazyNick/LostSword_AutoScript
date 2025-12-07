@@ -230,27 +230,32 @@ export class AddNodeModal {
                 headers: { 'Content-Type': 'application/json' }
             });
 
-            const data = await response.json();
+            const result = await response.json();
 
-            if (data.success && data.folder_path) {
-                document.getElementById('node-folder-path').value = data.folder_path;
+            // 변경된 응답 형식: {success: true/false, message: "...", data: {folder_path: "..."}}
+            if (result.success && result.data?.folder_path) {
+                const folderPath = result.data.folder_path;
+                document.getElementById('node-folder-path').value = folderPath;
 
                 // 이미지 개수 확인
                 try {
                     const imageListResponse = await fetch(
-                        `${apiBaseUrl}/api/images/list?folder_path=${encodeURIComponent(data.folder_path)}`
+                        `${apiBaseUrl}/api/images/list?folder_path=${encodeURIComponent(folderPath)}`
                     );
-                    const imageListData = await imageListResponse.json();
-                    if (imageListData.success) {
-                        const count = imageListData.count || 0;
+                    const imageListResult = await imageListResponse.json();
+                    // 변경된 응답 형식: {success: true, message: "...", data: [...], count: N}
+                    if (imageListResult.success) {
+                        const count = imageListResult.count || imageListResult.data?.length || 0;
                         const infoText = count > 0 ? `${count}개 이미지 파일 발견` : '이미지 파일 없음';
                         document.getElementById('node-folder-path').title = infoText;
                     }
                 } catch (e) {
                     console.warn('이미지 목록 조회 실패:', e);
                 }
-            } else if (data.message) {
-                alert(data.message);
+            } else if (result.message) {
+                alert(result.message);
+            } else if (!result.success) {
+                alert('폴더 선택에 실패했습니다.');
             }
         } catch (error) {
             console.error('폴더 선택 실패:', error);
@@ -372,16 +377,18 @@ export class AddNodeModal {
         try {
             const apiBaseUrl = window.API_BASE_URL || 'http://localhost:8000';
             const response = await fetch(`${apiBaseUrl}/api/processes/list`);
-            const data = await response.json();
+            const result = await response.json();
 
-            if (data.success && data.processes) {
+            // 변경된 응답 형식: {success: true, message: "...", data: [...], count: N}
+            const processes = result.data || result.processes || [];
+            if (result.success && processes.length > 0) {
                 // 기존 옵션 제거 (첫 번째 옵션 제외)
                 while (selectElement.options.length > 1) {
                     selectElement.remove(1);
                 }
 
                 // 프로세스 목록 추가
-                data.processes.forEach((process) => {
+                processes.forEach((process) => {
                     process.windows.forEach((window, index) => {
                         const option = document.createElement('option');
                         const value = `${process.process_id}|${window.hwnd}`;
@@ -400,7 +407,7 @@ export class AddNodeModal {
                     });
                 });
             } else {
-                console.error('프로세스 목록 로드 실패:', data);
+                console.error('프로세스 목록 로드 실패:', result);
             }
         } catch (error) {
             console.error('프로세스 목록 로드 중 오류:', error);

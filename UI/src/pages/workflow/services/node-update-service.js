@@ -283,9 +283,10 @@ export class NodeUpdateService {
         const apiBaseUrl = window.API_BASE_URL || 'http://localhost:8000';
         fetch(`${apiBaseUrl}/api/images/list?folder_path=${encodeURIComponent(nodeData.folder_path)}`)
             .then((response) => response.json())
-            .then((data) => {
-                if (data.success) {
-                    const count = data.count || 0;
+            .then((result) => {
+                // 변경된 응답 형식: {success: true, message: "...", data: [...], count: N}
+                if (result.success) {
+                    const count = result.count || result.data?.length || 0;
                     nodeData.image_count = count;
 
                     // NodeManager의 노드 데이터에도 이미지 개수 저장

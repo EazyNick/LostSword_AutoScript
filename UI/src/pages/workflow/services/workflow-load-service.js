@@ -448,9 +448,11 @@ export class WorkflowLoadService {
             // 현재 프로세스 목록 가져오기
             const apiBaseUrl = window.API_BASE_URL || 'http://localhost:8000';
             const response = await fetch(`${apiBaseUrl}/api/processes/list`);
-            const result = await response.json();
+            const responseData = await response.json();
 
-            if (!result.success || !result.processes) {
+            // 변경된 응답 형식: {success: true, message: "...", data: [...], count: N}
+            const processes = responseData.data || responseData.processes || [];
+            if (!responseData.success || processes.length === 0) {
                 log('[WorkflowPage] 프로세스 목록 조회 실패, 프로세스 정보 저장 안 함');
                 return;
             }
@@ -459,7 +461,7 @@ export class WorkflowLoadService {
             let foundProcess = null;
             let foundWindow = null;
 
-            for (const process of result.processes) {
+            for (const process of processes) {
                 // process_id로 매칭
                 if (savedProcessId && process.process_id === savedProcessId) {
                     // hwnd로도 매칭 확인

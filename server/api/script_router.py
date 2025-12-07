@@ -6,9 +6,18 @@ from typing import Any
 
 from fastapi import APIRouter, Body, HTTPException, Request
 
+from api.response_helpers import error_response, list_response, success_response
 from db.database import db_manager
 from log import log_manager
-from models import NodeExecutionRequest, ScriptCreateRequest, ScriptResponse, ScriptUpdateRequest
+from models import (
+    BaseResponse,
+    NodeExecutionRequest,
+    ScriptCreateRequest,
+    ScriptResponse,
+    ScriptUpdateRequest,
+    StandardResponseType,
+)
+from models.response_models import ListResponse, SuccessResponse
 from services.action_service import ActionService
 
 router = APIRouter(prefix="/api", tags=["scripts"])
@@ -16,8 +25,8 @@ action_service = ActionService()
 logger = log_manager.logger
 
 
-@router.get("/scripts", response_model=list[dict])
-async def get_all_scripts(request: Request) -> list[dict[str, Any]]:
+@router.get("/scripts", response_model=ListResponse)
+async def get_all_scripts(request: Request) -> ListResponse:
     """모든 스크립트 목록 조회"""
     client_ip = request.client.host if request.client else "unknown"
     logger.info(f"[API] 스크립트 목록 조회 요청 받음 - 클라이언트 IP: {client_ip}")
@@ -28,7 +37,7 @@ async def get_all_scripts(request: Request) -> list[dict[str, Any]]:
         logger.info(f"[DB 조회] 스크립트 목록 조회 완료 - 스크립트 개수: {len(scripts)}개")
         logger.debug(f"[DB 조회] 스크립트 목록 상세: {[{'id': s.get('id'), 'name': s.get('name')} for s in scripts]}")
         logger.info(f"[API] 스크립트 목록 조회 성공 - 스크립트 개수: {len(scripts)}개")
-        return scripts
+        return list_response(scripts, "스크립트 목록 조회 완료")
     except Exception as e:
         logger.error(f"[API] 스크립트 목록 조회 실패: {e!s}")
         raise HTTPException(status_code=500, detail=f"스크립트 목록 조회 실패: {e!s}")
@@ -88,8 +97,8 @@ async def get_script(script_id: int, request: Request) -> dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"스크립트 조회 실패: {e!s}")
 
 
-@router.post("/scripts", response_model=dict)
-async def create_script(request: ScriptCreateRequest, http_request: Request) -> dict[str, Any]:
+@router.post("/scripts", response_model=SuccessResponse)
+async def create_script(request: ScriptCreateRequest, http_request: Request) -> SuccessResponse:
     """새 스크립트 생성"""
     client_ip = http_request.client.host if http_request.client else "unknown"
     logger.info(
@@ -121,14 +130,16 @@ async def create_script(request: ScriptCreateRequest, http_request: Request) -> 
             )
 
         logger.info(f"[API] 스크립트 생성 성공 - 스크립트 ID: {script_id}, 이름: {request.name}")
-        return {
-            "id": created_script.get("id", script_id),
-            "name": created_script.get("name", request.name),
-            "description": created_script.get("description", request.description),
-            "created_at": created_script.get("created_at"),
-            "updated_at": created_script.get("updated_at"),
-            "message": "스크립트가 생성되었습니다.",
-        }
+        return success_response(
+            {
+                "id": created_script.get("id", script_id),
+                "name": created_script.get("name", request.name),
+                "description": created_script.get("description", request.description),
+                "created_at": created_script.get("created_at"),
+                "updated_at": created_script.get("updated_at"),
+            },
+            "스크립트가 생성되었습니다.",
+        )
     except ValueError as e:
         logger.error(f"[API] 스크립트 생성 실패 (중복 이름) - 이름: {request.name}, 에러: {e!s}")
         raise HTTPException(status_code=400, detail=str(e))
@@ -137,8 +148,8 @@ async def create_script(request: ScriptCreateRequest, http_request: Request) -> 
         raise HTTPException(status_code=500, detail=f"스크립트 생성 실패: {e!s}")
 
 
-@router.put("/scripts/{script_id}", response_model=dict)
-async def update_script(script_id: int, request: ScriptUpdateRequest) -> dict[str, Any]:
+@router.put("/scripts/{script_id}", response_model=SuccessResponse)
+async def update_script(script_id: int, request: ScriptUpdateRequest) -> SuccessResponse:
     """스크립트 업데이트"""
     try:
         # 스크립트 존재 확인
@@ -157,7 +168,7 @@ async def update_script(script_id: int, request: ScriptUpdateRequest) -> dict[st
         logger.info(f"[DB 저장] 스크립트 데이터 저장 완료 - 스크립트 ID: {script_id}")
 
         if success:
-            return {"message": "스크립트가 업데이트되었습니다."}
+            return success_response(message="스크립트가 업데이트되었습니다.")
         raise HTTPException(status_code=500, detail="스크립트 업데이트 실패")
 
     except HTTPException:
@@ -166,8 +177,8 @@ async def update_script(script_id: int, request: ScriptUpdateRequest) -> dict[st
         raise HTTPException(status_code=500, detail=f"스크립트 업데이트 실패: {e!s}")
 
 
-@router.delete("/scripts/{script_id}", response_model=dict)
-async def delete_script(script_id: int, request: Request) -> dict[str, Any]:
+@router.delete("/scripts/{script_id}", response_model=SuccessResponse)
+async def delete_script(script_id: int, request: Request) -> SuccessResponse:
     """스크립트 삭제"""
     client_ip = request.client.host if request.client else "unknown"
     logger.info(f"[API] 스크립트 삭제 요청 받음 - 스크립트 ID: {script_id}, 클라이언트 IP: {client_ip}")
@@ -191,7 +202,7 @@ async def delete_script(script_id: int, request: Request) -> dict[str, Any]:
         if success:
             logger.info(f"[DB 삭제] 스크립트 삭제 완료 - 스크립트 ID: {script_id}, 이름: {script_name}")
             logger.info(f"[API] 스크립트 삭제 성공 - 스크립트 ID: {script_id}, 이름: {script_name}")
-            return {"message": "스크립트가 삭제되었습니다.", "id": script_id}
+            return success_response({"id": script_id}, "스크립트가 삭제되었습니다.")
         logger.warning(f"[DB 삭제] 스크립트 삭제 실패 - 스크립트 ID: {script_id}")
         raise HTTPException(status_code=404, detail="스크립트를 찾을 수 없습니다.")
     except HTTPException:
@@ -201,10 +212,10 @@ async def delete_script(script_id: int, request: Request) -> dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"스크립트 삭제 실패: {e!s}")
 
 
-@router.put("/nodes/script/{script_id}/batch", response_model=dict)
+@router.put("/nodes/script/{script_id}/batch", response_model=SuccessResponse)
 async def update_nodes_batch(
     script_id: int, http_request: Request, request: dict[str, Any] = Body(...)
-) -> dict[str, Any]:
+) -> SuccessResponse:
     """노드 일괄 업데이트 (저장)"""
     client_ip = http_request.client.host if http_request.client else "unknown"
     logger.info(f"[API] 노드 일괄 업데이트 요청 받음 - 스크립트 ID: {script_id}, 클라이언트 IP: {client_ip}")
@@ -240,12 +251,14 @@ async def update_nodes_batch(
             logger.info(
                 f"[API] 노드 일괄 업데이트 성공 - 스크립트 ID: {script_id}, 이름: {script_name}, 노드: {len(nodes)}개, 연결: {len(connections)}개"
             )
-            return {
-                "message": "노드가 성공적으로 저장되었습니다.",
-                "script_id": script_id,
-                "nodes_count": len(nodes),
-                "connections_count": len(connections),
-            }
+            return success_response(
+                {
+                    "script_id": script_id,
+                    "nodes_count": len(nodes),
+                    "connections_count": len(connections),
+                },
+                "노드가 성공적으로 저장되었습니다.",
+            )
         logger.error(f"[DB 저장] 노드 일괄 업데이트 실패 - 스크립트 ID: {script_id}")
         raise HTTPException(status_code=500, detail="노드 저장 실패")
 
@@ -256,8 +269,8 @@ async def update_nodes_batch(
         raise HTTPException(status_code=500, detail=f"노드 저장 실패: {e!s}")
 
 
-@router.post("/scripts/{script_id}/execute", response_model=dict)
-async def execute_script(script_id: int, request: NodeExecutionRequest) -> dict[str, Any]:
+@router.post("/scripts/{script_id}/execute", response_model=BaseResponse)
+async def execute_script(script_id: int, request: NodeExecutionRequest) -> StandardResponseType:
     """스크립트 실행"""
     try:
         # 스크립트 존재 확인
@@ -290,9 +303,13 @@ async def execute_script(script_id: int, request: NodeExecutionRequest) -> dict[
 
         # 에러가 발생했으면 success: False 반환
         if has_error:
-            return {"success": False, "message": f"스크립트 실행 중 오류 발생: {error_message}", "results": results}
+            return error_response(
+                f"스크립트 실행 중 오류 발생: {error_message}",
+                error=error_message,
+                error_code="SCRIPT_EXECUTION_ERROR",
+            )
 
-        return {"success": True, "message": "스크립트 실행 완료", "results": results}
+        return success_response({"results": results}, "스크립트 실행 완료")
 
     except HTTPException:
         raise
@@ -300,10 +317,10 @@ async def execute_script(script_id: int, request: NodeExecutionRequest) -> dict[
         raise HTTPException(status_code=500, detail=f"스크립트 실행 실패: {e!s}")
 
 
-@router.patch("/scripts/{script_id}/active", response_model=dict)
+@router.patch("/scripts/{script_id}/active", response_model=SuccessResponse)
 async def toggle_script_active(
     script_id: int, request: Request, active: bool = Body(..., embed=True)
-) -> dict[str, Any]:
+) -> SuccessResponse:
     """스크립트 활성/비활성 상태 토글"""
     client_ip = request.client.host if request.client else "unknown"
     logger.info(
@@ -330,7 +347,7 @@ async def toggle_script_active(
             logger.info(
                 f"[API] 스크립트 활성 상태 변경 성공 - 스크립트 ID: {script_id}, 이름: {script_name}, 활성: {active}"
             )
-            return {"message": "스크립트 활성 상태가 변경되었습니다.", "active": active}
+            return success_response({"active": active}, "스크립트 활성 상태가 변경되었습니다.")
         logger.error(f"[DB 저장] 스크립트 활성 상태 업데이트 실패 - 스크립트 ID: {script_id}")
         raise HTTPException(status_code=500, detail="스크립트 활성 상태 변경 실패")
 
@@ -341,8 +358,8 @@ async def toggle_script_active(
         raise HTTPException(status_code=500, detail=f"스크립트 활성 상태 변경 실패: {e!s}")
 
 
-@router.patch("/scripts/order", response_model=dict)
-async def update_script_order(request: Request, script_orders: list[dict[str, int]] = Body(...)) -> dict[str, Any]:
+@router.patch("/scripts/order", response_model=SuccessResponse)
+async def update_script_order(request: Request, script_orders: list[dict[str, int]] = Body(...)) -> SuccessResponse:
     """스크립트 순서 업데이트"""
     client_ip = request.client.host if request.client else "unknown"
     logger.info(f"[API] 스크립트 순서 업데이트 요청 받음 - 클라이언트 IP: {client_ip}, 순서: {script_orders}")
@@ -350,7 +367,7 @@ async def update_script_order(request: Request, script_orders: list[dict[str, in
         success = db_manager.update_script_order(script_orders)
         if success:
             logger.info(f"[API] 스크립트 순서 업데이트 성공 - 순서: {script_orders}")
-            return {"message": "스크립트 순서가 업데이트되었습니다.", "orders": script_orders}
+            return success_response({"orders": script_orders}, "스크립트 순서가 업데이트되었습니다.")
         raise HTTPException(status_code=500, detail="스크립트 순서 업데이트 실패")
     except HTTPException:
         raise

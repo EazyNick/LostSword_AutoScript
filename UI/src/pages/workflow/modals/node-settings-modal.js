@@ -598,15 +598,19 @@ export class NodeSettingsModal {
                 headers: { 'Content-Type': 'application/json' }
             });
 
-            const data = await response.json();
+            const result = await response.json();
 
-            if (data.success && data.folder_path) {
-                document.getElementById('edit-node-folder-path').value = data.folder_path;
+            // 변경된 응답 형식: {success: true/false, message: "...", data: {folder_path: "..."}}
+            if (result.success && result.data?.folder_path) {
+                const folderPath = result.data.folder_path;
+                document.getElementById('edit-node-folder-path').value = folderPath;
 
                 // 이미지 개수 확인 및 표시
-                this.updateImageCount(data.folder_path);
-            } else if (data.message) {
-                alert(data.message);
+                this.updateImageCount(folderPath);
+            } else if (result.message) {
+                alert(result.message);
+            } else if (!result.success) {
+                alert('폴더 선택에 실패했습니다.');
             }
         } catch (error) {
             console.error('폴더 선택 실패:', error);
@@ -624,10 +628,11 @@ export class NodeSettingsModal {
         try {
             const apiBaseUrl = window.API_BASE_URL || 'http://localhost:8000';
             const response = await fetch(`${apiBaseUrl}/api/images/list?folder_path=${encodeURIComponent(folderPath)}`);
-            const data = await response.json();
+            const result = await response.json();
 
-            if (data.success) {
-                const count = data.count || 0;
+            // 변경된 응답 형식: {success: true, message: "...", data: [...], count: N}
+            if (result.success) {
+                const count = result.count || result.data?.length || 0;
                 const label = document.querySelector('label[for="edit-node-folder-path"]');
                 if (label) {
                     const existingCount = label.querySelector('span');
@@ -1121,16 +1126,18 @@ export class NodeSettingsModal {
         try {
             const apiBaseUrl = window.API_BASE_URL || 'http://localhost:8000';
             const response = await fetch(`${apiBaseUrl}/api/processes/list`);
-            const data = await response.json();
+            const result = await response.json();
 
-            if (data.success && data.processes) {
+            // 변경된 응답 형식: {success: true, message: "...", data: [...], count: N}
+            const processes = result.data || result.processes || [];
+            if (result.success && processes.length > 0) {
                 // 기존 옵션 제거 (첫 번째 옵션 제외)
                 while (selectElement.options.length > 1) {
                     selectElement.remove(1);
                 }
 
                 // 프로세스 목록 추가
-                data.processes.forEach((process) => {
+                processes.forEach((process) => {
                     process.windows.forEach((window, index) => {
                         const option = document.createElement('option');
                         const value = `${process.process_id}|${window.hwnd}`;
@@ -1154,7 +1161,7 @@ export class NodeSettingsModal {
                     });
                 });
             } else {
-                console.error('프로세스 목록 로드 실패:', data);
+                console.error('프로세스 목록 로드 실패:', result);
             }
         } catch (error) {
             console.error('프로세스 목록 로드 중 오류:', error);

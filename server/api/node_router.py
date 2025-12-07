@@ -6,26 +6,35 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
+from api.response_helpers import success_response
 from api.router_wrapper import api_handler
 from db.database import db_manager
+from models.response_models import SuccessResponse
 
 router = APIRouter(prefix="/api/nodes", tags=["nodes"])
 
 
-@router.get("/script/{script_id}")
+@router.get("/script/{script_id}", response_model=SuccessResponse)
 @api_handler
-async def get_nodes_by_script(script_id: int) -> dict[str, Any]:
+async def get_nodes_by_script(script_id: int) -> SuccessResponse:
     """특정 스크립트의 모든 노드 조회"""
     script = db_manager.get_script(script_id)
     if not script:
         raise HTTPException(status_code=404, detail="스크립트를 찾을 수 없습니다.")
 
-    return {"script_id": script_id, "nodes": script.get("nodes", []), "connections": script.get("connections", [])}
+    return success_response(
+        {
+            "script_id": script_id,
+            "nodes": script.get("nodes", []),
+            "connections": script.get("connections", []),
+        },
+        "노드 목록 조회 완료",
+    )
 
 
-@router.post("/script/{script_id}")
+@router.post("/script/{script_id}", response_model=SuccessResponse)
 @api_handler
-async def create_node(script_id: int, node_data: dict[str, Any]) -> dict[str, Any]:
+async def create_node(script_id: int, node_data: dict[str, Any]) -> SuccessResponse:
     """새 노드 생성"""
     # 스크립트 존재 확인
     script = db_manager.get_script(script_id)
@@ -53,14 +62,14 @@ async def create_node(script_id: int, node_data: dict[str, Any]) -> dict[str, An
     if not success:
         raise HTTPException(status_code=500, detail="노드 생성 실패")
 
-    return {"message": "노드가 생성되었습니다.", "node": node_data}
+    return success_response({"node": node_data}, "노드가 생성되었습니다.")
 
 
-@router.put("/script/{script_id}/batch")
+@router.put("/script/{script_id}/batch", response_model=SuccessResponse)
 @api_handler
 async def update_nodes_batch(
     script_id: int, nodes: list[dict[str, Any]], connections: list[dict[str, Any]] | None = None
-) -> dict[str, Any]:
+) -> SuccessResponse:
     """여러 노드를 일괄 업데이트"""
     # 스크립트 존재 확인
     script = db_manager.get_script(script_id)
@@ -77,12 +86,15 @@ async def update_nodes_batch(
     if not success:
         raise HTTPException(status_code=500, detail="노드 업데이트 실패")
 
-    return {"message": "노드들이 업데이트되었습니다.", "node_count": len(nodes), "connection_count": len(connections)}
+    return success_response(
+        {"node_count": len(nodes), "connection_count": len(connections)},
+        "노드들이 업데이트되었습니다.",
+    )
 
 
-@router.delete("/script/{script_id}/node/{node_id}")
+@router.delete("/script/{script_id}/node/{node_id}", response_model=SuccessResponse)
 @api_handler
-async def delete_node(script_id: int, node_id: str) -> dict[str, Any]:
+async def delete_node(script_id: int, node_id: str) -> SuccessResponse:
     """노드 삭제"""
     # 스크립트 존재 확인
     script = db_manager.get_script(script_id)
@@ -103,12 +115,12 @@ async def delete_node(script_id: int, node_id: str) -> dict[str, Any]:
     if not success:
         raise HTTPException(status_code=500, detail="노드 삭제 실패")
 
-    return {"message": "노드가 삭제되었습니다.", "node_id": node_id}
+    return success_response({"node_id": node_id}, "노드가 삭제되었습니다.")
 
 
-@router.put("/script/{script_id}/node/{node_id}")
+@router.put("/script/{script_id}/node/{node_id}", response_model=SuccessResponse)
 @api_handler
-async def update_node(script_id: int, node_id: str, node_data: dict[str, Any]) -> dict[str, Any]:
+async def update_node(script_id: int, node_id: str, node_data: dict[str, Any]) -> SuccessResponse:
     """노드 업데이트"""
     # 스크립트 존재 확인
     script = db_manager.get_script(script_id)
@@ -143,4 +155,4 @@ async def update_node(script_id: int, node_id: str, node_data: dict[str, Any]) -
     if not success:
         raise HTTPException(status_code=500, detail="노드 업데이트 실패")
 
-    return {"message": "노드가 업데이트되었습니다.", "node": updated_node}
+    return success_response({"node": updated_node}, "노드가 업데이트되었습니다.")

@@ -85,8 +85,11 @@ export class DashboardManager {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            const stats = await response.json();
-            logger.log('[Dashboard] 대시보드 통계 데이터 로드 완료:', stats);
+            const result = await response.json();
+            logger.log('[Dashboard] 대시보드 통계 데이터 로드 완료:', result);
+
+            // 변경된 응답 형식: {success: true, message: "...", data: {...}}
+            const stats = result.data || result; // 하위 호환성 유지
 
             // 통계 데이터 설정
             this.executionStats = {
