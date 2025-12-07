@@ -1370,7 +1370,6 @@ export class SidebarManager {
         // 스크립트 개수 기준 카운터 (try-catch 블록 밖에서 선언)
         let successCount = 0;
         let failCount = 0;
-        let cancelledCount = 0;
         const totalCount = activeScripts.length;
 
         // WorkflowPage 인스턴스 가져오기 (finally 블록에서도 접근 가능하도록 밖에서 정의)
@@ -1396,12 +1395,10 @@ export class SidebarManager {
                 // 취소 플래그 체크
                 if (this.isCancelled) {
                     log('[Sidebar] 실행이 취소되었습니다.');
-                    // 남은 스크립트 개수를 중단 개수로 계산
-                    cancelledCount = totalCount - successCount - failCount;
                     if (modalManager) {
                         modalManager.showAlert(
                             '실행 취소',
-                            `실행이 취소되었습니다.\n\n성공 스크립트: ${successCount}개\n실패 스크립트: ${failCount}개\n중단 스크립트: ${cancelledCount}개`
+                            `실행이 취소되었습니다.\n\n성공 스크립트: ${successCount}개\n실패 스크립트: ${failCount}개`
                         );
                     }
                     break;
@@ -1476,8 +1473,6 @@ export class SidebarManager {
                         // 취소되었는지 확인
                         if (this.isCancelled || workflowPage.executionService.isCancelled) {
                             log('[Sidebar] 실행이 취소되었습니다.');
-                            // 남은 스크립트 개수를 중단 개수로 계산 (현재 스크립트는 성공으로 카운트하지 않음)
-                            cancelledCount = totalCount - successCount - failCount;
                             break;
                         }
 
@@ -1491,18 +1486,8 @@ export class SidebarManager {
                             message: execError.message,
                             stack: execError.stack
                         });
-
-                        // 에러 발생 시 모든 실행 중단
-                        const errorMessage = execError.message || '알 수 없는 오류';
-                        if (modalManager) {
-                            modalManager.showAlert(
-                                '실행 중단',
-                                `스크립트 "${script.name}" 실행 중 오류가 발생하여 모든 실행이 중단되었습니다.\n\n오류: ${errorMessage}`
-                            );
-                        }
-
-                        // 모든 실행 중단
-                        throw execError;
+                        // 에러 발생 시 해당 스크립트는 실패로 처리하고 다음 스크립트 계속 실행
+                        continue;
                     }
 
                     // 스크립트 간 대기 시간 (선택적, 필요시 조정)
@@ -1517,28 +1502,13 @@ export class SidebarManager {
                         message: error.message,
                         stack: error.stack
                     });
-
-                    // 에러 발생 시 모든 실행 중단
-                    const errorMessage = error.message || '알 수 없는 오류';
-                    if (modalManager) {
-                        modalManager.showAlert(
-                            '실행 중단',
-                            `스크립트 "${script.name}" 처리 중 오류가 발생하여 모든 실행이 중단되었습니다.\n\n오류: ${errorMessage}`
-                        );
-                    }
-
-                    // 모든 실행 중단
-                    throw error;
+                    // 에러 발생 시 해당 스크립트는 실패로 처리하고 다음 스크립트 계속 실행
+                    continue;
                 }
             }
 
-            // 중단된 스크립트 개수 계산 (취소되지 않았으면 0)
-            if (!this.isCancelled) {
-                cancelledCount = totalCount - successCount - failCount;
-            }
-
             log(
-                `[Sidebar] 모든 스크립트 실행 완료 - 성공: ${successCount}개, 실패: ${failCount}개, 중단: ${cancelledCount}개`
+                `[Sidebar] 모든 스크립트 실행 완료 - 성공: ${successCount}개, 실패: ${failCount}개`
             );
 
             // 실행 결과 알림 (0개여도 모두 표시, 스크립트 개수 기준)
@@ -1548,7 +1518,7 @@ export class SidebarManager {
                     : '모든 스크립트 실행이 완료되었습니다.';
                 modalManager.showAlert(
                     this.isCancelled ? '실행 취소' : '실행 완료',
-                    `${statusMessage}\n\n성공 스크립트: ${successCount}개\n실패 스크립트: ${failCount}개\n중단 스크립트: ${cancelledCount}개`
+                    `${statusMessage}\n\n성공 스크립트: ${successCount}개\n실패 스크립트: ${failCount}개`
                 );
             }
         } catch (error) {
@@ -1559,14 +1529,11 @@ export class SidebarManager {
                 stack: error.stack
             });
 
-            // 중단된 스크립트 개수 계산
-            cancelledCount = totalCount - successCount - failCount;
-
             const modalManager = getModalManagerInstance();
             if (modalManager) {
                 modalManager.showAlert(
-                    '실행 중단',
-                    `스크립트 실행 중 오류가 발생하여 실행이 중단되었습니다.\n\n성공 스크립트: ${successCount}개\n실패 스크립트: ${failCount}개\n중단 스크립트: ${cancelledCount}개\n\n오류: ${error.message}`
+                    '실행 오류',
+                    `스크립트 실행 중 오류가 발생했습니다.\n\n성공 스크립트: ${successCount}개\n실패 스크립트: ${failCount}개\n\n오류: ${error.message}`
                 );
             }
         } finally {

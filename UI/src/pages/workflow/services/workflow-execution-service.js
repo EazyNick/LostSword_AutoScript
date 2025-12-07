@@ -218,20 +218,23 @@ export class WorkflowExecutionService {
                             errorMessage = result.detail;
                         }
 
-                        // 이미지 터치 노드의 폴더 경로 관련 에러인지 확인
-                        const isImageTouchError =
-                            errorMessage.includes('폴더') ||
-                            errorMessage.includes('folder_path') ||
-                            nodeData.type === 'image-touch';
-
-                        if (isImageTouchError && modalManager) {
-                            modalManager.showAlert(`이미지 터치 노드 오류: ${nodeTitle}`, errorMessage);
-                        } else if (modalManager) {
-                            modalManager.showAlert(`노드 실행 오류: ${nodeTitle}`, errorMessage);
-                        }
-
                         // 에러 발생 시 실행 중단 (에러를 throw하여 상위로 전파)
-                        // failCount는 catch 블록에서 증가시키므로 여기서는 증가하지 않음
+                        // 전체 스크립트 실행 중이면 모달 표시하지 않음 (에러는 상위에서 처리)
+                        // 단일 스크립트 실행 시에만 모달 표시
+                        if (!this.isRunningAllScripts && modalManager) {
+                            const isImageTouchError =
+                                errorMessage.includes('폴더') ||
+                                errorMessage.includes('folder_path') ||
+                                nodeData.type === 'image-touch';
+
+                            if (isImageTouchError) {
+                                modalManager.showAlert(`이미지 터치 노드 오류: ${nodeTitle}`, errorMessage);
+                            } else {
+                                modalManager.showAlert(`노드 실행 오류: ${nodeTitle}`, errorMessage);
+                            }
+                        }
+                        
+                        failCount++;
                         throw new Error(`노드 "${nodeTitle}" 실행 실패: ${errorMessage}`);
                     } else {
                         // 성공 시
@@ -253,19 +256,21 @@ export class WorkflowExecutionService {
                         errorMessage.includes('folder_path') ||
                         nodeData.type === 'image-touch';
 
-                    // 모달이 아직 표시되지 않은 경우에만 표시 (위에서 이미 표시했을 수 있음)
-                    // 이미 위의 if 블록에서 모달을 표시했을 수 있으므로 중복 방지
-                    const modalAlreadyShown = document.querySelector('.modal.show') !== null;
-                    if (!modalAlreadyShown) {
-                        if (isImageTouchError && modalManager) {
-                            modalManager.showAlert(`이미지 터치 노드 오류: ${nodeTitle}`, errorMessage);
-                        } else if (modalManager) {
-                            modalManager.showAlert(`노드 실행 오류: ${nodeTitle}`, errorMessage);
+                    // 에러 발생 시 실행 중단 (에러를 throw하여 상위로 전파)
+                    // 전체 스크립트 실행 중이면 모달 표시하지 않음 (에러는 상위에서 처리)
+                    // 단일 스크립트 실행 시에만 모달 표시
+                    if (!this.isRunningAllScripts && modalManager) {
+                        // 모달이 아직 표시되지 않은 경우에만 표시 (위에서 이미 표시했을 수 있음)
+                        const modalAlreadyShown = document.querySelector('.modal.show') !== null;
+                        if (!modalAlreadyShown) {
+                            if (isImageTouchError) {
+                                modalManager.showAlert(`이미지 터치 노드 오류: ${nodeTitle}`, errorMessage);
+                            } else {
+                                modalManager.showAlert(`노드 실행 오류: ${nodeTitle}`, errorMessage);
+                            }
                         }
                     }
 
-                    // 에러 발생 시 실행 중단 (에러를 throw하여 상위로 전파)
-                    // failCount는 여기서 한 번만 증가 (중복 방지)
                     failCount++;
                     throw error; // 원본 에러를 그대로 전파
                 }
@@ -362,13 +367,15 @@ export class WorkflowExecutionService {
                 currentNodeIndex,
                 계산: `${totalNodeCount} - ${successCount} - ${failCount} = ${cancelledCount}`
             });
-            // 전체 스크립트 실행 중이면 토스트만 표시
+            // 전체 스크립트 실행 중이면 토스트만 표시하고 에러를 다시 throw하여 상위로 전파
             if (this.isRunningAllScripts) {
                 if (toastManager) {
                     toastManager.error(
                         `실행 중단 (성공 노드: ${successCount}개, 실패 노드: ${failCount}개, 중단 노드: ${cancelledCount}개) - ${error.message}`
                     );
                 }
+                // 전체 스크립트 실행 중이면 에러를 다시 throw하여 sidebar에서 실패로 처리
+                throw error;
             } else {
                 if (modalManager) {
                     modalManager.showAlert(
@@ -378,6 +385,8 @@ export class WorkflowExecutionService {
                 } else if (toastManager) {
                     toastManager.error(`워크플로우 실행 중 오류가 발생했습니다: ${error.message}`);
                 }
+                // 단일 스크립트 실행 중이면 에러를 다시 throw
+                throw error;
             }
         } finally {
             // 실행 중 플래그 해제
