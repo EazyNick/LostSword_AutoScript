@@ -1,65 +1,212 @@
 @echo off
-REM 린팅 및 포매팅 자동 실행 스크립트
-REM Python (server)와 JavaScript (UI) 모두 린팅 및 포매팅을 실행합니다.
+REM Linting and formatting automation script
+REM Runs linting and formatting for both Python (server) and JavaScript (UI)
+
+REM Continue execution even if errors occur
+setlocal enabledelayedexpansion
+
+REM Set console window title
+title Linting and Formatting Automation
+
+REM Adjust console window size (optional)
+mode con: cols=100 lines=40
 
 echo ========================================
-echo 린팅 및 포매팅 자동 실행 시작
+echo Starting Linting and Formatting
 echo ========================================
 echo.
 
-REM 현재 디렉토리 저장
+REM Save original directory (where script was executed from)
 set ORIGINAL_DIR=%CD%
 
-REM Python 린팅 및 포매팅 (server)
-REM 프로젝트 루트에서 실행 (server 폴더로 이동하지 않음)
-echo [1/4] Python 린팅 체크 및 자동 수정 (server)...
+REM Find project root directory (where server/ and UI/ folders exist)
+REM Check if already in project root
+if exist "server" (
+    if exist "UI" (
+        echo Already in project root: %CD%
+        goto :found_root
+    )
+)
+
+REM If running from scripts folder, go up one level
+if exist "..\server" (
+    if exist "..\UI" (
+        cd ..
+        echo Changed to project root: %CD%
+        goto :found_root
+    )
+)
+
+REM Try going up one more level (in case we're deeper)
+cd ..
+if exist "server" (
+    if exist "UI" (
+        echo Found project root: %CD%
+        goto :found_root
+    )
+)
+
+REM If still not found, try one more level
+cd ..
+if exist "server" (
+    if exist "UI" (
+        echo Found project root: %CD%
+        goto :found_root
+    )
+)
+
+REM Project root not found
+echo [ERROR] Cannot find project root directory.
+echo Please run this script from the project root or scripts folder.
+echo Current location: %ORIGINAL_DIR%
+echo.
+echo Looking for folders: server/ and UI/
+pause
+exit /b 1
+
+:found_root
+echo Working directory: %CD%
+echo.
+
+REM Find and activate Python virtual environment
+REM Check common virtual environment names
+if exist "venv\Scripts\activate.bat" (
+    echo Found virtual environment: venv
+    call "venv\Scripts\activate.bat"
+    goto :venv_activated
+)
+
+if exist ".venv\Scripts\activate.bat" (
+    echo Found virtual environment: .venv
+    call ".venv\Scripts\activate.bat"
+    goto :venv_activated
+)
+
+if exist "env\Scripts\activate.bat" (
+    echo Found virtual environment: env
+    call "env\Scripts\activate.bat"
+    goto :venv_activated
+)
+
+if exist ".env\Scripts\activate.bat" (
+    echo Found virtual environment: .env
+    call ".env\Scripts\activate.bat"
+    goto :venv_activated
+)
+
+if exist "ENV\Scripts\activate.bat" (
+    echo Found virtual environment: ENV
+    call "ENV\Scripts\activate.bat"
+    goto :venv_activated
+)
+
+REM Search for any directory with Scripts\activate.bat (any name)
+for /d %%d in (*) do (
+    if exist "%%d\Scripts\activate.bat" (
+        echo Found virtual environment: %%d
+        call "%%d\Scripts\activate.bat"
+        goto :venv_activated
+    )
+)
+
+REM Virtual environment not found
+echo [WARNING] Virtual environment not found in common locations.
+echo Attempting to use system Python or PATH...
+echo.
+
+:venv_activated
+REM Check if ruff command exists (after venv activation)
+where ruff >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo [ERROR] ruff command not found.
+    echo Please ensure:
+    echo   1. Python virtual environment is activated, OR
+    echo   2. ruff is installed: pip install ruff
+    echo.
+    goto :check_npm
+)
+
+REM Python linting and formatting (server)
+REM Run from project root (do not change to server folder)
+echo [1/4] Python linting check and auto-fix (server)...
 ruff check --fix server/
-if %ERRORLEVEL% NEQ 0 (
-    echo 경고: Python 린팅 체크 중 오류가 발생했습니다.
+set PYTHON_LINT_ERROR=%ERRORLEVEL%
+if !PYTHON_LINT_ERROR! NEQ 0 (
+    echo [WARNING] Python linting check failed. (Error code: !PYTHON_LINT_ERROR!)
 ) else (
-    echo Python 린팅 체크 완료.
+    echo [SUCCESS] Python linting check completed.
 )
 echo.
 
-echo [2/4] Python 포매팅 적용 (server)...
+echo [2/4] Python formatting (server)...
 ruff format server/
-if %ERRORLEVEL% NEQ 0 (
-    echo 경고: Python 포매팅 중 오류가 발생했습니다.
+set PYTHON_FORMAT_ERROR=%ERRORLEVEL%
+if !PYTHON_FORMAT_ERROR! NEQ 0 (
+    echo [WARNING] Python formatting failed. (Error code: !PYTHON_FORMAT_ERROR!)
 ) else (
-    echo Python 포매팅 완료.
+    echo [SUCCESS] Python formatting completed.
 )
 echo.
 
-REM JavaScript 린팅 및 포매팅 (UI)
-echo [3/4] JavaScript 린팅 체크 및 자동 수정 (UI)...
+:check_npm
+REM JavaScript linting and formatting (UI)
+echo [3/4] JavaScript linting check and auto-fix (UI)...
+
+REM Check if npm command exists
+where npm >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo [ERROR] npm command not found.
+    echo Please ensure Node.js is installed.
+    echo.
+    goto :end
+)
+
+REM Check if UI folder exists
+if not exist "UI" (
+    echo [ERROR] UI folder not found.
+    echo Current location: %CD%
+    echo.
+    goto :end
+)
+
 cd UI
 if %ERRORLEVEL% NEQ 0 (
-    echo 오류: UI 폴더를 찾을 수 없습니다.
+    echo [ERROR] Cannot change to UI folder.
     cd %ORIGINAL_DIR%
-    exit /b 1
+    goto :end
 )
+
+echo Changed to UI folder: %CD%
 call npm run lint:fix
-if %ERRORLEVEL% NEQ 0 (
-    echo 경고: JavaScript 린팅 중 오류가 발생했습니다.
+set JS_LINT_ERROR=%ERRORLEVEL%
+if !JS_LINT_ERROR! NEQ 0 (
+    echo [WARNING] JavaScript linting failed. (Error code: !JS_LINT_ERROR!)
 ) else (
-    echo JavaScript 린팅 완료.
+    echo [SUCCESS] JavaScript linting completed.
 )
 echo.
 
-echo [4/4] JavaScript 포매팅 적용 (UI)...
+echo [4/4] JavaScript formatting (UI)...
 call npm run format
-if %ERRORLEVEL% NEQ 0 (
-    echo 경고: JavaScript 포매팅 중 오류가 발생했습니다.
+set JS_FORMAT_ERROR=%ERRORLEVEL%
+if !JS_FORMAT_ERROR! NEQ 0 (
+    echo [WARNING] JavaScript formatting failed. (Error code: !JS_FORMAT_ERROR!)
 ) else (
-    echo JavaScript 포매팅 완료.
+    echo [SUCCESS] JavaScript formatting completed.
 )
 echo.
 
-REM 원래 디렉토리로 복귀
+REM Return to original directory
 cd %ORIGINAL_DIR%
 
+:end
+echo.
 echo ========================================
-echo 모든 린팅 및 포매팅 작업 완료!
+echo All linting and formatting tasks completed!
 echo ========================================
+echo.
+echo Please review the execution results above.
+echo.
+echo Press any key to close this window...
 pause
 
