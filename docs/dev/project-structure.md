@@ -20,9 +20,18 @@
 - **js/api/**: API 클라이언트 (`window.API_BASE_URL` 사용)
 - **js/components/node/**: 노드 렌더링 컴포넌트
   - `node-icons.config.js`: 노드 아이콘 중앙 관리
-- **js/components/**: 공통 컴포넌트
-  - `sidebar.js`: 사이드바 관리
-  - `connection.js`: 노드 연결선 관리
+- **js/components/connection/**: 노드 간 연결선 관리
+  - `connection.js`: 메인 ConnectionManager 클래스
+  - `connection-utils.js`: 로거 및 경로 생성 유틸리티
+  - `connection-svg.js`: SVG 초기화 및 연결선 그리기
+  - `connection-events.js`: 이벤트 바인딩 및 처리
+  - `connection-coordinates.js`: 커넥터 위치 계산
+- **js/components/sidebar/**: 사이드바 관리
+  - `sidebar.js`: 메인 SidebarManager 클래스
+  - `sidebar-utils.js`: 로거 및 날짜 포맷팅 유틸리티
+  - `sidebar-ui.js`: UI 렌더링 및 업데이트
+  - `sidebar-events.js`: 이벤트 바인딩 및 처리
+  - `sidebar-scripts.js`: 스크립트 로드 및 실행 관리
 - **js/utils/**: 유틸리티
   - `theme-manager.js`: 테마 관리 (라이트/다크/시스템)
   - `toast.js`: 토스트 알림

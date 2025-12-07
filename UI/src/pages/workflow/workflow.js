@@ -7,8 +7,8 @@
  */
 
 // ES6 모듈 import - 명시적 의존성 관리
-import { getSidebarInstance } from '../../js/components/sidebar.js';
-import { ConnectionManager, setConnectionManager } from '../../js/components/connection.js';
+import { getSidebarInstance } from '../../js/components/sidebar/sidebar.js';
+import { ConnectionManager, setConnectionManager } from '../../js/components/connection/connection.js';
 import { getModalManagerInstance } from '../../js/utils/modal.js';
 import { getToastManagerInstance } from '../../js/utils/toast.js';
 import { NodeAPI } from '../../js/api/nodeapi.js';
