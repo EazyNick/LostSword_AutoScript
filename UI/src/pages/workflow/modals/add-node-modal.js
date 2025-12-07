@@ -228,22 +228,22 @@ export class AddNodeModal {
                 const selectedType = nodeTypeSelect.value;
                 const registry = getNodeRegistry();
                 const config = await registry.getConfig(selectedType);
-                
+
                 // 경계 노드(start, end)는 상세 노드 타입 선택란을 표시하지 않음
                 if (config && config.isBoundary) {
                     detailNodeTypeGroup.style.display = 'none';
                     return;
                 }
-                
+
                 // 경계 노드가 아니면 항상 상세 노드 타입 선택란 표시
                 detailNodeTypeGroup.style.display = 'block';
-                
+
                 const detailNodeTypes = await getDetailNodeTypes(selectedType);
                 const detailNodeKeys = Object.keys(detailNodeTypes);
 
                 // 상세 노드 타입 옵션 생성 (항상 "없음" 옵션 포함, 기본 선택)
                 detailNodeTypeSelect.innerHTML = '<option value="" selected>없음 (기본 동작)</option>';
-                
+
                 // 상세 노드 타입이 있으면 추가
                 detailNodeKeys.forEach((key) => {
                     const detailConfig = detailNodeTypes[key];
@@ -254,7 +254,7 @@ export class AddNodeModal {
                     option.textContent = `${icon} ${label}`;
                     detailNodeTypeSelect.appendChild(option);
                 });
-                
+
                 // 기본값으로 "없음" 선택 보장
                 detailNodeTypeSelect.value = '';
             };
