@@ -34,14 +34,29 @@ NODES_CONFIG: dict[str, dict[str, Any]] = {
         "script": "node-action.js",  # 클라이언트에서 로드할 JavaScript 파일명 (UI/src/js/components/node/node-action.js)
         "is_boundary": False,
         "category": "action",
-    },
-    "click": {
-        "label": "클릭 노드",
-        "title": "클릭",
-        "description": "화면의 특정 위치를 클릭하는 노드입니다.",
-        "script": "node-action.js",  # node-click.js가 없으므로 node-action.js 사용
-        "is_boundary": False,
-        "category": "action",
+        # 상세 노드 타입 정의 (대분류 노드 타입 아래에 하위 카테고리 정의)
+        "detail_types": {
+            "click": {
+                "label": "클릭",
+                "description": "화면의 특정 위치를 클릭합니다.",
+                "icon": "🖱️",
+            },
+            "collect": {
+                "label": "수집",
+                "description": "아이템이나 리소스를 수집합니다.",
+                "icon": "📦",
+            },
+            "move": {
+                "label": "이동",
+                "description": "캐릭터나 오브젝트를 이동시킵니다.",
+                "icon": "🚶",
+            },
+            "http-api-request": {
+                "label": "HTTP API 요청",
+                "description": "외부 API에 HTTP 요청을 보냅니다.",
+                "icon": "🌐",
+            },
+        },
     },
     "image-touch": {
         "label": "이미지 터치 노드",
@@ -51,6 +66,8 @@ NODES_CONFIG: dict[str, dict[str, Any]] = {
         "is_boundary": False,
         "category": "action",
         "requires_folder_path": True,
+        # 상세 노드 타입 정의
+        "detail_types": {},
     },
     "wait": {
         "label": "대기 노드",
@@ -59,6 +76,8 @@ NODES_CONFIG: dict[str, dict[str, Any]] = {
         "script": "node-wait.js",
         "is_boundary": False,
         "category": "action",
+        # 상세 노드 타입 정의
+        "detail_types": {},
     },
     "process-focus": {
         "label": "화면 포커스",
@@ -67,46 +86,8 @@ NODES_CONFIG: dict[str, dict[str, Any]] = {
         "script": "node-process-focus.js",
         "is_boundary": False,
         "category": "action",
-    },
-    "battle": {
-        "label": "전투 노드",
-        "title": "전투",
-        "description": "전투 관련 액션을 수행하는 노드입니다.",
-        "script": "node-action.js",  # node-battle.js가 없으므로 node-action.js 사용
-        "is_boundary": False,
-        "category": "action",
-    },
-    "collect": {
-        "label": "수집 노드",
-        "title": "수집",
-        "description": "아이템 수집 관련 액션을 수행하는 노드입니다.",
-        "script": "node-action.js",  # node-collect.js가 없으므로 node-action.js 사용
-        "is_boundary": False,
-        "category": "action",
-    },
-    "move": {
-        "label": "이동 노드",
-        "title": "이동",
-        "description": "캐릭터 이동 관련 액션을 수행하는 노드입니다.",
-        "script": "node-action.js",  # node-move.js가 없으므로 node-action.js 사용
-        "is_boundary": False,
-        "category": "action",
-    },
-    "navigate": {
-        "label": "네비게이션 노드",
-        "title": "네비게이션",
-        "description": "네비게이션 관련 액션을 수행하는 노드입니다.",
-        "script": "node-action.js",  # node-navigate.js가 없으므로 node-action.js 사용
-        "is_boundary": False,
-        "category": "action",
-    },
-    "http-api-request": {
-        "label": "HTTP API 요청",
-        "title": "HTTP API 요청",
-        "description": "외부 API에 HTTP 요청을 보내는 노드입니다.",
-        "script": "node-action.js",  # node-http-api-request.js가 없으므로 node-action.js 사용
-        "is_boundary": False,
-        "category": "action",
+        # 상세 노드 타입 정의
+        "detail_types": {},
     },
     # === 로직 노드 (Logic Nodes) ===
     "condition": {
@@ -116,14 +97,8 @@ NODES_CONFIG: dict[str, dict[str, Any]] = {
         "script": "node-condition.js",
         "is_boundary": False,
         "category": "logic",
-    },
-    "loop": {
-        "label": "반복 노드",
-        "title": "반복 노드",
-        "description": "반복 작업을 수행하는 노드입니다.",
-        "script": "node-loop.js",
-        "is_boundary": False,
-        "category": "logic",
+        # 상세 노드 타입 정의
+        "detail_types": {},
     },
 }
 

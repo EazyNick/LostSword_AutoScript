@@ -88,9 +88,9 @@ export class NodeUpdateService {
             }
         }
 
-        // 실제 노드 종류 가져오기
-        const actionNodeTypeSelect = document.getElementById('edit-action-node-type');
-        const newActionNodeType = actionNodeTypeSelect ? actionNodeTypeSelect.value : null;
+        // 상세 노드 타입 가져오기
+        const detailNodeTypeSelect = document.getElementById('edit-detail-node-type');
+        const newDetailNodeType = detailNodeTypeSelect ? detailNodeTypeSelect.value : null;
 
         const position = {
             x: parseFloat(nodeElement.style.left) || 0,
@@ -101,7 +101,7 @@ export class NodeUpdateService {
             id: nodeId,
             type: newType,
             title: newTitle,
-            action_node_type: newActionNodeType || undefined,
+            action_node_type: newDetailNodeType || undefined,
             x: position.x,
             y: position.y
         };
@@ -134,8 +134,8 @@ export class NodeUpdateService {
             updatedNodeData.output_override = null;
         }
 
-        // 실제 노드 종류별 추가 데이터
-        if (newActionNodeType === 'http-api-request') {
+        // 상세 노드 타입별 추가 데이터
+        if (newDetailNodeType === 'http-api-request') {
             const url = document.getElementById('edit-http-url')?.value || '';
             const method = document.getElementById('edit-http-method')?.value || 'GET';
             const headersText = document.getElementById('edit-http-headers')?.value || '{}';
@@ -283,9 +283,10 @@ export class NodeUpdateService {
         const apiBaseUrl = window.API_BASE_URL || 'http://localhost:8000';
         fetch(`${apiBaseUrl}/api/images/list?folder_path=${encodeURIComponent(nodeData.folder_path)}`)
             .then((response) => response.json())
-            .then((data) => {
-                if (data.success) {
-                    const count = data.count || 0;
+            .then((result) => {
+                // 변경된 응답 형식: {success: true, message: "...", data: [...], count: N}
+                if (result.success) {
+                    const count = result.count || result.data?.length || 0;
                     nodeData.image_count = count;
 
                     // NodeManager의 노드 데이터에도 이미지 개수 저장

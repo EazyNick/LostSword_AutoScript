@@ -36,9 +36,12 @@ export const ScriptAPI = {
 
             logger.log('[ScriptAPI] ✅ API 응답 받음:', result);
             logger.log(`[ScriptAPI] 응답 시간: ${(endTime - startTime).toFixed(2)}ms`);
-            logger.log(`[ScriptAPI] 받은 스크립트 개수: ${result.length}개`);
 
-            return result;
+            // 변경된 응답 형식: {success: true, message: "...", data: [...], count: N}
+            const scripts = result.data || result; // 하위 호환성 유지
+            logger.log(`[ScriptAPI] 받은 스크립트 개수: ${scripts.length}개`);
+
+            return scripts;
         } catch (error) {
             const logger = getLogger();
             logger.error('[ScriptAPI] ❌ API 요청 실패:', error);
@@ -138,10 +141,13 @@ export const ScriptAPI = {
 
             logger.log('[ScriptAPI] ✅ API 응답 받음:', result);
             logger.log(`[ScriptAPI] 응답 시간: ${(endTime - startTime).toFixed(2)}ms`);
-            logger.log(`[ScriptAPI] 생성된 스크립트 ID: ${result.id}`);
-            logger.log(`[ScriptAPI] 생성된 스크립트 이름: ${result.name}`);
 
-            return result;
+            // 변경된 응답 형식: {success: true, message: "...", data: {id, name, ...}}
+            const scriptData = result.data || result; // 하위 호환성 유지
+            logger.log(`[ScriptAPI] 생성된 스크립트 ID: ${scriptData.id}`);
+            logger.log(`[ScriptAPI] 생성된 스크립트 이름: ${scriptData.name}`);
+
+            return scriptData;
         } catch (error) {
             logger.error('[ScriptAPI] ❌ API 요청 실패:', error);
             logger.error('[ScriptAPI] 에러 상세:', {
@@ -172,9 +178,12 @@ export const ScriptAPI = {
 
             logger.log('[ScriptAPI] ✅ API 응답 받음:', result);
             logger.log(`[ScriptAPI] 응답 시간: ${(endTime - startTime).toFixed(2)}ms`);
-            logger.log(`[ScriptAPI] 삭제된 스크립트 ID: ${result.id}`);
 
-            return result;
+            // 변경된 응답 형식: {success: true, message: "...", data: {id}}
+            const deleteData = result.data || result; // 하위 호환성 유지
+            logger.log(`[ScriptAPI] 삭제된 스크립트 ID: ${deleteData.id}`);
+
+            return deleteData;
         } catch (error) {
             logger.error('[ScriptAPI] ❌ API 요청 실패:', error);
             logger.error('[ScriptAPI] 에러 상세:', {
@@ -212,9 +221,17 @@ export const ScriptAPI = {
             logger.log('[ScriptAPI] ✅ API 응답 받음:', result);
             logger.log(`[ScriptAPI] 응답 시간: ${(endTime - startTime).toFixed(2)}ms`);
             logger.log(`[ScriptAPI] 실행 성공: ${result.success}`);
-            logger.log(`[ScriptAPI] 실행 결과 개수: ${result.results ? result.results.length : 0}개`);
 
-            return result;
+            // 변경된 응답 형식: {success: true/false, message: "...", data: {results: [...]}}
+            const results = result.data?.results || result.results || []; // 하위 호환성 유지
+            logger.log(`[ScriptAPI] 실행 결과 개수: ${results.length}개`);
+
+            return {
+                success: result.success,
+                message: result.message,
+                results: results,
+                data: result.data // 전체 데이터도 포함
+            };
         } catch (error) {
             logger.error('[ScriptAPI] ❌ API 요청 실패:', error);
             logger.error('[ScriptAPI] 에러 상세:', {
@@ -248,9 +265,12 @@ export const ScriptAPI = {
 
             logger.log('[ScriptAPI] ✅ API 응답 받음:', result);
             logger.log(`[ScriptAPI] 응답 시간: ${(endTime - startTime).toFixed(2)}ms`);
-            logger.log(`[ScriptAPI] 업데이트된 활성 상태: ${result.active}`);
 
-            return result;
+            // 변경된 응답 형식: {success: true, message: "...", data: {active: true/false}}
+            const activeData = result.data || result; // 하위 호환성 유지
+            logger.log(`[ScriptAPI] 업데이트된 활성 상태: ${activeData.active}`);
+
+            return activeData;
         } catch (error) {
             logger.error('[ScriptAPI] ❌ API 요청 실패:', error);
             logger.error('[ScriptAPI] 에러 상세:', {

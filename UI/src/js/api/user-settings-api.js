@@ -31,7 +31,8 @@ export const UserSettingsAPI = {
         try {
             const result = await apiCall('/api/config/user-settings');
             logger.log('[UserSettingsAPI] ✅ 모든 설정 조회 성공:', result);
-            return result;
+            // 변경된 응답 형식: {success: true, message: "...", data: {...}}
+            return result.data || result; // 하위 호환성 유지
         } catch (error) {
             logger.error('[UserSettingsAPI] ❌ 설정 조회 실패:', error);
             throw error;
@@ -49,8 +50,10 @@ export const UserSettingsAPI = {
 
         try {
             const result = await apiCall(`/api/config/user-settings/${key}`);
-            logger.log(`[UserSettingsAPI] ✅ 설정 조회 성공 - 키: ${key}, 값: ${result.value}`);
-            return result.value;
+            // 변경된 응답 형식: {success: true, message: "...", data: {key, value}}
+            const settingData = result.data || result; // 하위 호환성 유지
+            logger.log(`[UserSettingsAPI] ✅ 설정 조회 성공 - 키: ${key}, 값: ${settingData.value}`);
+            return settingData.value;
         } catch (error) {
             // 404 에러는 설정이 없는 것이므로 null 반환 (정상적인 경우)
             const errorMessage = error.message || '';

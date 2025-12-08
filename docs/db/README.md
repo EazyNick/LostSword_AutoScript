@@ -4,11 +4,9 @@
 
 ## 문서 목록
 
-- **[현재 스키마 (v1.0)](schema-v1.md)**: 현재 사용 중인 데이터베이스 스키마
-- **[개선 스키마 (v2.0)](schema-v2.md)**: 향후 적용 예정인 개선된 스키마
+- **[데이터베이스 스키마](schema.md)**: 현재 사용 중인 데이터베이스 스키마 (통합)
 - **[리포지토리 구조](repositories.md)**: 데이터베이스 접근 계층 구조
 - **[연결 관리](connection.md)**: 데이터베이스 연결 관리 방식
-- **[스키마 비교](database-schema-comparison.md)**: v1.0과 v2.0 스키마 비교
 
 ## 데이터베이스 파일
 
@@ -38,7 +36,7 @@ db = DatabaseManager()
 db.seed_example_data(logger)
 ```
 
-## 주요 테이블 (현재 v1.0)
+## 주요 테이블
 
 ### 부모 테이블
 1. **scripts**: 워크플로우(스크립트) 정보 (활성화 상태 포함) - **메인 부모 테이블**
@@ -60,15 +58,28 @@ db.seed_example_data(logger)
 
 ## 주요 뷰
 
-1. **script_stats**: 스크립트 통계 집계 뷰
+1. **script_stats**: 스크립트 통계 집계 뷰 (대시보드용)
 
-## 향후 개선 사항 (v2.0)
+## 빠른 시작
 
-- 실행 기록 관리 (`executions`, `execution_data`, `execution_metadata`)
-- 워크플로우 통계 (`workflow_statistics`)
-- 태그 시스템 (`tags`, `workflow_tags`)
-- 시스템 설정 및 변수 관리 (`settings`, `variables`)
-- 웹훅 관리 (`webhooks`)
+### 데이터베이스 초기화
+
+```python
+from server.db.database import DatabaseManager
+
+# 데이터베이스 초기화 (테이블 생성 및 마이그레이션)
+db = DatabaseManager()
+```
+
+### 스크립트 생성 및 조회
+
+```python
+# 스크립트 생성
+script_id = db.create_script("테스트 스크립트", "설명")
+
+# 스크립트 조회
+script = db.get_script(script_id)
+```
 
 자세한 내용은 각 문서를 참고하세요.
 

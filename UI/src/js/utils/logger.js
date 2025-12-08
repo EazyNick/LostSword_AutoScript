@@ -17,7 +17,9 @@ async function loadDevMode() {
         // 서버 API에서 설정 정보 가져오기
         const response = await fetch('/api/config');
         if (response.ok) {
-            const config = await response.json();
+            const result = await response.json();
+            // 변경된 응답 형식: {success: true, message: "...", data: {dev_mode: ...}}
+            const config = result.data || result; // 하위 호환성 유지
             // 서버에서 dev_mode 값 사용
             if (config.dev_mode !== undefined) {
                 DEV_MODE = config.dev_mode === true || config.dev_mode === 'true';

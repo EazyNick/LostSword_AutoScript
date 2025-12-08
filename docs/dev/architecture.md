@@ -3,7 +3,7 @@
 ## 전체 구조
 
 ```
-클라이언트 (브라우저) ←→ FastAPI 서버
+클라이언트 (브라우저) ←→ FastAPI 서버 ←→ SQLLite(DB)
 ```
 
 ## 백엔드
@@ -27,6 +27,18 @@
 - **js/api/**: API 클라이언트 (`window.API_BASE_URL` 동적 사용)
 - **js/components/node/**: 노드 렌더링 컴포넌트
   - `node-icons.config.js`: 노드 아이콘 중앙 관리
+- **js/components/connection/**: 노드 간 연결선 관리
+  - `connection.js`: 메인 ConnectionManager 클래스
+  - `connection-utils.js`: 로거 및 경로 생성 유틸리티
+  - `connection-svg.js`: SVG 초기화 및 연결선 그리기
+  - `connection-events.js`: 이벤트 바인딩 및 처리
+  - `connection-coordinates.js`: 커넥터 위치 계산
+- **js/components/sidebar/**: 사이드바 관리
+  - `sidebar.js`: 메인 SidebarManager 클래스
+  - `sidebar-utils.js`: 로거 및 날짜 포맷팅 유틸리티
+  - `sidebar-ui.js`: UI 렌더링 및 업데이트
+  - `sidebar-events.js`: 이벤트 바인딩 및 처리
+  - `sidebar-scripts.js`: 스크립트 로드 및 실행 관리
 - **pages/workflow/**: 워크플로우 편집기 및 페이지 라우팅
   - `page-router.js`: SPA 페이지 라우팅 관리
   - `dashboard.js`: 대시보드 페이지
@@ -48,11 +60,23 @@
 - **서버 설정**: `server/config/server_config.py`에서 중앙 관리
 - **클라이언트**: `window.API_HOST`, `window.API_PORT`로 동적 API URL 생성
 
+## API 응답 형식
+
+모든 API 엔드포인트는 일관된 응답 형식을 사용합니다:
+
+- **성공 응답** (`SuccessResponse`): `{success: true, message: string | null, data: object | null}`
+- **에러 응답** (`ErrorResponse`): `{success: false, message: string | null, error: string | null, error_code: string | null}`
+- **리스트 응답** (`ListResponse`): `{success: true, message: string | null, data: array, count: number | null}`
+- **페이지네이션 응답** (`PaginatedResponse`): `ListResponse` + `{page, page_size, total, total_pages}`
+
+자세한 내용은 [API 참조 문서](api-reference.md)를 참고하세요.
+
 ## 데이터 흐름
 
-1. **저장**: 클라이언트 → `POST /api/scripts/save` → DB
-2. **실행**: 클라이언트 → `POST /api/action/execute` → 노드 실행 → Windows API
+1. **저장**: 클라이언트 → `PUT /api/scripts/{id}` → DB
+2. **실행**: 클라이언트 → `POST /api/scripts/{id}/execute` → 노드 실행 → Windows API
 3. **로드**: 클라이언트 → `GET /api/scripts/{id}` → DB → 클라이언트
+4. **통계**: 클라이언트 → `GET /api/dashboard/stats` → DB → 클라이언트
 
 ## 기술 스택
 

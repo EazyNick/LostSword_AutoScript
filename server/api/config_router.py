@@ -8,28 +8,28 @@ from typing import Any
 
 from fastapi import APIRouter, Body, HTTPException, Request
 
+from api.response_helpers import success_response
 from config.nodes_config import NODES_CONFIG
 from config.server_config import settings
 from db.database import db_manager
 from log import log_manager
+from models.response_models import SuccessResponse
 
 router = APIRouter(prefix="/api/config", tags=["config"])
 logger = log_manager.logger
 
 
-@router.get("/")
-async def get_config() -> dict[str, Any]:
+@router.get("/", response_model=SuccessResponse)
+async def get_config() -> SuccessResponse:
     """서버 설정 정보 조회 (server_config 기반)"""
     logger.info(f"[API] 설정 조회 요청 - DEV_MODE: {settings.DEV_MODE}")
 
     # 보안: ENVIRONMENT는 서버 내부 정보이므로 클라이언트에 노출하지 않음
-    return {
-        "dev_mode": settings.DEV_MODE,
-    }
+    return success_response({"dev_mode": settings.DEV_MODE}, "설정 조회 완료")
 
 
-@router.get("/nodes")
-async def get_nodes_config() -> dict[str, Any]:
+@router.get("/nodes", response_model=SuccessResponse)
+async def get_nodes_config() -> SuccessResponse:
     """노드 설정 정보 조회"""
     logger.info("[API] 노드 설정 조회 요청")
 
@@ -48,11 +48,22 @@ async def get_nodes_config() -> dict[str, Any]:
         if "requires_folder_path" in config:
             nodes_config_client[node_type]["requiresFolderPath"] = config["requires_folder_path"]
 
-    return {"nodes": nodes_config_client}
+        # 상세 노드 타입이 있으면 포함 (대분류 노드 타입 아래의 하위 카테고리)
+        if "detail_types" in config:
+            detail_types_client = {}
+            for detail_type_key, detail_type_config in config["detail_types"].items():
+                detail_types_client[detail_type_key] = {
+                    "label": detail_type_config.get("label"),
+                    "description": detail_type_config.get("description"),
+                    "icon": detail_type_config.get("icon", ""),
+                }
+            nodes_config_client[node_type]["detailTypes"] = detail_types_client
+
+    return success_response({"nodes": nodes_config_client}, "노드 설정 조회 완료")
 
 
-@router.get("/user-settings")
-async def get_user_settings(request: Request) -> dict[str, str]:
+@router.get("/user-settings", response_model=SuccessResponse)
+async def get_user_settings(request: Request) -> SuccessResponse:
     """모든 사용자 설정 조회"""
     client_ip = request.client.host if request.client else "unknown"
     logger.info(f"[API] 사용자 설정 조회 요청 - 클라이언트 IP: {client_ip}")
@@ -60,14 +71,14 @@ async def get_user_settings(request: Request) -> dict[str, str]:
     try:
         user_settings = db_manager.get_all_user_settings()
         logger.info(f"[API] 사용자 설정 조회 성공 - 설정 개수: {len(user_settings)}개")
-        return user_settings
+        return success_response(user_settings, "사용자 설정 조회 완료")
     except Exception as e:
         logger.error(f"[API] 사용자 설정 조회 실패: {e!s}")
         raise HTTPException(status_code=500, detail=f"사용자 설정 조회 실패: {e!s}")
 
 
-@router.get("/user-settings/{setting_key}")
-async def get_user_setting(setting_key: str, request: Request) -> dict[str, str]:
+@router.get("/user-settings/{setting_key}", response_model=SuccessResponse)
+async def get_user_setting(setting_key: str, request: Request) -> SuccessResponse:
     """특정 사용자 설정 조회"""
     client_ip = request.client.host if request.client else "unknown"
     logger.info(f"[API] 사용자 설정 조회 요청 - 키: {setting_key}, 클라이언트 IP: {client_ip}")
@@ -80,7 +91,7 @@ async def get_user_setting(setting_key: str, request: Request) -> dict[str, str]
             raise HTTPException(status_code=404, detail=f"설정 '{setting_key}'를 찾을 수 없습니다.")
 
         logger.info(f"[API] 사용자 설정 조회 성공 - 키: {setting_key}")
-        return {"key": setting_key, "value": value}
+        return success_response({"key": setting_key, "value": value}, "사용자 설정 조회 완료")
     except HTTPException:
         raise
     except Exception as e:
@@ -88,8 +99,8 @@ async def get_user_setting(setting_key: str, request: Request) -> dict[str, str]
         raise HTTPException(status_code=500, detail=f"사용자 설정 조회 실패: {e!s}")
 
 
-@router.put("/user-settings/{setting_key}")
-async def save_user_setting(setting_key: str, request: Request, body: dict[str, Any] = Body(...)) -> dict[str, Any]:
+@router.put("/user-settings/{setting_key}", response_model=SuccessResponse)
+async def save_user_setting(setting_key: str, request: Request, body: dict[str, Any] = Body(...)) -> SuccessResponse:
     """사용자 설정 저장"""
     client_ip = request.client.host if request.client else "unknown"
     setting_value = body.get("value", "")
@@ -106,15 +117,15 @@ async def save_user_setting(setting_key: str, request: Request, body: dict[str, 
         success = db_manager.save_user_setting(setting_key, setting_value)
         if success:
             logger.info(f"[API] 사용자 설정 저장 성공 - 키: {setting_key}")
-            return {"message": "설정이 저장되었습니다.", "key": setting_key, "value": setting_value}
+            return success_response({"key": setting_key, "value": setting_value}, "설정이 저장되었습니다.")
         raise HTTPException(status_code=500, detail="설정 저장 실패")
     except Exception as e:
         logger.error(f"[API] 사용자 설정 저장 실패 - 키: {setting_key}, 에러: {e!s}")
         raise HTTPException(status_code=500, detail=f"사용자 설정 저장 실패: {e!s}")
 
 
-@router.delete("/user-settings/{setting_key}")
-async def delete_user_setting(setting_key: str, request: Request) -> dict[str, Any]:
+@router.delete("/user-settings/{setting_key}", response_model=SuccessResponse)
+async def delete_user_setting(setting_key: str, request: Request) -> SuccessResponse:
     """사용자 설정 삭제"""
     client_ip = request.client.host if request.client else "unknown"
     logger.info(f"[API] 사용자 설정 삭제 요청 - 키: {setting_key}, 클라이언트 IP: {client_ip}")
@@ -123,7 +134,7 @@ async def delete_user_setting(setting_key: str, request: Request) -> dict[str, A
         success = db_manager.delete_user_setting(setting_key)
         if success:
             logger.info(f"[API] 사용자 설정 삭제 성공 - 키: {setting_key}")
-            return {"message": "설정이 삭제되었습니다.", "key": setting_key}
+            return success_response({"key": setting_key}, "설정이 삭제되었습니다.")
         raise HTTPException(status_code=404, detail=f"설정 '{setting_key}'를 찾을 수 없습니다.")
     except HTTPException:
         raise

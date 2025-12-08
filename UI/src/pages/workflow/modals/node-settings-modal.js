@@ -7,7 +7,7 @@ import { getDefaultDescription } from '../config/node-defaults.js';
 import { NODE_TYPES, isBoundaryNode, NODE_TYPE_LABELS } from '../constants/node-types.js';
 import { escapeHtml, getNodeType, getNodeData } from '../utils/node-utils.js';
 import { NodeValidationUtils } from '../utils/node-validation-utils.js';
-import { getActionNodeTypes, getActionNodeConfig } from '../config/action-node-types.js';
+import { getDetailNodeTypes, getDetailNodeConfig } from '../config/action-node-types.js';
 
 export class NodeSettingsModal {
     constructor(workflowPage) {
@@ -18,7 +18,7 @@ export class NodeSettingsModal {
      * 노드 설정 모달 표시
      * @param {HTMLElement} nodeElement - 설정할 노드 요소
      */
-    show(nodeElement) {
+    async show(nodeElement) {
         const modalManager = this.workflowPage.getModalManager();
         if (!modalManager) {
             console.error('ModalManager를 사용할 수 없습니다.');
@@ -43,14 +43,14 @@ export class NodeSettingsModal {
         const currentDescription = nodeData?.description || getDefaultDescription(nodeType);
 
         log(
-            `[WorkflowPage] 노드 설정 모달 열기: ${nodeId}, 타입: ${nodeType}, 실제 노드 종류: ${currentActionNodeType}`
+            `[WorkflowPage] 노드 설정 모달 열기: ${nodeId}, 타입: ${nodeType}, 상세 노드 타입: ${currentActionNodeType}`
         );
 
         // 노드 타입별 설정 UI 생성
         const typeSpecificSettings = this.generateTypeSpecificSettings(nodeType, nodeData);
 
         // 모달 콘텐츠 생성
-        const content = this.generateModalContent(
+        const content = await this.generateModalContent(
             nodeType,
             currentTitle,
             currentDescription,
@@ -74,48 +74,48 @@ export class NodeSettingsModal {
     }
 
     /**
-     * 실제 노드 종류 선택란 업데이트
+     * 상세 노드 타입 선택란 업데이트
      */
-    updateActionNodeTypeSelect(nodeType) {
-        const actionNodeTypeGroup = document.getElementById('edit-action-node-type-group');
-        const actionNodeTypeSelect = document.getElementById('edit-action-node-type');
+    async updateDetailNodeTypeSelect(nodeType) {
+        const detailNodeTypeGroup = document.getElementById('edit-detail-node-type-group');
+        const detailNodeTypeSelect = document.getElementById('edit-detail-node-type');
 
-        if (!actionNodeTypeGroup) {
+        if (!detailNodeTypeGroup) {
             return;
         }
 
         if (isBoundaryNode(nodeType)) {
-            actionNodeTypeGroup.style.display = 'none';
+            detailNodeTypeGroup.style.display = 'none';
             return;
         }
 
-        actionNodeTypeGroup.style.display = 'block';
+        detailNodeTypeGroup.style.display = 'block';
 
         // 현재 선택된 값 유지
-        const currentValue = actionNodeTypeSelect ? actionNodeTypeSelect.value : '';
+        const currentValue = detailNodeTypeSelect ? detailNodeTypeSelect.value : '';
 
         // 새로운 선택란 생성
-        const newSelect = this.generateActionNodeTypeSelect(nodeType, currentValue);
-        if (actionNodeTypeSelect) {
-            actionNodeTypeSelect.outerHTML = newSelect;
+        const newSelect = await this.generateDetailNodeTypeSelect(nodeType, currentValue);
+        if (detailNodeTypeSelect) {
+            detailNodeTypeSelect.outerHTML = newSelect;
         } else {
-            actionNodeTypeGroup.insertAdjacentHTML('beforeend', newSelect);
+            detailNodeTypeGroup.insertAdjacentHTML('beforeend', newSelect);
         }
 
         // 이벤트 리스너 재설정
-        const newActionNodeTypeSelect = document.getElementById('edit-action-node-type');
-        if (newActionNodeTypeSelect) {
+        const newDetailNodeTypeSelect = document.getElementById('edit-detail-node-type');
+        if (newDetailNodeTypeSelect) {
             const nodeElement =
                 document.querySelector('.workflow-node.selected') || document.querySelector('[data-node-id]');
-            newActionNodeTypeSelect.addEventListener('change', async () => {
-                const newActionNodeType = newActionNodeTypeSelect.value;
+            newDetailNodeTypeSelect.addEventListener('change', async () => {
+                const newDetailNodeType = newDetailNodeTypeSelect.value;
                 if (nodeElement) {
                     const updatedNodeData = getNodeData(nodeElement);
-                    updatedNodeData.action_node_type = newActionNodeType;
+                    updatedNodeData.action_node_type = newDetailNodeType;
                     const settingsContainer = document.getElementById('edit-node-type-settings');
-                    await this.handleActionNodeTypeChange(
+                    await this.handleDetailNodeTypeChange(
                         nodeType,
-                        newActionNodeType,
+                        newDetailNodeType,
                         updatedNodeData,
                         settingsContainer
                     );
@@ -126,15 +126,15 @@ export class NodeSettingsModal {
     }
 
     /**
-     * 실제 노드 종류 변경 처리
+     * 상세 노드 타입 변경 처리
      */
-    async handleActionNodeTypeChange(nodeType, actionNodeType, nodeData, settingsContainer) {
+    async handleDetailNodeTypeChange(nodeType, detailNodeType, nodeData, settingsContainer) {
         if (!settingsContainer) {
             return;
         }
 
-        // 실제 노드 종류별 설정 UI 생성
-        const settings = this.generateActionNodeTypeSettings(nodeType, actionNodeType, nodeData);
+        // 상세 노드 타입별 설정 UI 생성
+        const settings = this.generateDetailNodeTypeSettings(nodeType, detailNodeType, nodeData);
 
         // 기존 설정 제거
         const existingSettings = settingsContainer.querySelectorAll('.form-group');
@@ -154,18 +154,18 @@ export class NodeSettingsModal {
         }
 
         // 설정 변경 이벤트 리스너 설정
-        this.setupActionNodeTypeEventListeners(actionNodeType);
+        this.setupDetailNodeTypeEventListeners(detailNodeType);
     }
 
     /**
-     * 실제 노드 종류별 설정 UI 생성
+     * 상세 노드 타입별 설정 UI 생성
      */
-    generateActionNodeTypeSettings(nodeType, actionNodeType, nodeData) {
-        if (!actionNodeType) {
+    generateDetailNodeTypeSettings(nodeType, detailNodeType, nodeData) {
+        if (!detailNodeType) {
             return '';
         }
 
-        switch (actionNodeType) {
+        switch (detailNodeType) {
             case 'http-api-request':
                 const url = nodeData?.url || '';
                 const method = nodeData?.method || 'GET';
@@ -207,9 +207,9 @@ export class NodeSettingsModal {
     }
 
     /**
-     * 실제 노드 종류별 이벤트 리스너 설정
+     * 상세 노드 타입별 이벤트 리스너 설정
      */
-    setupActionNodeTypeEventListeners(actionNodeType) {
+    setupDetailNodeTypeEventListeners(detailNodeType) {
         // 설정 변경 시 미리보기 업데이트 (debounce)
         let previewUpdateTimer = null;
         const updatePreviewDebounced = () => {
@@ -225,7 +225,7 @@ export class NodeSettingsModal {
             }, 500);
         };
 
-        switch (actionNodeType) {
+        switch (detailNodeType) {
             case 'http-api-request':
                 // HTTP 설정 변경 시 미리보기 업데이트
                 const urlInput = document.getElementById('edit-http-url');
@@ -318,14 +318,20 @@ export class NodeSettingsModal {
     /**
      * 모달 콘텐츠 생성
      */
-    generateModalContent(nodeType, currentTitle, currentDescription, typeSpecificSettings, currentActionNodeType = '') {
+    async generateModalContent(
+        nodeType,
+        currentTitle,
+        currentDescription,
+        typeSpecificSettings,
+        currentDetailNodeType = ''
+    ) {
         const nodeTypeSelect = isBoundaryNode(nodeType)
             ? `<input type="text" value="${NODE_TYPE_LABELS[nodeType] || nodeType}" disabled class="node-settings-disabled-input">
                <small class="node-settings-help-text">시작/종료 노드는 타입을 변경할 수 없습니다.</small>`
             : this.generateNodeTypeSelect(nodeType);
 
-        // 실제 노드 종류 선택란 생성
-        const actionNodeTypeSelect = this.generateActionNodeTypeSelect(nodeType, currentActionNodeType);
+        // 상세 노드 타입 선택란 생성
+        const detailNodeTypeSelect = await this.generateDetailNodeTypeSelect(nodeType, currentDetailNodeType);
 
         return `
             <h3>노드 설정</h3>
@@ -337,9 +343,9 @@ export class NodeSettingsModal {
                 <label for="edit-node-type" class="node-settings-label">노드 타입:</label>
                 ${nodeTypeSelect}
             </div>
-            <div class="form-group node-settings-form-group" id="edit-action-node-type-group" style="display: ${isBoundaryNode(nodeType) ? 'none' : 'block'};">
-                <label for="edit-action-node-type" class="node-settings-label">실제 노드 종류:</label>
-                ${actionNodeTypeSelect}
+            <div class="form-group node-settings-form-group" id="edit-detail-node-type-group" style="display: ${isBoundaryNode(nodeType) ? 'none' : 'block'};">
+                <label for="edit-detail-node-type" class="node-settings-label">상세 노드 타입:</label>
+                ${detailNodeTypeSelect}
             </div>
             <div id="edit-node-type-settings">
                 ${typeSpecificSettings}
@@ -385,36 +391,31 @@ export class NodeSettingsModal {
     }
 
     /**
-     * 실제 노드 종류 선택 드롭다운 생성
+     * 상세 노드 타입 선택 드롭다운 생성
      */
-    generateActionNodeTypeSelect(nodeType, currentActionNodeType = '') {
-        const actionNodes = getActionNodeTypes(nodeType);
-        const actionNodeKeys = Object.keys(actionNodes);
+    async generateDetailNodeTypeSelect(nodeType, currentDetailNodeType = '') {
+        const detailNodeTypes = await getDetailNodeTypes(nodeType);
+        const detailNodeKeys = Object.keys(detailNodeTypes);
 
-        if (actionNodeKeys.length === 0) {
-            return `<select id="edit-action-node-type" disabled class="node-settings-disabled-select">
-                <option value="">사용 가능한 실제 노드 종류가 없습니다</option>
-            </select>
-            <small class="node-settings-help-text">이 노드 타입에는 실제 노드 종류가 없습니다.</small>`;
-        }
+        // "없음" 옵션 (항상 포함)
+        const noneOption = `<option value="" ${currentDetailNodeType === '' ? 'selected' : ''}>없음 (기본 동작)</option>`;
 
-        const options = actionNodeKeys
+        // 상세 노드 타입 옵션 생성
+        const options = detailNodeKeys
             .map((key) => {
-                const config = actionNodes[key];
+                const config = detailNodeTypes[key];
                 const label = config.label || key;
                 const icon = config.icon || '';
-                return `<option value="${key}" ${currentActionNodeType === key ? 'selected' : ''}>${icon} ${label}</option>`;
+                return `<option value="${key}" ${currentDetailNodeType === key ? 'selected' : ''}>${icon} ${label}</option>`;
             })
             .join('');
 
-        // "없음" 옵션 추가
-        const noneOption = `<option value="" ${currentActionNodeType === '' ? 'selected' : ''}>없음 (기본 동작)</option>`;
-
-        return `<select id="edit-action-node-type" class="node-settings-select">
+        // 상세 노드 타입이 없어도 선택란은 표시 (기본값: "없음"만 표시)
+        return `<select id="edit-detail-node-type" class="node-settings-select">
             ${noneOption}
             ${options}
         </select>
-        <small class="node-settings-help-text">이 노드가 수행할 실제 동작을 선택하세요.</small>`;
+        <small class="node-settings-help-text">이 노드가 수행할 상세 동작을 선택하세요.</small>`;
     }
 
     /**
@@ -432,8 +433,8 @@ export class NodeSettingsModal {
                 const newType = nodeTypeSelect.value;
                 await this.handleTypeChange(newType, nodeType, nodeData, settingsContainer, descriptionTextarea);
 
-                // 실제 노드 종류 선택란 업데이트
-                this.updateActionNodeTypeSelect(newType);
+                // 상세 노드 타입 선택란 업데이트
+                await this.updateDetailNodeTypeSelect(newType);
 
                 // 타입 변경 시 출력 미리보기도 업데이트
                 const updatedNodeData = getNodeData(nodeElement);
@@ -441,17 +442,17 @@ export class NodeSettingsModal {
             });
         }
 
-        // 실제 노드 종류 변경 시 설정 UI 업데이트
-        const actionNodeTypeSelect = document.getElementById('edit-action-node-type');
-        if (actionNodeTypeSelect && !isBoundaryNode(nodeType)) {
-            actionNodeTypeSelect.addEventListener('change', async () => {
-                const newActionNodeType = actionNodeTypeSelect.value;
-                // 실제 노드 종류별 설정 UI 업데이트
-                await this.handleActionNodeTypeChange(nodeType, newActionNodeType, nodeData, settingsContainer);
+        // 상세 노드 타입 변경 시 설정 UI 업데이트
+        const detailNodeTypeSelect = document.getElementById('edit-detail-node-type');
+        if (detailNodeTypeSelect && !isBoundaryNode(nodeType)) {
+            detailNodeTypeSelect.addEventListener('change', async () => {
+                const newDetailNodeType = detailNodeTypeSelect.value;
+                // 상세 노드 타입별 설정 UI 업데이트
+                await this.handleDetailNodeTypeChange(nodeType, newDetailNodeType, nodeData, settingsContainer);
 
                 // 출력 미리보기 업데이트
                 const updatedNodeData = getNodeData(nodeElement);
-                updatedNodeData.action_node_type = newActionNodeType;
+                updatedNodeData.action_node_type = newDetailNodeType;
                 await this.updateOutputPreview(nodeType, updatedNodeData, nodeElement);
             });
         }
@@ -598,15 +599,19 @@ export class NodeSettingsModal {
                 headers: { 'Content-Type': 'application/json' }
             });
 
-            const data = await response.json();
+            const result = await response.json();
 
-            if (data.success && data.folder_path) {
-                document.getElementById('edit-node-folder-path').value = data.folder_path;
+            // 변경된 응답 형식: {success: true/false, message: "...", data: {folder_path: "..."}}
+            if (result.success && result.data?.folder_path) {
+                const folderPath = result.data.folder_path;
+                document.getElementById('edit-node-folder-path').value = folderPath;
 
                 // 이미지 개수 확인 및 표시
-                this.updateImageCount(data.folder_path);
-            } else if (data.message) {
-                alert(data.message);
+                this.updateImageCount(folderPath);
+            } else if (result.message) {
+                alert(result.message);
+            } else if (!result.success) {
+                alert('폴더 선택에 실패했습니다.');
             }
         } catch (error) {
             console.error('폴더 선택 실패:', error);
@@ -624,10 +629,11 @@ export class NodeSettingsModal {
         try {
             const apiBaseUrl = window.API_BASE_URL || 'http://localhost:8000';
             const response = await fetch(`${apiBaseUrl}/api/images/list?folder_path=${encodeURIComponent(folderPath)}`);
-            const data = await response.json();
+            const result = await response.json();
 
-            if (data.success) {
-                const count = data.count || 0;
+            // 변경된 응답 형식: {success: true, message: "...", data: [...], count: N}
+            if (result.success) {
+                const count = result.count || result.data?.length || 0;
                 const label = document.querySelector('label[for="edit-node-folder-path"]');
                 if (label) {
                     const existingCount = label.querySelector('span');
@@ -1121,16 +1127,18 @@ export class NodeSettingsModal {
         try {
             const apiBaseUrl = window.API_BASE_URL || 'http://localhost:8000';
             const response = await fetch(`${apiBaseUrl}/api/processes/list`);
-            const data = await response.json();
+            const result = await response.json();
 
-            if (data.success && data.processes) {
+            // 변경된 응답 형식: {success: true, message: "...", data: [...], count: N}
+            const processes = result.data || result.processes || [];
+            if (result.success && processes.length > 0) {
                 // 기존 옵션 제거 (첫 번째 옵션 제외)
                 while (selectElement.options.length > 1) {
                     selectElement.remove(1);
                 }
 
                 // 프로세스 목록 추가
-                data.processes.forEach((process) => {
+                processes.forEach((process) => {
                     process.windows.forEach((window, index) => {
                         const option = document.createElement('option');
                         const value = `${process.process_id}|${window.hwnd}`;
@@ -1154,7 +1162,7 @@ export class NodeSettingsModal {
                     });
                 });
             } else {
-                console.error('프로세스 목록 로드 실패:', data);
+                console.error('프로세스 목록 로드 실패:', result);
             }
         } catch (error) {
             console.error('프로세스 목록 로드 중 오류:', error);

@@ -39,8 +39,10 @@ export class NodeRegistry {
         try {
             const response = await fetch('/api/config/nodes');
             if (response.ok) {
-                const data = await response.json();
-                this.nodeConfigs = data.nodes || {};
+                const result = await response.json();
+                // 변경된 응답 형식: {success: true, message: "...", data: {nodes: {...}}}
+                const nodes = result.data?.nodes || result.nodes || {};
+                this.nodeConfigs = nodes;
                 console.log('[NodeRegistry] 서버에서 노드 설정 로드 완료:', Object.keys(this.nodeConfigs).length, '개');
                 return this.nodeConfigs;
             } else {
