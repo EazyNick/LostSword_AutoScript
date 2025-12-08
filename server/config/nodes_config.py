@@ -100,6 +100,49 @@ NODES_CONFIG: dict[str, dict[str, Any]] = {
         # 상세 노드 타입 정의
         "detail_types": {},
     },
+    "loop": {
+        "label": "반복 노드",
+        "title": "반복 노드",
+        "description": "노드 블록을 반복 실행하는 노드입니다.",
+        "script": "node-loop.js",
+        "is_boundary": False,
+        "category": "logic",
+        # 상세 노드 타입 정의
+        "detail_types": {
+            "loop-start": {
+                "label": "반복 시작",
+                "description": "반복 블록의 시작점입니다. 반복 종료 노드까지의 노드들을 반복 실행합니다.",
+                "icon": "▶",
+                "parameters": {
+                    "loop_count": {
+                        "type": "number",
+                        "label": "반복 횟수",
+                        "description": "반복할 횟수를 설정합니다.",
+                        "default": 1,
+                        "min": 1,
+                        "max": 10000,
+                        "required": True,
+                    }
+                },
+            },
+            "loop-end": {
+                "label": "반복 종료",
+                "description": "반복 블록의 종료점입니다. 반복 시작 노드로 돌아가 반복을 계속합니다.",
+                "icon": "■",
+                "parameters": {
+                    "loop_count": {
+                        "type": "number",
+                        "label": "반복 횟수",
+                        "description": "반복할 횟수를 설정합니다. (반복 시작 노드와 동일한 값)",
+                        "default": 1,
+                        "min": 1,
+                        "max": 10000,
+                        "required": True,
+                    }
+                },
+            },
+        },
+    },
 }
 
 
