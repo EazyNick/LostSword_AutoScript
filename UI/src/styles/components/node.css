@@ -167,7 +167,7 @@
     border: 2px solid #333; /* 어두운 회색 테두리 */
     border-radius: 50%; /* 원형 */
     cursor: pointer; /* 클릭 가능한 커서 */
-    transition: all 0.2s ease; /* 부드러운 전환 효과 */
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); /* 부드럽고 탄성 있는 전환 효과 */
     z-index: 10; /* 다른 요소 위에 표시 */
     top: 50%; /* 세로 중앙 */
     margin-top: -6px; /* 높이의 절반만큼 위로 이동 (정확한 중앙 정렬) */
@@ -175,9 +175,12 @@
 
 /* 연결점 호버 효과: 마우스를 올렸을 때 */
 .node-connector:hover {
-    transform: scale(1.2); /* 크기 확대 1.2배 */
+    transform: scale(1.6); /* 크기 확대 1.6배 (더 동적으로) */
     background: #ffd700; /* 금색 배경 */
-    box-shadow: 0 0 8px rgba(255, 215, 0, 0.6); /* 금색 발광 효과 */
+    border-width: 3px; /* 테두리 두께 증가 */
+    box-shadow: 0 0 16px rgba(255, 215, 0, 0.8), 0 0 24px rgba(255, 215, 0, 0.4); /* 더 강한 금색 발광 효과 */
+    width: 18px; /* 호버 시 크기 증가 */
+    height: 18px; /* 호버 시 크기 증가 */
 }
 
 /* 입력 연결점: 다른 노드에서 이 노드로 연결되는 지점 */
@@ -356,7 +359,7 @@
     background: #ffffff; /* 흰색 배경 */
     border: 2px solid #666; /* 회색 테두리 */
     cursor: pointer; /* 클릭 가능한 커서 */
-    transition: all 0.2s ease; /* 부드러운 전환 효과 */
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); /* 부드럽고 탄성 있는 전환 효과 */
     z-index: 10; /* 다른 요소 위에 표시 */
 }
 
@@ -377,10 +380,13 @@
 /* 연결점 호버 효과: 마우스를 올렸을 때 */
 .node-input:hover,
 .node-output:hover {
-    transform: translateY(-50%) scale(1.2); /* 중앙 정렬 유지하며 크기 확대 1.2배 */
+    transform: translateY(-50%) scale(1.6); /* 중앙 정렬 유지하며 크기 확대 1.6배 (더 동적으로) */
     background: #007aff; /* 파란색 배경 */
     border-color: #007aff; /* 파란색 테두리 */
-    box-shadow: 0 0 8px rgba(0, 122, 255, 0.6); /* 파란색 발광 효과 */
+    border-width: 3px; /* 테두리 두께 증가 */
+    box-shadow: 0 0 16px rgba(0, 122, 255, 0.8), 0 0 24px rgba(0, 122, 255, 0.4); /* 더 강한 파란색 발광 효과 */
+    width: 18px; /* 호버 시 크기 증가 */
+    height: 18px; /* 호버 시 크기 증가 */
 }
 
 /* 연결된 연결점 스타일: 이미 연결이 완료된 연결점 */
@@ -464,27 +470,48 @@
     background: #ffffff; /* 흰색 배경 */
     border: 2px solid #666; /* 회색 테두리 */
     cursor: pointer; /* 클릭 가능한 커서 */
-    transition: all 0.2s ease; /* 부드러운 전환 효과 */
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); /* 부드럽고 탄성 있는 전환 효과 */
 }
 
 /* 조건 노드 출력점 호버 효과: 마우스를 올렸을 때 */
 .node-outputs .node-output:hover {
-    transform: scale(1.2); /* 크기 확대 1.2배 */
+    transform: scale(1.6); /* 크기 확대 1.6배 (더 동적으로) */
     background: #007aff; /* 파란색 배경 */
     border-color: #007aff; /* 파란색 테두리 */
-    box-shadow: 0 0 8px rgba(0, 122, 255, 0.6); /* 파란색 발광 효과 */
+    border-width: 3px; /* 테두리 두께 증가 */
+    box-shadow: 0 0 16px rgba(0, 122, 255, 0.8), 0 0 24px rgba(0, 122, 255, 0.4); /* 더 강한 파란색 발광 효과 */
+    width: 18px; /* 호버 시 크기 증가 */
+    height: 18px; /* 호버 시 크기 증가 */
 }
 
 /* True 출력점 색상: 조건이 참일 때의 출력점 */
 .true-output .output-dot {
+    z-index: 1001; /* 노드 위에 표시 */
     background: #34c759; /* 초록색 배경 */
     border-color: #34c759; /* 초록색 테두리 */
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); /* 부드럽고 탄성 있는 전환 효과 */
+}
+
+/* True 출력점 호버 효과 */
+.true-output .output-dot:hover {
+    transform: scale(1.6); /* 크기 확대 1.6배 (더 동적으로) */
+    border-width: 3px; /* 테두리 두께 증가 */
+    box-shadow: 0 0 16px rgba(52, 199, 89, 0.9), 0 0 24px rgba(52, 199, 89, 0.5); /* 더 강한 초록색 발광 효과 */
 }
 
 /* False 출력점 색상: 조건이 거짓일 때의 출력점 */
 .false-output .output-dot {
+    z-index: 1001; /* 노드 위에 표시 */
     background: #ff3b30; /* 빨간색 배경 */
     border-color: #ff3b30; /* 빨간색 테두리 */
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); /* 부드럽고 탄성 있는 전환 효과 */
+}
+
+/* False 출력점 호버 효과 */
+.false-output .output-dot:hover {
+    transform: scale(1.6); /* 크기 확대 1.6배 (더 동적으로) */
+    border-width: 3px; /* 테두리 두께 증가 */
+    box-shadow: 0 0 16px rgba(255, 59, 48, 0.9), 0 0 24px rgba(255, 59, 48, 0.5); /* 더 강한 빨간색 발광 효과 */
 }
 
 /* 출력점 라벨: 출력점 옆에 표시되는 "True"/"False" 텍스트 */

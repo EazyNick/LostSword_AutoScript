@@ -347,14 +347,16 @@
     right: -6px; /* 노드 오른쪽 밖에 배치 */
     top: 50%; /* 세로 중앙 */
     transform: translateY(-50%); /* 정확한 중앙 정렬 */
-    transition: all 0.3s ease; /* 부드러운 전환 효과 */
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); /* 부드럽고 탄성 있는 전환 효과 */
 }
 
 /* 출력점 호버 효과 */
 .node-output:hover {
-    transform: translateY(-50%) scale(1.2); /* 크기 확대 */
+    transform: translateY(-50%) scale(1.6); /* 크기 확대 1.6배 (더 동적으로) */
     background-color: #ffd700; /* 금색으로 변경 */
-    box-shadow: 0 0 10px rgba(255, 215, 0, 0.8); /* 발광 효과 */
+    border-width: 3px; /* 테두리 두께 증가 */
+    box-shadow: 0 0 16px rgba(255, 215, 0, 0.9), 0 0 24px rgba(255, 215, 0, 0.5); /* 더 강한 발광 효과 */
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); /* 부드럽고 탄성 있는 전환 효과 */
 }
 
 /* 연결 중인 출력점 */
@@ -408,7 +410,7 @@
     height: 20px; /* 도트 크기 */
     border-radius: 50%; /* 원형 */
     border: 2px solid #ffffff; /* 흰색 테두리 */
-    transition: all 0.3s ease; /* 부드러운 전환 효과 */
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); /* 부드럽고 탄성 있는 전환 효과 */
     display: flex; /* 플렉스박스 */
     align-items: center; /* 세로 중앙 정렬 */
     justify-content: center; /* 가로 중앙 정렬 */
@@ -418,8 +420,10 @@
 
 /* 출력점 도트 호버 효과 */
 .output-dot:hover {
-    transform: scale(1.15); /* 크기 확대 */
-    box-shadow: 0 0 10px rgba(255, 255, 255, 0.8); /* 발광 효과 */
+    transform: scale(1.6); /* 크기 확대 1.6배 (더 동적으로) */
+    border-width: 3px; /* 테두리 두께 증가 */
+    box-shadow: 0 0 16px rgba(255, 255, 255, 0.9), 0 0 24px rgba(255, 255, 255, 0.5); /* 더 강한 발광 효과 */
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); /* 부드럽고 탄성 있는 전환 효과 */
 }
 
 /* 연결 중인 출력점 도트 */
