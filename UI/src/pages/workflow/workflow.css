@@ -355,7 +355,9 @@
     transform: translateY(-50%) scale(1.6); /* 크기 확대 1.6배 (더 동적으로) */
     background-color: #ffd700; /* 금색으로 변경 */
     border-width: 3px; /* 테두리 두께 증가 */
-    box-shadow: 0 0 16px rgba(255, 215, 0, 0.9), 0 0 24px rgba(255, 215, 0, 0.5); /* 더 강한 발광 효과 */
+    box-shadow:
+        0 0 16px rgba(255, 215, 0, 0.9),
+        0 0 24px rgba(255, 215, 0, 0.5); /* 더 강한 발광 효과 */
     transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); /* 부드럽고 탄성 있는 전환 효과 */
 }
 
@@ -422,7 +424,9 @@
 .output-dot:hover {
     transform: scale(1.6); /* 크기 확대 1.6배 (더 동적으로) */
     border-width: 3px; /* 테두리 두께 증가 */
-    box-shadow: 0 0 16px rgba(255, 255, 255, 0.9), 0 0 24px rgba(255, 255, 255, 0.5); /* 더 강한 발광 효과 */
+    box-shadow:
+        0 0 16px rgba(255, 255, 255, 0.9),
+        0 0 24px rgba(255, 255, 255, 0.5); /* 더 강한 발광 효과 */
     transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); /* 부드럽고 탄성 있는 전환 효과 */
 }
 

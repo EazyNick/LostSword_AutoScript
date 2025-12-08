@@ -178,7 +178,9 @@
     transform: scale(1.6); /* 크기 확대 1.6배 (더 동적으로) */
     background: #ffd700; /* 금색 배경 */
     border-width: 3px; /* 테두리 두께 증가 */
-    box-shadow: 0 0 16px rgba(255, 215, 0, 0.8), 0 0 24px rgba(255, 215, 0, 0.4); /* 더 강한 금색 발광 효과 */
+    box-shadow:
+        0 0 16px rgba(255, 215, 0, 0.8),
+        0 0 24px rgba(255, 215, 0, 0.4); /* 더 강한 금색 발광 효과 */
     width: 18px; /* 호버 시 크기 증가 */
     height: 18px; /* 호버 시 크기 증가 */
 }
@@ -384,7 +386,9 @@
     background: #007aff; /* 파란색 배경 */
     border-color: #007aff; /* 파란색 테두리 */
     border-width: 3px; /* 테두리 두께 증가 */
-    box-shadow: 0 0 16px rgba(0, 122, 255, 0.8), 0 0 24px rgba(0, 122, 255, 0.4); /* 더 강한 파란색 발광 효과 */
+    box-shadow:
+        0 0 16px rgba(0, 122, 255, 0.8),
+        0 0 24px rgba(0, 122, 255, 0.4); /* 더 강한 파란색 발광 효과 */
     width: 18px; /* 호버 시 크기 증가 */
     height: 18px; /* 호버 시 크기 증가 */
 }
@@ -479,7 +483,9 @@
     background: #007aff; /* 파란색 배경 */
     border-color: #007aff; /* 파란색 테두리 */
     border-width: 3px; /* 테두리 두께 증가 */
-    box-shadow: 0 0 16px rgba(0, 122, 255, 0.8), 0 0 24px rgba(0, 122, 255, 0.4); /* 더 강한 파란색 발광 효과 */
+    box-shadow:
+        0 0 16px rgba(0, 122, 255, 0.8),
+        0 0 24px rgba(0, 122, 255, 0.4); /* 더 강한 파란색 발광 효과 */
     width: 18px; /* 호버 시 크기 증가 */
     height: 18px; /* 호버 시 크기 증가 */
 }
@@ -496,7 +502,9 @@
 .true-output .output-dot:hover {
     transform: scale(1.6); /* 크기 확대 1.6배 (더 동적으로) */
     border-width: 3px; /* 테두리 두께 증가 */
-    box-shadow: 0 0 16px rgba(52, 199, 89, 0.9), 0 0 24px rgba(52, 199, 89, 0.5); /* 더 강한 초록색 발광 효과 */
+    box-shadow:
+        0 0 16px rgba(52, 199, 89, 0.9),
+        0 0 24px rgba(52, 199, 89, 0.5); /* 더 강한 초록색 발광 효과 */
 }
 
 /* False 출력점 색상: 조건이 거짓일 때의 출력점 */
@@ -511,7 +519,9 @@
 .false-output .output-dot:hover {
     transform: scale(1.6); /* 크기 확대 1.6배 (더 동적으로) */
     border-width: 3px; /* 테두리 두께 증가 */
-    box-shadow: 0 0 16px rgba(255, 59, 48, 0.9), 0 0 24px rgba(255, 59, 48, 0.5); /* 더 강한 빨간색 발광 효과 */
+    box-shadow:
+        0 0 16px rgba(255, 59, 48, 0.9),
+        0 0 24px rgba(255, 59, 48, 0.5); /* 더 강한 빨간색 발광 효과 */
 }
 
 /* 출력점 라벨: 출력점 옆에 표시되는 "True"/"False" 텍스트 */
