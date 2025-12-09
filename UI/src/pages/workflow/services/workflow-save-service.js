@@ -3,6 +3,8 @@
  * 워크플로우 데이터를 서버에 저장하는 로직을 담당합니다.
  */
 
+import { getNodeRegistry } from './node-registry.js';
+
 export class WorkflowSaveService {
     constructor(workflowPage) {
         this.workflowPage = workflowPage;
@@ -29,7 +31,7 @@ export class WorkflowSaveService {
             const connections = nodeManager ? nodeManager.getAllConnections() : [];
 
             // NodeManager 형식을 API 형식으로 변환
-            const nodesForAPI = this.prepareNodesForAPI(nodes, nodeManager);
+            const nodesForAPI = await this.prepareNodesForAPI(nodes, nodeManager);
             const connectionsForAPI = this.prepareConnectionsForAPI(connections);
 
             // 백엔드 API에 저장
@@ -60,28 +62,59 @@ export class WorkflowSaveService {
     /**
      * 노드 데이터를 API 형식으로 변환
      */
-    prepareNodesForAPI(nodes, nodeManager) {
+    async prepareNodesForAPI(nodes, nodeManager) {
+        const registry = getNodeRegistry();
+        const allConfigs = await registry.getNodeConfigs();
+
         return nodes.map((node) => {
-            // parameters 추출 (노드 실행에 필요한 핵심 매개변수만)
+            // parameters 추출 (nodes_config.py에서 정의한 파라미터 동적 추출)
             const parameters = {};
             if (nodeManager && nodeManager.nodeData && nodeManager.nodeData[node.id]) {
                 const nodeData = nodeManager.nodeData[node.id];
                 const nodeType = nodeData.type || node.type;
+                const config = allConfigs[nodeType];
 
-                if (nodeType === 'image-touch') {
-                    if (nodeData.folder_path) {
-                        parameters.folder_path = nodeData.folder_path;
+                // nodes_config.py에서 정의한 파라미터 추출
+                if (config) {
+                    // 상세 노드 타입이 있으면 상세 노드 타입의 파라미터 우선 사용
+                    const detailNodeType = nodeData.action_node_type;
+                    let parametersToExtract = null;
+
+                    if (detailNodeType && config.detailTypes?.[detailNodeType]?.parameters) {
+                        parametersToExtract = config.detailTypes[detailNodeType].parameters;
+                    } else if (config.parameters) {
+                        parametersToExtract = config.parameters;
                     }
-                } else if (nodeType === 'condition') {
-                    if (nodeData.condition) {
-                        parameters.condition = nodeData.condition;
+
+                    // 파라미터 정의에 따라 nodeData에서 값 추출
+                    if (parametersToExtract) {
+                        for (const [paramKey, paramConfig] of Object.entries(parametersToExtract)) {
+                            if (
+                                nodeData[paramKey] !== undefined &&
+                                nodeData[paramKey] !== null &&
+                                nodeData[paramKey] !== ''
+                            ) {
+                                parameters[paramKey] = nodeData[paramKey];
+                            }
+                        }
                     }
-                } else if (nodeType === 'wait') {
-                    if (nodeData.wait_time !== undefined) {
-                        parameters.wait_time = nodeData.wait_time;
-                    }
-                } else if (nodeType === 'process-focus') {
-                    // 프로세스 포커스 노드: 프로세스 정보 저장
+                }
+
+                // 레거시 하위 호환성 (파라미터로 처리되지 않은 경우)
+                // image-touch
+                if (nodeType === 'image-touch' && !parameters.folder_path && nodeData.folder_path) {
+                    parameters.folder_path = nodeData.folder_path;
+                }
+                // condition
+                if (nodeType === 'condition' && !parameters.condition && nodeData.condition) {
+                    parameters.condition = nodeData.condition;
+                }
+                // wait
+                if (nodeType === 'wait' && !parameters.wait_time && nodeData.wait_time !== undefined) {
+                    parameters.wait_time = nodeData.wait_time;
+                }
+                // process-focus
+                if (nodeType === 'process-focus') {
                     if (nodeData.process_id !== undefined) {
                         parameters.process_id = nodeData.process_id;
                     }
@@ -97,11 +130,22 @@ export class WorkflowSaveService {
                 }
             }
 
+            console.log(`[WorkflowSaveService] 노드 ${node.id} 파라미터:`, parameters);
+
             // description 추출
             let description = null;
             if (nodeManager && nodeManager.nodeData && nodeManager.nodeData[node.id]) {
                 description = nodeManager.nodeData[node.id].description || null;
             }
+
+            // data 필드에 파라미터도 포함 (하위 호환성 및 UI 표시용)
+            const nodeDataForAPI = {
+                title: node.title,
+                ...node
+            };
+
+            // 파라미터를 data에도 포함 (UI에서 표시하기 위해)
+            Object.assign(nodeDataForAPI, parameters);
 
             return {
                 id: node.id,
@@ -110,10 +154,7 @@ export class WorkflowSaveService {
                     x: node.x,
                     y: node.y
                 },
-                data: {
-                    title: node.title,
-                    ...node
-                },
+                data: nodeDataForAPI,
                 parameters: parameters,
                 description: description
             };

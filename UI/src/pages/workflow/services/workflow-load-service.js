@@ -6,6 +6,7 @@
 import { getDefaultDescription } from '../config/node-defaults.js';
 import { NODE_TYPES } from '../constants/node-types.js';
 import { ScriptAPI } from '../../../js/api/scriptapi.js';
+import { getNodeRegistry } from './node-registry.js';
 
 export class WorkflowLoadService {
     /**
@@ -234,17 +235,53 @@ export class WorkflowLoadService {
             nodes.map((n) => ({ id: n.id, type: n.type }))
         );
 
+        // nodes_config.py에 정의된 노드만 필터링
+        const registry = getNodeRegistry();
+        const nodeConfigs = await registry.getNodeConfigs();
+        const validNodeTypes = new Set(Object.keys(nodeConfigs));
+
+        const filteredNodes = nodes.filter((node) => {
+            const nodeType = node.type;
+            if (!validNodeTypes.has(nodeType)) {
+                log(`[WorkflowPage] 경고: 정의되지 않은 노드 타입 '${nodeType}' (노드 ID: ${node.id})를 건너뜁니다.`);
+                return false;
+            }
+            return true;
+        });
+
+        if (filteredNodes.length < nodes.length) {
+            log(`[WorkflowPage] 필터링: ${nodes.length}개 노드 중 ${filteredNodes.length}개만 유효합니다.`);
+        }
+
+        // 연결 정보도 필터링 (정의되지 않은 노드로 연결된 연결선 제거)
+        const validNodeIds = new Set(filteredNodes.map((n) => n.id));
+        const filteredConnections = connections.filter((conn) => {
+            const fromValid = validNodeIds.has(conn.from);
+            const toValid = validNodeIds.has(conn.to);
+            if (!fromValid || !toValid) {
+                log(
+                    `[WorkflowPage] 경고: 정의되지 않은 노드로 연결된 연결선을 건너뜁니다. (${conn.from} -> ${conn.to})`
+                );
+                return false;
+            }
+            return true;
+        });
+
+        if (filteredConnections.length < connections.length) {
+            log(`[WorkflowPage] 필터링: ${connections.length}개 연결 중 ${filteredConnections.length}개만 유효합니다.`);
+        }
+
         // 연결선 매니저가 완전히 초기화될 때까지 대기
         setTimeout(() => {
             log('[WorkflowPage] 노드 생성 시작');
 
             // 노드들 생성 (비동기 처리)
             (async () => {
-                for (let index = 0; index < nodes.length; index++) {
-                    const nodeData = nodes[index];
+                for (let index = 0; index < filteredNodes.length; index++) {
+                    const nodeData = filteredNodes[index];
                     await this.createNodeFromServerData(nodeData, nodeManager);
 
-                    log(`[WorkflowPage] 노드 ${index + 1}/${nodes.length} 생성 중:`, {
+                    log(`[WorkflowPage] 노드 ${index + 1}/${filteredNodes.length} 생성 중:`, {
                         id: nodeData.id,
                         type: nodeData.type
                     });
@@ -254,7 +291,7 @@ export class WorkflowLoadService {
 
                 // 노드가 DOM에 완전히 렌더링될 때까지 대기
                 requestAnimationFrame(() => {
-                    this.restoreConnections(connections, nodeManager);
+                    this.restoreConnections(filteredConnections, nodeManager);
                     this.workflowPage.fitNodesToView();
 
                     // 뷰포트 조정 후 연결선 위치를 다시 한 번 업데이트
@@ -290,7 +327,7 @@ export class WorkflowLoadService {
             ...nodeData.data
         };
 
-        // parameters 복원
+        // parameters 복원 (nodes_config.py에서 정의한 파라미터 동적 복원)
         if (nodeData.parameters && Object.keys(nodeData.parameters).length > 0) {
             if (nodeManager && nodeManager.nodeData) {
                 if (!nodeManager.nodeData[nodeData.id]) {
@@ -298,13 +335,52 @@ export class WorkflowLoadService {
                 }
 
                 const nodeType = nodeData.type;
-                if (nodeType === NODE_TYPES.IMAGE_TOUCH && nodeData.parameters.folder_path) {
+                const registry = getNodeRegistry();
+                const config = await registry.getConfig(nodeType);
+
+                // nodes_config.py에서 정의한 파라미터 동적 복원
+                if (config) {
+                    // 상세 노드 타입이 있으면 상세 노드 타입의 파라미터 우선 사용
+                    const detailNodeType = nodeData.action_node_type;
+                    let parametersToRestore = null;
+
+                    if (detailNodeType && config.detailTypes?.[detailNodeType]?.parameters) {
+                        parametersToRestore = config.detailTypes[detailNodeType].parameters;
+                    } else if (config.parameters) {
+                        parametersToRestore = config.parameters;
+                    }
+
+                    // 파라미터 정의에 따라 parameters에서 값 복원
+                    if (parametersToRestore) {
+                        for (const [paramKey, paramConfig] of Object.entries(parametersToRestore)) {
+                            if (nodeData.parameters[paramKey] !== undefined && nodeData.parameters[paramKey] !== null) {
+                                nodeManager.nodeData[nodeData.id][paramKey] = nodeData.parameters[paramKey];
+                                nodeDataForManager[paramKey] = nodeData.parameters[paramKey];
+                            }
+                        }
+                    }
+                }
+
+                // 레거시 하위 호환성 (파라미터로 처리되지 않은 경우)
+                if (
+                    nodeType === NODE_TYPES.IMAGE_TOUCH &&
+                    !nodeManager.nodeData[nodeData.id].folder_path &&
+                    nodeData.parameters.folder_path
+                ) {
                     nodeManager.nodeData[nodeData.id].folder_path = nodeData.parameters.folder_path;
                     nodeDataForManager.folder_path = nodeData.parameters.folder_path;
-                } else if (nodeType === NODE_TYPES.CONDITION && nodeData.parameters.condition) {
+                } else if (
+                    nodeType === NODE_TYPES.CONDITION &&
+                    !nodeManager.nodeData[nodeData.id].condition &&
+                    nodeData.parameters.condition
+                ) {
                     nodeManager.nodeData[nodeData.id].condition = nodeData.parameters.condition;
                     nodeDataForManager.condition = nodeData.parameters.condition;
-                } else if (nodeType === NODE_TYPES.WAIT && nodeData.parameters.wait_time !== undefined) {
+                } else if (
+                    nodeType === NODE_TYPES.WAIT &&
+                    nodeManager.nodeData[nodeData.id].wait_time === undefined &&
+                    nodeData.parameters.wait_time !== undefined
+                ) {
                     nodeManager.nodeData[nodeData.id].wait_time = nodeData.parameters.wait_time;
                     nodeDataForManager.wait_time = nodeData.parameters.wait_time;
                 } else if (nodeType === 'process-focus') {

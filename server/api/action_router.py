@@ -13,7 +13,6 @@ from log import log_manager
 from models import (
     ActionRequest,
     ActionResponse,
-    BaseResponse,
     NodeExecutionRequest,
     StandardResponseType,
     SuccessResponse,
@@ -156,7 +155,7 @@ async def execute_nodes(request: NodeExecutionRequest) -> ActionResponse:
     )
 
 
-@router.post("/folder/select", response_model=BaseResponse)
+@router.post("/folder/select", response_model=SuccessResponse)
 @api_handler
 async def select_folder() -> StandardResponseType:
     """
@@ -179,6 +178,39 @@ async def select_folder() -> StandardResponseType:
         return error_response("폴더가 선택되지 않았습니다.")
 
     return success_response({"folder_path": folder_path}, "폴더가 선택되었습니다.")
+
+
+@router.post("/file/select", response_model=SuccessResponse)
+@api_handler
+async def select_file() -> StandardResponseType:
+    """
+    파일 선택 다이얼로그를 띄우고 선택된 파일 경로를 반환합니다.
+    """
+    import tkinter as tk
+    from tkinter import filedialog
+
+    # tkinter 루트 윈도우 생성 (숨김)
+    root = tk.Tk()
+    root.withdraw()  # 메인 윈도우 숨기기
+    root.attributes("-topmost", True)  # 다른 창 위에 표시
+
+    # 파일 선택 다이얼로그
+    file_path = filedialog.askopenfilename(
+        title="파일 선택",
+        filetypes=[
+            ("모든 파일", "*.*"),
+            ("텍스트 파일", "*.txt"),
+            ("JSON 파일", "*.json"),
+            ("CSV 파일", "*.csv"),
+        ],
+    )
+
+    root.destroy()  # 루트 윈도우 제거
+
+    if not file_path:
+        return error_response("파일이 선택되지 않았습니다.")
+
+    return success_response({"file_path": file_path}, "파일이 선택되었습니다.")
 
 
 @router.get("/images/list", response_model=ListResponse)

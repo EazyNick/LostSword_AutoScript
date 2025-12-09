@@ -47,13 +47,13 @@ async def receive_webhook(webhook_id: str, request: Request):
 ```python
 # server/nodes/actionnodes/webhook.py
 from nodes.base_node import BaseNode
-from nodes.node_executor_wrapper import node_executor
+from nodes.node_executor_wrapper import NodeExecutor
 from utils import get_parameter
 import uuid
 
 class WebhookNode(BaseNode):
     @staticmethod
-    @node_executor("webhook")
+    @NodeExecutor("webhook")
     async def execute(parameters: Dict[str, Any]) -> Dict[str, Any]:
         webhook_id = get_parameter(parameters, "webhook_id") or str(uuid.uuid4())
         # 웹훅 등록 및 URL 반환

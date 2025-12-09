@@ -10,7 +10,7 @@
 
 ### 주요 모듈
 - **api/**: REST API 라우터 (`@api_handler` 데코레이터 사용)
-- **nodes/**: 노드 클래스 (`BaseNode` 상속, `@node_executor` 데코레이터)
+- **nodes/**: 노드 클래스 (`BaseNode` 상속, `@NodeExecutor` 데코레이터)
 - **services/**: 비즈니스 로직
 - **automation/**: 화면 캡처, 입력 처리, 워크플로우 실행
 - **db/**: SQLite 데이터베이스 관리
@@ -18,8 +18,10 @@
 
 ### 노드 시스템
 - 모든 노드는 `BaseNode` 상속
-- `@node_executor("action-name")` 데코레이터로 공통 기능 처리
+- `@NodeExecutor("action-name")` 데코레이터로 공통 기능 처리
 - 파라미터 검증: `get_parameter()` 사용
+- 노드 설정은 `server/config/nodes_config.py`에서 중앙 관리
+- 노드별 예시 출력은 `UI/src/pages/workflow/config/node-preview-outputs.js`에서 관리
 
 ## 프론트엔드
 

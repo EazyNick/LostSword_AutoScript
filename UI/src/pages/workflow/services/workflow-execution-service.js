@@ -219,22 +219,7 @@ export class WorkflowExecutionService {
                         }
 
                         // 에러 발생 시 실행 중단 (에러를 throw하여 상위로 전파)
-                        // 전체 스크립트 실행 중이면 모달 표시하지 않음 (에러는 상위에서 처리)
-                        // 단일 스크립트 실행 시에만 모달 표시
-                        if (!this.isRunningAllScripts && modalManager) {
-                            const isImageTouchError =
-                                errorMessage.includes('폴더') ||
-                                errorMessage.includes('folder_path') ||
-                                nodeData.type === 'image-touch';
-
-                            if (isImageTouchError) {
-                                modalManager.showAlert(`이미지 터치 노드 오류: ${nodeTitle}`, errorMessage);
-                            } else {
-                                modalManager.showAlert(`노드 실행 오류: ${nodeTitle}`, errorMessage);
-                            }
-                        }
-
-                        failCount++;
+                        // failCount는 catch 블록에서 증가시키므로 여기서는 증가시키지 않음
                         throw new Error(`노드 "${nodeTitle}" 실행 실패: ${errorMessage}`);
                     } else {
                         // 성공 시
@@ -243,6 +228,7 @@ export class WorkflowExecutionService {
                     }
                 } catch (error) {
                     // 네트워크 에러 또는 서버 에러 등
+                    // 노드 실행 실패는 여기서 한 번만 카운팅
                     const logger = this.workflowPage.getLogger();
                     logger.error(`[WorkflowExecutionService] 노드 실행 오류 (${nodeData.id}):`, error);
                     this.showNodeError(nodeElement);
@@ -260,7 +246,7 @@ export class WorkflowExecutionService {
                     // 전체 스크립트 실행 중이면 모달 표시하지 않음 (에러는 상위에서 처리)
                     // 단일 스크립트 실행 시에만 모달 표시
                     if (!this.isRunningAllScripts && modalManager) {
-                        // 모달이 아직 표시되지 않은 경우에만 표시 (위에서 이미 표시했을 수 있음)
+                        // 모달이 아직 표시되지 않은 경우에만 표시
                         const modalAlreadyShown = document.querySelector('.modal.show') !== null;
                         if (!modalAlreadyShown) {
                             if (isImageTouchError) {
@@ -271,6 +257,7 @@ export class WorkflowExecutionService {
                         }
                     }
 
+                    // 노드 실행 실패 카운팅 (한 번만 증가)
                     failCount++;
                     throw error; // 원본 에러를 그대로 전파
                 }
@@ -475,6 +462,7 @@ export class WorkflowExecutionService {
 
             // 시작 노드부터 순차적으로 탐색
             const visited = new Set();
+            const addedToOrdered = new Set(); // ordered에 추가된 노드 ID 추적 (중복 방지)
             const queue = ['start']; // BFS를 위한 큐
 
             while (queue.length > 0) {
@@ -499,11 +487,12 @@ export class WorkflowExecutionService {
                         const nextElement = byId.get(nextNode.to);
                         const nextId = nextElement.id || nextElement.dataset.nodeId;
 
-                        // 종료 노드가 아니면 추가
-                        if (nextId !== 'end') {
+                        // 종료 노드가 아니고, 아직 ordered에 추가되지 않은 노드만 추가
+                        if (nextId !== 'end' && !addedToOrdered.has(nextId)) {
                             ordered.push(nextElement);
+                            addedToOrdered.add(nextId); // 추가된 노드 ID 기록
                             queue.push(nextId);
-                        } else {
+                        } else if (nextId === 'end') {
                             // 종료 노드에 도달하면 종료
                             break;
                         }

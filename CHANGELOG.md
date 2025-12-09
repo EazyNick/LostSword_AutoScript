@@ -1,106 +1,138 @@
-# Changelog
+# 변경 이력
 
-All notable changes to this project will be documented in this file.
+이 프로젝트의 모든 주요 변경사항을 이 파일에 기록합니다.
+
+## [미배포]
+
+### 추가됨
+- **파라미터 기반 노드 설정 시스템**: `nodes_config.py`에서 노드의 동적 파라미터를 정의할 수 있는 `parameters` 필드 추가
+- **동적 폼 생성**: `parameter-form-generator.js`를 통해 파라미터 정의에 따라 자동으로 UI 폼 생성
+- **파일/폴더 선택 기능**: `folder_path`, `file_path` 파라미터에 자동으로 파일/폴더 선택 버튼 추가
+- **파일 선택 API**: `/api/file/select` 엔드포인트 추가 (로컬 파일 선택 다이얼로그)
+- **노드 필터링**: `nodes_config.py`에 정의되지 않은 노드는 DB에서 조회되지 않고 프론트엔드로 전송되지 않음
+- **노드 생성/수정 모달 개선**: 파라미터 기반으로 동적으로 폼 생성 및 값 추출
+- **노드 예시 출력 분리**: 노드 타입별 예시 출력을 `node-preview-outputs.js` 파일로 분리하여 관리
+
+### 변경됨
+- **노드 설정 방식 변경**: 노드의 동적 설정값을 `nodes_config.py`의 `parameters` 필드로 중앙 관리
+- **노드 생성 모달**: 파라미터 정의에 따라 자동으로 입력 필드 생성
+- **노드 설정 모달**: 파라미터 정의에 따라 자동으로 입력 필드 생성 및 기존 값 표시
+- **action 노드 제거**: `nodes_config.py`에서 action 노드 제거, 관련 JavaScript 파일 및 DB 시드 데이터 제거
+- **404 에러 처리 개선**: 사용자 설정이 없을 때 발생하는 404 에러를 조용히 처리 (정상 동작)
+- **출력 미리보기 로직 개선**: 기본값을 예시 출력으로 설정하고, 특정 노드(`wait`, `start`, `end`)만 실제 실행 결과 표시
+
+### 제거됨
+- **미사용 노드 타입 제거**: `move`, `collect`, `battle`, `navigate` 노드 타입 및 관련 파일 제거
+  - Python 파일: `server/nodes/actionnodes/move.py`, `collect.py`, `battle.py`, `navigate.py`
+  - JavaScript 예시 출력 함수 제거
+  - `action_service.py`, `workflow_engine.py`에서 관련 핸들러 제거
+
+### 수정됨
+- `workflow-load-service.js`에서 `getNodeRegistry` 함수 호출 오류 수정
+- `node-action.js` 파일 로드 시도로 인한 404 에러 제거
+- 정의되지 않은 노드 타입이 UI에 표시되는 문제 해결
+- **노드 실행 중복 방지**: `prepareWorkflowData`에서 노드가 중복으로 실행 목록에 추가되는 문제 수정
+- **실패 노드 카운팅 오류**: `failCount`가 중복으로 증가하던 문제 수정 (에러 발생 시 한 번만 카운팅)
 
 ## [0.0.3] - 2025-12-07
 
-### Added
-- Script activation/deactivation feature with toggle button in dashboard
-- Dashboard statistics table (`dashboard_stats`) for performance optimization
-- Dashboard statistics API endpoint (`GET /api/dashboard/stats`)
-- Script execution history table (`script_executions`) for tracking script runs
-- Tag system (`tags`, `script_tags` tables) for script categorization
-- Script statistics view (`script_stats`) for aggregated dashboard data
-- "Today's failed scripts" stat card in dashboard
-- "Inactive scripts" stat card in dashboard
-- Script active status management in database (`scripts.active` column)
-- Dashboard statistics repository for efficient stat management
-- Script execution order management (`scripts.execution_order` column) - determines order for "Run All" execution
-- Index for execution order (`idx_scripts_execution_order`) for optimized sorting
-- API endpoint for updating script execution order (`PATCH /api/scripts/order`)
-- Detailed logging for node execution in `/api/execute-nodes` endpoint
+### 추가됨
+- 대시보드에서 스크립트 활성화/비활성화 기능 (토글 버튼)
+- 성능 최적화를 위한 대시보드 통계 테이블 (`dashboard_stats`)
+- 대시보드 통계 API 엔드포인트 (`GET /api/dashboard/stats`)
+- 스크립트 실행 추적을 위한 스크립트 실행 이력 테이블 (`script_executions`)
+- 스크립트 분류를 위한 태그 시스템 (`tags`, `script_tags` 테이블)
+- 집계된 대시보드 데이터를 위한 스크립트 통계 뷰 (`script_stats`)
+- 대시보드의 "오늘 실패한 스크립트" 통계 카드
+- 대시보드의 "비활성 스크립트" 통계 카드
+- 데이터베이스에서 스크립트 활성 상태 관리 (`scripts.active` 컬럼)
+- 효율적인 통계 관리를 위한 대시보드 통계 리포지토리
+- 스크립트 실행 순서 관리 (`scripts.execution_order` 컬럼) - "모두 실행" 시 실행 순서 결정
+- 최적화된 정렬을 위한 실행 순서 인덱스 (`idx_scripts_execution_order`)
+- 스크립트 실행 순서 업데이트 API 엔드포인트 (`PATCH /api/scripts/order`)
+- `/api/execute-nodes` 엔드포인트에서 노드 실행에 대한 상세 로깅
 
-### Changed
-- "Run All" button now queries active scripts from server before execution
-- "Run All" button only executes scripts with `active = 1` in database
-- "Run All" button executes scripts in `execution_order` sequence
-- Dashboard and script page now display scripts in the same order (based on `execution_order`)
-- Script order is now stored in database (`execution_order` column) instead of user settings
-- Dashboard statistics are calculated and cached in database
-- Script card status display changed from text to toggle button
-- Database schema updated with new tables and columns
-- Node execution error handling: Server returns `success: False` when node execution fails
-- Node counting logic: Start node always counted as success, End node counted as success on normal completion
-- Condition nodes: Counted as success regardless of True/False branch (if no error occurs)
-- Unexecuted branch paths from condition nodes are not counted as cancelled
+### 변경됨
+- "모두 실행" 버튼이 실행 전에 서버에서 활성 스크립트를 조회하도록 변경
+- "모두 실행" 버튼이 데이터베이스에서 `active = 1`인 스크립트만 실행하도록 변경
+- "모두 실행" 버튼이 `execution_order` 순서대로 스크립트를 실행하도록 변경
+- 대시보드와 스크립트 페이지가 동일한 순서로 스크립트를 표시 (`execution_order` 기반)
+- 스크립트 순서가 사용자 설정 대신 데이터베이스 (`execution_order` 컬럼)에 저장되도록 변경
+- 대시보드 통계가 데이터베이스에서 계산되고 캐시되도록 변경
+- 스크립트 카드 상태 표시가 텍스트에서 토글 버튼으로 변경
+- 새로운 테이블과 컬럼으로 데이터베이스 스키마 업데이트
+- 노드 실행 에러 처리: 노드 실행 실패 시 서버가 `success: False` 반환
+- 노드 카운팅 로직: 시작 노드는 항상 성공으로 카운팅, 종료 노드는 정상 완료 시 성공으로 카운팅
+- 조건 노드: True/False 분기와 관계없이 성공으로 카운팅 (에러가 발생하지 않은 경우)
+- 조건 노드에서 실행되지 않은 분기 경로는 중단으로 카운팅되지 않음
 
-### Fixed
-- "Run All" button bug where only 1 script executed instead of all active scripts
-- Index mismatch issue when selecting scripts during "Run All" execution
-- Dashboard statistics API 500 error (missing method implementation)
-- Script order synchronization between dashboard and script page
-- Frontend showing success message when server-side node execution fails
-- Node counting bug: `failCount` was incremented twice (once in error detection, once in catch block)
-- Incorrect cancelled node count due to End node and condition branch paths
+### 수정됨
+- "모두 실행" 버튼 버그: 활성 스크립트 모두 실행 대신 1개만 실행되던 문제
+- "모두 실행" 실행 중 스크립트 선택 시 인덱스 불일치 문제
+- 대시보드 통계 API 500 에러 (누락된 메서드 구현)
+- 대시보드와 스크립트 페이지 간 스크립트 순서 동기화
+- 서버 측 노드 실행 실패 시 프론트엔드에서 성공 메시지가 표시되던 문제
+- 노드 카운팅 버그: `failCount`가 두 번 증가하던 문제 (에러 감지 시 한 번, catch 블록에서 한 번)
+- 종료 노드와 조건 분기 경로로 인한 잘못된 중단 노드 카운트
 
 ## [0.0.2] - 2025-12-06
 
-### Added
-- Dashboard page with script statistics and management
-- Settings page with theme, execution, screenshot, and notification settings
-- Light/Dark mode support with system theme detection
-- Single Page Application (SPA) structure with page routing
-- Theme management system with theme-specific CSS files
-- Top-left profile area for user information
-- Dynamic header content based on current page
-- Keyboard shortcuts page in settings (2-column layout)
-- Toast notification system with main content area centering
-- Modal positioning relative to main content area (excluding sidebar)
+### 추가됨
+- 스크립트 통계 및 관리 기능이 있는 대시보드 페이지
+- 테마, 실행, 스크린샷, 알림 설정이 있는 설정 페이지
+- 시스템 테마 감지 기능이 있는 라이트/다크 모드 지원
+- 페이지 라우팅이 있는 단일 페이지 애플리케이션 (SPA) 구조
+- 테마별 CSS 파일이 있는 테마 관리 시스템
+- 사용자 정보를 위한 좌측 상단 프로필 영역
+- 현재 페이지에 따른 동적 헤더 콘텐츠
+- 설정의 키보드 단축키 페이지 (2열 레이아웃)
+- 메인 콘텐츠 영역 중앙 정렬이 있는 토스트 알림 시스템
+- 메인 콘텐츠 영역 기준 모달 위치 지정 (사이드바 제외)
 
-### Changed
-- Refactored UI structure: `workflow.html` merged into `index.html`
-- Node styling: Icon box + text area layout instead of color-based styling
-- Connection lines: Dotted animated lines without arrows
-- Node icon management: Centralized in `node-icons.config.js`
-- Sidebar structure: Profile moved to top-left, navigation menu added
-- Popup positioning: All modals and toasts centered relative to main content area
-- Settings keyboard shortcuts: Displayed in 2-column grid layout
+### 변경됨
+- UI 구조 리팩토링: `workflow.html`을 `index.html`에 병합
+- 노드 스타일링: 색상 기반 스타일링 대신 아이콘 박스 + 텍스트 영역 레이아웃
+- 연결선: 화살표 없는 점선 애니메이션 라인
+- 노드 아이콘 관리: `node-icons.config.js`에서 중앙 관리
+- 사이드바 구조: 프로필을 좌측 상단으로 이동, 네비게이션 메뉴 추가
+- 팝업 위치 지정: 모든 모달과 토스트를 메인 콘텐츠 영역 기준으로 중앙 정렬
+- 설정 키보드 단축키: 2열 그리드 레이아웃으로 표시
 
-### Removed
-- Node color selection feature (UI, config, and database)
-- `workflow.html` file (merged into `index.html`)
-- Node color information from all configuration files
+### 제거됨
+- 노드 색상 선택 기능 (UI, 설정, 데이터베이스)
+- `workflow.html` 파일 (`index.html`에 병합)
+- 모든 설정 파일에서 노드 색상 정보
 
-### Fixed
-- Main content area display issue (blank screen)
-- Sidebar resize black residue issue
-- Modal and toast positioning relative to sidebar width
+### 수정됨
+- 메인 콘텐츠 영역 표시 문제 (빈 화면)
+- 사이드바 크기 조정 시 검은색 잔상 문제
+- 사이드바 너비 기준 모달 및 토스트 위치 지정
 
 ## [0.0.1] - 2025-12-05
 
-### Added
-- Basic workflow editor with node-based visual interface
-- Node types: Start, End, Action, Click, Wait, Condition, Loop, Image Touch, Process Focus
-- Node connection system with SVG-based connection lines
-- Sidebar for script management
-- Script save/load functionality
-- Workflow execution engine
-- Node settings modal
-- Add node modal
-- Canvas panning and zoom functionality
+### 추가됨
+- 노드 기반 시각적 인터페이스가 있는 기본 워크플로우 편집기
+- 노드 타입: 시작, 종료, 액션, 클릭, 대기, 조건, 반복, 이미지 터치, 프로세스 포커스
+- SVG 기반 연결선이 있는 노드 연결 시스템
+- 스크립트 관리를 위한 사이드바
+- 스크립트 저장/로드 기능
+- 워크플로우 실행 엔진
+- 노드 설정 모달
+- 노드 추가 모달
+- 캔버스 팬 및 줌 기능
 
-### Changed
-- Initial UI implementation before major refactoring
+### 변경됨
+- 주요 리팩토링 전 초기 UI 구현
 
 ## [0.0.0] - 2025-12-02
 
-### Added
-- Initial project structure
-- FastAPI server setup
-- Basic automation framework
-- SQLite database integration
-- Core node execution system
+### 추가됨
+- 초기 프로젝트 구조
+- FastAPI 서버 설정
+- 기본 자동화 프레임워크
+- SQLite 데이터베이스 통합
+- 핵심 노드 실행 시스템
 
-### Note
-This version is intended for developers who want to build upon the project from scratch. It provides the fundamental structure and core functionality with minimal features.
+### 참고
+이 버전은 처음부터 프로젝트를 구축하려는 개발자를 위한 것입니다. 최소한의 기능으로 기본 구조와 핵심 기능을 제공합니다.
 

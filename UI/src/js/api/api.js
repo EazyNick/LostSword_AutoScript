@@ -84,8 +84,21 @@ export async function apiCall(endpoint, options = {}) {
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({ detail: response.statusText }));
-            logError(`[apiCall] ❌ HTTP 에러: ${response.status}`, errorData);
-            throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+            const errorMessage = errorData.detail || `HTTP error! status: ${response.status}`;
+
+            // 404 에러 중 "찾을 수 없습니다"가 포함된 경우는 조용히 처리 (정상적인 경우)
+            // 예: 사용자 설정이 없는 경우 등
+            if (
+                response.status === 404 &&
+                (errorMessage.includes('찾을 수 없습니다') ||
+                    errorMessage.includes('Not Found') ||
+                    errorData.detail?.includes('찾을 수 없습니다'))
+            ) {
+                log(`[apiCall] ⚠️ 리소스를 찾을 수 없음 (정상, 처음 사용 시): ${response.status} ${endpoint}`);
+            } else {
+                logError(`[apiCall] ❌ HTTP 에러: ${response.status}`, errorData);
+            }
+            throw new Error(errorMessage);
         }
 
         const data = await response.json();
@@ -93,14 +106,21 @@ export async function apiCall(endpoint, options = {}) {
 
         return data;
     } catch (error) {
-        logError(`[apiCall] ❌ API 호출 실패 (${endpoint}):`, error);
-        logError('[apiCall] 에러 타입:', error.constructor.name);
-        logError('[apiCall] 에러 메시지:', error.message);
+        const errorMessage = error.message || '';
 
-        // 네트워크 에러인 경우 추가 정보
-        if (error.name === 'TypeError' && error.message.includes('fetch')) {
-            logError('[apiCall] 네트워크 에러 가능성 - 서버가 실행 중인지 확인하세요.');
-            logError('[apiCall] 서버 URL:', getApiBaseUrl());
+        // 404 에러 중 "찾을 수 없습니다"가 포함된 경우는 조용히 처리 (정상적인 경우)
+        if (errorMessage.includes('404') && errorMessage.includes('찾을 수 없습니다')) {
+            log(`[apiCall] ⚠️ 리소스를 찾을 수 없음 (정상, 처음 사용 시): ${endpoint}`);
+        } else {
+            logError(`[apiCall] ❌ API 호출 실패 (${endpoint}):`, error);
+            logError('[apiCall] 에러 타입:', error.constructor.name);
+            logError('[apiCall] 에러 메시지:', error.message);
+
+            // 네트워크 에러인 경우 추가 정보
+            if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                logError('[apiCall] 네트워크 에러 가능성 - 서버가 실행 중인지 확인하세요.');
+                logError('[apiCall] 서버 URL:', getApiBaseUrl());
+            }
         }
 
         throw error;

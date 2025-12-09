@@ -35,14 +35,6 @@ export const NODES_CONFIG = {
         isBoundary: true,
         category: 'system'
     },
-    action: {
-        label: '액션 노드',
-        title: '액션 노드',
-        description: '액션을 수행하는 노드입니다.',
-        script: 'node-action.js',
-        isBoundary: false,
-        category: 'action'
-    },
     condition: {
         label: '조건 노드',
         title: '조건 노드',
