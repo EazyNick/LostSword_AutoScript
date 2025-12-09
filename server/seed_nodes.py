@@ -76,33 +76,15 @@ def seed_database(db_path: str | None = None) -> None:
             },
             {
                 "id": "node1",
-                "type": "action",
+                "type": "wait",
                 "position": {"x": 50000, "y": 49900},
-                "data": {"title": "페이지 이동", "url": "https://example.com/login"},
+                "data": {"title": "대기"},
             },
             {
                 "id": "node2",
-                "type": "action",
-                "position": {"x": 50200, "y": 49900},
-                "data": {"title": "아이디 입력", "selector": "#username", "value": "testuser"},
-            },
-            {
-                "id": "node3",
                 "type": "condition",
-                "position": {"x": 50400, "y": 49900},
+                "position": {"x": 50200, "y": 49900},
                 "data": {"title": "로그인 성공 확인", "condition": "check_login_success"},
-            },
-            {
-                "id": "node4",
-                "type": "action",
-                "position": {"x": 50600, "y": 49700},
-                "data": {"title": "대시보드 이동", "url": "https://example.com/dashboard"},
-            },
-            {
-                "id": "node5",
-                "type": "action",
-                "position": {"x": 50600, "y": 50100},
-                "data": {"title": "에러 처리", "message": "로그인 실패"},
             },
             {
                 "id": "end",
@@ -134,11 +116,7 @@ def seed_database(db_path: str | None = None) -> None:
         connections_data = [
             {"from": "start", "to": "node1"},
             {"from": "node1", "to": "node2"},
-            {"from": "node2", "to": "node3"},
-            {"from": "node3", "to": "node4"},  # True 경로
-            {"from": "node3", "to": "node5"},  # False 경로
-            {"from": "node4", "to": "end"},
-            {"from": "node5", "to": "end"},
+            {"from": "node2", "to": "end"},
         ]
 
         # 연결 삽입
@@ -169,26 +147,14 @@ def seed_database(db_path: str | None = None) -> None:
             },
             {
                 "id": "node1",
-                "type": "action",
-                "position": {"x": 50000, "y": 49900},
-                "data": {"title": "결제 페이지 이동", "url": "https://example.com/payment"},
-            },
-            {
-                "id": "node2",
-                "type": "action",
-                "position": {"x": 50200, "y": 49900},
-                "data": {"title": "결제 정보 입력", "card_number": "1234-5678-9012-3456"},
-            },
-            {
-                "id": "node3",
                 "type": "wait",
-                "position": {"x": 50400, "y": 49900},
+                "position": {"x": 50000, "y": 49900},
                 "data": {"title": "결제 처리 대기", "duration": 3000},
             },
             {
-                "id": "node4",
+                "id": "node2",
                 "type": "condition",
-                "position": {"x": 50600, "y": 49900},
+                "position": {"x": 50200, "y": 49900},
                 "data": {"title": "결제 성공 확인", "condition": "check_payment_success"},
             },
             {
@@ -221,9 +187,7 @@ def seed_database(db_path: str | None = None) -> None:
         connections_data_2 = [
             {"from": "start", "to": "node1"},
             {"from": "node1", "to": "node2"},
-            {"from": "node2", "to": "node3"},
-            {"from": "node3", "to": "node4"},
-            {"from": "node4", "to": "end"},
+            {"from": "node2", "to": "end"},
         ]
 
         # 연결 삽입

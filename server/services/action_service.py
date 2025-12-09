@@ -9,12 +9,8 @@ from log import log_manager
 # 노드 모듈 import
 from nodes.actionnodes import (
     ActionNode,
-    BattleNode,
     ClickNode,
-    CollectNode,
     HttpApiRequestNode,
-    MoveNode,
-    NavigateNode,
     ProcessFocusNode,
 )
 from nodes.boundarynodes import EndNode, StartNode
@@ -47,10 +43,6 @@ class ActionService:
             "end": EndNode.execute,
             # 액션 노드들
             "click": ClickNode.execute,
-            "move": MoveNode.execute,
-            "collect": CollectNode.execute,
-            "battle": BattleNode.execute,
-            "navigate": NavigateNode.execute,
             "action": ActionNode.execute,
             "image-touch": ImageTouchNode.execute,
             "process-focus": ProcessFocusNode.execute,
@@ -81,9 +73,9 @@ class ActionService:
         if parameters is None:
             parameters = {}
 
-        logger.debug(
-            f"process_game_action 호출됨 - 액션 타입: {action_type}, 실제 노드 종류: {action_node_type}, 파라미터: {parameters}"
-        )
+            logger.info(
+                f"[process_game_action] 호출됨 - 액션 타입: {action_type}, 실제 노드 종류: {action_node_type}, 파라미터: {parameters}"
+            )
 
         try:
             # 실제 노드 종류가 지정된 경우 해당 핸들러 사용
@@ -159,8 +151,16 @@ class ActionService:
 
             node_name = node_data.get("title") or node_data.get("name")
 
-            logger.debug(f"노드 타입: {node_type}")
-            logger.debug(f"노드 데이터: {node_data}")
+            logger.info(f"[process_node] 노드 타입: {node_type}")
+            logger.info(f"[process_node] 노드 데이터: {node_data}")
+            logger.info(f"[process_node] 노드 데이터 키 목록: {list(node_data.keys()) if node_data else []}")
+
+            # folder_path 파라미터 확인 (image-touch 노드용)
+            if node_type == "image-touch":
+                folder_path = node_data.get("folder_path")
+                logger.info(f"[process_node][image-touch] folder_path 값: {folder_path}")
+                if not folder_path:
+                    logger.warning(f"[process_node][image-touch] ⚠️ folder_path가 없습니다! node_data 전체: {node_data}")
 
             # 컨텍스트가 있으면 현재 노드 설정
             if context:

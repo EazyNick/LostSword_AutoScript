@@ -5,6 +5,8 @@
 
 import { NODE_TYPES } from '../constants/node-types.js';
 import { NodeValidationUtils } from '../utils/node-validation-utils.js';
+import { extractParameterValues } from '../utils/parameter-form-generator.js';
+import { getNodeRegistry } from '../services/node-registry.js';
 
 export class NodeUpdateService {
     constructor(workflowPage) {
@@ -16,7 +18,7 @@ export class NodeUpdateService {
      * @param {HTMLElement} nodeElement - 업데이트할 노드 요소
      * @param {string} nodeId - 노드 ID
      */
-    update(nodeElement, nodeId) {
+    async update(nodeElement, nodeId) {
         const logger = this.workflowPage.getLogger();
         const log = logger.log;
         const logError = logger.error;
@@ -28,7 +30,7 @@ export class NodeUpdateService {
         }
 
         // 폼에서 데이터 가져오기
-        const formData = this.extractFormData(nodeElement, nodeId, nodeManager);
+        const formData = await this.extractFormData(nodeElement, nodeId, nodeManager);
 
         // NodeManager의 노드 데이터 업데이트
         this.updateNodeData(nodeId, formData, nodeManager);
@@ -42,6 +44,21 @@ export class NodeUpdateService {
         }
 
         log(`[WorkflowPage] 노드 업데이트 완료: ${nodeId}`);
+
+        // 서버에 저장
+        try {
+            const saveService = this.workflowPage.getSaveService();
+            if (saveService) {
+                log('[WorkflowPage] 서버에 노드 변경사항 저장 시작');
+                await saveService.save({ useToast: false }); // Toast 알림은 사용하지 않음 (모달 닫기 전이므로)
+                log('[WorkflowPage] 서버에 노드 변경사항 저장 완료');
+            } else {
+                logError('[WorkflowPage] SaveService를 찾을 수 없습니다.');
+            }
+        } catch (error) {
+            logError(`[WorkflowPage] 서버 저장 실패: ${error.message}`);
+            // 저장 실패해도 모달은 닫음 (로컬 업데이트는 완료되었으므로)
+        }
 
         // 모달 닫기
         const modalManager = this.workflowPage.getModalManager();
@@ -60,7 +77,7 @@ export class NodeUpdateService {
     /**
      * 폼에서 데이터 추출
      */
-    extractFormData(nodeElement, nodeId, nodeManager) {
+    async extractFormData(nodeElement, nodeId, nodeManager) {
         const newTitle = document.getElementById('edit-node-title').value;
         const currentType =
             nodeManager.nodeData && nodeManager.nodeData[nodeId]
@@ -134,8 +151,28 @@ export class NodeUpdateService {
             updatedNodeData.output_override = null;
         }
 
-        // 상세 노드 타입별 추가 데이터
-        if (newDetailNodeType === 'http-api-request') {
+        // 파라미터 기반 데이터 추출
+        const registry = getNodeRegistry();
+        const config = await registry.getConfig(newType);
+
+        // 상세 노드 타입이 선택된 경우, 상세 노드 타입의 파라미터 우선 사용
+        if (newDetailNodeType && config?.detailTypes?.[newDetailNodeType]?.parameters) {
+            const detailConfig = config.detailTypes[newDetailNodeType];
+            const paramValues = extractParameterValues(detailConfig.parameters, 'edit-node-');
+            console.log('[NodeUpdateService] 상세 노드 타입 파라미터 추출:', paramValues);
+            Object.assign(updatedNodeData, paramValues);
+        } else if (config?.parameters) {
+            // 상세 노드 타입에 파라미터가 없으면 노드 레벨 파라미터 사용
+            const paramValues = extractParameterValues(config.parameters, 'edit-node-');
+            console.log('[NodeUpdateService] 노드 레벨 파라미터 추출:', paramValues);
+            Object.assign(updatedNodeData, paramValues);
+        }
+
+        console.log('[NodeUpdateService] 최종 업데이트된 노드 데이터:', updatedNodeData);
+
+        // 레거시 특수 설정 처리 (하위 호환성 유지)
+        // 파라미터로 처리되지 않은 경우에만 레거시 로직 사용
+        if (newDetailNodeType === 'http-api-request' && !config?.detailTypes?.[newDetailNodeType]?.parameters) {
             const url = document.getElementById('edit-http-url')?.value || '';
             const method = document.getElementById('edit-http-method')?.value || 'GET';
             const headersText = document.getElementById('edit-http-headers')?.value || '{}';
@@ -167,20 +204,20 @@ export class NodeUpdateService {
         }
 
         // 타입별 추가 데이터 (레거시)
-        if (newType === NODE_TYPES.IMAGE_TOUCH) {
+        if (newType === NODE_TYPES.IMAGE_TOUCH && !config?.parameters?.folder_path) {
             const folderPath = document.getElementById('edit-node-folder-path')?.value || '';
             if (folderPath) {
                 updatedNodeData.folder_path = folderPath;
             }
-        } else if (newType === NODE_TYPES.CONDITION) {
+        } else if (newType === NODE_TYPES.CONDITION && !config?.parameters?.condition) {
             const condition = document.getElementById('edit-node-condition')?.value || '';
             if (condition) {
                 updatedNodeData.condition = condition;
             }
-        } else if (newType === NODE_TYPES.WAIT) {
+        } else if (newType === NODE_TYPES.WAIT && !config?.parameters?.wait_time) {
             const waitTime = document.getElementById('edit-node-wait-time')?.value || '1';
             updatedNodeData.wait_time = parseFloat(waitTime) || 1;
-        } else if (newType === 'process-focus') {
+        } else if (newType === 'process-focus' && !config?.parameters) {
             const processId = document.getElementById('edit-node-process-id')?.value || '';
             const hwnd = document.getElementById('edit-node-process-hwnd')?.value || '';
             const processName = document.getElementById('edit-node-process-name')?.value || '';

@@ -8,10 +8,12 @@ from typing import Any
 
 # 직접 실행 시와 모듈로 import 시 모두 지원
 try:
+    from ..config.nodes_config import NODES_CONFIG
     from .connection import DatabaseConnection
 except ImportError:
     # 직접 실행 시 절대 import 사용
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from config.nodes_config import NODES_CONFIG
     from db.connection import DatabaseConnection
 
 
@@ -54,9 +56,21 @@ class NodeRepository:
             )
 
             nodes = []
+            # nodes_config.py에 정의된 노드 타입만 허용
+            valid_node_types = set(NODES_CONFIG.keys())
+
             for row in cursor.fetchall():
                 # SELECT 순서: id(0), node_id(1), node_type(2), position_x(3), position_y(4),
                 #              node_data(5), connected_to(6), connected_from(7), parameters(8), description(9)
+                node_type = row[2]
+
+                # nodes_config.py에 정의되지 않은 노드는 제외
+                if node_type not in valid_node_types:
+                    print(
+                        f"[NodeRepository] 경고: 정의되지 않은 노드 타입 '{node_type}' (노드 ID: {row[1]})를 건너뜁니다."
+                    )
+                    continue
+
                 connected_to_raw = row[6] if len(row) > 6 else None
                 connected_from_raw = row[7] if len(row) > 7 else None
                 parameters_raw = row[8] if len(row) > 8 else None
@@ -72,7 +86,7 @@ class NodeRepository:
                 nodes.append(
                     {
                         "id": node_id,
-                        "type": row[2],
+                        "type": node_type,
                         "position": {"x": row[3], "y": row[4]},
                         "data": json.loads(row[5]),
                         "connected_to": connected_to,

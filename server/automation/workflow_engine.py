@@ -11,10 +11,6 @@ class NodeType(Enum):
     """노드 타입 열거형"""
 
     CLICK = "click"
-    MOVE = "move"
-    COLLECT = "collect"
-    BATTLE = "battle"
-    NAVIGATE = "navigate"
     WAIT = "wait"
     CONDITION = "condition"
     LOOP = "loop"
@@ -81,10 +77,6 @@ class WorkflowEngine:
         # 노드 핸들러 등록
         self.node_handlers: dict[NodeType, Callable] = {
             NodeType.CLICK: self._handle_click_node,
-            NodeType.MOVE: self._handle_move_node,
-            NodeType.COLLECT: self._handle_collect_node,
-            NodeType.BATTLE: self._handle_battle_node,
-            NodeType.NAVIGATE: self._handle_navigate_node,
             NodeType.WAIT: self._handle_wait_node,
             NodeType.CONDITION: self._handle_condition_node,
             NodeType.LOOP: self._handle_loop_node,
@@ -217,40 +209,6 @@ class WorkflowEngine:
         await asyncio.sleep(0.1)  # 시뮬레이션
 
         return {"action": "click", "coordinates": (x, y), "button": button, "clicks": clicks, "success": True}
-
-    async def _handle_move_node(self, node: WorkflowNode) -> dict[str, Any]:
-        """이동 노드 처리"""
-        direction = node.data.get("direction", "forward")
-        distance = node.data.get("distance", 1)
-
-        await asyncio.sleep(0.5)  # 시뮬레이션
-
-        return {"action": "move", "direction": direction, "distance": distance, "success": True}
-
-    async def _handle_collect_node(self, node: WorkflowNode) -> dict[str, Any]:
-        """수집 노드 처리"""
-        item_type = node.data.get("item_type", "unknown")
-
-        await asyncio.sleep(0.3)  # 시뮬레이션
-
-        return {"action": "collect", "item_type": item_type, "success": True}
-
-    async def _handle_battle_node(self, node: WorkflowNode) -> dict[str, Any]:
-        """전투 노드 처리"""
-        enemy_type = node.data.get("enemy_type", "unknown")
-        strategy = node.data.get("strategy", "auto")
-
-        await asyncio.sleep(2.0)  # 시뮬레이션
-
-        return {"action": "battle", "enemy_type": enemy_type, "strategy": strategy, "success": True}
-
-    async def _handle_navigate_node(self, node: WorkflowNode) -> dict[str, Any]:
-        """네비게이션 노드 처리"""
-        destination = node.data.get("destination", "unknown")
-
-        await asyncio.sleep(1.0)  # 시뮬레이션
-
-        return {"action": "navigate", "destination": destination, "success": True}
 
     async def _handle_wait_node(self, node: WorkflowNode) -> dict[str, Any]:
         """대기 노드 처리"""

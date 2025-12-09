@@ -27,37 +27,7 @@ NODES_CONFIG: dict[str, dict[str, Any]] = {
         "category": "system",
     },
     # === 액션 노드 (Action Nodes) ===
-    "action": {
-        "label": "액션 노드",
-        "title": "액션 노드",
-        "description": "액션을 수행하는 노드입니다.",
-        "script": "node-action.js",  # 클라이언트에서 로드할 JavaScript 파일명 (UI/src/js/components/node/node-action.js)
-        "is_boundary": False,
-        "category": "action",
-        # 상세 노드 타입 정의 (대분류 노드 타입 아래에 하위 카테고리 정의)
-        "detail_types": {
-            "click": {
-                "label": "클릭",
-                "description": "화면의 특정 위치를 클릭합니다.",
-                "icon": "🖱️",
-            },
-            "collect": {
-                "label": "수집",
-                "description": "아이템이나 리소스를 수집합니다.",
-                "icon": "📦",
-            },
-            "move": {
-                "label": "이동",
-                "description": "캐릭터나 오브젝트를 이동시킵니다.",
-                "icon": "🚶",
-            },
-            "http-api-request": {
-                "label": "HTTP API 요청",
-                "description": "외부 API에 HTTP 요청을 보냅니다.",
-                "icon": "🌐",
-            },
-        },
-    },
+    # "action" 노드는 제거되었습니다.
     "image-touch": {
         "label": "이미지 터치 노드",
         "title": "이미지 터치",
@@ -66,6 +36,26 @@ NODES_CONFIG: dict[str, dict[str, Any]] = {
         "is_boundary": False,
         "category": "action",
         "requires_folder_path": True,
+        # 노드 레벨 파라미터 (모든 상세 타입에 공통으로 사용되는 파라미터)
+        "parameters": {
+            "folder_path": {
+                "type": "string",
+                "label": "이미지 폴더 경로",
+                "description": "이미지 파일이 있는 폴더 경로를 입력하세요.",
+                "default": "",
+                "required": True,
+                "placeholder": "예: C:\\images\\touch",
+            },
+            "timeout": {
+                "type": "number",
+                "label": "타임아웃 (초)",
+                "description": "이미지를 찾을 때까지 대기할 최대 시간입니다.",
+                "default": 30,
+                "min": 1,
+                "max": 300,
+                "required": False,
+            },
+        },
         # 상세 노드 타입 정의
         "detail_types": {},
     },
@@ -76,6 +66,18 @@ NODES_CONFIG: dict[str, dict[str, Any]] = {
         "script": "node-wait.js",
         "is_boundary": False,
         "category": "action",
+        # 노드 레벨 파라미터
+        "parameters": {
+            "wait_time": {
+                "type": "number",
+                "label": "대기 시간 (초)",
+                "description": "대기할 시간을 초 단위로 입력하세요.",
+                "default": 1,
+                "min": 0,
+                "max": 3600,
+                "required": True,
+            },
+        },
         # 상세 노드 타입 정의
         "detail_types": {},
     },
@@ -97,6 +99,17 @@ NODES_CONFIG: dict[str, dict[str, Any]] = {
         "script": "node-condition.js",
         "is_boundary": False,
         "category": "logic",
+        # 노드 레벨 파라미터
+        "parameters": {
+            "condition": {
+                "type": "string",
+                "label": "조건식",
+                "description": "평가할 조건식을 입력하세요. (예: ${variable} > 10)",
+                "default": "",
+                "required": True,
+                "placeholder": "조건식을 입력하세요",
+            },
+        },
         # 상세 노드 타입 정의
         "detail_types": {},
     },
@@ -140,6 +153,117 @@ NODES_CONFIG: dict[str, dict[str, Any]] = {
                         "required": True,
                     }
                 },
+            },
+        },
+    },
+    # === 예시 노드: 파일 읽기 ===
+    "file-read": {
+        "label": "파일 읽기 노드",
+        "title": "파일 읽기",
+        "description": "파일의 내용을 읽어오는 노드입니다.",
+        "script": "node-file-read.js",
+        "is_boundary": False,
+        "category": "action",
+        # 노드 레벨 파라미터
+        "parameters": {
+            "file_path": {
+                "type": "string",
+                "label": "파일 경로",
+                "description": "읽을 파일의 경로를 입력하세요.",
+                "default": "",
+                "required": True,
+                "placeholder": "예: C:\\data\\file.txt",
+            },
+            "encoding": {
+                "type": "string",
+                "label": "인코딩",
+                "description": "파일 인코딩을 선택하세요.",
+                "default": "utf-8",
+                "required": False,
+                "options": ["utf-8", "utf-16", "ascii", "latin-1"],
+            },
+        },
+        # 상세 노드 타입 정의
+        "detail_types": {},
+    },
+    # === 예시 노드: 파일 쓰기 ===
+    "file-write": {
+        "label": "파일 쓰기 노드",
+        "title": "파일 쓰기",
+        "description": "파일에 내용을 작성하는 노드입니다.",
+        "script": "node-file-write.js",
+        "is_boundary": False,
+        "category": "action",
+        # 노드 레벨 파라미터
+        "parameters": {
+            "file_path": {
+                "type": "string",
+                "label": "파일 경로",
+                "description": "작성할 파일의 경로를 입력하세요.",
+                "default": "",
+                "required": True,
+                "placeholder": "예: C:\\data\\output.txt",
+            },
+            "content": {
+                "type": "string",
+                "label": "내용",
+                "description": "파일에 작성할 내용을 입력하세요.",
+                "default": "",
+                "required": True,
+                "placeholder": "작성할 내용을 입력하세요",
+            },
+            "mode": {
+                "type": "string",
+                "label": "작성 모드",
+                "description": "파일 작성 모드를 선택하세요.",
+                "default": "write",
+                "required": False,
+                "options": ["write", "append"],
+            },
+            "encoding": {
+                "type": "string",
+                "label": "인코딩",
+                "description": "파일 인코딩을 선택하세요.",
+                "default": "utf-8",
+                "required": False,
+                "options": ["utf-8", "utf-16", "ascii", "latin-1"],
+            },
+        },
+        # 상세 노드 타입 정의
+        "detail_types": {},
+    },
+    # === 테스트 노드 (Test Node) ===
+    "test": {
+        "label": "테스트 노드",
+        "title": "테스트",
+        "description": "nodes_config.py에만 정의된 테스트 노드입니다.",
+        "script": "node-test.js",  # 이 파일은 실제로 존재하지 않아도 됨
+        "is_boundary": False,
+        "category": "action",
+        "parameters": {
+            "test_value": {
+                "type": "string",
+                "label": "테스트 값",
+                "description": "테스트용 값을 입력하세요.",
+                "default": "기본값",
+                "required": True,
+                "placeholder": "테스트 값을 입력하세요",
+            },
+            "test_number": {
+                "type": "number",
+                "label": "테스트 숫자",
+                "description": "테스트용 숫자를 입력하세요.",
+                "default": 10,
+                "required": False,
+                "min": 0,
+                "max": 100,
+            },
+            "test_boolean": {
+                "type": "boolean",
+                "label": "테스트 옵션",
+                "description": "테스트용 옵션입니다.",
+                "default": True,
+                "required": False,
             },
         },
     },

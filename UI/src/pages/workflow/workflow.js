@@ -102,6 +102,9 @@ export class WorkflowPage {
     getLogger() {
         return getLogger();
     }
+    getSaveService() {
+        return this.saveService;
+    }
 
     /**
      * 초기화 메서드
@@ -310,9 +313,9 @@ export class WorkflowPage {
     /**
      * 노드 업데이트
      */
-    updateNode(nodeElement, nodeId) {
+    async updateNode(nodeElement, nodeId) {
         if (this.updateService) {
-            this.updateService.update(nodeElement, nodeId);
+            await this.updateService.update(nodeElement, nodeId);
         }
     }
 

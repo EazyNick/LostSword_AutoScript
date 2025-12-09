@@ -70,7 +70,7 @@ export class ConnectionSVGManager {
     }
 
     /**
-     * SVG 크기 업데이트
+     * SVG 크기 업데이트 (확장 가능한 벡터 그래픽(Scalable Vector Graphics)의 약자)
      * canvas-content와 동일한 크기로 설정 (SVG가 canvas-content 안에 있으므로)
      */
     updateSVGSize() {
@@ -92,7 +92,7 @@ export class ConnectionSVGManager {
             const width = parseFloat(canvasContentStyle.width) || 100000;
             const height = parseFloat(canvasContentStyle.height) || 100000;
 
-            logger.log('[ConnectionManager] SVG 크기 업데이트:', { width, height });
+            // logger.log('[ConnectionManager] SVG 크기 업데이트:', { width, height });
 
             // SVG 크기를 canvas-content와 동일하게 설정
             this.svgContainer.setAttribute('width', width);

@@ -4,7 +4,7 @@
 
 ### `server/`
 - **api/**: REST API 라우터 (`@api_handler` 데코레이터 사용)
-- **nodes/**: 노드 클래스 (`BaseNode` 상속, `@node_executor` 데코레이터)
+- **nodes/**: 노드 클래스 (`BaseNode` 상속, `@NodeExecutor` 데코레이터)
   - `actionnodes/`: 액션 노드들
   - `conditionnodes/`: 조건 노드들
   - `waitnodes/`: 대기 노드들
@@ -44,6 +44,7 @@
   - **services/**: 저장/로드/실행 로직
   - **modals/**: 노드 추가/설정 모달
   - **config/**: 노드 설정 파일
+    - `node-preview-outputs.js`: 노드 타입별 예시 출력 정의
 - **styles/**: 스타일시트
   - `themes/dark/`: 다크 모드 스타일
   - `themes/light/`: 라이트 모드 스타일

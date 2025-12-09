@@ -30,38 +30,85 @@
 /* 모달 콘텐츠: 모달 안에 표시되는 실제 내용 영역 */
 .modal-content {
     background-color: #2d3748; /* 어두운 회색 배경 */
-    padding: 2rem; /* 내부 여백 2rem */
-    border-radius: 12px; /* 둥근 모서리 */
-    width: 80%; /* 너비 80% */
-    max-width: 600px; /* 최대 너비 600px */
-    position: absolute; /* 절대 위치 (중앙 정렬을 위해) */
-    border: 1px solid #4a5568; /* 회색 테두리 */
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); /* 그림자 효과 */
+    padding: 0; /* 패딩 제거 (헤더와 본문에서 개별 관리) */
+    border-radius: 0; /* 모서리 직각 (우측에서 펼쳐지는 느낌) */
+    width: 30%; /* 너비 30% */
+    min-width: 400px; /* 최소 너비 400px */
+    max-width: none; /* 최대 너비 제한 없음 (우측을 꽉 채움) */
+    height: 100vh; /* 높이 100vh (화면 전체 높이) */
+    position: fixed; /* 고정 위치 (스크롤과 무관) */
+    border: none; /* 테두리 제거 */
+    border-left: 1px solid #4a5568; /* 좌측 테두리만 */
+    box-shadow: -5px 0 20px rgba(0, 0, 0, 0.5); /* 좌측 그림자 효과 */
     animation: modalSlideIn 0.3s ease-out; /* 슬라이드인 애니메이션 */
-    /* 사이드바를 제외한 메인 영역 기준 중앙 정렬 */
-    left: calc(var(--sidebar-width, 350px) + (100vw - var(--sidebar-width, 350px)) / 2);
-    transform: translateX(-50%);
-    top: 5%;
+    display: flex; /* 플렉스박스 레이아웃 */
+    flex-direction: column; /* 세로 방향 */
+    /* 우측 정렬: 우측에 붙어서 배치 */
+    right: 0; /* 오른쪽에 붙임 */
+    top: 0; /* 상단에 붙임 */
+    bottom: 0; /* 하단에 붙임 */
+    overflow: hidden; /* 내용이 넘치면 숨김 */
+    z-index: 2000; /* 다른 요소들 위에 표시 */
 }
 
-/* 모달 슬라이드인 애니메이션: 모달이 나타날 때 위에서 아래로 슬라이드 */
+/* 모달 헤더: 드래그 핸들 영역 */
+.modal-header {
+    padding: 1rem 2rem; /* 내부 여백 */
+    border-bottom: 1px solid #4a5568; /* 하단 테두리 */
+    cursor: grab; /* 드래그 가능한 커서 */
+    user-select: none; /* 텍스트 선택 방지 */
+    flex-shrink: 0; /* 축소 방지 */
+    position: relative; /* 닫기 버튼 위치 기준 */
+    height: 60px; /* 헤더 높이 고정 */
+    min-height: 60px; /* 최소 높이 */
+    --modal-header-height: 60px; /* CSS 변수로 헤더 높이 저장 */
+}
+
+.modal-header:active {
+    cursor: grabbing; /* 드래그 중 커서 */
+}
+
+/* 모달 드래그 핸들 (시각적 표시용) */
+.modal-drag-handle {
+    width: 40px; /* 너비 40px */
+    height: 4px; /* 높이 4px */
+    background-color: #4a5568; /* 회색 배경 */
+    border-radius: 2px; /* 둥근 모서리 */
+    margin: 0 auto; /* 중앙 정렬 */
+    opacity: 0.5; /* 반투명 */
+    transition: opacity 0.2s ease; /* 부드러운 전환 */
+}
+
+.modal-header:hover .modal-drag-handle {
+    opacity: 0.8; /* 호버 시 더 진하게 */
+}
+
+/* 모달 본문: 스크롤 가능한 영역 (헤더를 제외한 나머지 영역) */
+#modal-body {
+    padding: 2rem; /* 내부 여백 2rem */
+    overflow-y: auto; /* 세로 스크롤 가능 */
+    flex: 1; /* 남은 공간 모두 사용 (헤더를 제외한 나머지) */
+    min-height: 0; /* 플렉스박스에서 스크롤을 위해 필요 */
+    height: calc(100vh - var(--modal-header-height, 60px)); /* 헤더 높이를 제외한 높이 */
+}
+
+/* 모달 슬라이드인 애니메이션: 모달이 나타날 때 우측에서 펼쳐지듯 슬라이드 */
 @keyframes modalSlideIn {
     from {
         /* 시작 상태 */
         opacity: 0; /* 투명 */
-        transform: translateY(-50px) scale(0.9); /* 위로 50px 이동, 90% 크기 */
+        transform: translateX(100%); /* 오른쪽에서 완전히 숨김 (너비만큼 이동) */
     }
     to {
         /* 끝 상태 */
         opacity: 1; /* 완전히 불투명 */
-        transform: translateY(0) scale(1); /* 원래 위치, 100% 크기 */
+        transform: translateX(0); /* 원래 위치 */
     }
 }
 
 /* 모달 닫기 버튼: 모달 오른쪽 상단에 표시되는 X 버튼 */
 .close {
     color: #a0aec0; /* 회색 텍스트 */
-    float: right; /* 오른쪽 정렬 */
     font-size: 28px; /* 큰 글씨 크기 28px */
     font-weight: bold; /* 굵은 글씨 */
     cursor: pointer; /* 클릭 가능한 커서 */
@@ -69,6 +116,8 @@
     right: 1rem; /* 오른쪽에서 1rem */
     top: 1rem; /* 상단에서 1rem */
     transition: color 0.3s ease; /* 색상 전환 효과 */
+    z-index: 10; /* 헤더 위에 표시 */
+    line-height: 1; /* 줄 높이 1 (수직 정렬) */
 }
 
 /* 모달 닫기 버튼 호버 효과: 마우스를 올렸을 때 */
@@ -77,8 +126,10 @@
 }
 
 /* 모달 제목: 모달 상단에 표시되는 제목 텍스트 */
+#modal-body h3,
 .modal-content h3 {
     color: #667eea; /* 파란색 텍스트 */
+    margin-top: 0; /* 상단 여백 제거 (본문 패딩으로 충분) */
     margin-bottom: 1.5rem; /* 하단 여백 1.5rem */
     font-size: 1.5rem; /* 큰 글씨 크기 */
     font-weight: 600; /* 중간 굵기 */
@@ -202,10 +253,24 @@
 @media (max-width: 768px) {
     /* 모바일에서 모달 콘텐츠 여백 및 크기 조정 */
     .modal-content {
-        margin: 10% auto; /* 상하 10% 여백 */
-        padding: 1.5rem; /* 내부 여백 1.5rem로 축소 */
         width: 90%; /* 너비 90%로 확대 */
         max-width: none; /* 최대 너비 제한 없음 */
+        min-width: 300px; /* 최소 너비 300px */
+        height: 100vh; /* 높이 100vh */
+        right: 0; /* 오른쪽에 붙임 */
+        top: 0; /* 상단에 붙임 */
+        bottom: 0; /* 하단에 붙임 */
+        left: auto; /* 왼쪽 정렬 해제 */
+    }
+
+    /* 모바일에서 모달 헤더 패딩 축소 */
+    .modal-header {
+        padding: 0.75rem 1.5rem;
+    }
+
+    /* 모바일에서 모달 본문 패딩 축소 */
+    #modal-body {
+        padding: 1.5rem;
     }
 
     /* 모바일에서 버튼들을 세로로 배치 */
@@ -230,9 +295,23 @@
 @media (max-width: 480px) {
     /* 작은 모바일에서 모달 콘텐츠 여백 및 크기 조정 */
     .modal-content {
-        margin: 5% auto; /* 상하 5% 여백 */
-        padding: 1rem; /* 내부 여백 1rem로 축소 */
         width: 95%; /* 너비 95%로 확대 */
+        min-width: 280px; /* 최소 너비 280px */
+        height: 100vh; /* 높이 100vh */
+        right: 0; /* 오른쪽에 붙임 */
+        top: 0; /* 상단에 붙임 */
+        bottom: 0; /* 하단에 붙임 */
+        left: auto; /* 왼쪽 정렬 해제 */
+    }
+
+    /* 작은 모바일에서 모달 헤더 패딩 축소 */
+    .modal-header {
+        padding: 0.5rem 1rem;
+    }
+
+    /* 작은 모바일에서 모달 본문 패딩 축소 */
+    #modal-body {
+        padding: 1rem;
     }
 
     /* 작은 모바일에서 모달 제목 크기 축소 */

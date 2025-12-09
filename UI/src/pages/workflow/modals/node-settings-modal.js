@@ -8,6 +8,9 @@ import { NODE_TYPES, isBoundaryNode, NODE_TYPE_LABELS } from '../constants/node-
 import { escapeHtml, getNodeType, getNodeData } from '../utils/node-utils.js';
 import { NodeValidationUtils } from '../utils/node-validation-utils.js';
 import { getDetailNodeTypes, getDetailNodeConfig } from '../config/action-node-types.js';
+import { generateParameterForm, extractParameterValues } from '../utils/parameter-form-generator.js';
+import { getNodeRegistry } from '../services/node-registry.js';
+import { generatePreviewOutput as generateNodePreviewOutput } from '../config/node-preview-outputs.js';
 
 export class NodeSettingsModal {
     constructor(workflowPage) {
@@ -46,8 +49,8 @@ export class NodeSettingsModal {
             `[WorkflowPage] 노드 설정 모달 열기: ${nodeId}, 타입: ${nodeType}, 상세 노드 타입: ${currentActionNodeType}`
         );
 
-        // 노드 타입별 설정 UI 생성
-        const typeSpecificSettings = this.generateTypeSpecificSettings(nodeType, nodeData);
+        // 노드 타입별 설정 UI 생성 (비동기)
+        const typeSpecificSettings = await this.generateTypeSpecificSettings(nodeType, nodeData);
 
         // 모달 콘텐츠 생성
         const content = await this.generateModalContent(
@@ -256,15 +259,93 @@ export class NodeSettingsModal {
     /**
      * 타입별 설정 UI 생성
      */
-    generateTypeSpecificSettings(nodeType, nodeData) {
-        if (nodeType === NODE_TYPES.IMAGE_TOUCH) {
+    async generateTypeSpecificSettings(nodeType, nodeData) {
+        const registry = getNodeRegistry();
+        const config = await registry.getConfig(nodeType);
+        const currentDetailNodeType = nodeData?.action_node_type || '';
+
+        // 디버깅: config 확인
+        console.log('[NodeSettingsModal] generateTypeSpecificSettings:', {
+            nodeType,
+            hasConfig: !!config,
+            configKeys: config ? Object.keys(config) : [],
+            hasParameters: !!config?.parameters,
+            parameters: config?.parameters,
+            currentDetailNodeType
+        });
+
+        // 파라미터 기반 폼 생성
+        let parameterFormHtml = '';
+
+        // 상세 노드 타입이 선택된 경우, 상세 노드 타입의 파라미터 우선 사용
+        let parametersToUse = null;
+        let currentValues = {};
+
+        if (currentDetailNodeType && config?.detailTypes?.[currentDetailNodeType]) {
+            const detailConfig = config.detailTypes[currentDetailNodeType];
+            if (detailConfig.parameters) {
+                parametersToUse = detailConfig.parameters;
+                // 현재 값 추출
+                currentValues = Object.keys(detailConfig.parameters).reduce((acc, key) => {
+                    acc[key] = nodeData?.[key];
+                    return acc;
+                }, {});
+            }
+        }
+
+        // 상세 노드 타입에 파라미터가 없으면 노드 레벨 파라미터 사용
+        if (!parametersToUse && config?.parameters) {
+            parametersToUse = config.parameters;
+            // 현재 값 추출
+            currentValues = Object.keys(config.parameters).reduce((acc, key) => {
+                acc[key] = nodeData?.[key];
+                return acc;
+            }, {});
+        }
+
+        let parameterFormResult = { html: '', buttons: [] };
+        if (parametersToUse) {
+            console.log('[NodeSettingsModal] 파라미터 사용:', {
+                parametersToUse: Object.keys(parametersToUse),
+                currentValues
+            });
+            parameterFormResult = generateParameterForm(parametersToUse, 'edit-node-', currentValues);
+            parameterFormHtml = parameterFormResult.html;
+            console.log('[NodeSettingsModal] 파라미터 폼 생성 결과:', {
+                htmlLength: parameterFormHtml.length,
+                html: parameterFormHtml.substring(0, 200), // 처음 200자만
+                buttons: parameterFormResult.buttons
+            });
+        } else {
+            console.log('[NodeSettingsModal] 파라미터 없음:', {
+                hasConfig: !!config,
+                hasParameters: !!config?.parameters,
+                hasDetailTypes: !!config?.detailTypes,
+                currentDetailNodeType
+            });
+        }
+
+        // 파라미터 폼이 생성된 경우 버튼 정보는 setupEventListeners에서 처리
+        // (generateTypeSpecificSettings는 HTML만 반환하므로 여기서는 이벤트 리스너를 설정하지 않음)
+
+        // 파라미터 폼이 있으면 무조건 반환 (레거시 체크 전에)
+        if (parameterFormHtml) {
+            console.log('[NodeSettingsModal] 파라미터 폼 반환:', parameterFormHtml.length, 'bytes');
+            return parameterFormHtml;
+        }
+
+        console.log('[NodeSettingsModal] 파라미터 폼 없음, 빈 문자열 반환');
+
+        // 레거시 특수 설정 처리 (하위 호환성 유지)
+        // 파라미터로 처리되지 않은 경우에만 레거시 로직 사용
+        if (nodeType === NODE_TYPES.IMAGE_TOUCH && !config?.parameters?.folder_path) {
             const folderPath = nodeData?.folder_path || '';
             const imageCount = nodeData?.image_count || 0;
             const imageCountText =
                 imageCount > 0
                     ? ` <span class="node-settings-help-text" style="font-weight: normal;">(${imageCount}개 이미지)</span>`
                     : '';
-            return `
+            const legacyHtml = `
                 <div class="form-group node-settings-form-group">
                     <label for="edit-node-folder-path" class="node-settings-label">이미지 폴더 경로${imageCountText}:</label>
                     <div style="display: flex; gap: 8px;">
@@ -274,28 +355,13 @@ export class NodeSettingsModal {
                     <small class="node-settings-help-text">이미지 파일 이름 순서대로 화면에서 찾아 터치합니다.</small>
                 </div>
             `;
-        } else if (nodeType === NODE_TYPES.CONDITION) {
-            const condition = nodeData?.condition || '';
-            return `
-                <div class="form-group node-settings-form-group">
-                    <label for="edit-node-condition" class="node-settings-label">조건 설정:</label>
-                    <input type="text" id="edit-node-condition" value="${escapeHtml(condition)}" placeholder="조건을 입력하세요" class="node-settings-input">
-                </div>
-            `;
-        } else if (nodeType === NODE_TYPES.WAIT) {
-            const waitTime = nodeData?.wait_time || 1;
-            return `
-                <div class="form-group node-settings-form-group">
-                    <label for="edit-node-wait-time" class="node-settings-label">대기 시간 (초):</label>
-                    <input type="number" id="edit-node-wait-time" value="${waitTime}" min="0" step="0.1" class="node-settings-input">
-                </div>
-            `;
-        } else if (nodeType === 'process-focus') {
+            return parameterFormHtml + legacyHtml;
+        } else if (nodeType === 'process-focus' && !parameterFormHtml) {
             const processName = nodeData?.process_name || '';
             const windowTitle = nodeData?.window_title || '';
             const processId = nodeData?.process_id || '';
             const hwnd = nodeData?.hwnd || '';
-            return `
+            const legacyHtml = `
                 <div class="form-group">
                     <label for="edit-node-process-select">프로세스 선택:</label>
                     <div style="display: flex; gap: 8px; margin-bottom: 8px;">
@@ -311,8 +377,10 @@ export class NodeSettingsModal {
                     <small style="color: #666; font-size: 12px;">화면에 보이는 프로세스만 표시됩니다. 선택한 프로세스가 실행 시 화면 최상단에 포커스됩니다.</small>
                 </div>
             `;
+            return parameterFormHtml + legacyHtml;
         }
-        return '';
+
+        return parameterFormHtml;
     }
 
     /**
@@ -486,11 +554,52 @@ export class NodeSettingsModal {
             processSelect.addEventListener('change', updatePreviewDebounced);
         }
 
-        // 폴더 선택 버튼
+        // 폴더 선택 버튼 (레거시)
         const browseBtn = document.getElementById('edit-browse-folder-btn');
         if (browseBtn) {
             browseBtn.addEventListener('click', () => this.handleFolderSelection());
         }
+
+        // 파라미터 폼의 파일/폴더 선택 버튼 이벤트 리스너 설정
+        // DOM이 업데이트된 후에 버튼을 찾아야 하므로 약간의 지연
+        setTimeout(() => {
+            // 모든 folder_path, file_path 버튼 찾기
+            const folderPathButtons = document.querySelectorAll('[id$="-folder_path-browse-btn"]');
+            console.log('[NodeSettingsModal] 폴더 선택 버튼 개수:', folderPathButtons.length);
+            folderPathButtons.forEach((btn) => {
+                const fieldId = btn.id.replace('-browse-btn', '');
+                console.log('[NodeSettingsModal] 폴더 선택 버튼 찾음:', btn.id, 'fieldId:', fieldId);
+                // 기존 이벤트 리스너 제거 후 새로 추가
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+                newBtn.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('[NodeSettingsModal] 폴더 선택 버튼 클릭:', fieldId);
+                    try {
+                        await this.handleFolderSelection(fieldId);
+                    } catch (error) {
+                        console.error('[NodeSettingsModal] 폴더 선택 처리 중 오류:', error);
+                    }
+                });
+            });
+
+            const filePathButtons = document.querySelectorAll('[id$="-file_path-browse-btn"]');
+            console.log('[NodeSettingsModal] 파일 선택 버튼 개수:', filePathButtons.length);
+            filePathButtons.forEach((btn) => {
+                const fieldId = btn.id.replace('-browse-btn', '');
+                console.log('[NodeSettingsModal] 파일 선택 버튼 찾음:', btn.id, 'fieldId:', fieldId);
+                // 기존 이벤트 리스너 제거 후 새로 추가
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+                newBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('[NodeSettingsModal] 파일 선택 버튼 클릭:', fieldId);
+                    this.handleFileSelection(fieldId);
+                });
+            });
+        }, 100); // 지연 시간 증가
 
         // 프로세스 선택 관련
         if (nodeType === 'process-focus') {
@@ -500,8 +609,8 @@ export class NodeSettingsModal {
         // 저장 버튼
         const saveBtn = document.getElementById('edit-node-save');
         if (saveBtn) {
-            saveBtn.addEventListener('click', () => {
-                this.workflowPage.updateNode(nodeElement, nodeId);
+            saveBtn.addEventListener('click', async () => {
+                await this.workflowPage.updateNode(nodeElement, nodeId);
             });
         }
 
@@ -563,13 +672,44 @@ export class NodeSettingsModal {
         if (newSettings) {
             settingsContainer.insertAdjacentHTML('beforeend', newSettings);
 
-            // 폴더 선택 버튼 이벤트 재바인딩
+            // 폴더 선택 버튼 이벤트 재바인딩 (레거시)
             const newBrowseBtn = document.getElementById('edit-browse-folder-btn');
             if (newBrowseBtn) {
                 const newBtn = newBrowseBtn.cloneNode(true);
                 newBrowseBtn.parentNode.replaceChild(newBtn, newBrowseBtn);
-                newBtn.addEventListener('click', () => this.handleFolderSelection());
+                newBtn.addEventListener('click', () => this.handleFolderSelection('edit-node-folder-path'));
             }
+
+            // 파라미터 폼의 파일/폴더 선택 버튼 이벤트 리스너 재설정
+            setTimeout(() => {
+                const folderPathButtons = document.querySelectorAll('[id$="-folder_path-browse-btn"]');
+                folderPathButtons.forEach((btn) => {
+                    const fieldId = btn.id.replace('-browse-btn', '');
+                    const newBtn = btn.cloneNode(true);
+                    btn.parentNode.replaceChild(newBtn, btn);
+                    newBtn.addEventListener('click', async (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        try {
+                            await this.handleFolderSelection(fieldId);
+                        } catch (error) {
+                            console.error('[NodeSettingsModal] 폴더 선택 처리 중 오류:', error);
+                        }
+                    });
+                });
+
+                const filePathButtons = document.querySelectorAll('[id$="-file_path-browse-btn"]');
+                filePathButtons.forEach((btn) => {
+                    const fieldId = btn.id.replace('-browse-btn', '');
+                    const newBtn = btn.cloneNode(true);
+                    btn.parentNode.replaceChild(newBtn, btn);
+                    newBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        this.handleFileSelection(fieldId);
+                    });
+                });
+            }, 50);
 
             // 프로세스 선택 설정
             if (selectedType === 'process-focus') {
@@ -580,41 +720,111 @@ export class NodeSettingsModal {
 
     /**
      * 폴더 선택 처리
+     * @param {string} fieldId - 폴더 경로 입력 필드 ID (기본값: 'edit-node-folder-path')
      */
-    async handleFolderSelection() {
-        const btn = document.getElementById('edit-browse-folder-btn');
+    async handleFolderSelection(fieldId = 'edit-node-folder-path') {
+        console.log('[NodeSettingsModal] handleFolderSelection 호출됨, fieldId:', fieldId);
+        const btnId = fieldId ? `${fieldId}-browse-btn` : 'edit-browse-folder-btn';
+        const btn = document.getElementById(btnId) || document.getElementById('edit-browse-folder-btn');
         if (!btn) {
+            console.warn(`[NodeSettingsModal] 폴더 선택 버튼을 찾을 수 없습니다: ${btnId}`);
+            // 모든 버튼 ID 확인
+            const allButtons = document.querySelectorAll('[id*="browse-btn"]');
+            console.log(
+                '[NodeSettingsModal] 찾은 모든 browse 버튼:',
+                Array.from(allButtons).map((b) => b.id)
+            );
             return;
         }
-
         const originalText = btn.textContent;
+        console.log('[NodeSettingsModal] 폴더 선택 버튼 찾음:', btn.id);
+        console.log('[NodeSettingsModal] 버튼 상태:', {
+            disabled: btn.disabled,
+            textContent: btn.textContent
+        });
 
         try {
+            console.log('[NodeSettingsModal] 버튼 비활성화 시작');
             btn.disabled = true;
             btn.textContent = '폴더 선택 중...';
+            console.log('[NodeSettingsModal] 버튼 비활성화 완료');
 
             const apiBaseUrl = window.API_BASE_URL || 'http://localhost:8000';
-            const response = await fetch(`${apiBaseUrl}/api/folder/select`, {
+            const apiUrl = `${apiBaseUrl}/api/folder/select`;
+            console.log('[NodeSettingsModal] API 호출 시작:', apiUrl);
+
+            // 타임아웃 설정 (30초)
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+            const response = await fetch(apiUrl, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 'Content-Type': 'application/json' },
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+
+            console.log('[NodeSettingsModal] API 응답 받음:', {
+                status: response.status,
+                statusText: response.statusText,
+                ok: response.ok
             });
 
             const result = await response.json();
+            console.log('[NodeSettingsModal] API 응답 데이터:', result);
+            console.log('[NodeSettingsModal] result.data:', result.data);
+            console.log('[NodeSettingsModal] result.data?.folder_path:', result.data?.folder_path);
 
             // 변경된 응답 형식: {success: true/false, message: "...", data: {folder_path: "..."}}
-            if (result.success && result.data?.folder_path) {
-                const folderPath = result.data.folder_path;
-                document.getElementById('edit-node-folder-path').value = folderPath;
+            // data가 없거나 folder_path가 없는 경우도 처리
+            let folderPath = null;
+            if (result.success) {
+                if (result.data?.folder_path) {
+                    folderPath = result.data.folder_path;
+                } else if (result.folder_path) {
+                    // data 필드가 없고 직접 folder_path가 있는 경우
+                    folderPath = result.folder_path;
+                } else if (result.data && typeof result.data === 'string') {
+                    // data가 문자열인 경우
+                    folderPath = result.data;
+                }
+            }
 
-                // 이미지 개수 확인 및 표시
-                this.updateImageCount(folderPath);
-            } else if (result.message) {
-                alert(result.message);
+            if (folderPath) {
+                console.log('[NodeSettingsModal] 폴더 경로 받음:', folderPath);
+                const inputField = document.getElementById(fieldId);
+                if (inputField) {
+                    console.log('[NodeSettingsModal] 입력 필드 찾음, 값 설정:', fieldId, folderPath);
+                    inputField.value = folderPath;
+
+                    // 입력 이벤트 트리거하여 값 변경 알림
+                    inputField.dispatchEvent(new Event('input', { bubbles: true }));
+                    inputField.dispatchEvent(new Event('change', { bubbles: true }));
+
+                    // 이미지 개수 확인 및 표시 (folder_path인 경우만)
+                    if (fieldId.includes('folder_path')) {
+                        this.updateImageCount(folderPath, inputField);
+                    }
+
+                    console.log('[NodeSettingsModal] 입력 필드 값 설정 완료:', inputField.value);
+                } else {
+                    console.warn(`[NodeSettingsModal] 입력 필드를 찾을 수 없습니다: ${fieldId}`);
+                    // 모든 입력 필드 확인
+                    const allInputs = document.querySelectorAll('input[id*="folder_path"]');
+                    console.log(
+                        '[NodeSettingsModal] 찾은 모든 folder_path 입력 필드:',
+                        Array.from(allInputs).map((i) => i.id)
+                    );
+                }
+                // 성공 시 팝업 표시하지 않음
             } else if (!result.success) {
-                alert('폴더 선택에 실패했습니다.');
+                // 실패 시에만 팝업 표시
+                const errorMsg = result.message || '폴더 선택에 실패했습니다.';
+                alert(errorMsg);
             }
         } catch (error) {
-            console.error('폴더 선택 실패:', error);
+            console.error('[NodeSettingsModal] 폴더 선택 실패:', error);
             alert('폴더 선택에 실패했습니다. 서버가 실행 중인지 확인하세요.');
         } finally {
             btn.disabled = false;
@@ -623,9 +833,66 @@ export class NodeSettingsModal {
     }
 
     /**
-     * 이미지 개수 업데이트
+     * 파일 선택 처리
+     * @param {string} fieldId - 파일 경로 입력 필드 ID
      */
-    async updateImageCount(folderPath) {
+    async handleFileSelection(fieldId) {
+        console.log('[NodeSettingsModal] handleFileSelection 호출됨, fieldId:', fieldId);
+        const btnId = `${fieldId}-browse-btn`;
+        const btn = document.getElementById(btnId);
+        if (!btn) {
+            console.warn(`[NodeSettingsModal] 파일 선택 버튼을 찾을 수 없습니다: ${btnId}`);
+            // 모든 버튼 ID 확인
+            const allButtons = document.querySelectorAll('[id*="browse-btn"]');
+            console.log(
+                '[NodeSettingsModal] 찾은 모든 browse 버튼:',
+                Array.from(allButtons).map((b) => b.id)
+            );
+            return;
+        }
+        const originalText = btn.textContent;
+        console.log('[NodeSettingsModal] 파일 선택 버튼 찾음:', btn.id);
+
+        try {
+            btn.disabled = true;
+            btn.textContent = '파일 선택 중...';
+
+            const apiBaseUrl = window.API_BASE_URL || 'http://localhost:8000';
+            const response = await fetch(`${apiBaseUrl}/api/file/select`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            const result = await response.json();
+
+            // 변경된 응답 형식: {success: true/false, message: "...", data: {file_path: "..."}}
+            if (result.success && result.data?.file_path) {
+                const filePath = result.data.file_path;
+                const inputField = document.getElementById(fieldId);
+                if (inputField) {
+                    inputField.value = filePath;
+                }
+                // 성공 시 팝업 표시하지 않음
+            } else if (!result.success) {
+                // 실패 시에만 팝업 표시
+                const errorMsg = result.message || '파일 선택에 실패했습니다.';
+                alert(errorMsg);
+            }
+        } catch (error) {
+            console.error('파일 선택 실패:', error);
+            alert('파일 선택에 실패했습니다. 서버가 실행 중인지 확인하세요.');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = originalText;
+        }
+    }
+
+    /**
+     * 이미지 개수 업데이트
+     * @param {string} folderPath - 폴더 경로
+     * @param {HTMLElement} inputField - 입력 필드 요소 (선택사항)
+     */
+    async updateImageCount(folderPath, inputField = null) {
         try {
             const apiBaseUrl = window.API_BASE_URL || 'http://localhost:8000';
             const response = await fetch(`${apiBaseUrl}/api/images/list?folder_path=${encodeURIComponent(folderPath)}`);
@@ -790,8 +1057,34 @@ export class NodeSettingsModal {
         outputPreview.classList.add('node-preview-loading-state');
 
         try {
-            // 저장된 출력 오버라이드 값이 있으면 사용, 없으면 노드 실행
-            const outputOverride = nodeData?.output_override;
+            // 현재 폼에서 파라미터 값 추출 (nodes_config.py에서 정의한 파라미터)
+            const registry = getNodeRegistry();
+            const config = await registry.getConfig(nodeType);
+            const detailNodeType = nodeData?.action_node_type;
+
+            // 현재 폼의 파라미터 값으로 nodeData 업데이트
+            const updatedNodeData = { ...nodeData };
+
+            if (config) {
+                let parametersToExtract = null;
+
+                // 상세 노드 타입이 있으면 상세 노드 타입의 파라미터 우선 사용
+                if (detailNodeType && config.detailTypes?.[detailNodeType]?.parameters) {
+                    parametersToExtract = config.detailTypes[detailNodeType].parameters;
+                } else if (config.parameters) {
+                    parametersToExtract = config.parameters;
+                }
+
+                // 폼에서 파라미터 값 추출
+                if (parametersToExtract) {
+                    const paramValues = extractParameterValues(parametersToExtract, 'edit-node-');
+                    Object.assign(updatedNodeData, paramValues);
+                    console.log('[NodeSettingsModal] 폼에서 추출한 파라미터 값:', paramValues);
+                }
+            }
+
+            // 저장된 출력 오버라이드 값이 있으면 사용
+            const outputOverride = updatedNodeData?.output_override;
             let displayValue;
 
             if (outputOverride !== undefined && outputOverride !== null) {
@@ -802,24 +1095,42 @@ export class NodeSettingsModal {
                     displayValue = String(outputOverride);
                 }
             } else {
-                // 없으면 노드 실행 결과 사용
-                const result = await this.executeNodeForPreview({
-                    id: nodeElement.id || nodeElement.dataset.nodeId,
-                    type: nodeType,
-                    data: nodeData
-                });
+                // 기본적으로는 예시 출력 사용
+                // 실제 실행이 가능한 노드들만 하드코딩으로 실제 실행
+                // wait: 단순 대기이므로 실제 실행 가능
+                // start, end: 경계 노드이므로 실제 실행 가능
+                const executableNodes = ['wait', 'start', 'end'];
 
-                if (result) {
-                    // output 필드가 있으면 그것을, 없으면 전체 결과를 표시
-                    const displayResult = result.output !== undefined ? result.output : result;
+                if (executableNodes.includes(nodeType)) {
+                    // 실제 실행 가능한 노드는 실행 결과 사용
+                    console.log('[NodeSettingsModal] 노드 실행 시작, updatedNodeData:', updatedNodeData);
+                    try {
+                        const result = await this.executeNodeForPreview({
+                            id: nodeElement.id || nodeElement.dataset.nodeId,
+                            type: nodeType,
+                            data: updatedNodeData
+                        });
 
-                    if (displayResult !== null && typeof displayResult === 'object') {
-                        displayValue = JSON.stringify(displayResult, null, 2);
-                    } else {
-                        displayValue = String(displayResult);
+                        if (result) {
+                            // output 필드가 있으면 그것을, 없으면 전체 결과를 표시
+                            const displayResult = result.output !== undefined ? result.output : result;
+
+                            if (displayResult !== null && typeof displayResult === 'object') {
+                                displayValue = JSON.stringify(displayResult, null, 2);
+                            } else {
+                                displayValue = String(displayResult);
+                            }
+                        } else {
+                            displayValue = '';
+                        }
+                    } catch (error) {
+                        // 실행 실패 시 예시 출력 표시
+                        console.warn('[NodeSettingsModal] 노드 실행 실패, 예시 출력 사용:', error);
+                        displayValue = generateNodePreviewOutput(nodeType, updatedNodeData);
                     }
                 } else {
-                    displayValue = '';
+                    // 기본적으로는 예시 출력 생성
+                    displayValue = generateNodePreviewOutput(nodeType, updatedNodeData);
                 }
             }
 
@@ -1020,11 +1331,18 @@ export class NodeSettingsModal {
     async executeNodeForPreview(nodeInfo) {
         try {
             // 노드 데이터를 API 형식으로 변환
+            const preparedData = await this.prepareNodeDataForExecution(nodeInfo.type, nodeInfo.data);
             const nodeData = {
                 id: nodeInfo.id,
                 type: nodeInfo.type,
-                data: this.prepareNodeDataForExecution(nodeInfo.type, nodeInfo.data)
+                data: preparedData
             };
+
+            console.log('[NodeSettingsModal] 노드 실행 데이터 준비:', {
+                nodeId: nodeInfo.id,
+                nodeType: nodeInfo.type,
+                preparedData
+            });
 
             // 서버에 실행 요청
             const apiBaseUrl = window.API_BASE_URL || 'http://localhost:8000';
@@ -1045,7 +1363,14 @@ export class NodeSettingsModal {
 
             const result = await response.json();
 
-            if (result.success && result.data?.results?.[0]) {
+            // 응답 구조 확인 및 로깅
+            if (!result.success) {
+                const errorMsg = result.message || result.error || '노드 실행에 실패했습니다.';
+                console.error('[NodeSettingsModal] 노드 실행 실패:', result);
+                throw new Error(errorMsg);
+            }
+
+            if (result.data?.results?.[0]) {
                 const nodeResult = result.data.results[0];
 
                 // 에러가 있으면 throw
@@ -1055,7 +1380,10 @@ export class NodeSettingsModal {
 
                 return nodeResult;
             } else {
-                throw new Error('노드 실행 결과를 가져올 수 없습니다.');
+                // 결과가 없는 경우 상세 정보 로깅
+                console.warn('[NodeSettingsModal] 노드 실행 결과 없음:', result);
+                const errorMsg = result.message || '노드 실행 결과를 가져올 수 없습니다.';
+                throw new Error(errorMsg);
             }
         } catch (error) {
             console.error('노드 실행 오류:', error);
@@ -1066,55 +1394,107 @@ export class NodeSettingsModal {
     /**
      * 노드 실행을 위한 데이터 준비
      */
-    prepareNodeDataForExecution(nodeType, nodeData) {
+    async prepareNodeDataForExecution(nodeType, nodeData) {
         if (!nodeData) {
+            console.warn('[prepareNodeDataForExecution] nodeData가 없습니다.');
             return {};
         }
+
+        console.log('[prepareNodeDataForExecution] 시작:', {
+            nodeType,
+            nodeDataKeys: Object.keys(nodeData),
+            nodeData
+        });
 
         const prepared = {
             title: nodeData.title || '',
             ...nodeData
         };
 
-        // 노드 타입별 특수 처리
-        switch (nodeType) {
-            case 'image-touch':
-                if (nodeData.folder_path) {
-                    prepared.folder_path = nodeData.folder_path;
+        // nodes_config.py에서 정의한 파라미터 동적 처리
+        const registry = getNodeRegistry();
+        const config = await registry.getConfig(nodeType);
+
+        if (config) {
+            // 상세 노드 타입이 있으면 상세 노드 타입의 파라미터 우선 사용
+            const detailNodeType = nodeData.action_node_type;
+            let parametersToInclude = null;
+
+            if (detailNodeType && config.detailTypes?.[detailNodeType]?.parameters) {
+                parametersToInclude = config.detailTypes[detailNodeType].parameters;
+                console.log(
+                    '[prepareNodeDataForExecution] 상세 노드 타입 파라미터 사용:',
+                    detailNodeType,
+                    Object.keys(parametersToInclude)
+                );
+            } else if (config.parameters) {
+                parametersToInclude = config.parameters;
+                console.log('[prepareNodeDataForExecution] 노드 레벨 파라미터 사용:', Object.keys(parametersToInclude));
+            }
+
+            // 파라미터 정의에 따라 nodeData에서 값 포함
+            if (parametersToInclude) {
+                for (const [paramKey, paramConfig] of Object.entries(parametersToInclude)) {
+                    const value = nodeData[paramKey];
+                    console.log(`[prepareNodeDataForExecution] 파라미터 ${paramKey}:`, {
+                        value,
+                        undefined: value === undefined,
+                        null: value === null,
+                        empty: value === ''
+                    });
+                    if (value !== undefined && value !== null && value !== '') {
+                        prepared[paramKey] = value;
+                        console.log(`[prepareNodeDataForExecution] ✅ ${paramKey} 포함됨: ${value}`);
+                    } else {
+                        console.log(`[prepareNodeDataForExecution] ❌ ${paramKey} 제외됨 (값 없음)`);
+                    }
                 }
-                break;
-            case 'wait':
-                if (nodeData.wait_time !== undefined) {
-                    prepared.wait_time = nodeData.wait_time;
-                }
-                break;
-            case 'process-focus':
-                if (nodeData.process_id !== undefined) {
-                    prepared.process_id = nodeData.process_id;
-                }
-                if (nodeData.hwnd !== undefined) {
-                    prepared.hwnd = nodeData.hwnd;
-                }
-                if (nodeData.process_name) {
-                    prepared.process_name = nodeData.process_name;
-                }
-                if (nodeData.window_title) {
-                    prepared.window_title = nodeData.window_title;
-                }
-                break;
-            case 'condition':
-                if (nodeData.condition) {
-                    prepared.condition = nodeData.condition;
-                }
-                break;
-            case 'click':
-                if (nodeData.x !== undefined) {
-                    prepared.x = nodeData.x;
-                }
-                if (nodeData.y !== undefined) {
-                    prepared.y = nodeData.y;
-                }
-                break;
+            }
+        }
+
+        console.log('[prepareNodeDataForExecution] 최종 prepared:', {
+            keys: Object.keys(prepared),
+            prepared,
+            hasFolderPath: 'folder_path' in prepared,
+            folderPath: prepared.folder_path
+        });
+
+        // 레거시 하위 호환성 (파라미터로 처리되지 않은 경우)
+        // image-touch
+        if (nodeType === 'image-touch' && !prepared.folder_path && nodeData.folder_path) {
+            prepared.folder_path = nodeData.folder_path;
+        }
+        // wait
+        if (nodeType === 'wait' && !prepared.wait_time && nodeData.wait_time !== undefined) {
+            prepared.wait_time = nodeData.wait_time;
+        }
+        // process-focus
+        if (nodeType === 'process-focus') {
+            if (nodeData.process_id !== undefined) {
+                prepared.process_id = nodeData.process_id;
+            }
+            if (nodeData.hwnd !== undefined) {
+                prepared.hwnd = nodeData.hwnd;
+            }
+            if (nodeData.process_name) {
+                prepared.process_name = nodeData.process_name;
+            }
+            if (nodeData.window_title) {
+                prepared.window_title = nodeData.window_title;
+            }
+        }
+        // condition
+        if (nodeType === 'condition' && !prepared.condition && nodeData.condition) {
+            prepared.condition = nodeData.condition;
+        }
+        // click
+        if (nodeType === 'click') {
+            if (nodeData.x !== undefined) {
+                prepared.x = nodeData.x;
+            }
+            if (nodeData.y !== undefined) {
+                prepared.y = nodeData.y;
+            }
         }
 
         return prepared;

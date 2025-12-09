@@ -32,9 +32,15 @@ class ImageTouchNode(BaseNode):
         Returns:
             실행 결과 딕셔너리
         """
+        logger.info(f"[ImageTouchNode] execute 호출됨, parameters: {parameters}")
+        logger.info(f"[ImageTouchNode] parameters 키 목록: {list(parameters.keys()) if parameters else []}")
+
         folder_path = get_parameter(parameters, "folder_path", default="")
+        logger.info(f"[ImageTouchNode] folder_path 추출 결과: {folder_path}")
+
         if not folder_path:
             # 폴더 경로가 없으면 실패로 반환
+            logger.error(f"[ImageTouchNode] ❌ folder_path가 없습니다! parameters 전체: {parameters}")
             return create_failed_result(
                 action="image-touch", reason="no_folder", message="폴더 경로가 제공되지 않았습니다."
             )

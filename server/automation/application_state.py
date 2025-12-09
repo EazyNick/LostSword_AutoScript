@@ -35,7 +35,6 @@ class ApplicationState:
             "application_world": "templates/application_world.png",
             "inventory": "templates/inventory.png",
             "shop": "templates/shop.png",
-            "battle": "templates/battle.png",
         }
 
     def update_state(self, key: str, value: Any) -> None:
