@@ -12,6 +12,7 @@ from api import (
     action_router,
     config_router,
     dashboard_router,
+    log_router,
     node_router,
     script_router,
     state_router,
@@ -128,6 +129,7 @@ app.include_router(node_router)
 app.include_router(config_router)
 app.include_router(action_node_router)
 app.include_router(dashboard_router)
+app.include_router(log_router)
 
 # 정적 파일 서빙 설정 (개발 환경)
 ui_path = os.path.join(os.path.dirname(__file__), "..", "UI", "src")

@@ -37,11 +37,17 @@
 """
 
 from collections.abc import Callable
+import contextlib
+from datetime import datetime
 from functools import wraps
+import time
+import traceback
 from typing import Any, ParamSpec, TypeVar
+import uuid
 
 from log import log_manager
 from utils import create_failed_result, normalize_result, validate_parameters
+from utils.log_client import get_log_client
 
 logger = log_manager.logger
 
@@ -104,6 +110,37 @@ class NodeExecutor:
             # 파라미터 검증 및 정규화
             validated_params = validate_parameters(parameters)
 
+            # 로그 전송을 위한 정보 추출
+            node_id = (
+                validated_params.get("_node_id") or validated_params.get("node_id") or f"node_{uuid.uuid4().hex[:8]}"
+            )
+            node_name = validated_params.get("_node_name") or validated_params.get("node_name")
+            script_id = validated_params.get("_script_id")
+            execution_id = validated_params.get("_execution_id")
+
+            # 로그 전송용 파라미터 (내부 메타데이터 제외)
+            log_parameters = {k: v for k, v in validated_params.items() if not k.startswith("_")}
+
+            # 실행 시작 시간
+            started_at = datetime.now()
+            start_time_ms = time.time() * 1000
+
+            # 로그 클라이언트 가져오기
+            log_client = get_log_client()
+
+            # 실행 시작 로그 전송 (비동기, fire-and-forget)
+            with contextlib.suppress(Exception):
+                await log_client.send_log_async(
+                    execution_id=execution_id,
+                    script_id=script_id,
+                    node_id=node_id,
+                    node_type=self.action_name,
+                    node_name=node_name,
+                    status="running",
+                    started_at=started_at,
+                    parameters=log_parameters,
+                )
+
             try:
                 logger.debug(f"[{self.action_name}] 노드 실행 시작 - 파라미터: {validated_params}")
 
@@ -113,22 +150,65 @@ class NodeExecutor:
                 # 결과 정규화
                 normalized_result = normalize_result(result, self.action_name)
 
+                # 실행 종료 시간
+                finished_at = datetime.now()
+                execution_time_ms = int((time.time() * 1000) - start_time_ms)
+
                 logger.debug(f"[{self.action_name}] 노드 실행 완료 - 결과: {normalized_result}")
+
+                # 실행 완료 로그 전송 (비동기, fire-and-forget)
+                with contextlib.suppress(Exception):
+                    await log_client.send_log_async(
+                        execution_id=execution_id,
+                        script_id=script_id,
+                        node_id=node_id,
+                        node_type=self.action_name,
+                        node_name=node_name,
+                        status="completed",
+                        started_at=started_at,
+                        finished_at=finished_at,
+                        execution_time_ms=execution_time_ms,
+                        parameters=log_parameters,
+                        result=normalized_result,
+                    )
 
                 return normalized_result
 
             except Exception as e:
+                # 실행 종료 시간
+                finished_at = datetime.now()
+                execution_time_ms = int((time.time() * 1000) - start_time_ms)
+                error_trace = traceback.format_exc()
+
                 logger.error(f"[{self.action_name}] 노드 실행 실패: {e}")
-                import traceback
+                logger.error(f"[{self.action_name}] 스택 트레이스: {error_trace}")
 
-                logger.error(f"[{self.action_name}] 스택 트레이스: {traceback.format_exc()}")
-
-                # 에러 결과 반환
-                return create_failed_result(
+                # 에러 결과 생성
+                error_result = create_failed_result(
                     action=self.action_name,
                     reason="execution_error",
                     message=f"노드 실행 중 오류 발생: {e!s}",
                     output={"error": str(e)},
                 )
+
+                # 실행 실패 로그 전송 (비동기, fire-and-forget)
+                with contextlib.suppress(Exception):
+                    await log_client.send_log_async(
+                        execution_id=execution_id,
+                        script_id=script_id,
+                        node_id=node_id,
+                        node_type=self.action_name,
+                        node_name=node_name,
+                        status="failed",
+                        started_at=started_at,
+                        finished_at=finished_at,
+                        execution_time_ms=execution_time_ms,
+                        parameters=log_parameters,
+                        result=error_result,
+                        error_message=str(e),
+                        error_traceback=error_trace,
+                    )
+
+                return error_result
 
         return wrapper

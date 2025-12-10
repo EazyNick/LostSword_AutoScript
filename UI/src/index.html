@@ -19,6 +19,7 @@
         <link rel="stylesheet" href="/static/pages/workflow/workflow.css" />
         <link rel="stylesheet" href="/static/pages/workflow/dashboard.css" />
         <link rel="stylesheet" href="/static/pages/workflow/settings.css" />
+        <link rel="stylesheet" href="/static/pages/workflow/history.css" />
         <!-- 테마 스타일 -->
         <!-- 다크 모드 -->
         <link rel="stylesheet" href="/static/styles/themes/dark/common.css" />
@@ -26,12 +27,14 @@
         <link rel="stylesheet" href="/static/styles/themes/dark/dashboard.css" />
         <link rel="stylesheet" href="/static/styles/themes/dark/settings.css" />
         <link rel="stylesheet" href="/static/styles/themes/dark/workflow.css" />
+        <link rel="stylesheet" href="/static/styles/themes/dark/history.css" />
         <!-- 라이트 모드 -->
         <link rel="stylesheet" href="/static/styles/themes/light/common.css" />
         <link rel="stylesheet" href="/static/styles/themes/light/components.css" />
         <link rel="stylesheet" href="/static/styles/themes/light/dashboard.css" />
         <link rel="stylesheet" href="/static/styles/themes/light/settings.css" />
         <link rel="stylesheet" href="/static/styles/themes/light/workflow.css" />
+        <link rel="stylesheet" href="/static/styles/themes/light/history.css" />
     </head>
     <body>
         <!-- 메인 앱 컨테이너 -->
@@ -202,10 +205,59 @@
                 <!-- 실행 기록 페이지 -->
                 <div class="page-content" id="page-history" style="display: none">
                     <div class="history-container">
-                        <h1 class="page-title">실행 기록</h1>
-                        <p class="page-subtitle">과거 실행 내역을 확인하세요</p>
+                        <div class="history-header">
+                            <div>
+                                <h1 class="page-title">실행 기록</h1>
+                                <p class="page-subtitle">과거 실행 내역 및 노드 실행 로그를 확인하세요</p>
+                            </div>
+                        </div>
+
+                        <!-- 필터 영역 -->
+                        <div class="history-filters">
+                            <div class="history-filter-group">
+                                <label class="history-filter-label" for="history-filter-script">스크립트</label>
+                                <select class="history-filter-select" id="history-filter-script">
+                                    <option value="">전체 스크립트</option>
+                                </select>
+                            </div>
+                            <div class="history-filter-group">
+                                <label class="history-filter-label" for="history-filter-status">상태</label>
+                                <select class="history-filter-select" id="history-filter-status">
+                                    <option value="all">전체</option>
+                                    <option value="completed">완료</option>
+                                    <option value="failed">실패</option>
+                                    <option value="running">실행 중</option>
+                                </select>
+                            </div>
+                            <button class="history-refresh-btn" id="history-refresh-btn">🔄 새로고침</button>
+                            <button class="history-delete-all-btn" id="history-delete-all-btn" title="전체 로그 삭제">
+                                🗑️ 전체 삭제
+                            </button>
+                        </div>
+
+                        <!-- 통계 카드 -->
+                        <div class="history-stats">
+                            <div class="history-stat-card">
+                                <div class="history-stat-label">전체 로그</div>
+                                <div class="history-stat-value" id="history-stat-total">0</div>
+                            </div>
+                            <div class="history-stat-card">
+                                <div class="history-stat-label">완료</div>
+                                <div class="history-stat-value" id="history-stat-completed">0</div>
+                            </div>
+                            <div class="history-stat-card">
+                                <div class="history-stat-label">실패</div>
+                                <div class="history-stat-value" id="history-stat-failed">0</div>
+                            </div>
+                            <div class="history-stat-card">
+                                <div class="history-stat-label">평균 실행 시간</div>
+                                <div class="history-stat-value" id="history-stat-avg-time">0ms</div>
+                            </div>
+                        </div>
+
+                        <!-- 로그 목록 -->
                         <div class="history-list" id="history-list">
-                            <!-- 실행 기록 목록이 동적으로 생성됩니다 -->
+                            <!-- 실행 기록 및 로그 목록이 동적으로 생성됩니다 -->
                         </div>
                     </div>
                 </div>
@@ -249,6 +301,7 @@
         <script type="module" src="/static/js/api/scriptapi.js"></script>
         <script type="module" src="/static/js/api/nodeapi.js"></script>
         <script type="module" src="/static/js/api/user-settings-api.js"></script>
+        <script type="module" src="/static/js/api/logapi.js"></script>
 
         <!-- 3. NodeManager가 의존하는 서브 컨트롤러들 -->
         <script src="/static/js/components/node/node-selection.js"></script>
@@ -279,7 +332,10 @@
         <!-- 8. 페이지 라우터 -->
         <script type="module" src="/static/pages/workflow/page-router.js"></script>
 
-        <!-- 9. 설정 페이지 -->
+        <!-- 9. 실행 기록 페이지 -->
+        <script type="module" src="/static/pages/workflow/history.js"></script>
+
+        <!-- 10. 설정 페이지 -->
         <script type="module" src="/static/pages/workflow/settings.js"></script>
 
         <!-- 10. 페이지 전체 로직 -->

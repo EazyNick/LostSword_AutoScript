@@ -1,6 +1,6 @@
 # AutoScript
 
-자동화를 위한 FastAPI 서버와 웹 기반 UI 도구입니다.
+자동화를 위한 FastAPI 웹 기반 UI 도구입니다.
 
 ## 📸 웹 UI 미리보기
 ![웹 UI 스크린샷](assets/readme/web_ui.png)

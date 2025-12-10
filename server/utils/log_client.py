@@ -1,0 +1,191 @@
+"""
+로그 클라이언트 유틸리티
+wrapper에서 서버로 로그를 전송하는 기능을 제공합니다.
+"""
+
+import asyncio
+from datetime import datetime
+from typing import Any
+
+import aiohttp
+
+from config.server_config import settings
+from log import log_manager
+
+logger = log_manager.logger
+
+
+class LogClient:
+    """로그 서버로 전송하는 클라이언트"""
+
+    def __init__(self, base_url: str | None = None) -> None:
+        """
+        LogClient 초기화
+
+        Args:
+            base_url: API 서버 기본 URL (None이면 설정에서 가져옴)
+        """
+        if base_url:
+            self.base_url = base_url.rstrip("/")
+        else:
+            api_host = settings.API_HOST
+            api_port = settings.API_PORT
+            # API_HOST가 0.0.0.0이면 localhost로 접근
+            if api_host == "0.0.0.0":
+                api_host = "localhost"
+            self.base_url = f"http://{api_host}:{api_port}"
+
+        self.log_endpoint = f"{self.base_url}/api/logs/node-execution"
+        self.enabled = True  # 로그 전송 활성화 여부
+
+    async def send_log(
+        self,
+        execution_id: str | None,
+        script_id: int | None,
+        node_id: str,
+        node_type: str,
+        node_name: str | None,
+        status: str,
+        started_at: datetime | str | None = None,
+        finished_at: datetime | str | None = None,
+        execution_time_ms: int | None = None,
+        parameters: dict[str, Any] | None = None,
+        result: dict[str, Any] | None = None,
+        error_message: str | None = None,
+        error_traceback: str | None = None,
+    ) -> bool:
+        """
+        노드 실행 로그를 서버로 전송합니다.
+
+        Args:
+            execution_id: 워크플로우 실행 ID
+            script_id: 스크립트 ID
+            node_id: 노드 ID
+            node_type: 노드 타입
+            node_name: 노드 이름/제목
+            status: 실행 상태 (running, completed, failed)
+            started_at: 시작 시간 (datetime 또는 ISO 형식 문자열)
+            finished_at: 종료 시간 (datetime 또는 ISO 형식 문자열)
+            execution_time_ms: 실행 시간 (밀리초)
+            parameters: 입력 파라미터
+            result: 실행 결과
+            error_message: 에러 메시지
+            error_traceback: 에러 스택 트레이스
+
+        Returns:
+            전송 성공 여부
+        """
+        if not self.enabled:
+            return False
+
+        # datetime을 ISO 형식 문자열로 변환
+        if isinstance(started_at, datetime):
+            started_at = started_at.isoformat()
+        if isinstance(finished_at, datetime):
+            finished_at = finished_at.isoformat()
+
+        payload = {
+            "execution_id": execution_id,
+            "script_id": script_id,
+            "node_id": node_id,
+            "node_type": node_type,
+            "node_name": node_name,
+            "status": status,
+            "started_at": started_at,
+            "finished_at": finished_at,
+            "execution_time_ms": execution_time_ms,
+            "parameters": parameters,
+            "result": result,
+            "error_message": error_message,
+            "error_traceback": error_traceback,
+        }
+
+        try:
+            async with (
+                aiohttp.ClientSession() as session,
+                session.post(self.log_endpoint, json=payload, timeout=aiohttp.ClientTimeout(total=5)) as response,
+            ):
+                if response.status == 200:
+                    logger.debug(f"[LogClient] 로그 전송 성공 - 노드 ID: {node_id}, 상태: {status}")
+                    return True
+                error_text = await response.text()
+                logger.warning(f"[LogClient] 로그 전송 실패 - 상태 코드: {response.status}, 응답: {error_text}")
+                return False
+        except asyncio.TimeoutError:
+            logger.warning(f"[LogClient] 로그 전송 타임아웃 - 노드 ID: {node_id}")
+            return False
+        except Exception as e:
+            logger.warning(f"[LogClient] 로그 전송 중 오류 발생 - 노드 ID: {node_id}, 오류: {e!s}")
+            return False
+
+    async def send_log_async(
+        self,
+        execution_id: str | None,
+        script_id: int | None,
+        node_id: str,
+        node_type: str,
+        node_name: str | None,
+        status: str,
+        started_at: datetime | str | None = None,
+        finished_at: datetime | str | None = None,
+        execution_time_ms: int | None = None,
+        parameters: dict[str, Any] | None = None,
+        result: dict[str, Any] | None = None,
+        error_message: str | None = None,
+        error_traceback: str | None = None,
+    ) -> None:
+        """
+        노드 실행 로그를 비동기로 전송합니다 (fire-and-forget).
+        에러가 발생해도 예외를 발생시키지 않습니다.
+
+        Args:
+            execution_id: 워크플로우 실행 ID
+            script_id: 스크립트 ID
+            node_id: 노드 ID
+            node_type: 노드 타입
+            node_name: 노드 이름/제목
+            status: 실행 상태 (running, completed, failed)
+            started_at: 시작 시간 (datetime 또는 ISO 형식 문자열)
+            finished_at: 종료 시간 (datetime 또는 ISO 형식 문자열)
+            execution_time_ms: 실행 시간 (밀리초)
+            parameters: 입력 파라미터
+            result: 실행 결과
+            error_message: 에러 메시지
+            error_traceback: 에러 스택 트레이스
+        """
+        try:
+            await self.send_log(
+                execution_id=execution_id,
+                script_id=script_id,
+                node_id=node_id,
+                node_type=node_type,
+                node_name=node_name,
+                status=status,
+                started_at=started_at,
+                finished_at=finished_at,
+                execution_time_ms=execution_time_ms,
+                parameters=parameters,
+                result=result,
+                error_message=error_message,
+                error_traceback=error_traceback,
+            )
+        except Exception as e:
+            # 로그 전송 실패는 노드 실행에 영향을 주지 않도록 조용히 처리
+            logger.debug(f"[LogClient] 로그 전송 실패 (무시됨): {e!s}")
+
+
+# 전역 로그 클라이언트 인스턴스
+_log_client: LogClient | None = None
+
+
+def get_log_client() -> LogClient:
+    """
+    전역 로그 클라이언트 인스턴스를 반환합니다.
+
+    Returns:
+        LogClient 인스턴스
+    """
+    global _log_client
+    if _log_client is None:
+        _log_client = LogClient()
+    return _log_client

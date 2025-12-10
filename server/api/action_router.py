@@ -24,6 +24,7 @@ from models.process_focus_models import (
 from models.response_models import ListResponse
 from services.action_service import ActionService
 from services.node_execution_context import NodeExecutionContext
+from utils.execution_id_generator import generate_execution_id
 
 router = APIRouter(prefix="/api", tags=["actions"])
 action_service = ActionService()
@@ -52,6 +53,13 @@ async def execute_nodes(request: NodeExecutionRequest) -> ActionResponse:
     logger.info(f"[API] execute_nodes 호출됨 - 노드 개수: {len(request.nodes)}, 실행 모드: {request.execution_mode}")
     logger.debug(f"[API] 요청 데이터: {request}")
 
+    # 실행 ID 생성 (같은 실행의 노드들을 그룹화)
+    # 날짜시간 기반의 읽기 쉬운 형식: YYYYMMDD-HHMMSS-{랜덤문자열}
+    execution_id = generate_execution_id()
+
+    # 스크립트 ID 추출 (요청에서 가져오거나 None)
+    script_id = getattr(request, "script_id", None)
+
     # 노드 실행 컨텍스트 생성 (데이터 전달)
     context = NodeExecutionContext()
 
@@ -60,7 +68,7 @@ async def execute_nodes(request: NodeExecutionRequest) -> ActionResponse:
     error_message = None
 
     if request.execution_mode == "sequential":
-        logger.info("[API] 순차 실행 시작")
+        logger.info(f"[API] 순차 실행 시작 - 실행 ID: {execution_id}")
         for i, node in enumerate(request.nodes):
             node_id = node.get("id", f"node_{i}")
             node_type = node.get("type", "unknown")
@@ -69,8 +77,10 @@ async def execute_nodes(request: NodeExecutionRequest) -> ActionResponse:
                 f"[API] 노드 {i + 1}/{len(request.nodes)} 실행 시작 - ID: {node_id}, 타입: {node_type}, 이름: {node_name}"
             )
             try:
-                # 실행 컨텍스트와 함께 노드 실행
-                result = await action_service.process_node(node, context)
+                # 실행 컨텍스트와 함께 노드 실행 (execution_id와 메타데이터 전달)
+                result = await action_service.process_node(
+                    node, context, execution_id=execution_id, script_id=script_id
+                )
 
                 # 결과가 None이면 기본값으로 변환
                 if result is None:

@@ -124,7 +124,13 @@ class ActionService:
             logger.error(f"process_game_action 스택 트레이스: {traceback.format_exc()}")
             raise e
 
-    async def process_node(self, node: dict[str, Any], context: NodeExecutionContext | None = None) -> dict[str, Any]:
+    async def process_node(
+        self,
+        node: dict[str, Any],
+        context: NodeExecutionContext | None = None,
+        execution_id: str | None = None,
+        script_id: int | None = None,
+    ) -> dict[str, Any]:
         """
         개별 노드를 처리하는 함수
 
@@ -134,6 +140,8 @@ class ActionService:
         Args:
             node: 노드 데이터
             context: 노드 실행 컨텍스트 (데이터 전달용)
+            execution_id: 워크플로우 실행 ID (로그 추적용)
+            script_id: 스크립트 ID (로그 추적용)
 
         Returns:
             항상 dict를 반환 (None이면 기본값 반환)
@@ -150,6 +158,15 @@ class ActionService:
                 node_data = {}
 
             node_name = node_data.get("title") or node_data.get("name")
+
+            # 로그 추적을 위한 메타데이터를 node_data에 추가 (내부 메타데이터는 _ 접두사 사용)
+            if execution_id is not None:
+                node_data["_execution_id"] = execution_id
+            if script_id is not None:
+                node_data["_script_id"] = script_id
+            node_data["_node_id"] = node_id
+            if node_name:
+                node_data["_node_name"] = node_name
 
             logger.info(f"[process_node] 노드 타입: {node_type}")
             logger.info(f"[process_node] 노드 데이터: {node_data}")

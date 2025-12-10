@@ -132,6 +132,39 @@ class TableManager:
                 "CREATE INDEX IF NOT EXISTS idx_executions_script_status ON script_executions(script_id, status)"
             )
 
+            # 노드 실행 로그 테이블 생성 (각 노드의 실행 결과 추적)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS node_execution_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    execution_id TEXT,
+                    script_id INTEGER,
+                    node_id TEXT NOT NULL,
+                    node_type TEXT NOT NULL,
+                    node_name TEXT,
+                    status TEXT NOT NULL DEFAULT 'running',
+                    started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    finished_at TIMESTAMP,
+                    execution_time_ms INTEGER,
+                    parameters TEXT DEFAULT '{}',
+                    result TEXT DEFAULT '{}',
+                    error_message TEXT,
+                    error_traceback TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (script_id) REFERENCES scripts(id) ON DELETE CASCADE
+                )
+            """)
+            # 노드 실행 로그 인덱스 추가
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_node_logs_execution_id ON node_execution_logs(execution_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_node_logs_script_id ON node_execution_logs(script_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_node_logs_node_id ON node_execution_logs(node_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_node_logs_status ON node_execution_logs(status)")
+            cursor.execute(
+                "CREATE INDEX IF NOT EXISTS idx_node_logs_started_at ON node_execution_logs(started_at DESC)"
+            )
+            cursor.execute(
+                "CREATE INDEX IF NOT EXISTS idx_node_logs_script_started ON node_execution_logs(script_id, started_at DESC)"
+            )
+
             # 태그 테이블 생성 (스크립트 분류 및 검색용)
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS tags (

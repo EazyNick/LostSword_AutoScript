@@ -149,7 +149,61 @@ CREATE TABLE user_settings (
 - `theme`: 테마 설정 (dark/light)
 - `language`: 언어 설정
 
-### 4. `script_executions` 테이블
+### 4. `node_execution_logs` 테이블
+
+각 노드의 실행 결과를 추적하고 저장합니다. 노드가 실행될 때마다 자동으로 로그가 생성됩니다.
+
+```sql
+CREATE TABLE node_execution_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    execution_id TEXT,
+    script_id INTEGER,
+    node_id TEXT NOT NULL,
+    node_type TEXT NOT NULL,
+    node_name TEXT,
+    status TEXT NOT NULL DEFAULT 'running',
+    started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    finished_at TIMESTAMP,
+    execution_time_ms INTEGER,
+    parameters TEXT DEFAULT '{}',
+    result TEXT DEFAULT '{}',
+    error_message TEXT,
+    error_traceback TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (script_id) REFERENCES scripts(id) ON DELETE CASCADE
+)
+```
+
+**컬럼 설명:**
+- `id`: 로그 고유 ID (자동 증가)
+- `execution_id`: 워크플로우 실행 ID (같은 실행의 노드들을 그룹화, UUID 형식)
+- `script_id`: 스크립트 ID (선택사항, 외래키)
+- `node_id`: 노드 ID (워크플로우 내 고유 식별자)
+- `node_type`: 노드 타입 (start, end, action, condition, wait, image-touch 등)
+- `node_name`: 노드 이름/제목
+- `status`: 실행 상태 (running, completed, failed)
+- `started_at`: 실행 시작 시간 (ISO 형식 문자열)
+- `finished_at`: 실행 종료 시간 (ISO 형식 문자열)
+- `execution_time_ms`: 실행 시간 (밀리초)
+- `parameters`: 입력 파라미터 (JSON 문자열)
+- `result`: 실행 결과 (JSON 문자열)
+- `error_message`: 에러 메시지 (실패 시)
+- `error_traceback`: 에러 스택 트레이스 (실패 시)
+- `created_at`: 로그 생성 시간
+
+**인덱스:**
+- PRIMARY KEY: `id`
+- FOREIGN KEY: `script_id` → `scripts.id` (CASCADE DELETE)
+- `idx_node_logs_execution_id`: 실행 ID별 조회 최적화
+- `idx_node_logs_script_id`: 스크립트별 조회 최적화
+- `idx_node_logs_node_id`: 노드별 조회 최적화
+- `idx_node_logs_status`: 상태별 필터링 최적화
+- `idx_node_logs_started_at`: 시간순 정렬 최적화 (DESC)
+- `idx_node_logs_script_started`: 스크립트 + 시간 복합 인덱스
+
+자세한 내용은 [노드 실행 로그 시스템](node_execution_logs.md) 문서를 참고하세요.
+
+### 5. `script_executions` 테이블
 
 스크립트 실행 기록을 저장합니다.
 
@@ -183,7 +237,7 @@ CREATE TABLE script_executions (
 - `idx_executions_started_at`: 시간순 정렬 (DESC)
 - `idx_executions_script_status`: 스크립트 + 상태 복합 인덱스
 
-### 5. `tags` 테이블
+### 6. `tags` 테이블
 
 태그 정보를 저장합니다. 스크립트 분류 및 검색에 사용됩니다.
 
@@ -207,7 +261,7 @@ CREATE TABLE tags (
 - UNIQUE: `name`
 - `idx_tags_name`: 이름 기반 검색 최적화
 
-### 6. `script_tags` 테이블
+### 7. `script_tags` 테이블
 
 스크립트와 태그의 다대다 관계를 저장합니다.
 
@@ -232,7 +286,7 @@ CREATE TABLE script_tags (
 - `idx_script_tags_script`: 스크립트별 태그 조회
 - `idx_script_tags_tag`: 태그별 스크립트 조회
 
-### 7. `dashboard_stats` 테이블
+### 8. `dashboard_stats` 테이블
 
 대시보드 통계 데이터를 저장합니다.
 
@@ -294,13 +348,14 @@ GROUP BY s.id, s.name, s.active, s.last_executed_at
 ```
 scripts (부모)
   ├── nodes (자식)
+  ├── node_execution_logs (자식)
   ├── script_executions (자식)
   └── script_tags (자식)
         └── tags (독립)
 ```
 
 **CASCADE DELETE:**
-- `scripts` 삭제 시 → `nodes`, `script_executions`, `script_tags` 자동 삭제
+- `scripts` 삭제 시 → `nodes`, `node_execution_logs`, `script_executions`, `script_tags` 자동 삭제
 - `tags` 삭제 시 → `script_tags` 자동 삭제
 
 ### 독립 테이블
@@ -355,6 +410,7 @@ conn.execute("PRAGMA foreign_keys = ON")
 - `nodes`: `connected_to`, `connected_from`, `parameters`, `description`, `updated_at`
 - `scripts`: `active`, `last_executed_at`, `execution_order`
 - `user_settings`: `user_id`
+- `node_execution_logs`: 새 테이블 (자동 생성)
 
 **마이그레이션 실행:**
 ```python
