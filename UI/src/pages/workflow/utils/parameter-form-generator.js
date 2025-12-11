@@ -5,6 +5,8 @@
  * 동적으로 HTML 폼을 생성합니다.
  */
 
+import { escapeHtml } from './node-utils.js';
+
 /**
  * 파라미터 정의를 기반으로 HTML 입력 필드 생성
  *
@@ -57,12 +59,16 @@ export function generateParameterInput(paramKey, paramConfig, prefix = 'node-', 
             break;
 
         case 'string':
+        case 'options':
             // options가 있으면 select, 없으면 text input
             if (options && Array.isArray(options)) {
                 const optionsHtml = options
                     .map((opt) => {
-                        const selected = value === opt ? 'selected' : '';
-                        return `<option value="${escapeHtml(opt)}" ${selected}>${escapeHtml(opt)}</option>`;
+                        // 옵션이 객체 형태인지 문자열인지 확인
+                        const optValue = typeof opt === 'object' && opt !== null ? opt.value : opt;
+                        const optLabel = typeof opt === 'object' && opt !== null ? opt.label : opt;
+                        const selected = value === optValue ? 'selected' : '';
+                        return `<option value="${escapeHtml(optValue)}" ${selected}>${escapeHtml(optLabel)}</option>`;
                     })
                     .join('');
                 inputHtml = `
@@ -134,6 +140,7 @@ export function generateParameterInput(paramKey, paramConfig, prefix = 'node-', 
             break;
 
         case 'boolean':
+            // boolean 타입은 label이 input을 감싸므로 외부 label이 필요 없음
             inputHtml = `
                 <label style="display: flex; align-items: center; gap: 8px;">
                     <input 
@@ -141,7 +148,7 @@ export function generateParameterInput(paramKey, paramConfig, prefix = 'node-', 
                         id="${fieldId}" 
                         ${value ? 'checked' : ''}
                         class="node-settings-checkbox">
-                    <span>${label}</span>
+                    <span>${escapeHtml(label)}${requiredMark}</span>
                 </label>
             `;
             break;
@@ -166,9 +173,15 @@ export function generateParameterInput(paramKey, paramConfig, prefix = 'node-', 
             ? `${fieldId}-browse-btn`
             : null;
 
+    // boolean 타입은 label이 input을 감싸므로 외부 label이 필요 없음
+    const labelHtml =
+        type === 'boolean'
+            ? ''
+            : `<label for="${fieldId}" class="node-settings-label">${escapeHtml(label)}${requiredMark}:</label>`;
+
     const html = `
         <div class="form-group node-settings-form-group">
-            <label for="${fieldId}" class="node-settings-label">${escapeHtml(label)}${requiredMark}:</label>
+            ${labelHtml}
             ${inputHtml}
             ${description ? `<small class="node-settings-help-text">${escapeHtml(description)}</small>` : ''}
         </div>
@@ -217,21 +230,6 @@ export function generateParameterForm(parameters, prefix = 'node-', currentValue
         html: formGroups.join(''),
         buttons: buttons
     };
-}
-
-/**
- * HTML 이스케이프 유틸리티
- *
- * @param {string} text - 이스케이프할 텍스트
- * @returns {string} 이스케이프된 텍스트
- */
-function escapeHtml(text) {
-    if (text === null || text === undefined) {
-        return '';
-    }
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
 }
 
 /**

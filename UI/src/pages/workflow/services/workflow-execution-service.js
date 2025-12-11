@@ -3,6 +3,9 @@
  * 워크플로우 실행 및 애니메이션을 담당합니다.
  */
 
+import { getResultModalManagerInstance } from '../../../js/utils/result-modal.js';
+import { getNodeRegistry } from './node-registry.js';
+
 export class WorkflowExecutionService {
     constructor(workflowPage) {
         this.workflowPage = workflowPage;
@@ -44,7 +47,7 @@ export class WorkflowExecutionService {
         }
 
         // 노드 데이터를 FastAPI 형식으로 변환
-        const workflowData = this.prepareWorkflowData(nodes);
+        const workflowData = await this.prepareWorkflowData(nodes);
 
         // 실행할 노드가 없으면 종료
         if (!workflowData.nodes || workflowData.nodes.length === 0) {
@@ -53,6 +56,9 @@ export class WorkflowExecutionService {
             }
             return;
         }
+
+        // 전체 노드 개수 계산 (시작/종료 노드 포함)
+        const totalNodesCount = nodes.length; // 화면의 모든 노드 개수 (시작/종료 포함)
 
         // 실행 중 플래그 설정 (중복 실행 방지)
         if (this.isExecuting) {
@@ -131,6 +137,12 @@ export class WorkflowExecutionService {
         // Start 노드는 항상 성공으로 카운팅 (실행은 안 하지만 성공으로 간주)
         successCount = 1;
 
+        // 노드 실행 결과 수집 (실행 결과 모달 표시용)
+        const nodeResults = [];
+
+        // 이전 노드의 실행 결과를 저장 (다음 노드 실행 시 전달)
+        let previousNodeResult = null;
+
         try {
             // 노드를 순차적으로 실행
             for (let i = 0; i < workflowData.nodes.length; i++) {
@@ -149,11 +161,27 @@ export class WorkflowExecutionService {
                             );
                         }
                     } else {
+                        // 실행 취소 시 남은 노드들을 중단으로 표시
+                        for (let j = i + 1; j < workflowData.nodes.length; j++) {
+                            const remainingNode = workflowData.nodes[j];
+                            const remainingNodeTitle =
+                                remainingNode.data?.title || remainingNode.type || remainingNode.id;
+                            nodeResults.push({
+                                name: remainingNodeTitle,
+                                status: 'cancelled',
+                                message: '실행 취소로 인해 실행되지 않음'
+                            });
+                        }
+
                         if (modalManager) {
-                            modalManager.showAlert(
-                                '실행 취소',
-                                `실행이 취소되었습니다.\n\n성공 노드: ${successCount}개\n실패 노드: ${failCount}개\n중단 노드: ${cancelledCount}개`
-                            );
+                            const resultModalManager = getResultModalManagerInstance();
+                            resultModalManager.showExecutionResult('실행 취소', {
+                                successCount,
+                                failCount,
+                                cancelledCount,
+                                nodes: nodeResults,
+                                summaryLabel: '노드'
+                            });
                         } else if (toastManager) {
                             toastManager.warning('실행이 취소되었습니다.');
                         }
@@ -182,7 +210,10 @@ export class WorkflowExecutionService {
                         },
                         body: JSON.stringify({
                             nodes: [nodeData],
-                            execution_mode: 'sequential'
+                            execution_mode: 'sequential',
+                            total_nodes: totalNodesCount, // 전체 노드 개수 (시작/종료 포함)
+                            current_node_index: i, // 현재 노드 순번 (0부터 시작)
+                            previous_node_result: previousNodeResult // 이전 노드의 실행 결과
                         })
                     });
 
@@ -190,6 +221,15 @@ export class WorkflowExecutionService {
 
                     // 3. 실행 완료 UI 표시
                     const nodeResult = result.data?.results?.[0];
+
+                    // 이전 노드 결과 업데이트 (다음 노드 실행 시 전달)
+                    if (nodeResult) {
+                        previousNodeResult = {
+                            ...nodeResult,
+                            node_id: nodeData.id,
+                            node_name: nodeData.data?.title || nodeData.type || nodeData.id
+                        };
+                    }
 
                     // 노드 결과에서 에러 확인 (status가 "failed"이거나 error 필드가 있는 경우)
                     const isNodeFailed =
@@ -225,6 +265,14 @@ export class WorkflowExecutionService {
                         // 성공 시
                         successCount++;
                         this.showNodeCompleted(nodeElement);
+
+                        // 노드 실행 결과 수집
+                        const nodeTitle = nodeData.data?.title || nodeData.type || nodeData.id;
+                        nodeResults.push({
+                            name: nodeTitle,
+                            status: 'success',
+                            message: '정상 실행 완료'
+                        });
                     }
                 } catch (error) {
                     // 네트워크 에러 또는 서버 에러 등
@@ -236,26 +284,13 @@ export class WorkflowExecutionService {
                     const nodeTitle = nodeData.data?.title || nodeData.type || nodeData.id;
                     const errorMessage = error.message || '알 수 없는 오류';
 
-                    // 이미지 터치 노드의 폴더 경로 관련 에러인지 확인
-                    const isImageTouchError =
-                        errorMessage.includes('폴더') ||
-                        errorMessage.includes('folder_path') ||
-                        nodeData.type === 'image-touch';
-
-                    // 에러 발생 시 실행 중단 (에러를 throw하여 상위로 전파)
-                    // 전체 스크립트 실행 중이면 모달 표시하지 않음 (에러는 상위에서 처리)
-                    // 단일 스크립트 실행 시에만 모달 표시
-                    if (!this.isRunningAllScripts && modalManager) {
-                        // 모달이 아직 표시되지 않은 경우에만 표시
-                        const modalAlreadyShown = document.querySelector('.modal.show') !== null;
-                        if (!modalAlreadyShown) {
-                            if (isImageTouchError) {
-                                modalManager.showAlert(`이미지 터치 노드 오류: ${nodeTitle}`, errorMessage);
-                            } else {
-                                modalManager.showAlert(`노드 실행 오류: ${nodeTitle}`, errorMessage);
-                            }
-                        }
-                    }
+                    // 노드 실행 결과 수집 (실패)
+                    nodeResults.push({
+                        name: nodeTitle,
+                        status: 'failed',
+                        error: errorMessage,
+                        message: errorMessage
+                    });
 
                     // 노드 실행 실패 카운팅 (한 번만 증가)
                     failCount++;
@@ -322,15 +357,17 @@ export class WorkflowExecutionService {
                     }
                 }
             } else {
-                // 단일 스크립트 실행: 모달 표시 (노드 개수)
+                // 단일 스크립트 실행: 실행 결과 모달 표시 (가운데 팝업)
                 if (modalManager) {
-                    const statusMessage = this.isCancelled
-                        ? '실행이 취소되었습니다.'
-                        : '워크플로우 실행이 완료되었습니다.';
-                    modalManager.showAlert(
-                        this.isCancelled ? '실행 취소' : '실행 완료',
-                        `${statusMessage}\n\n성공 노드: ${successCount}개\n실패 노드: ${failCount}개\n중단 노드: ${cancelledCount}개`
-                    );
+                    const title = this.isCancelled ? '실행 취소' : '실행 완료';
+                    const resultModalManager = getResultModalManagerInstance();
+                    resultModalManager.showExecutionResult(title, {
+                        successCount,
+                        failCount,
+                        cancelledCount,
+                        nodes: nodeResults,
+                        summaryLabel: '노드'
+                    });
                 } else if (toastManager) {
                     toastManager.success(`워크플로우 실행 완료 (${workflowData.nodes.length}개 노드)`);
                 }
@@ -364,11 +401,31 @@ export class WorkflowExecutionService {
                 // 전체 스크립트 실행 중이면 에러를 다시 throw하여 sidebar에서 실패로 처리
                 throw error;
             } else {
+                // 실행 중단 시 남은 노드들을 중단으로 표시
+                const failedNodeIndex = currentNodeIndex || 0;
+                for (let j = failedNodeIndex + 1; j < workflowData.nodes.length; j++) {
+                    const remainingNode = workflowData.nodes[j];
+                    const remainingNodeTitle = remainingNode.data?.title || remainingNode.type || remainingNode.id;
+                    // 이미 추가되지 않은 경우에만 추가
+                    const alreadyAdded = nodeResults.some((r) => r.name === remainingNodeTitle);
+                    if (!alreadyAdded) {
+                        nodeResults.push({
+                            name: remainingNodeTitle,
+                            status: 'cancelled',
+                            message: '오류로 인해 실행되지 않음'
+                        });
+                    }
+                }
+
                 if (modalManager) {
-                    modalManager.showAlert(
-                        '실행 중단',
-                        `워크플로우 실행 중 오류가 발생하여 실행이 중단되었습니다.\n\n성공 노드: ${successCount}개\n실패 노드: ${failCount}개\n중단 노드: ${cancelledCount}개\n\n오류: ${error.message}`
-                    );
+                    const resultModalManager = getResultModalManagerInstance();
+                    resultModalManager.showExecutionResult('실행 중단', {
+                        successCount,
+                        failCount,
+                        cancelledCount,
+                        nodes: nodeResults,
+                        summaryLabel: '노드'
+                    });
                 } else if (toastManager) {
                     toastManager.error(`워크플로우 실행 중 오류가 발생했습니다: ${error.message}`);
                 }
@@ -436,7 +493,7 @@ export class WorkflowExecutionService {
      * 시작 노드부터 연결된 순서대로 노드를 정렬합니다.
      * 조건 노드의 분기는 현재는 첫 번째 연결만 따라갑니다 (향후 조건 평가 로직 추가 필요).
      */
-    prepareWorkflowData(nodes) {
+    async prepareWorkflowData(nodes) {
         const nodeList = Array.from(nodes);
         const byId = new Map(nodeList.map((n) => [n.id || n.dataset.nodeId, n]));
 
@@ -513,12 +570,91 @@ export class WorkflowExecutionService {
             return id !== 'start' && id !== 'end' && !title.includes('시작') && !title.includes('종료');
         });
 
+        // parameters 추출을 위한 설정 가져오기 (nodeManager는 이미 위에서 선언됨)
+        const registry = getNodeRegistry();
+        const allConfigs = await registry.getNodeConfigs();
+
+        // 각 노드에 대해 parameters 추출 (workflow-save-service.js와 동일한 로직)
+        const nodesWithParameters = await Promise.all(
+            executableNodes.map(async (node) => {
+                const nodeId = node.id || node.dataset.nodeId;
+                const nodeType = this.workflowPage.getNodeType(node);
+                const nodeData = this.workflowPage.getNodeData(node);
+
+                // parameters 추출
+                const parameters = {};
+                if (nodeManager && nodeManager.nodeData && nodeManager.nodeData[nodeId]) {
+                    const config = allConfigs[nodeType];
+
+                    if (config) {
+                        // 상세 노드 타입이 있으면 상세 노드 타입의 파라미터 우선 사용
+                        const detailNodeType = nodeData?.action_node_type;
+                        let parametersToExtract = null;
+
+                        if (detailNodeType && config.detailTypes?.[detailNodeType]?.parameters) {
+                            parametersToExtract = config.detailTypes[detailNodeType].parameters;
+                        } else if (config.parameters) {
+                            parametersToExtract = config.parameters;
+                        }
+
+                        // 파라미터 정의에 따라 nodeData에서 값 추출
+                        if (parametersToExtract) {
+                            for (const [paramKey, paramConfig] of Object.entries(parametersToExtract)) {
+                                // nodeData에 값이 있으면 사용
+                                if (
+                                    nodeData &&
+                                    nodeData[paramKey] !== undefined &&
+                                    nodeData[paramKey] !== null &&
+                                    nodeData[paramKey] !== ''
+                                ) {
+                                    parameters[paramKey] = nodeData[paramKey];
+                                }
+                                // 값이 없고 기본값이 있으면 기본값 사용
+                                else if (paramConfig.default !== undefined && paramConfig.default !== null) {
+                                    parameters[paramKey] = paramConfig.default;
+                                }
+                            }
+                        }
+
+                        // 필수 파라미터 검증 (기본값 적용 후)
+                        if (parametersToExtract) {
+                            const missingRequiredParams = [];
+                            for (const [paramKey, paramConfig] of Object.entries(parametersToExtract)) {
+                                if (paramConfig.required === true) {
+                                    // 기본값이 있으면 필수 파라미터 검증 통과
+                                    if (paramConfig.default !== undefined && paramConfig.default !== null) {
+                                        continue;
+                                    }
+                                    // 기본값이 없고 값도 없으면 에러
+                                    if (
+                                        parameters[paramKey] === undefined ||
+                                        parameters[paramKey] === null ||
+                                        parameters[paramKey] === ''
+                                    ) {
+                                        missingRequiredParams.push(paramKey);
+                                    }
+                                }
+                            }
+                            if (missingRequiredParams.length > 0) {
+                                throw new Error(
+                                    `노드 '${nodeId}' (${nodeType})에 필수 파라미터가 없습니다: ${missingRequiredParams.join(', ')}`
+                                );
+                            }
+                        }
+                    }
+                }
+
+                return {
+                    id: nodeId,
+                    type: nodeType,
+                    data: nodeData || {},
+                    parameters: parameters
+                };
+            })
+        );
+
         return {
-            nodes: executableNodes.map((node) => ({
-                id: node.id || node.dataset.nodeId,
-                type: this.workflowPage.getNodeType(node),
-                data: this.workflowPage.getNodeData(node)
-            })),
+            nodes: nodesWithParameters,
             execution_mode: 'sequential'
         };
     }

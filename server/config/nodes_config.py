@@ -17,6 +17,12 @@ NODES_CONFIG: dict[str, dict[str, Any]] = {
         "script": "node-start.js",
         "is_boundary": True,
         "category": "system",
+        "input_schema": {},
+        "output_schema": {
+            "action": {"type": "string", "description": "노드 타입"},
+            "status": {"type": "string", "description": "실행 상태"},
+            "output": {"type": "any", "description": "출력 데이터"},
+        },
     },
     "end": {
         "label": "종료 노드",
@@ -25,6 +31,16 @@ NODES_CONFIG: dict[str, dict[str, Any]] = {
         "script": "node-end.js",
         "is_boundary": True,
         "category": "system",
+        "input_schema": {
+            "action": {"type": "string", "description": "이전 노드 타입"},
+            "status": {"type": "string", "description": "이전 노드 실행 상태"},
+            "output": {"type": "any", "description": "이전 노드 출력 데이터"},
+        },
+        "output_schema": {
+            "action": {"type": "string", "description": "노드 타입"},
+            "status": {"type": "string", "description": "실행 상태"},
+            "output": {"type": "any", "description": "출력 데이터"},
+        },
     },
     # === 액션 노드 (Action Nodes) ===
     # "action" 노드는 제거되었습니다.
@@ -58,6 +74,37 @@ NODES_CONFIG: dict[str, dict[str, Any]] = {
         },
         # 상세 노드 타입 정의
         "detail_types": {},
+        "input_schema": {
+            "action": {"type": "string", "description": "이전 노드 타입"},
+            "status": {"type": "string", "description": "이전 노드 실행 상태"},
+            "output": {"type": "any", "description": "이전 노드 출력 데이터"},
+        },
+        "output_schema": {
+            "action": {"type": "string", "description": "노드 타입"},
+            "status": {"type": "string", "description": "실행 상태 (completed/failed)"},
+            "output": {
+                "type": "object",
+                "description": "출력 데이터",
+                "properties": {
+                    "success": {"type": "boolean", "description": "성공 여부"},
+                    "folder_path": {"type": "string", "description": "이미지 폴더 경로"},
+                    "total_images": {"type": "number", "description": "총 이미지 개수"},
+                    "results": {
+                        "type": "array",
+                        "description": "이미지 검색 결과",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "image": {"type": "string", "description": "이미지 파일명"},
+                                "found": {"type": "boolean", "description": "발견 여부"},
+                                "position": {"type": "array", "description": "위치 [x, y]"},
+                                "touched": {"type": "boolean", "description": "터치 여부"},
+                            },
+                        },
+                    },
+                },
+            },
+        },
     },
     "wait": {
         "label": "대기 노드",
@@ -80,6 +127,23 @@ NODES_CONFIG: dict[str, dict[str, Any]] = {
         },
         # 상세 노드 타입 정의
         "detail_types": {},
+        "input_schema": {
+            "action": {"type": "string", "description": "이전 노드 타입"},
+            "status": {"type": "string", "description": "이전 노드 실행 상태"},
+            "output": {"type": "any", "description": "이전 노드 출력 데이터"},
+        },
+        "output_schema": {
+            "action": {"type": "string", "description": "노드 타입"},
+            "status": {"type": "string", "description": "실행 상태"},
+            "output": {
+                "type": "object",
+                "description": "출력 데이터",
+                "properties": {
+                    "wait_time": {"type": "number", "description": "대기한 시간 (초)"},
+                    "elapsed": {"type": "number", "description": "경과 시간"},
+                },
+            },
+        },
     },
     "process-focus": {
         "label": "화면 포커스",
@@ -90,28 +154,91 @@ NODES_CONFIG: dict[str, dict[str, Any]] = {
         "category": "action",
         # 상세 노드 타입 정의
         "detail_types": {},
+        "input_schema": {
+            "action": {"type": "string", "description": "이전 노드 타입"},
+            "status": {"type": "string", "description": "이전 노드 실행 상태"},
+            "output": {"type": "any", "description": "이전 노드 출력 데이터"},
+        },
+        "output_schema": {
+            "action": {"type": "string", "description": "노드 타입"},
+            "status": {"type": "string", "description": "실행 상태"},
+            "output": {
+                "type": "object",
+                "description": "출력 데이터",
+                "properties": {
+                    "process_id": {"type": "number", "description": "프로세스 ID"},
+                    "process_name": {"type": "string", "description": "프로세스 이름"},
+                    "hwnd": {"type": "number", "description": "윈도우 핸들"},
+                    "focused": {"type": "boolean", "description": "포커스 성공 여부"},
+                },
+            },
+        },
     },
     # === 로직 노드 (Logic Nodes) ===
     "condition": {
         "label": "조건 노드",
         "title": "조건 노드",
-        "description": "조건을 확인하는 노드입니다.",
+        "description": "이전 노드의 출력을 받아서 조건을 평가하는 노드입니다.",
         "script": "node-condition.js",
         "is_boundary": False,
         "category": "logic",
         # 노드 레벨 파라미터
         "parameters": {
-            "condition": {
+            "condition_type": {
+                "type": "options",
+                "label": "조건 타입",
+                "description": "평가할 조건의 타입을 선택하세요.",
+                "default": "equals",
+                "required": True,
+                "options": [
+                    {"value": "equals", "label": "같음 (=)"},
+                    {"value": "not_equals", "label": "다름 (!=)"},
+                    {"value": "contains", "label": "포함됨 (contains)"},
+                    {"value": "not_contains", "label": "포함되지 않음 (!contains)"},
+                    {"value": "greater_than", "label": "더 큼 (>)"},
+                    {"value": "less_than", "label": "더 작음 (<)"},
+                    {"value": "greater_or_equal", "label": "크거나 같음 (>=)"},
+                    {"value": "less_or_equal", "label": "작거나 같음 (<=)"},
+                    {"value": "is_empty", "label": "비어있음"},
+                    {"value": "is_not_empty", "label": "비어있지 않음"},
+                ],
+            },
+            "field_path": {
                 "type": "string",
-                "label": "조건식",
-                "description": "평가할 조건식을 입력하세요. (예: ${variable} > 10)",
+                "label": "필드 경로",
+                "description": "이전 노드 출력에서 비교할 필드 경로를 입력하세요. (예: output.value, output.status) 비워두면 전체 출력을 비교합니다.",
+                "default": "",
+                "required": False,
+                "placeholder": "output.value 또는 비워두기",
+            },
+            "compare_value": {
+                "type": "string",
+                "label": "비교할 값",
+                "description": "조건을 만족하는지 확인할 값을 입력하세요.",
                 "default": "",
                 "required": True,
-                "placeholder": "조건식을 입력하세요",
+                "placeholder": "비교할 값을 입력하세요",
             },
         },
         # 상세 노드 타입 정의
         "detail_types": {},
+        "input_schema": {
+            "action": {"type": "string", "description": "이전 노드 타입"},
+            "status": {"type": "string", "description": "이전 노드 실행 상태"},
+            "output": {"type": "any", "description": "이전 노드 출력 데이터"},
+        },
+        "output_schema": {
+            "action": {"type": "string", "description": "노드 타입"},
+            "status": {"type": "string", "description": "실행 상태"},
+            "output": {
+                "type": "object",
+                "description": "출력 데이터",
+                "properties": {
+                    "condition": {"type": "string", "description": "조건 표현식"},
+                    "result": {"type": "boolean", "description": "조건 평가 결과"},
+                },
+            },
+        },
     },
     "loop": {
         "label": "반복 노드",
@@ -185,6 +312,25 @@ NODES_CONFIG: dict[str, dict[str, Any]] = {
         },
         # 상세 노드 타입 정의
         "detail_types": {},
+        "input_schema": {
+            "action": {"type": "string", "description": "이전 노드 타입"},
+            "status": {"type": "string", "description": "이전 노드 실행 상태"},
+            "output": {"type": "any", "description": "이전 노드 출력 데이터"},
+        },
+        "output_schema": {
+            "action": {"type": "string", "description": "노드 타입"},
+            "status": {"type": "string", "description": "실행 상태"},
+            "output": {
+                "type": "object",
+                "description": "출력 데이터",
+                "properties": {
+                    "file_path": {"type": "string", "description": "파일 경로"},
+                    "encoding": {"type": "string", "description": "인코딩"},
+                    "content": {"type": "string", "description": "파일 내용"},
+                    "size": {"type": "number", "description": "파일 크기 (바이트)"},
+                },
+            },
+        },
     },
     # === 예시 노드: 파일 쓰기 ===
     "file-write": {
@@ -231,15 +377,55 @@ NODES_CONFIG: dict[str, dict[str, Any]] = {
         },
         # 상세 노드 타입 정의
         "detail_types": {},
+        "input_schema": {
+            "action": {"type": "string", "description": "이전 노드 타입"},
+            "status": {"type": "string", "description": "이전 노드 실행 상태"},
+            "output": {"type": "any", "description": "이전 노드 출력 데이터"},
+        },
+        "output_schema": {
+            "action": {"type": "string", "description": "노드 타입"},
+            "status": {"type": "string", "description": "실행 상태"},
+            "output": {
+                "type": "object",
+                "description": "출력 데이터",
+                "properties": {
+                    "file_path": {"type": "string", "description": "파일 경로"},
+                    "content": {"type": "string", "description": "작성한 내용"},
+                    "mode": {"type": "string", "description": "작성 모드"},
+                    "encoding": {"type": "string", "description": "인코딩"},
+                    "written": {"type": "boolean", "description": "작성 성공 여부"},
+                    "bytes_written": {"type": "number", "description": "작성된 바이트 수"},
+                },
+            },
+        },
     },
     # === 테스트 노드 (Test Node) ===
     "test": {
         "label": "테스트 노드",
         "title": "테스트",
         "description": "nodes_config.py에만 정의된 테스트 노드입니다.",
-        "script": "node-test.js",  # 이 파일은 실제로 존재하지 않아도 됨
+        "script": "node-test.js",
         "is_boundary": False,
         "category": "action",
+        "input_schema": {
+            "action": {"type": "string", "description": "이전 노드 타입"},
+            "status": {"type": "string", "description": "이전 노드 실행 상태"},
+            "output": {"type": "any", "description": "이전 노드 출력 데이터"},
+        },
+        "output_schema": {
+            "action": {"type": "string", "description": "노드 타입"},
+            "status": {"type": "string", "description": "실행 상태"},
+            "output": {
+                "type": "object",
+                "description": "출력 데이터",
+                "properties": {
+                    "test_value": {"type": "string", "description": "테스트 값"},
+                    "test_number": {"type": "number", "description": "테스트 숫자"},
+                    "test_boolean": {"type": "boolean", "description": "테스트 옵션"},
+                    "result": {"type": "string", "description": "테스트 결과"},
+                },
+            },
+        },
         "parameters": {
             "test_value": {
                 "type": "string",

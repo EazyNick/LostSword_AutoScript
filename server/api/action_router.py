@@ -38,7 +38,7 @@ async def execute_action(request: ActionRequest) -> ActionResponse:
     단일 액션을 실행합니다.
     """
     parameters = request.parameters or {}
-    result = await action_service.process_game_action(request.action_type, parameters)
+    result = await action_service.process_action(request.action_type, parameters)
 
     return ActionResponse(success=True, message=f"액션 '{request.action_type}' 실행 완료", data=result)
 
@@ -63,18 +63,33 @@ async def execute_nodes(request: NodeExecutionRequest) -> ActionResponse:
     # 노드 실행 컨텍스트 생성 (데이터 전달)
     context = NodeExecutionContext()
 
+    # 클라이언트에서 전달된 이전 노드 결과가 있으면 컨텍스트에 추가
+    if request.previous_node_result:
+        prev_result = request.previous_node_result
+        prev_node_id = prev_result.get("node_id") or prev_result.get("_node_id") or "previous"
+        prev_node_name = prev_result.get("node_name") or prev_result.get("_node_name") or "이전 노드"
+        context.add_node_result(prev_node_id, prev_node_name, prev_result)
+        logger.debug(f"[API] 이전 노드 결과를 컨텍스트에 추가: {prev_node_id} - {prev_result.get('action', 'unknown')}")
+
     results = []
     has_error = False
     error_message = None
 
     if request.execution_mode == "sequential":
         logger.info(f"[API] 순차 실행 시작 - 실행 ID: {execution_id}")
+
+        # 전체 노드 개수와 현재 순번 결정 (클라이언트에서 전달된 값 우선, 없으면 요청의 노드 개수 사용)
+        total_nodes = request.total_nodes if request.total_nodes is not None else len(request.nodes)
+        start_index = request.current_node_index if request.current_node_index is not None else 0
+
         for i, node in enumerate(request.nodes):
             node_id = node.get("id", f"node_{i}")
             node_type = node.get("type", "unknown")
             node_name = node.get("data", {}).get("title") or node.get("data", {}).get("name") or node_id
+            # 현재 노드 순번 계산 (클라이언트에서 전달된 순번 + 루프 인덱스)
+            current_node_number = start_index + i + 1
             logger.info(
-                f"[API] 노드 {i + 1}/{len(request.nodes)} 실행 시작 - ID: {node_id}, 타입: {node_type}, 이름: {node_name}"
+                f"[API] 노드 {current_node_number}/{total_nodes} 실행 시작 - ID: {node_id}, 타입: {node_type}, 이름: {node_name}"
             )
             try:
                 # 실행 컨텍스트와 함께 노드 실행 (execution_id와 메타데이터 전달)
@@ -98,18 +113,18 @@ async def execute_nodes(request: NodeExecutionRequest) -> ActionResponse:
                     if not error_message:
                         error_message = error_msg
                     logger.error(
-                        f"[API] 노드 {i + 1}/{len(request.nodes)} 실행 실패 (status: failed) - ID: {node_id}, 타입: {node_type}, 이름: {node_name}, 에러: {error_msg}"
+                        f"[API] 노드 {current_node_number}/{total_nodes} 실행 실패 (status: failed) - ID: {node_id}, 타입: {node_type}, 이름: {node_name}, 에러: {error_msg}"
                     )
                 else:
                     logger.info(
-                        f"[API] 노드 {i + 1}/{len(request.nodes)} 실행 성공 - ID: {node_id}, 타입: {node_type}, 이름: {node_name}, 상태: {result.get('status', 'completed')}"
+                        f"[API] 노드 {current_node_number}/{total_nodes} 실행 성공 - ID: {node_id}, 타입: {node_type}, 이름: {node_name}, 상태: {result.get('status', 'completed')}"
                     )
 
                 results.append(result)
                 logger.debug(f"[API] 노드 {i + 1} 실행 결과: {result}")
             except Exception as node_error:
                 logger.error(
-                    f"[API] 노드 {i + 1}/{len(request.nodes)} 실행 실패 (예외 발생) - ID: {node_id}, 타입: {node_type}, 이름: {node_name}, 에러: {node_error}"
+                    f"[API] 노드 {current_node_number}/{total_nodes} 실행 실패 (예외 발생) - ID: {node_id}, 타입: {node_type}, 이름: {node_name}, 에러: {node_error}"
                 )
                 node_id = node.get("id", f"node_{i}")
                 node_name = node.get("data", {}).get("title") or node.get("data", {}).get("name")

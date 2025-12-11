@@ -289,7 +289,7 @@ async def execute_script(script_id: int, request: NodeExecutionRequest) -> Stand
         for node in request.nodes:
             try:
                 # 실제 노드 실행 로직
-                result = await action_service.process_game_action(node.get("type", "unknown"), node.get("data", {}))
+                result = await action_service.process_action(node.get("type", "unknown"), node.get("data", {}))
                 results.append(result)
 
             except Exception as e:

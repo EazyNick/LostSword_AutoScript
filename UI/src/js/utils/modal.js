@@ -295,6 +295,29 @@ export class ModalManager {
             });
         });
     }
+
+    /**
+     * 실행 결과 모달 표시 (가운데 팝업)
+     * @param {string} title - 모달 제목
+     * @param {Object} resultData - 실행 결과 데이터
+     * @param {number} resultData.successCount - 성공 노드 개수
+     * @param {number} resultData.failCount - 실패 노드 개수
+     * @param {number} resultData.cancelledCount - 중단 노드 개수
+     * @param {Array} resultData.nodes - 노드 실행 결과 목록 (선택적)
+     * @param {Function} onOk - 확인 버튼 클릭 시 실행할 함수 (선택적)
+     */
+    showExecutionResult(title, resultData, onOk = null) {
+        // result-modal.js의 ResultModalManager를 사용
+        if (window.resultModalManager) {
+            window.resultModalManager.showExecutionResult(title, resultData, onOk);
+        } else {
+            // 동적 import 사용
+            import('./result-modal.js').then((module) => {
+                const resultModalManager = module.getResultModalManagerInstance();
+                resultModalManager.showExecutionResult(title, resultData, onOk);
+            });
+        }
+    }
 }
 
 /**

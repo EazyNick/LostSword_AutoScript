@@ -8,7 +8,7 @@
  * @returns {string} 이스케이프된 HTML
  */
 export function escapeHtml(text) {
-    if (!text) {
+    if (text === null || text === undefined || text === '') {
         return '';
     }
     const div = document.createElement('div');

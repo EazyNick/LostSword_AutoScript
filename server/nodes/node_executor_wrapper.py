@@ -36,8 +36,8 @@
             return None  # 자동으로 {"action": "simple", "status": "completed", "output": None}로 변환
 """
 
+import asyncio
 from collections.abc import Callable
-import contextlib
 from datetime import datetime
 from functools import wraps
 import time
@@ -128,9 +128,9 @@ class NodeExecutor:
             # 로그 클라이언트 가져오기
             log_client = get_log_client()
 
-            # 실행 시작 로그 전송 (비동기, fire-and-forget)
-            with contextlib.suppress(Exception):
-                await log_client.send_log_async(
+            # 실행 시작 로그 전송 (비동기, fire-and-forget - 백그라운드에서 실행)
+            _ = asyncio.create_task(  # noqa: RUF006
+                log_client.send_log_async(
                     execution_id=execution_id,
                     script_id=script_id,
                     node_id=node_id,
@@ -140,6 +140,7 @@ class NodeExecutor:
                     started_at=started_at,
                     parameters=log_parameters,
                 )
+            )
 
             try:
                 logger.debug(f"[{self.action_name}] 노드 실행 시작 - 파라미터: {validated_params}")
@@ -156,9 +157,9 @@ class NodeExecutor:
 
                 logger.debug(f"[{self.action_name}] 노드 실행 완료 - 결과: {normalized_result}")
 
-                # 실행 완료 로그 전송 (비동기, fire-and-forget)
-                with contextlib.suppress(Exception):
-                    await log_client.send_log_async(
+                # 실행 완료 로그 전송 (비동기, fire-and-forget - 백그라운드에서 실행)
+                _ = asyncio.create_task(  # noqa: RUF006
+                    log_client.send_log_async(
                         execution_id=execution_id,
                         script_id=script_id,
                         node_id=node_id,
@@ -171,6 +172,7 @@ class NodeExecutor:
                         parameters=log_parameters,
                         result=normalized_result,
                     )
+                )
 
                 return normalized_result
 
@@ -191,9 +193,9 @@ class NodeExecutor:
                     output={"error": str(e)},
                 )
 
-                # 실행 실패 로그 전송 (비동기, fire-and-forget)
-                with contextlib.suppress(Exception):
-                    await log_client.send_log_async(
+                # 실행 실패 로그 전송 (비동기, fire-and-forget - 백그라운드에서 실행)
+                _ = asyncio.create_task(  # noqa: RUF006
+                    log_client.send_log_async(
                         execution_id=execution_id,
                         script_id=script_id,
                         node_id=node_id,
@@ -208,6 +210,7 @@ class NodeExecutor:
                         error_message=str(e),
                         error_traceback=error_trace,
                     )
+                )
 
                 return error_result
 

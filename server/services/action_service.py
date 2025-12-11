@@ -17,6 +17,7 @@ from nodes.boundarynodes import EndNode, StartNode
 from nodes.conditionnodes import ConditionNode
 from nodes.imagenodes import ImageTouchNode
 from nodes.waitnodes import WaitNode
+from services.condition_service import ConditionService
 from services.expression_parser import ExpressionParser
 from services.node_execution_context import NodeExecutionContext
 
@@ -55,7 +56,7 @@ class ActionService:
         # 실제 노드 종류 핸들러 매핑 (action_node_type 사용)
         self.action_node_handlers = {"http-api-request": HttpApiRequestNode.execute}
 
-    async def process_game_action(
+    async def process_action(
         self, action_type: str, parameters: dict[str, Any], action_node_type: str | None = None
     ) -> dict[str, Any]:
         """
@@ -74,7 +75,7 @@ class ActionService:
             parameters = {}
 
             logger.info(
-                f"[process_game_action] 호출됨 - 액션 타입: {action_type}, 실제 노드 종류: {action_node_type}, 파라미터: {parameters}"
+                f"[process_action] 호출됨 - 액션 타입: {action_type}, 실제 노드 종류: {action_node_type}, 파라미터: {parameters}"
             )
 
         try:
@@ -118,10 +119,10 @@ class ActionService:
 
             return result
         except Exception as e:
-            logger.error(f"process_game_action 에러: {e}")
+            logger.error(f"process_action 에러: {e}")
             import traceback
 
-            logger.error(f"process_game_action 스택 트레이스: {traceback.format_exc()}")
+            logger.error(f"process_action 스택 트레이스: {traceback.format_exc()}")
             raise e
 
     async def process_node(
@@ -157,6 +158,14 @@ class ActionService:
             if node_data is None:
                 node_data = {}
 
+            # parameters를 node_data에 병합 (parameters가 우선순위가 높음)
+            # DB에서 불러온 노드는 parameters 필드에 파라미터가 저장되어 있음
+            node_parameters = node.get("parameters")
+            if node_parameters and isinstance(node_parameters, dict):
+                # node_data에 parameters를 병합 (parameters가 우선)
+                node_data = {**node_data, **node_parameters}
+                logger.debug(f"[process_node] parameters 병합 완료: {list(node_parameters.keys())}")
+
             node_name = node_data.get("title") or node_data.get("name")
 
             # 로그 추적을 위한 메타데이터를 node_data에 추가 (내부 메타데이터는 _ 접두사 사용)
@@ -183,6 +192,10 @@ class ActionService:
             if context:
                 context.set_current_node(node_id)
 
+                # 조건 노드인 경우 조건 서비스를 통해 데이터 준비
+                if node_type == "condition":
+                    node_data = ConditionService.prepare_condition_node_data(node_data, context)
+
                 # 파라미터에 표현식이 있으면 파싱
                 node_data = ExpressionParser.parse_parameters(node_data, context)
                 logger.debug(f"파싱된 노드 데이터: {node_data}")
@@ -199,8 +212,8 @@ class ActionService:
             else:
                 # 액션 실행 (입력이 없어도 처리)
                 node_type_str = str(node_type) if node_type else "unknown"
-                result = await self.process_game_action(node_type_str, node_data, action_node_type)
-                logger.debug(f"process_game_action 결과: {result}")
+                result = await self.process_action(node_type_str, node_data, action_node_type)
+                logger.debug(f"process_action 결과: {result}")
 
             # 결과가 None이면 기본값으로 변환
             if result is None:

@@ -5,9 +5,12 @@
 
 from typing import Any
 
+from log import log_manager
 from nodes.base_node import BaseNode
 from nodes.node_executor_wrapper import NodeExecutor
 from utils import get_korea_time_str
+
+logger = log_manager.logger
 
 
 class StartNode(BaseNode):
@@ -29,6 +32,9 @@ class StartNode(BaseNode):
             실행 결과 딕셔너리
         """
         time_str = get_korea_time_str()
+
+        # 시작 노드 실행 로그
+        logger.info(f"[StartNode] 워크플로우 시작 - 시작 시간: {time_str}")
 
         return {
             "action": "start",

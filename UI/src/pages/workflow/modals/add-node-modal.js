@@ -9,6 +9,7 @@ import { NodeValidationUtils } from '../utils/node-validation-utils.js';
 import { getNodeRegistry } from '../services/node-registry.js';
 import { getDetailNodeTypes, getDetailNodeConfig } from '../config/action-node-types.js';
 import { generateParameterForm, extractParameterValues } from '../utils/parameter-form-generator.js';
+import { generatePreviewFromSchema, collectPreviousNodeOutput } from '../config/node-preview-generator.js';
 
 export class AddNodeModal {
     constructor(workflowPage) {
@@ -654,7 +655,12 @@ export class AddNodeModal {
         }
 
         // WorkflowPage의 createNodeFromData 메서드 호출
-        this.workflowPage.createNodeFromData(nodeData);
+        const createdNodeElement = this.workflowPage.createNodeFromData(nodeData);
+
+        // 조건 노드인 경우 이전 노드의 출력을 compare_value에 설정
+        if (nodeType === 'condition' && createdNodeElement) {
+            await this.setConditionNodeDefaultValue(createdNodeElement, nodeData);
+        }
 
         const modalManager = this.workflowPage.getModalManager();
         if (modalManager) {
@@ -667,6 +673,121 @@ export class AddNodeModal {
         } catch (error) {
             console.error('노드 생성 후 자동 저장 실패:', error);
             // 저장 실패해도 노드는 생성되었으므로 사용자에게 알리지 않음
+        }
+    }
+
+    /**
+     * 조건 노드의 기본값 설정 (이전 노드의 출력을 compare_value에 설정)
+     */
+    async setConditionNodeDefaultValue(nodeElement, nodeData) {
+        try {
+            const nodeManager = this.workflowPage.getNodeManager();
+            if (!nodeManager || !nodeManager.connectionManager) {
+                return;
+            }
+
+            const connections = nodeManager.connectionManager.getConnections();
+            if (!connections || connections.length === 0) {
+                return;
+            }
+
+            // 현재 노드로 들어오는 연결 찾기 (이전 노드 찾기)
+            const nodeId = nodeData.id;
+            const inputConnections = connections.filter((conn) => conn.to === nodeId);
+
+            if (inputConnections.length === 0) {
+                // 이전 노드가 없으면 기본값 유지
+                return;
+            }
+
+            // 첫 번째 이전 노드 가져오기
+            const previousNodeId = inputConnections[0].from;
+            const previousNodeElement = document.getElementById(previousNodeId);
+
+            if (!previousNodeElement) {
+                return;
+            }
+
+            // 이전 노드의 타입과 데이터 가져오기
+            const previousNodeType = this.workflowPage.getNodeType(previousNodeElement);
+            const previousNodeData = this.workflowPage.getNodeData(previousNodeElement);
+
+            // 이전 노드의 출력 스키마 기반 예시 값 생성
+            const registry = getNodeRegistry();
+            const previousNodeConfig = await registry.getConfig(previousNodeType);
+
+            if (!previousNodeConfig?.output_schema) {
+                return;
+            }
+
+            // 이전 노드의 출력 스키마 기반 예시 데이터 생성
+            const previousOutput = generatePreviewFromSchema(previousNodeConfig.output_schema, previousNodeData || {});
+
+            // compare_value에 설정할 값 결정
+            // output.value 형식으로 필드 경로를 설정하고, output 객체의 첫 번째 값을 compare_value로 설정
+            let compareValue = '';
+            let fieldPath = '';
+
+            if (previousOutput && typeof previousOutput === 'object') {
+                if (previousOutput.output && typeof previousOutput.output === 'object') {
+                    // output 객체의 첫 번째 키와 값을 가져오기
+                    const outputKeys = Object.keys(previousOutput.output);
+                    if (outputKeys.length > 0) {
+                        const firstKey = outputKeys[0];
+                        const firstValue = previousOutput.output[firstKey];
+                        // field_path에 "output.{key}" 형식으로 설정
+                        fieldPath = `output.${firstKey}`;
+                        // compare_value에 첫 번째 값 설정 (객체/배열이면 JSON 문자열로, 아니면 그대로)
+                        compareValue = typeof firstValue === 'object' ? JSON.stringify(firstValue) : String(firstValue);
+                    } else {
+                        // output이 비어있으면 field_path만 "output"으로 설정
+                        fieldPath = 'output';
+                        compareValue = JSON.stringify(previousOutput);
+                    }
+                } else {
+                    // output 필드가 없으면 전체 출력의 첫 번째 값을 사용
+                    const keys = Object.keys(previousOutput);
+                    if (keys.length > 0) {
+                        const firstKey = keys[0];
+                        const firstValue = previousOutput[firstKey];
+                        fieldPath = firstKey;
+                        compareValue = typeof firstValue === 'object' ? JSON.stringify(firstValue) : String(firstValue);
+                    }
+                }
+            } else if (previousOutput !== null && previousOutput !== undefined) {
+                compareValue = String(previousOutput);
+            }
+
+            // compare_value와 field_path가 설정되었으면 노드 데이터 업데이트
+            if (compareValue) {
+                // 노드 데이터 업데이트
+                const updatedNodeData = {
+                    ...nodeData,
+                    compare_value: compareValue
+                };
+
+                // field_path도 설정 (output.value 형식)
+                if (fieldPath) {
+                    updatedNodeData.field_path = fieldPath;
+                }
+
+                // nodeManager의 nodeData 업데이트
+                if (nodeManager.nodeData) {
+                    nodeManager.nodeData[nodeId] = updatedNodeData;
+                }
+
+                // 노드 요소의 데이터 속성 업데이트
+                if (nodeElement) {
+                    nodeElement.dataset.nodeData = JSON.stringify(updatedNodeData);
+                }
+
+                console.log(
+                    `[AddNodeModal] 조건 노드 ${nodeId}의 compare_value를 이전 노드 출력으로 설정: ${compareValue}`
+                );
+            }
+        } catch (error) {
+            console.error('[AddNodeModal] 조건 노드 기본값 설정 실패:', error);
+            // 에러가 발생해도 노드 생성은 계속 진행
         }
     }
 

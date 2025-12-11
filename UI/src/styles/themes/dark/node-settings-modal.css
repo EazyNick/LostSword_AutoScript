@@ -1,0 +1,103 @@
+/* ========================================== */
+/* 다크 모드 노드 설정 모달 스타일 */
+/* ========================================== */
+
+/* ========================================== */
+/* 미리보기 영역 다크 모드 스타일 */
+/* ========================================== */
+
+/* 미리보기 플레이스홀더 텍스트 색상 */
+body.theme-dark .node-settings-preview-placeholder {
+    color: #718096; /* 밝은 회색 텍스트 */
+}
+
+/* ========================================== */
+/* 폼 요소 다크 모드 스타일 */
+/* ========================================== */
+
+/* 노드 설정 입력 필드 배경 및 테두리 */
+body.theme-dark .node-settings-input,
+body.theme-dark .node-settings-select,
+body.theme-dark .node-settings-textarea {
+    border-color: #4a5568; /* 회색 테두리 */
+    background-color: #2d3748; /* 다크 그레이 배경 */
+    color: #e2e8f0; /* 밝은 회색 텍스트 */
+}
+
+/* 노드 설정 입력 필드 포커스 효과 */
+body.theme-dark .node-settings-input:focus,
+body.theme-dark .node-settings-select:focus,
+body.theme-dark .node-settings-textarea:focus {
+    background-color: #374151; /* 포커스 시 약간 밝게 */
+    border-color: #14b8a6; /* 청록색 테두리 */
+    outline: none; /* 기본 아웃라인 제거 */
+}
+
+/* 설명 필드: 노드 제목, 타입과 동일한 스타일 (일반 폰트, 어두운 테마) */
+body.theme-dark .modal #edit-node-description,
+body.theme-dark .modal .form-group #edit-node-description,
+body.theme-dark .modal .node-settings-form-group #edit-node-description,
+body.theme-dark #edit-node-description.node-settings-textarea {
+    font-family: inherit !important; /* 부모 폰트 상속 (일반 폰트) */
+    background-color: #1a202c !important; /* 어두운 배경 */
+    background: #1a202c none !important; /* background 단축 속성으로도 강제 적용 */
+    border-color: #4a5568 !important; /* 회색 테두리 */
+    color: #ffffff !important; /* 흰색 텍스트 */
+    opacity: 1 !important; /* 불투명도 100% */
+    isolation: isolate !important; /* 새로운 stacking context 생성 */
+    position: relative !important; /* stacking context를 위한 position */
+}
+
+/* 설명 필드 포커스 효과 */
+body.theme-dark .modal #edit-node-description:focus,
+body.theme-dark .modal .form-group #edit-node-description:focus,
+body.theme-dark .modal .node-settings-form-group #edit-node-description:focus,
+body.theme-dark #edit-node-description.node-settings-textarea:focus {
+    background-color: #2d3748 !important; /* 포커스 시 약간 밝게 */
+    background: #2d3748 none !important; /* background 단축 속성으로도 강제 적용 */
+    border-color: #667eea !important; /* 파란색 테두리 */
+    outline: none !important; /* 기본 아웃라인 제거 */
+    opacity: 1 !important; /* 불투명도 100% */
+}
+
+/* 도움말 텍스트 색상 */
+body.theme-dark .node-settings-help-text {
+    color: #a0aec0; /* 밝은 회색 텍스트 */
+}
+
+/* 섹션 구분선 색상 */
+body.theme-dark .node-settings-section-divider {
+    border-top-color: #4a5568; /* 회색 상단 테두리 */
+}
+
+/* ========================================== */
+/* 미리보기 데이터 필드 다크 모드 스타일 */
+/* ========================================== */
+
+/* 미리보기 필드 라벨 색상 */
+body.theme-dark .node-preview-field-label {
+    color: #e2e8f0; /* 밝은 회색 텍스트 */
+}
+
+/* 입력/출력 미리보기 textarea 배경 및 테두리 */
+body.theme-dark #node-input-preview,
+body.theme-dark #node-output-preview textarea,
+body.theme-dark #edit-node-output-value {
+    background-color: #2d3748; /* 다크 그레이 배경 */
+    border-color: #4a5568; /* 회색 테두리 */
+    color: #e2e8f0; /* 밝은 회색 텍스트 */
+}
+
+/* 입력/출력 미리보기 textarea 포커스 효과 */
+body.theme-dark #node-input-preview:focus,
+body.theme-dark #node-output-preview textarea:focus,
+body.theme-dark #edit-node-output-value:focus {
+    background-color: #374151; /* 포커스 시 약간 밝게 */
+    border-color: #14b8a6; /* 청록색 테두리 */
+    outline: none; /* 기본 아웃라인 제거 */
+}
+
+/* 미리보기 텍스트 영역 색상 */
+body.theme-dark .node-preview-textarea {
+    color: #e2e8f0; /* 밝은 회색 텍스트 */
+}

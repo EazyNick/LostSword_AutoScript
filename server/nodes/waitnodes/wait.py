@@ -6,9 +6,12 @@
 import asyncio
 from typing import Any
 
+from log import log_manager
 from nodes.base_node import BaseNode
 from nodes.node_executor_wrapper import NodeExecutor
 from utils import get_parameter
+
+logger = log_manager.logger
 
 
 class WaitNode(BaseNode):
@@ -38,8 +41,14 @@ class WaitNode(BaseNode):
         except (ValueError, TypeError):
             wait_time = 1
 
+        # 대기 시작 로그
+        logger.info(f"[WaitNode] {wait_time}초 대기 시작")
+
         # 비동기 대기
         await asyncio.sleep(wait_time)
+
+        # 대기 완료 로그
+        logger.info(f"[WaitNode] {wait_time}초 대기 완료")
 
         return {
             "action": "wait",

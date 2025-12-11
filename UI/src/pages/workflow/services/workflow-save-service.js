@@ -89,6 +89,7 @@ export class WorkflowSaveService {
                     // 파라미터 정의에 따라 nodeData에서 값 추출
                     if (parametersToExtract) {
                         for (const [paramKey, paramConfig] of Object.entries(parametersToExtract)) {
+                            // nodeData에 값이 있으면 사용
                             if (
                                 nodeData[paramKey] !== undefined &&
                                 nodeData[paramKey] !== null &&
@@ -96,36 +97,37 @@ export class WorkflowSaveService {
                             ) {
                                 parameters[paramKey] = nodeData[paramKey];
                             }
+                            // 값이 없고 기본값이 있으면 기본값 사용
+                            else if (paramConfig.default !== undefined && paramConfig.default !== null) {
+                                parameters[paramKey] = paramConfig.default;
+                            }
                         }
                     }
-                }
 
-                // 레거시 하위 호환성 (파라미터로 처리되지 않은 경우)
-                // image-touch
-                if (nodeType === 'image-touch' && !parameters.folder_path && nodeData.folder_path) {
-                    parameters.folder_path = nodeData.folder_path;
-                }
-                // condition
-                if (nodeType === 'condition' && !parameters.condition && nodeData.condition) {
-                    parameters.condition = nodeData.condition;
-                }
-                // wait
-                if (nodeType === 'wait' && !parameters.wait_time && nodeData.wait_time !== undefined) {
-                    parameters.wait_time = nodeData.wait_time;
-                }
-                // process-focus
-                if (nodeType === 'process-focus') {
-                    if (nodeData.process_id !== undefined) {
-                        parameters.process_id = nodeData.process_id;
-                    }
-                    if (nodeData.hwnd !== undefined) {
-                        parameters.hwnd = nodeData.hwnd;
-                    }
-                    if (nodeData.process_name) {
-                        parameters.process_name = nodeData.process_name;
-                    }
-                    if (nodeData.window_title) {
-                        parameters.window_title = nodeData.window_title;
+                    // 필수 파라미터 검증 (기본값 적용 후)
+                    if (parametersToExtract) {
+                        const missingRequiredParams = [];
+                        for (const [paramKey, paramConfig] of Object.entries(parametersToExtract)) {
+                            if (paramConfig.required === true) {
+                                // 기본값이 있으면 필수 파라미터 검증 통과
+                                if (paramConfig.default !== undefined && paramConfig.default !== null) {
+                                    continue;
+                                }
+                                // 기본값이 없고 값도 없으면 에러
+                                if (
+                                    parameters[paramKey] === undefined ||
+                                    parameters[paramKey] === null ||
+                                    parameters[paramKey] === ''
+                                ) {
+                                    missingRequiredParams.push(paramKey);
+                                }
+                            }
+                        }
+                        if (missingRequiredParams.length > 0) {
+                            throw new Error(
+                                `노드 '${node.id}' (${nodeType})에 필수 파라미터가 없습니다: ${missingRequiredParams.join(', ')}`
+                            );
+                        }
                     }
                 }
             }

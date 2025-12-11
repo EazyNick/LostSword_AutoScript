@@ -1,0 +1,106 @@
+/* ========================================== */
+/* 라이트 모드 노드 설정 모달 스타일 */
+/* ========================================== */
+
+/* ========================================== */
+/* 미리보기 영역 라이트 모드 스타일 */
+/* ========================================== */
+
+/* 미리보기 플레이스홀더 텍스트 색상 */
+body.theme-light .node-settings-preview-placeholder {
+    color: #9ca3af; /* 회색 텍스트 */
+}
+
+/* ========================================== */
+/* 폼 요소 라이트 모드 스타일 */
+/* ========================================== */
+
+/* 노드 설정 입력 필드 배경 및 테두리 */
+body.theme-light .node-settings-input,
+body.theme-light .node-settings-select,
+body.theme-light .node-settings-textarea {
+    border-color: #e5e7eb; /* 연한 회색 테두리 */
+    background-color: #ffffff; /* 화이트 배경 */
+    color: #1f2937; /* 어두운 회색 텍스트 */
+}
+
+/* 노드 설정 입력 필드 포커스 효과 */
+body.theme-light .node-settings-input:focus,
+body.theme-light .node-settings-select:focus,
+body.theme-light .node-settings-textarea:focus {
+    background-color: #ffffff; /* 화이트 배경 유지 */
+    border-color: #3182ce; /* 파란색 테두리 */
+    box-shadow: 0 0 0 2px rgba(49, 130, 206, 0.1); /* 파란색 그림자 */
+    outline: none; /* 기본 아웃라인 제거 */
+}
+
+/* 설명 필드: 노드 제목, 타입과 동일한 스타일 (일반 폰트, 밝은 테마) */
+body.theme-light .modal #edit-node-description,
+body.theme-light .modal .form-group #edit-node-description,
+body.theme-light .modal .node-settings-form-group #edit-node-description,
+body.theme-light #edit-node-description.node-settings-textarea {
+    font-family: inherit !important; /* 부모 폰트 상속 (일반 폰트) */
+    background-color: #ffffff !important; /* 화이트 배경 */
+    background: #ffffff none !important; /* background 단축 속성으로도 강제 적용 */
+    border-color: #e5e7eb !important; /* 연한 회색 테두리 */
+    color: #1f2937 !important; /* 어두운 회색 텍스트 */
+    opacity: 1 !important; /* 불투명도 100% */
+    isolation: isolate !important; /* 새로운 stacking context 생성 */
+    position: relative !important; /* stacking context를 위한 position */
+}
+
+/* 설명 필드 포커스 효과 */
+body.theme-light .modal #edit-node-description:focus,
+body.theme-light .modal .form-group #edit-node-description:focus,
+body.theme-light .modal .node-settings-form-group #edit-node-description:focus,
+body.theme-light #edit-node-description.node-settings-textarea:focus {
+    background-color: #ffffff !important; /* 화이트 배경 유지 */
+    background: #ffffff none !important; /* background 단축 속성으로도 강제 적용 */
+    border-color: #3182ce !important; /* 파란색 테두리 */
+    box-shadow: 0 0 0 2px rgba(49, 130, 206, 0.1) !important; /* 파란색 그림자 */
+    outline: none !important; /* 기본 아웃라인 제거 */
+    opacity: 1 !important; /* 불투명도 100% */
+}
+
+/* 도움말 텍스트 색상 */
+body.theme-light .node-settings-help-text {
+    color: #6b7280; /* 회색 텍스트 */
+}
+
+/* 섹션 구분선 색상 */
+body.theme-light .node-settings-section-divider {
+    border-top-color: #e5e7eb; /* 연한 회색 상단 테두리 */
+}
+
+/* ========================================== */
+/* 미리보기 데이터 필드 라이트 모드 스타일 */
+/* ========================================== */
+
+/* 미리보기 필드 라벨 색상 */
+body.theme-light .node-preview-field-label {
+    color: #1f2937; /* 어두운 회색 텍스트 */
+}
+
+/* 입력/출력 미리보기 textarea 배경 및 테두리 */
+body.theme-light #node-input-preview,
+body.theme-light #node-output-preview textarea,
+body.theme-light #edit-node-output-value {
+    background-color: #ffffff; /* 화이트 배경 */
+    border-color: #e5e7eb; /* 연한 회색 테두리 */
+    color: #1a202c; /* 어두운 텍스트 */
+}
+
+/* 입력/출력 미리보기 textarea 포커스 효과 */
+body.theme-light #node-input-preview:focus,
+body.theme-light #node-output-preview textarea:focus,
+body.theme-light #edit-node-output-value:focus {
+    background-color: #ffffff; /* 화이트 배경 유지 */
+    border-color: #3182ce; /* 파란색 테두리 */
+    box-shadow: 0 0 0 2px rgba(49, 130, 206, 0.1); /* 파란색 그림자 */
+    outline: none; /* 기본 아웃라인 제거 */
+}
+
+/* 미리보기 텍스트 영역 색상 */
+body.theme-light .node-preview-textarea {
+    color: #1a202c; /* 어두운 텍스트 */
+}

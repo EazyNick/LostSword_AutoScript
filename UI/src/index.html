@@ -16,6 +16,7 @@
         <link rel="stylesheet" href="/static/styles/components/top-profile.css" />
         <link rel="stylesheet" href="/static/styles/components/modal.css" />
         <link rel="stylesheet" href="/static/styles/components/node-settings-modal.css" />
+        <link rel="stylesheet" href="/static/styles/components/result-modal.css" />
         <link rel="stylesheet" href="/static/pages/workflow/workflow.css" />
         <link rel="stylesheet" href="/static/pages/workflow/dashboard.css" />
         <link rel="stylesheet" href="/static/pages/workflow/settings.css" />
@@ -24,6 +25,9 @@
         <!-- 다크 모드 -->
         <link rel="stylesheet" href="/static/styles/themes/dark/common.css" />
         <link rel="stylesheet" href="/static/styles/themes/dark/components.css" />
+        <link rel="stylesheet" href="/static/styles/themes/dark/modal.css" />
+        <link rel="stylesheet" href="/static/styles/themes/dark/node-settings-modal.css" />
+        <link rel="stylesheet" href="/static/styles/themes/dark/result-modal.css" />
         <link rel="stylesheet" href="/static/styles/themes/dark/dashboard.css" />
         <link rel="stylesheet" href="/static/styles/themes/dark/settings.css" />
         <link rel="stylesheet" href="/static/styles/themes/dark/workflow.css" />
@@ -31,6 +35,9 @@
         <!-- 라이트 모드 -->
         <link rel="stylesheet" href="/static/styles/themes/light/common.css" />
         <link rel="stylesheet" href="/static/styles/themes/light/components.css" />
+        <link rel="stylesheet" href="/static/styles/themes/light/modal.css" />
+        <link rel="stylesheet" href="/static/styles/themes/light/node-settings-modal.css" />
+        <link rel="stylesheet" href="/static/styles/themes/light/result-modal.css" />
         <link rel="stylesheet" href="/static/styles/themes/light/dashboard.css" />
         <link rel="stylesheet" href="/static/styles/themes/light/settings.css" />
         <link rel="stylesheet" href="/static/styles/themes/light/workflow.css" />
@@ -288,6 +295,13 @@
         </div>
 
         <!-- ========================================== -->
+        <!-- 실행 결과 모달: 가운데 팝업 형태 -->
+        <!-- ========================================== -->
+        <div id="result-modal" class="result-modal">
+            <div class="result-modal-content"></div>
+        </div>
+
+        <!-- ========================================== -->
         <!-- JavaScript 파일들 로드 -->
         <!-- ========================================== -->
 
@@ -295,6 +309,7 @@
         <script src="/static/js/utils/logger.js"></script>
         <script type="module" src="/static/js/utils/theme-manager.js"></script>
         <script type="module" src="/static/js/utils/modal.js"></script>
+        <script type="module" src="/static/js/utils/result-modal.js"></script>
 
         <!-- 2. API 유틸리티 (ES6 모듈) -->
         <script type="module" src="/static/js/api/api.js"></script>
