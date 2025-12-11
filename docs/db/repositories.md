@@ -164,6 +164,66 @@ repo.set_stat("total_scripts", 10)
 all_stats = repo.get_all_stats()
 ```
 
+### 5. `NodeExecutionLogRepository`
+
+노드 실행 로그 관련 데이터베이스 작업을 처리합니다.
+
+**파일**: `server/db/node_execution_log_repository.py`
+
+**주요 메서드:**
+- `create_log(...)`: 노드 실행 로그 생성
+- `get_logs_by_execution_id(execution_id)`: 실행 ID별 로그 조회
+- `get_logs_by_script_id(script_id, limit, offset)`: 스크립트별 로그 조회
+- `get_logs_by_node_id(node_id, limit, offset)`: 노드별 로그 조회
+- `get_recent_logs(limit)`: 최근 로그 조회
+- `get_failed_logs(script_id, limit)`: 실패한 로그 조회
+- `delete_log(log_id)`: 개별 로그 삭제
+- `delete_logs_by_execution_id(execution_id)`: 실행 ID별 모든 로그 삭제
+- `delete_all_logs()`: 전체 로그 삭제
+
+**특징:**
+- JSON 필드 자동 파싱 (`parameters`, `result`)
+- 다양한 조회 옵션 (실행 ID, 스크립트 ID, 노드 ID, 상태별)
+- 페이징 지원 (limit, offset)
+- 시간순 정렬 (최신순)
+
+**사용 예시:**
+```python
+from server.db.node_execution_log_repository import NodeExecutionLogRepository
+
+repo = NodeExecutionLogRepository(conn)
+
+# 로그 생성
+log_id = repo.create_log(
+    execution_id="exec-123",
+    script_id=1,
+    node_id="node_1",
+    node_type="image-touch",
+    status="completed",
+    # ... 기타 파라미터
+)
+
+# 실행 ID로 조회
+logs = repo.get_logs_by_execution_id("exec-123")
+
+# 스크립트별 조회
+logs = repo.get_logs_by_script_id(script_id=1, limit=100)
+
+# 실패한 로그만 조회
+failed_logs = repo.get_failed_logs(script_id=1, limit=50)
+
+# 개별 로그 삭제
+deleted = repo.delete_log(log_id=123)
+
+# 실행 ID별 로그 삭제
+deleted_count = repo.delete_logs_by_execution_id("20240115-143025-a3f9b2")
+
+# 전체 로그 삭제
+deleted_count = repo.delete_all_logs()
+```
+
+자세한 내용은 [노드 실행 로그 시스템](node_execution_logs.md) 문서를 참고하세요.
+
 ## 통합 관리자
 
 ### `DatabaseManager`

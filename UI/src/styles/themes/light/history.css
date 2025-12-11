@@ -1,0 +1,246 @@
+/* ========================================== */
+/* 라이트 모드 실행 기록 페이지 스타일 */
+/* ========================================== */
+
+/* 라이트 모드 컨테이너 */
+body.theme-light .history-container {
+    background-color: #ffffff;
+    color: #1a1a1a;
+}
+
+/* 라이트 모드 헤더 */
+body.theme-light .history-header h1 {
+    color: #1f2937;
+}
+
+body.theme-light .history-header p {
+    color: #6b7280;
+}
+
+/* 라이트 모드 필터 영역 */
+body.theme-light .history-filters {
+    background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+    border-color: #e5e7eb;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+body.theme-light .history-filter-label {
+    color: #374151;
+}
+
+body.theme-light .history-filter-select {
+    background: #ffffff;
+    border-color: #e5e7eb;
+    color: #1f2937;
+}
+
+body.theme-light .history-filter-select:hover {
+    background: #f9fafb;
+    border-color: #3182ce;
+}
+
+body.theme-light .history-filter-select:focus {
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.15);
+}
+
+body.theme-light .history-refresh-btn {
+    background: linear-gradient(135deg, #3182ce 0%, #2c5282 100%);
+    box-shadow: 0 2px 8px rgba(49, 130, 206, 0.3);
+}
+
+body.theme-light .history-refresh-btn:hover {
+    background: linear-gradient(135deg, #2c5282 0%, #2a4d7a 100%);
+    box-shadow: 0 4px 16px rgba(49, 130, 206, 0.4);
+}
+
+/* 라이트 모드 통계 카드 */
+body.theme-light .history-stat-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+    border-color: #e5e7eb;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+body.theme-light .history-stat-card:hover {
+    background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+    border-color: #3182ce;
+}
+
+body.theme-light .history-stat-label {
+    color: #6b7280;
+}
+
+body.theme-light .history-stat-value {
+    color: #1f2937;
+}
+
+/* 라이트 모드 실행 그룹 */
+body.theme-light .history-execution-group {
+    background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+    border-color: #e5e7eb;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+body.theme-light .history-execution-group:hover {
+    background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    border-color: #3182ce;
+}
+
+body.theme-light .history-execution-header {
+    background: transparent;
+}
+
+body.theme-light .history-execution-header:hover {
+    background: rgba(49, 130, 206, 0.05);
+}
+
+body.theme-light .history-execution-id {
+    color: #1f2937;
+}
+
+body.theme-light .history-execution-meta {
+    color: #6b7280;
+}
+
+body.theme-light .history-execution-meta span {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #e5e7eb;
+}
+
+body.theme-light .history-toggle-indicator {
+    color: #6b7280;
+}
+
+body.theme-light .history-execution-header:hover .history-toggle-indicator {
+    color: #1f2937;
+}
+
+body.theme-light .history-execution-body {
+    background: #ffffff;
+    border-top-color: #e5e7eb;
+}
+
+/* 라이트 모드 로그 아이템 */
+body.theme-light .history-item {
+    background: #ffffff;
+    border-color: #e5e7eb;
+}
+
+body.theme-light .history-item:hover {
+    background: #f9fafb;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+body.theme-light .history-item-completed {
+    border-left-color: #10b981;
+    background: linear-gradient(to right, rgba(16, 185, 129, 0.05) 0%, #ffffff 5%);
+}
+
+body.theme-light .history-item-failed {
+    border-left-color: #ef4444;
+    background: linear-gradient(to right, rgba(239, 68, 68, 0.05) 0%, #ffffff 5%);
+}
+
+body.theme-light .history-item-running {
+    border-left-color: #f59e0b;
+    background: linear-gradient(to right, rgba(245, 158, 11, 0.05) 0%, #ffffff 5%);
+}
+
+body.theme-light .status-text {
+    color: #1f2937;
+}
+
+body.theme-light .history-item-node {
+    color: #1f2937;
+}
+
+body.theme-light .history-item-type {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #e5e7eb;
+}
+
+body.theme-light .history-item-time {
+    color: #6b7280;
+}
+
+body.theme-light .history-item-details {
+    border-top-color: #e5e7eb;
+}
+
+body.theme-light .timeline-label {
+    color: #6b7280;
+}
+
+body.theme-light .timeline-value {
+    color: #1f2937;
+}
+
+body.theme-light .history-item-label {
+    color: #6b7280;
+}
+
+body.theme-light .history-item-value {
+    background: #f9fafb;
+    border-color: #e5e7eb;
+    color: #1f2937;
+}
+
+body.theme-light .history-item-error-message {
+    background: rgba(239, 68, 68, 0.1);
+    border-left-color: #ef4444;
+    color: #dc2626;
+}
+
+body.theme-light .history-item-traceback summary {
+    background: #f9fafb;
+    color: #6b7280;
+    border: 1px solid #e5e7eb;
+}
+
+body.theme-light .history-item-traceback summary:hover {
+    background: #f3f4f6;
+}
+
+body.theme-light .history-item-traceback pre {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    color: #1f2937;
+}
+
+body.theme-light .history-empty-message {
+    color: #6b7280;
+}
+
+body.theme-light .history-delete-all-btn {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+body.theme-light .history-delete-all-btn:hover {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    box-shadow: 0 4px 16px rgba(239, 68, 68, 0.4);
+}
+
+body.theme-light .history-delete-execution-btn {
+    border-color: #e5e7eb;
+    color: #1f2937;
+}
+
+body.theme-light .history-delete-execution-btn:hover {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: #ef4444;
+}
+
+body.theme-light .history-delete-item-btn {
+    border-color: #e5e7eb;
+    color: #1f2937;
+}
+
+body.theme-light .history-delete-item-btn:hover {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: #ef4444;
+}

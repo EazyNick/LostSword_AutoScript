@@ -9,6 +9,7 @@ from typing import Any
 try:
     from .connection import DatabaseConnection
     from .dashboard_stats_repository import DashboardStatsRepository
+    from .node_execution_log_repository import NodeExecutionLogRepository
     from .node_repository import NodeRepository
     from .script_repository import ScriptRepository
     from .table_manager import TableManager
@@ -18,6 +19,7 @@ except ImportError:
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from db.connection import DatabaseConnection
     from db.dashboard_stats_repository import DashboardStatsRepository
+    from db.node_execution_log_repository import NodeExecutionLogRepository
     from db.node_repository import NodeRepository
     from db.script_repository import ScriptRepository
     from db.table_manager import TableManager
@@ -48,6 +50,7 @@ class DatabaseManager:
         self.scripts = ScriptRepository(self.connection)  # 스크립트
         self.nodes = NodeRepository(self.connection)  # 노드
         self.dashboard_stats = DashboardStatsRepository(self.connection)  # 대시보드 통계
+        self.node_execution_logs = NodeExecutionLogRepository(self.connection)  # 노드 실행 로그
 
         # 데이터베이스 초기화 (테이블 생성)
         self.init_database()

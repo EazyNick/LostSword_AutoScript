@@ -703,6 +703,9 @@ export class SidebarScriptManager {
         let failCount = 0;
         const totalCount = activeScripts.length;
 
+        // 스크립트 실행 결과 수집 (실행 결과 모달 표시용)
+        const scriptResults = [];
+
         // WorkflowPage 인스턴스 가져오기 (finally 블록에서도 접근 가능하도록 밖에서 정의)
         const getWorkflowPage = () => {
             // window에서 직접 접근 시도
@@ -726,11 +729,26 @@ export class SidebarScriptManager {
                 // 취소 플래그 체크
                 if (this.sidebarManager.isCancelled) {
                     log('[Sidebar] 실행이 취소되었습니다.');
+                    // 실행 취소 시 남은 스크립트들을 중단으로 표시
+                    for (let j = i + 1; j < activeScripts.length; j++) {
+                        const remainingScript = activeScripts[j];
+                        scriptResults.push({
+                            name: remainingScript.name || remainingScript.id || '알 수 없는 스크립트',
+                            status: 'cancelled',
+                            message: '실행 취소로 인해 실행되지 않음'
+                        });
+                    }
+
                     if (modalManager) {
-                        modalManager.showAlert(
-                            '실행 취소',
-                            `실행이 취소되었습니다.\n\n성공 스크립트: ${successCount}개\n실패 스크립트: ${failCount}개`
-                        );
+                        const { getResultModalManagerInstance } = await import('../../utils/result-modal.js');
+                        const resultModalManager = getResultModalManagerInstance();
+                        resultModalManager.showExecutionResult('실행 취소', {
+                            successCount,
+                            failCount,
+                            cancelledCount: activeScripts.length - successCount - failCount,
+                            scripts: scriptResults,
+                            summaryLabel: '스크립트'
+                        });
                     }
                     break;
                 }
@@ -789,6 +807,11 @@ export class SidebarScriptManager {
                         logWarn(`[Sidebar] 스크립트 "${script.name}"에 실행할 노드가 없습니다.`);
                         // 노드가 없는 스크립트는 성공으로 카운트 (스크립트 단위로 카운트)
                         successCount++;
+                        scriptResults.push({
+                            name: script.name || script.id || '알 수 없는 스크립트',
+                            status: 'success',
+                            message: '실행할 노드가 없음'
+                        });
                         continue;
                     }
 
@@ -809,6 +832,11 @@ export class SidebarScriptManager {
 
                         successCount++;
                         log(`[Sidebar] ✅ 스크립트 "${script.name}" 실행 완료`);
+                        scriptResults.push({
+                            name: script.name || script.id || '알 수 없는 스크립트',
+                            status: 'success',
+                            message: '정상 실행 완료'
+                        });
                     } catch (execError) {
                         failCount++;
                         logError(`[Sidebar] ❌ 스크립트 "${script.name}" 실행 중 오류 발생:`, execError);
@@ -816,6 +844,12 @@ export class SidebarScriptManager {
                             name: execError.name,
                             message: execError.message,
                             stack: execError.stack
+                        });
+                        scriptResults.push({
+                            name: script.name || script.id || '알 수 없는 스크립트',
+                            status: 'failed',
+                            error: execError.message,
+                            message: execError.message
                         });
                         // 에러 발생 시 해당 스크립트는 실패로 처리하고 다음 스크립트 계속 실행
                         continue;
@@ -833,6 +867,12 @@ export class SidebarScriptManager {
                         message: error.message,
                         stack: error.stack
                     });
+                    scriptResults.push({
+                        name: script.name || script.id || '알 수 없는 스크립트',
+                        status: 'failed',
+                        error: error.message,
+                        message: error.message
+                    });
                     // 에러 발생 시 해당 스크립트는 실패로 처리하고 다음 스크립트 계속 실행
                     continue;
                 }
@@ -840,15 +880,19 @@ export class SidebarScriptManager {
 
             log(`[Sidebar] 모든 스크립트 실행 완료 - 성공: ${successCount}개, 실패: ${failCount}개`);
 
-            // 실행 결과 알림 (0개여도 모두 표시, 스크립트 개수 기준)
+            // 실행 결과 모달 표시 (가운데 팝업)
             if (modalManager) {
-                const statusMessage = this.sidebarManager.isCancelled
-                    ? '실행이 취소되었습니다.'
-                    : '모든 스크립트 실행이 완료되었습니다.';
-                modalManager.showAlert(
-                    this.sidebarManager.isCancelled ? '실행 취소' : '실행 완료',
-                    `${statusMessage}\n\n성공 스크립트: ${successCount}개\n실패 스크립트: ${failCount}개`
-                );
+                const title = this.sidebarManager.isCancelled ? '실행 취소' : '실행 완료';
+                const cancelledCount = activeScripts.length - successCount - failCount;
+                const { getResultModalManagerInstance } = await import('../../utils/result-modal.js');
+                const resultModalManager = getResultModalManagerInstance();
+                resultModalManager.showExecutionResult(title, {
+                    successCount,
+                    failCount,
+                    cancelledCount,
+                    scripts: scriptResults,
+                    summaryLabel: '스크립트'
+                });
             }
         } catch (error) {
             logError('[Sidebar] ❌ 모든 스크립트 실행 중 오류 발생:', error);
@@ -860,10 +904,16 @@ export class SidebarScriptManager {
 
             const modalManager = getModalManagerInstance();
             if (modalManager) {
-                modalManager.showAlert(
-                    '실행 오류',
-                    `스크립트 실행 중 오류가 발생했습니다.\n\n성공 스크립트: ${successCount}개\n실패 스크립트: ${failCount}개\n\n오류: ${error.message}`
-                );
+                const cancelledCount = activeScripts.length - successCount - failCount;
+                const { getResultModalManagerInstance } = await import('../../utils/result-modal.js');
+                const resultModalManager = getResultModalManagerInstance();
+                resultModalManager.showExecutionResult('실행 오류', {
+                    successCount,
+                    failCount,
+                    cancelledCount,
+                    scripts: scriptResults,
+                    summaryLabel: '스크립트'
+                });
             }
         } finally {
             // 실행 중 플래그 해제

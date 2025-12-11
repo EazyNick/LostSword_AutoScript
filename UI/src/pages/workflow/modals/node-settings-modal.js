@@ -11,6 +11,12 @@ import { getDetailNodeTypes, getDetailNodeConfig } from '../config/action-node-t
 import { generateParameterForm, extractParameterValues } from '../utils/parameter-form-generator.js';
 import { getNodeRegistry } from '../services/node-registry.js';
 import { generatePreviewOutput as generateNodePreviewOutput } from '../config/node-preview-outputs.js';
+import {
+    generateInputPreview,
+    generateOutputPreview,
+    collectPreviousNodeOutput,
+    generatePreviewFromSchema
+} from '../config/node-preview-generator.js';
 
 export class NodeSettingsModal {
     constructor(workflowPage) {
@@ -66,13 +72,7 @@ export class NodeSettingsModal {
         // 이벤트 리스너 설정
         this.setupEventListeners(nodeElement, nodeId, nodeType, nodeData);
 
-        // 출력 미리보기 영역에 로딩 상태 클래스 추가
-        const outputPreview = document.getElementById('node-output-preview');
-        if (outputPreview) {
-            outputPreview.classList.add('node-preview-loading-state');
-        }
-
-        // 입력/출력 미리보기 업데이트
+        // 입력/출력 미리보기 업데이트 (즉시 표시)
         this.updateInputOutputPreview(nodeElement, nodeId, nodeType, nodeData);
     }
 
@@ -423,16 +423,18 @@ export class NodeSettingsModal {
                 <textarea id="edit-node-description" rows="3" placeholder="노드에 대한 설명을 입력하세요 (선택사항)" class="node-settings-textarea">${escapeHtml(currentDescription)}</textarea>
             </div>
             <div class="form-group node-settings-form-group node-settings-section-divider">
-                <label class="node-settings-label node-settings-preview-label">입력 미리보기:</label>
-                <div id="node-input-preview" class="node-settings-preview-input">
-                    <span class="node-settings-preview-placeholder">이전 노드의 출력이 여기에 표시됩니다.</span>
+                <label class="node-settings-label node-settings-preview-label">입력 데이터:</label>
+                <div style="margin-bottom: 8px;">
+                    <button id="node-input-load-from-previous" class="btn btn-small" style="font-size: 12px; padding: 4px 8px;">이전 노드에서 가져오기</button>
+                    <button id="node-input-use-expression" class="btn btn-small" style="font-size: 12px; padding: 4px 8px; margin-left: 4px;">표현식 사용</button>
                 </div>
-                <small class="node-settings-help-text">이 노드로 전달되는 입력 데이터입니다. (읽기 전용 - 이전 노드의 출력)</small>
+                <textarea id="node-input-preview" class="node-settings-textarea node-preview-textarea" rows="8" placeholder='{"action": "start", "status": "completed", "output": {}}'></textarea>
+                <small class="node-settings-help-text">이 노드로 전달되는 입력 데이터입니다. JSON 형식으로 입력하거나 표현식({{$json.field}})을 사용할 수 있습니다.</small>
             </div>
             <div class="form-group node-settings-form-group node-settings-section-divider">
                 <label class="node-settings-label node-settings-preview-label">출력 미리보기:</label>
                 <div id="node-output-preview" class="node-settings-preview-output">
-                    <textarea readonly class="node-settings-textarea node-preview-textarea node-preview-loading-textarea">계산 중...</textarea>
+                    <textarea readonly class="node-settings-textarea node-preview-textarea node-preview-loading-textarea" rows="8">계산 중...</textarea>
                 </div>
                 <small class="node-settings-help-text">이 노드가 반환하는 출력 데이터입니다. 값을 직접 수정할 수 있으며, 저장 버튼을 눌러야 변경사항이 적용됩니다.</small>
             </div>
@@ -621,6 +623,22 @@ export class NodeSettingsModal {
                 if (modalManager) {
                     modalManager.close();
                 }
+            });
+        }
+
+        // 입력 데이터 관련 이벤트 리스너
+        const loadFromPreviousBtn = document.getElementById('node-input-load-from-previous');
+        if (loadFromPreviousBtn) {
+            loadFromPreviousBtn.addEventListener('click', async () => {
+                await this.loadInputFromPreviousNode(nodeId, nodeElement);
+            });
+        }
+
+        const useExpressionBtn = document.getElementById('node-input-use-expression');
+        if (useExpressionBtn) {
+            useExpressionBtn.addEventListener('click', () => {
+                // 표현식 예시 삽입
+                this.insertExpression('{{$json.output}}');
             });
         }
     }
@@ -976,7 +994,7 @@ export class NodeSettingsModal {
     }
 
     /**
-     * 입력 미리보기 업데이트 (이전 노드 실행)
+     * 입력 미리보기 업데이트 (편집 가능, n8n 스타일)
      */
     async updateInputPreview(nodeId, nodeElement) {
         const inputPreview = document.getElementById('node-input-preview');
@@ -984,59 +1002,131 @@ export class NodeSettingsModal {
             return;
         }
 
-        // 로딩 상태 표시 (시각적 피드백) - 실제 값과 동일한 textarea 스타일
-        inputPreview.innerHTML = `
-            <textarea readonly class="node-settings-textarea node-preview-textarea node-preview-loading-textarea">계산 중...</textarea>
-        `;
-        inputPreview.classList.add('node-preview-loading-state');
-
         try {
-            // 이전 노드들의 실행 경로 찾기
-            const previousNodes = this.getPreviousNodeChain(nodeId);
-
-            if (previousNodes.length === 0) {
-                inputPreview.classList.remove('node-preview-loading-state');
-                inputPreview.innerHTML =
-                    '<span class="node-settings-preview-placeholder">입력 없음 (이전 노드가 없거나 연결되지 않음)</span>';
+            // 저장된 입력 데이터가 있으면 사용
+            const nodeData = getNodeData(nodeElement);
+            if (nodeData?.input_data) {
+                // 저장된 입력 데이터가 있으면 표시
+                try {
+                    const inputData =
+                        typeof nodeData.input_data === 'string' ? JSON.parse(nodeData.input_data) : nodeData.input_data;
+                    inputPreview.value = JSON.stringify(inputData, null, 2);
+                } catch (e) {
+                    // JSON 파싱 실패 시 문자열로 표시
+                    inputPreview.value =
+                        typeof nodeData.input_data === 'string'
+                            ? nodeData.input_data
+                            : JSON.stringify(nodeData.input_data, null, 2);
+                }
                 return;
             }
 
-            // 이전 노드들을 순차적으로 실행
-            let lastOutput = null;
-            for (const prevNode of previousNodes) {
-                const result = await this.executeNodeForPreview(prevNode);
-                if (result && result.output !== undefined) {
-                    lastOutput = result.output;
-                } else if (result) {
-                    lastOutput = result;
-                }
-            }
+            // 저장된 데이터가 없으면 이전 노드의 출력 스키마 기반 예시 생성
+            const previousNodes = this.getPreviousNodeChain(nodeId);
+            if (previousNodes.length > 0) {
+                const registry = getNodeRegistry();
+                const lastNode = previousNodes[previousNodes.length - 1];
+                const lastNodeType = lastNode.type || lastNode.nodeType;
+                const lastNodeConfig = await registry.getConfig(lastNodeType);
 
-            // 로딩 상태 제거
-            inputPreview.classList.remove('node-preview-loading-state');
-
-            // 마지막 노드의 출력을 입력으로 표시 (읽기 전용)
-            if (lastOutput !== null) {
-                // 객체나 배열인 경우 JSON 문자열로 표시, 아니면 그대로 표시
-                if (lastOutput !== null && typeof lastOutput === 'object') {
-                    const jsonString = JSON.stringify(lastOutput, null, 2);
-                    inputPreview.innerHTML = `<textarea readonly class="node-settings-textarea node-preview-textarea">${escapeHtml(jsonString)}</textarea>`;
+                if (lastNodeConfig?.output_schema) {
+                    const exampleOutput = generatePreviewFromSchema(lastNodeConfig.output_schema, lastNode.data || {});
+                    const exampleInput = {
+                        action: lastNodeType,
+                        status: 'completed',
+                        output: exampleOutput
+                    };
+                    inputPreview.value = JSON.stringify(exampleInput, null, 2);
                 } else {
-                    inputPreview.innerHTML = `<textarea readonly class="node-settings-textarea node-preview-textarea">${escapeHtml(String(lastOutput))}</textarea>`;
+                    // 스키마가 없으면 기본 형식
+                    inputPreview.value = JSON.stringify(
+                        {
+                            action: lastNodeType || 'start',
+                            status: 'completed',
+                            output: {}
+                        },
+                        null,
+                        2
+                    );
                 }
             } else {
-                inputPreview.innerHTML =
-                    '<span class="node-settings-preview-placeholder">입력 없음 (이전 노드 실행 결과 없음)</span>';
+                // 이전 노드가 없으면 빈 입력
+                inputPreview.value = JSON.stringify({}, null, 2);
             }
         } catch (error) {
-            console.error('입력 미리보기 실행 오류:', error);
-            inputPreview.classList.remove('node-preview-loading-state');
-            inputPreview.innerHTML = `<span style="color: #d32f2f;">실행 오류: ${error.message}</span>`;
+            console.error('입력 미리보기 생성 오류:', error);
+            inputPreview.value = JSON.stringify({ error: error.message }, null, 2);
         }
     }
 
     /**
-     * 출력 미리보기 업데이트 (현재 노드 실행)
+     * 이전 노드에서 입력 데이터 가져오기
+     */
+    async loadInputFromPreviousNode(nodeId, nodeElement) {
+        const inputPreview = document.getElementById('node-input-preview');
+        if (!inputPreview) {
+            return;
+        }
+
+        try {
+            const previousNodes = this.getPreviousNodeChain(nodeId);
+            if (previousNodes.length === 0) {
+                alert('이전 노드가 없습니다.');
+                return;
+            }
+
+            // 마지막 이전 노드의 출력 스키마 기반 데이터 생성
+            const registry = getNodeRegistry();
+            const lastNode = previousNodes[previousNodes.length - 1];
+            const lastNodeType = lastNode.type || lastNode.nodeType;
+            const lastNodeConfig = await registry.getConfig(lastNodeType);
+
+            let previousOutput = {};
+            if (lastNodeConfig?.output_schema) {
+                previousOutput = generatePreviewFromSchema(lastNodeConfig.output_schema, lastNode.data || {});
+            }
+
+            const inputData = {
+                action: lastNodeType,
+                status: 'completed',
+                output: previousOutput
+            };
+
+            inputPreview.value = JSON.stringify(inputData, null, 2);
+        } catch (error) {
+            console.error('이전 노드에서 데이터 가져오기 오류:', error);
+            alert(`오류: ${error.message}`);
+        }
+    }
+
+    /**
+     * 표현식 삽입 도우미
+     */
+    insertExpression(expression) {
+        const inputPreview = document.getElementById('node-input-preview');
+        if (!inputPreview) {
+            return;
+        }
+
+        const textarea = inputPreview;
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = textarea.value;
+        const before = text.substring(0, start);
+        const after = text.substring(end);
+
+        // 표현식 삽입
+        const newText = before + expression + after;
+        textarea.value = newText;
+
+        // 커서 위치 조정
+        const newCursorPos = start + expression.length;
+        textarea.setSelectionRange(newCursorPos, newCursorPos);
+        textarea.focus();
+    }
+
+    /**
+     * 출력 미리보기 업데이트 (스키마 기반, 즉시 표시)
      */
     async updateOutputPreview(nodeType, nodeData, nodeElement) {
         const outputPreview = document.getElementById('node-output-preview');
@@ -1049,12 +1139,6 @@ export class NodeSettingsModal {
         if (existingTextarea && document.activeElement === existingTextarea) {
             return; // 사용자가 수정 중이면 업데이트하지 않음
         }
-
-        // 로딩 상태 표시 (시각적 피드백) - 실제 값과 동일한 textarea 스타일
-        outputPreview.innerHTML = `
-            <textarea readonly class="node-settings-textarea node-preview-textarea node-preview-loading-textarea">계산 중...</textarea>
-        `;
-        outputPreview.classList.add('node-preview-loading-state');
 
         try {
             // 현재 폼에서 파라미터 값 추출 (nodes_config.py에서 정의한 파라미터)
@@ -1095,59 +1179,20 @@ export class NodeSettingsModal {
                     displayValue = String(outputOverride);
                 }
             } else {
-                // 기본적으로는 예시 출력 사용
-                // 실제 실행이 가능한 노드들만 하드코딩으로 실제 실행
-                // wait: 단순 대기이므로 실제 실행 가능
-                // start, end: 경계 노드이므로 실제 실행 가능
-                const executableNodes = ['wait', 'start', 'end'];
-
-                if (executableNodes.includes(nodeType)) {
-                    // 실제 실행 가능한 노드는 실행 결과 사용
-                    console.log('[NodeSettingsModal] 노드 실행 시작, updatedNodeData:', updatedNodeData);
-                    try {
-                        const result = await this.executeNodeForPreview({
-                            id: nodeElement.id || nodeElement.dataset.nodeId,
-                            type: nodeType,
-                            data: updatedNodeData
-                        });
-
-                        if (result) {
-                            // output 필드가 있으면 그것을, 없으면 전체 결과를 표시
-                            const displayResult = result.output !== undefined ? result.output : result;
-
-                            if (displayResult !== null && typeof displayResult === 'object') {
-                                displayValue = JSON.stringify(displayResult, null, 2);
-                            } else {
-                                displayValue = String(displayResult);
-                            }
-                        } else {
-                            displayValue = '';
-                        }
-                    } catch (error) {
-                        // 실행 실패 시 예시 출력 표시
-                        console.warn('[NodeSettingsModal] 노드 실행 실패, 예시 출력 사용:', error);
-                        displayValue = generateNodePreviewOutput(nodeType, updatedNodeData);
-                    }
-                } else {
-                    // 기본적으로는 예시 출력 생성
-                    displayValue = generateNodePreviewOutput(nodeType, updatedNodeData);
-                }
+                // 스키마 기반 출력 미리보기 생성 (즉시 표시)
+                displayValue = generateOutputPreview(nodeType, config || {}, updatedNodeData);
             }
-
-            // 로딩 상태 제거
-            outputPreview.classList.remove('node-preview-loading-state');
 
             // 출력 표시 (항상 편집 가능)
             if (displayValue !== null && displayValue !== undefined) {
-                outputPreview.innerHTML = `<textarea id="edit-node-output-value" class="node-settings-textarea node-preview-textarea">${escapeHtml(displayValue)}</textarea>`;
+                outputPreview.innerHTML = `<textarea id="edit-node-output-value" class="node-settings-textarea node-preview-textarea" rows="8">${escapeHtml(displayValue)}</textarea>`;
             } else {
                 outputPreview.innerHTML =
-                    '<textarea id="edit-node-output-value" class="node-settings-textarea node-preview-textarea"></textarea>';
+                    '<textarea id="edit-node-output-value" class="node-settings-textarea node-preview-textarea" rows="8"></textarea>';
             }
         } catch (error) {
-            console.error('출력 미리보기 실행 오류:', error);
-            outputPreview.classList.remove('node-preview-loading-state');
-            outputPreview.innerHTML = `<span style="color: #d32f2f;">실행 오류: ${error.message}</span>`;
+            console.error('출력 미리보기 생성 오류:', error);
+            outputPreview.innerHTML = `<span style="color: #d32f2f;">미리보기 생성 오류: ${error.message}</span>`;
         }
     }
 

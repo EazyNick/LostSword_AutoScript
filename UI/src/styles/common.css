@@ -1,438 +1,371 @@
-/* ========================================== */
-/* 공통 스타일 - 전체 애플리케이션의 기본 스타일 */
-/* ========================================== */
+/* 공통 스타일 */
 
-/* ========================================== */
-/* CSS 리셋 및 기본 설정 */
-/* ========================================== */
-
-/* 모든 요소의 기본 마진, 패딩 제거 및 박스 모델 설정 */
 * {
-    margin: 0; /* 기본 마진 제거 */
-    padding: 0; /* 기본 패딩 제거 */
-    box-sizing: border-box; /* 패딩과 테두리를 포함한 크기 계산 */
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
 
-/* ========================================== */
-/* 기본 페이지 스타일 */
-/* ========================================== */
-
-/* 전체 페이지 기본 스타일 */
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* 시스템 폰트 사용 */
-    background-color: #1a1a1a; /* 어두운 배경색 */
-    color: #ffffff; /* 흰색 텍스트 */
-    overflow: hidden; /* 페이지 스크롤 방지 */
-    height: 100vh; /* 전체 화면 높이 */
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #1a1a1a;
+    color: #ffffff;
+    overflow: hidden;
+    height: 100vh;
 }
 
-/* 메인 앱 컨테이너 */
 #app {
-    height: 100vh; /* 전체 화면 높이 */
-    display: flex; /* 플렉스박스 레이아웃 */
-    flex-direction: column; /* 세로 방향 배치 */
-    position: relative; /* 상대 위치 */
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
 }
 
-/* ========================================== */
-/* 공통 버튼 스타일 */
-/* ========================================== */
-
-/* 기본 버튼 스타일 */
+/* 버튼 스타일 */
 .btn {
-    padding: 0.75rem 1.5rem; /* 내부 여백 */
-    border: none; /* 테두리 제거 */
-    border-radius: 5px; /* 둥근 모서리 */
-    cursor: pointer; /* 클릭 가능한 커서 */
-    font-size: 0.9rem; /* 글씨 크기 */
-    font-weight: 500; /* 중간 굵기 */
-    transition: all 0.3s ease; /* 부드러운 전환 효과 */
-    text-decoration: none; /* 밑줄 제거 */
-    display: inline-block; /* 인라인 블록 요소 */
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
 }
 
-/* 주요 버튼 (파란색) */
 .btn-primary {
-    background-color: #667eea; /* 파란색 배경 */
-    color: white; /* 흰색 텍스트 */
+    background-color: #667eea;
+    color: white;
 }
 
-/* 주요 버튼 호버 효과 */
 .btn-primary:hover {
-    background-color: #5a6fd8; /* 더 진한 파란색 */
-    transform: translateY(-2px); /* 살짝 위로 이동 */
+    background-color: #5a6fd8;
+    transform: translateY(-2px);
 }
 
-/* 보조 버튼 (회색) */
 .btn-secondary {
-    background-color: #6c757d; /* 회색 배경 */
-    color: white; /* 흰색 텍스트 */
+    background-color: #6c757d;
+    color: white;
 }
 
-/* 보조 버튼 호버 효과 */
 .btn-secondary:hover {
-    background-color: #5a6268; /* 더 진한 회색 */
-    transform: translateY(-2px); /* 살짝 위로 이동 */
+    background-color: #5a6268;
+    transform: translateY(-2px);
 }
 
-/* 위험 버튼 (빨간색) */
 .btn-danger {
-    background-color: #dc3545; /* 빨간색 배경 */
-    color: white; /* 흰색 텍스트 */
+    background-color: #dc3545;
+    color: white;
 }
 
-/* 위험 버튼 호버 효과 */
 .btn-danger:hover {
-    background-color: #c82333; /* 더 진한 빨간색 */
-    transform: translateY(-2px); /* 살짝 위로 이동 */
+    background-color: #c82333;
+    transform: translateY(-2px);
 }
 
-/* 성공 버튼 (초록색) */
 .btn-success {
-    background-color: #28a745; /* 초록색 배경 */
-    color: white; /* 흰색 텍스트 */
+    background-color: #28a745;
+    color: white;
 }
 
-/* 성공 버튼 호버 효과 */
 .btn-success:hover {
-    background-color: #218838; /* 더 진한 초록색 */
-    transform: translateY(-2px); /* 살짝 위로 이동 */
+    background-color: #218838;
+    transform: translateY(-2px);
 }
 
-/* ========================================== */
-/* 공통 폼 요소 스타일 */
-/* ========================================== */
-
-/* 폼 그룹: 라벨과 입력 필드를 묶는 컨테이너 */
+/* 폼 요소 스타일 */
 .form-group {
-    margin-bottom: 1rem; /* 하단 여백 */
+    margin-bottom: 1rem;
 }
 
-/* 폼 라벨 */
 .form-group label {
-    display: block; /* 블록 요소로 변경 */
-    margin-bottom: 0.5rem; /* 하단 여백 */
-    font-weight: 500; /* 중간 굵기 */
-    color: #ffffff; /* 흰색 텍스트 */
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #ffffff;
 }
 
-/* 입력 필드 (텍스트, 이메일, 패스워드 등) */
 input[type='text'],
 input[type='email'],
 input[type='password'],
 input[type='number'],
 textarea,
 select {
-    width: 100%; /* 전체 너비 */
-    padding: 0.75rem; /* 내부 여백 */
-    border: 1px solid #444; /* 회색 테두리 */
-    border-radius: 5px; /* 둥근 모서리 */
-    background-color: #2d3748; /* 어두운 배경 */
-    color: #ffffff; /* 흰색 텍스트 */
-    font-size: 0.9rem; /* 글씨 크기 */
-    transition: border-color 0.3s ease; /* 테두리 색상 전환 효과 */
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #444;
+    border-radius: 5px;
+    background-color: #2d3748;
+    color: #ffffff;
+    font-size: 0.9rem;
+    transition: border-color 0.3s ease;
 }
 
-/* 입력 필드 포커스 효과 */
 input[type='text']:focus,
 input[type='email']:focus,
 input[type='password']:focus,
 input[type='number']:focus,
 textarea:focus,
 select:focus {
-    outline: none; /* 기본 아웃라인 제거 */
-    border-color: #667eea; /* 파란색 테두리 */
-    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2); /* 파란색 발광 효과 */
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
 }
 
-/* 입력 필드 플레이스홀더 스타일 */
 input::placeholder,
 textarea::placeholder {
-    color: #a0aec0; /* 회색 플레이스홀더 */
+    color: #a0aec0;
 }
 
-/* ========================================== */
-/* 폼 액션 버튼들 */
-/* ========================================== */
-
-/* 폼 액션 버튼들을 담는 컨테이너 */
 .form-actions {
-    display: flex; /* 플렉스박스 레이아웃 */
-    gap: 0.5rem; /* 버튼들 사이 간격 */
-    justify-content: flex-end; /* 오른쪽 정렬 */
-    margin-top: 1rem; /* 상단 여백 */
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    margin-top: 1rem;
 }
 
-/* ========================================== */
-/* 공통 유틸리티 클래스 */
-/* ========================================== */
-
-/* 텍스트 정렬 */
+/* 유틸리티 클래스 */
 .text-left {
     text-align: left;
-} /* 왼쪽 정렬 */
+}
 .text-center {
     text-align: center;
-} /* 가운데 정렬 */
+}
 .text-right {
     text-align: right;
-} /* 오른쪽 정렬 */
+}
 
-/* 텍스트 색상 */
 .text-primary {
     color: #667eea;
-} /* 파란색 텍스트 */
+}
 .text-secondary {
     color: #6c757d;
-} /* 회색 텍스트 */
+}
 .text-success {
     color: #28a745;
-} /* 초록색 텍스트 */
+}
 .text-danger {
     color: #dc3545;
-} /* 빨간색 텍스트 */
+}
 .text-warning {
     color: #ffc107;
-} /* 노란색 텍스트 */
+}
 .text-info {
     color: #17a2b8;
-} /* 하늘색 텍스트 */
+}
 .text-light {
     color: #f8f9fa;
-} /* 밝은 회색 텍스트 */
+}
 .text-dark {
     color: #343a40;
-} /* 어두운 회색 텍스트 */
+}
 
-/* 배경 색상 */
 .bg-primary {
     background-color: #667eea;
-} /* 파란색 배경 */
+}
 .bg-secondary {
     background-color: #6c757d;
-} /* 회색 배경 */
+}
 .bg-success {
     background-color: #28a745;
-} /* 초록색 배경 */
+}
 .bg-danger {
     background-color: #dc3545;
-} /* 빨간색 배경 */
+}
 .bg-warning {
     background-color: #ffc107;
-} /* 노란색 배경 */
+}
 .bg-info {
     background-color: #17a2b8;
-} /* 하늘색 배경 */
+}
 .bg-light {
     background-color: #f8f9fa;
-} /* 밝은 회색 배경 */
+}
 .bg-dark {
     background-color: #343a40;
-} /* 어두운 회색 배경 */
+}
 
-/* 마진 유틸리티 */
 .m-0 {
     margin: 0;
-} /* 마진 없음 */
+}
 .m-1 {
     margin: 0.25rem;
-} /* 작은 마진 */
+}
 .m-2 {
     margin: 0.5rem;
-} /* 중간 마진 */
+}
 .m-3 {
     margin: 1rem;
-} /* 큰 마진 */
+}
 .m-4 {
     margin: 1.5rem;
-} /* 더 큰 마진 */
+}
 .m-5 {
     margin: 3rem;
-} /* 가장 큰 마진 */
+}
 
-/* 패딩 유틸리티 */
 .p-0 {
     padding: 0;
-} /* 패딩 없음 */
+}
 .p-1 {
     padding: 0.25rem;
-} /* 작은 패딩 */
+}
 .p-2 {
     padding: 0.5rem;
-} /* 중간 패딩 */
+}
 .p-3 {
     padding: 1rem;
-} /* 큰 패딩 */
+}
 .p-4 {
     padding: 1.5rem;
-} /* 더 큰 패딩 */
+}
 .p-5 {
     padding: 3rem;
-} /* 가장 큰 패딩 */
+}
 
-/* 디스플레이 유틸리티 */
 .d-none {
     display: none;
-} /* 숨김 */
+}
 .d-block {
     display: block;
-} /* 블록 요소 */
+}
 .d-inline {
     display: inline;
-} /* 인라인 요소 */
+}
 .d-inline-block {
     display: inline-block;
-} /* 인라인 블록 요소 */
+}
 .d-flex {
     display: flex;
-} /* 플렉스박스 */
+}
 .d-grid {
     display: grid;
-} /* 그리드 */
+}
 
-/* 플렉스박스 유틸리티 */
 .flex-row {
     flex-direction: row;
-} /* 가로 방향 */
+}
 .flex-column {
     flex-direction: column;
-} /* 세로 방향 */
+}
 .justify-start {
     justify-content: flex-start;
-} /* 시작 정렬 */
+}
 .justify-center {
     justify-content: center;
-} /* 가운데 정렬 */
+}
 .justify-end {
     justify-content: flex-end;
-} /* 끝 정렬 */
+}
 .justify-between {
     justify-content: space-between;
-} /* 양끝 정렬 */
+}
 .justify-around {
     justify-content: space-around;
-} /* 주변 정렬 */
+}
 .align-start {
     align-items: flex-start;
-} /* 시작 정렬 */
+}
 .align-center {
     align-items: center;
-} /* 가운데 정렬 */
+}
 .align-end {
     align-items: flex-end;
-} /* 끝 정렬 */
+}
 
-/* ========================================== */
 /* 스크롤바 스타일 */
-/* ========================================== */
-
-/* 웹킷 기반 브라우저 (Chrome, Safari, Edge) 스크롤바 스타일 */
 ::-webkit-scrollbar {
-    width: 8px; /* 스크롤바 너비 */
-    height: 8px; /* 가로 스크롤바 높이 */
+    width: 8px;
+    height: 8px;
 }
 
-/* 스크롤바 트랙 (배경) */
 ::-webkit-scrollbar-track {
-    background: #2d3748; /* 어두운 회색 배경 */
-    border-radius: 4px; /* 둥근 모서리 */
+    background: #2d3748;
+    border-radius: 4px;
 }
 
-/* 스크롤바 썸 (드래그하는 부분) */
 ::-webkit-scrollbar-thumb {
-    background: #4a5568; /* 회색 썸 */
-    border-radius: 4px; /* 둥근 모서리 */
-    transition: background 0.3s ease; /* 색상 전환 효과 */
+    background: #4a5568;
+    border-radius: 4px;
+    transition: background 0.3s ease;
 }
 
-/* 스크롤바 썸 호버 효과 */
 ::-webkit-scrollbar-thumb:hover {
-    background: #718096; /* 더 밝은 회색 */
+    background: #718096;
 }
 
-/* ========================================== */
 /* 애니메이션 */
-/* ========================================== */
-
-/* 페이드인 애니메이션 */
 @keyframes fadeIn {
     from {
-        opacity: 0; /* 투명에서 시작 */
-        transform: translateY(20px); /* 아래에서 시작 */
+        opacity: 0;
+        transform: translateY(20px);
     }
     to {
-        opacity: 1; /* 완전히 불투명 */
-        transform: translateY(0); /* 원래 위치로 */
+        opacity: 1;
+        transform: translateY(0);
     }
 }
 
-/* 슬라이드인 애니메이션 */
 @keyframes slideIn {
     from {
-        transform: translateX(-100%); /* 왼쪽에서 시작 */
+        transform: translateX(-100%);
     }
     to {
-        transform: translateX(0); /* 원래 위치로 */
+        transform: translateX(0);
     }
 }
 
-/* 바운스 애니메이션 */
 @keyframes bounce {
     0%,
     20%,
     53%,
     80%,
     100% {
-        transform: translateY(0); /* 원래 위치 */
+        transform: translateY(0);
     }
     40%,
     43% {
-        transform: translateY(-30px); /* 위로 이동 */
+        transform: translateY(-30px);
     }
     70% {
-        transform: translateY(-15px); /* 중간 위치 */
+        transform: translateY(-15px);
     }
     90% {
-        transform: translateY(-4px); /* 살짝 위로 */
+        transform: translateY(-4px);
     }
 }
 
-/* ========================================== */
-/* 반응형 디자인 유틸리티 */
-/* ========================================== */
-
-/* 작은 화면 (768px 이하) */
+/* 반응형 디자인 */
 @media (max-width: 768px) {
     .btn {
-        padding: 0.5rem 1rem; /* 버튼 패딩 축소 */
-        font-size: 0.8rem; /* 글씨 크기 축소 */
+        padding: 0.5rem 1rem;
+        font-size: 0.8rem;
     }
 
     .form-actions {
-        flex-direction: column; /* 버튼들을 세로로 배치 */
+        flex-direction: column;
     }
 
     .form-actions .btn {
-        width: 100%; /* 버튼 전체 너비 */
+        width: 100%;
     }
 }
 
-/* 중간 화면 (992px 이하) */
 @media (max-width: 992px) {
     .d-md-none {
         display: none;
-    } /* 중간 화면에서 숨김 */
+    }
     .d-md-block {
         display: block;
-    } /* 중간 화면에서 표시 */
+    }
 }
 
-/* 큰 화면 (1200px 이하) */
 @media (max-width: 1200px) {
     .d-lg-none {
         display: none;
-    } /* 큰 화면에서 숨김 */
+    }
     .d-lg-block {
         display: block;
-    } /* 큰 화면에서 표시 */
+    }
 }

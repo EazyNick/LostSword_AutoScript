@@ -1,10 +1,9 @@
-/**
- * 노드 설정 모달 스타일
- * 노드 편집 모달의 모든 UI 요소 스타일 정의
- */
+/* ========================================== */
+/* 노드 설정 모달 기본 구조 스타일 (테마 무관) */
+/* ========================================== */
 
 /* ========================================== */
-/* 입력 필드 스타일 */
+/* 비활성화된 입력 필드 */
 /* ========================================== */
 
 /* 비활성화된 입력 필드: 읽기 전용이거나 사용할 수 없는 입력 필드 */
@@ -27,81 +26,37 @@
 }
 
 /* ========================================== */
-/* 미리보기 영역 스타일 */
+/* 미리보기 영역 기본 구조 */
 /* ========================================== */
 
-/* 입력 미리보기 영역: 이전 노드의 출력 데이터를 표시하는 영역 */
-.node-settings-preview-input {
-    background-color: #f9f9f9; /* 연한 회색 배경 */
-    border: 1px solid #ddd; /* 회색 테두리 */
-    border-radius: 4px; /* 둥근 모서리 */
-    padding: 10px; /* 내부 여백 10px */
-    min-height: 60px; /* 최소 높이 60px */
-    max-height: 200px; /* 최대 높이 200px (스크롤 가능) */
-    overflow-y: auto; /* 세로 스크롤 가능 */
-    font-family: monospace; /* 고정폭 폰트 (코드 표시용) */
-    font-size: 12px; /* 작은 글씨 크기 */
-    white-space: pre-wrap; /* 줄바꿈 및 공백 유지 */
-    word-wrap: break-word; /* 긴 단어 줄바꿈 */
-}
-
-/* 출력 미리보기 영역: 현재 노드의 출력 데이터를 표시하는 영역 */
+/* 출력 미리보기 영역 컨테이너 */
 .node-settings-preview-output {
-    background-color: #f0f8ff; /* 연한 파란색 배경 */
-    border: 1px solid #ddd; /* 회색 테두리 */
-    border-radius: 4px; /* 둥근 모서리 */
-    padding: 10px; /* 내부 여백 10px */
-    min-height: 60px; /* 최소 높이 60px */
-    max-height: 200px; /* 최대 높이 200px (스크롤 가능) */
-    overflow-y: auto; /* 세로 스크롤 가능 */
-    font-family: monospace; /* 고정폭 폰트 (코드 표시용) */
-    font-size: 12px; /* 작은 글씨 크기 */
-    white-space: pre-wrap; /* 줄바꿈 및 공백 유지 */
-    word-wrap: break-word; /* 긴 단어 줄바꿈 */
-}
-
-/* 미리보기 플레이스홀더 텍스트: 데이터가 없을 때 표시되는 안내 문구 */
-.node-settings-preview-placeholder {
-    color: #999; /* 회색 텍스트 */
+    background-color: transparent; /* 투명 배경 */
+    border: none; /* 테두리 없음 */
+    padding: 0; /* 내부 여백 없음 */
 }
 
 /* ========================================== */
-/* 폼 요소 스타일 */
+/* 폼 요소 기본 구조 */
 /* ========================================== */
 
-/* 일반 입력 필드: 텍스트, 숫자 등 일반적인 입력 필드 */
-.node-settings-input {
-    width: 100%; /* 전체 너비 사용 */
-    padding: 8px; /* 내부 여백 8px */
-    border: 1px solid #ddd; /* 회색 테두리 */
-    border-radius: 4px; /* 둥근 모서리 */
-}
-
-/* 일반 선택 필드: 드롭다운 메뉴 */
-.node-settings-select {
-    width: 100%; /* 전체 너비 사용 */
-    padding: 8px; /* 내부 여백 8px */
-    border: 1px solid #ddd; /* 회색 테두리 */
-    border-radius: 4px; /* 둥근 모서리 */
-}
-
-/* 텍스트 영역: 여러 줄 입력이 가능한 텍스트 입력 필드 */
+/* 노드 설정 입력 필드: 텍스트, 숫자 등 일반적인 입력 필드 */
+.node-settings-input,
+.node-settings-select,
 .node-settings-textarea {
     width: 100%; /* 전체 너비 사용 */
     padding: 8px; /* 내부 여백 8px */
-    border: 1px solid #ddd; /* 회색 테두리 */
+    border: 1px solid; /* 테두리 (색상은 테마별로 설정) */
     border-radius: 4px; /* 둥근 모서리 */
-    font-family: monospace; /* 고정폭 폰트 */
 }
 
-/* 설명 텍스트: 입력 필드 아래에 표시되는 도움말 텍스트 */
-.node-settings-help-text {
-    color: #666; /* 회색 텍스트 */
-    font-size: 12px; /* 작은 글씨 크기 */
+/* 노드 설정 텍스트 영역: 여러 줄 입력이 가능한 텍스트 입력 필드 */
+.node-settings-textarea {
+    font-family: monospace; /* 고정폭 폰트 (기본값) */
 }
 
 /* ========================================== */
-/* 폼 레이아웃 스타일 */
+/* 폼 레이아웃 */
 /* ========================================== */
 
 /* 폼 그룹: 라벨과 입력 필드를 묶는 컨테이너 */
@@ -124,13 +79,13 @@
 
 /* 섹션 구분선: 폼 섹션을 구분하는 상단 테두리 */
 .node-settings-section-divider {
-    border-top: 1px solid #ddd; /* 상단 회색 테두리 */
+    border-top: 1px solid; /* 상단 테두리 (색상은 테마별로 설정) */
     padding-top: 15px; /* 상단 여백 15px */
     margin-top: 15px; /* 상단 마진 15px */
 }
 
 /* ========================================== */
-/* 미리보기 데이터 필드 스타일 */
+/* 미리보기 데이터 필드 구조 */
 /* ========================================== */
 
 /* 미리보기 데이터 필드 박스: JSON 데이터의 각 필드를 표시하는 컨테이너 */
@@ -149,7 +104,6 @@
 /* 미리보기 필드 라벨: 필드 이름을 표시하는 텍스트 */
 .node-preview-field-label {
     font-weight: 600; /* 중간 굵기 */
-    color: #333; /* 어두운 회색 텍스트 */
     font-size: 14px; /* 중간 글씨 크기 */
 }
 
@@ -157,11 +111,13 @@
 .node-preview-textarea {
     resize: vertical; /* 세로 방향 크기 조절만 가능 */
     min-height: 40px; /* 최소 높이 40px */
-    font-family: inherit; /* 부모 폰트 상속 */
+    font-family: monospace; /* 고정폭 폰트 (JSON 표시용) */
+    font-size: 12px; /* 작은 글씨 크기 */
+    line-height: 1.5; /* 줄 간격 */
 }
 
 /* ========================================== */
-/* 미리보기 값 타입별 색상 스타일 */
+/* 미리보기 값 타입별 색상 (테마 무관) */
 /* ========================================== */
 
 /* 문자열 값: 텍스트 데이터를 표시할 때 사용 */
@@ -182,12 +138,7 @@
 }
 
 /* null 값: null 데이터를 표시할 때 사용 */
-.node-preview-null-value {
-    color: #999; /* 회색 텍스트 */
-    font-style: italic; /* 이탤릭체 */
-}
-
-/* 빈 값: 빈 데이터를 표시할 때 사용 */
+.node-preview-null-value,
 .node-preview-empty {
     color: #999; /* 회색 텍스트 */
     font-style: italic; /* 이탤릭체 */
@@ -197,7 +148,7 @@
 /* 로딩 상태 스타일 */
 /* ========================================== */
 
-/* 로딩 상태 스타일 (입력/출력 공통): 계산 중일 때 미리보기 영역에 적용되는 스타일 */
+/* 로딩 상태 컨테이너: 계산 중일 때 미리보기 영역에 적용되는 스타일 */
 .node-preview-loading-state {
     position: relative; /* 상대 위치 (스피너 위치 기준) */
     background-color: #f5f5f5 !important; /* 연한 회색 배경 (강제 적용) */
@@ -205,27 +156,13 @@
     animation: node-preview-pulse 1.5s ease-in-out infinite; /* 펄스 애니메이션 반복 */
 }
 
-/* 출력 미리보기 영역도 로딩 상태일 때 입력과 동일한 배경색: 출력 영역의 기본 파란색 배경을 회색으로 변경 */
+/* 출력 미리보기 영역도 로딩 상태일 때 */
 .node-settings-preview-output.node-preview-loading-state {
-    background-color: #f5f5f5 !important; /* 연한 회색 배경 (강제 적용) */
+    background-color: transparent; /* 투명 배경 */
+    border: none; /* 테두리 없음 */
 }
 
-/* 펄스 애니메이션: 로딩 중일 때 테두리와 그림자가 깜빡이는 효과 */
-@keyframes node-preview-pulse {
-    0%,
-    100% {
-        /* 시작과 끝 상태 */
-        opacity: 1; /* 완전히 불투명 */
-        box-shadow: 0 0 0 0 rgba(74, 144, 226, 0.4); /* 그림자 없음 */
-    }
-    50% {
-        /* 중간 상태 */
-        opacity: 0.8; /* 약간 투명 */
-        box-shadow: 0 0 0 4px rgba(74, 144, 226, 0); /* 그림자 확장 */
-    }
-}
-
-/* 로딩 상태의 textarea (입력/출력 공통): 계산 중일 때 표시되는 textarea 스타일 */
+/* 로딩 상태의 textarea: 계산 중일 때 표시되는 textarea 스타일 */
 .node-preview-loading-textarea {
     min-height: 60px; /* 최소 높이 60px */
     background-color: #f5f5f5; /* 연한 회색 배경 */
@@ -257,14 +194,6 @@
     pointer-events: none; /* 마우스 이벤트 무시 */
 }
 
-/* 스피너 회전 애니메이션: 스피너가 360도 회전하는 효과 */
-@keyframes node-preview-spin {
-    to {
-        /* 끝 상태 */
-        transform: translateY(-50%) rotate(360deg); /* 중앙 정렬 유지하며 360도 회전 */
-    }
-}
-
 /* 로딩 상태일 때 shimmer 효과: textarea 배경에 흐르는 빛 효과 */
 .node-preview-loading-state .node-preview-loading-textarea {
     background: linear-gradient(90deg, #f5f5f5 0%, #f9f9f9 50%, #f5f5f5 100%); /* 그라데이션 배경 */
@@ -272,14 +201,32 @@
     animation: node-preview-shimmer 1.5s ease-in-out infinite; /* shimmer 애니메이션 반복 */
 }
 
+/* 펄스 애니메이션: 로딩 중일 때 테두리와 그림자가 깜빡이는 효과 */
+@keyframes node-preview-pulse {
+    0%,
+    100% {
+        opacity: 1; /* 완전히 불투명 */
+        box-shadow: 0 0 0 0 rgba(74, 144, 226, 0.4); /* 그림자 없음 */
+    }
+    50% {
+        opacity: 0.8; /* 약간 투명 */
+        box-shadow: 0 0 0 4px rgba(74, 144, 226, 0); /* 그림자 확장 */
+    }
+}
+
+/* 스피너 회전 애니메이션: 스피너가 360도 회전하는 효과 */
+@keyframes node-preview-spin {
+    to {
+        transform: translateY(-50%) rotate(360deg); /* 중앙 정렬 유지하며 360도 회전 */
+    }
+}
+
 /* Shimmer 애니메이션: 배경이 좌우로 흐르는 효과 */
 @keyframes node-preview-shimmer {
     0% {
-        /* 시작 상태 */
         background-position: -200% 0; /* 배경을 왼쪽 밖에 배치 */
     }
     100% {
-        /* 끝 상태 */
         background-position: 200% 0; /* 배경을 오른쪽 밖에 배치 */
     }
 }

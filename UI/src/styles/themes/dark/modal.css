@@ -1,0 +1,70 @@
+/* ========================================== */
+/* 다크 모드 모달 스타일 */
+/* ========================================== */
+
+/* 모달 콘텐츠 배경 및 테두리 */
+body.theme-dark .modal-content {
+    background-color: #2d3748; /* 어두운 회색 배경 */
+    border-left-color: #4a5568; /* 회색 좌측 테두리 */
+}
+
+/* 모달 헤더 테두리 */
+body.theme-dark .modal-header {
+    border-bottom-color: #4a5568; /* 회색 하단 테두리 */
+}
+
+/* 모달 드래그 핸들 색상 */
+body.theme-dark .modal-drag-handle {
+    background-color: #4a5568; /* 회색 배경 */
+}
+
+/* 모달 제목 색상 */
+body.theme-dark #modal-body h3,
+body.theme-dark .modal-content h3 {
+    color: #667eea; /* 파란색 텍스트 */
+}
+
+/* 모달 본문 텍스트 색상 */
+body.theme-dark .modal-content p {
+    color: #e2e8f0; /* 연한 회색 텍스트 */
+}
+
+/* 모달 닫기 버튼 색상 */
+body.theme-dark .close {
+    color: #a0aec0; /* 회색 텍스트 */
+}
+
+/* 모달 닫기 버튼 호버 효과 */
+body.theme-dark .close:hover {
+    color: #ffffff; /* 흰색 텍스트 */
+}
+
+/* 모달 내부 폼 라벨 색상 */
+body.theme-dark .modal .form-group label {
+    color: #e2e8f0; /* 연한 회색 텍스트 */
+}
+
+/* 모달 내부 입력 필드: input, select, textarea */
+/* 설명 필드(#edit-node-description)는 제외 - node-settings-modal.css에서 별도 스타일 적용 */
+body.theme-dark .modal .form-group input,
+body.theme-dark .modal .form-group select,
+body.theme-dark .modal .form-group textarea:not(#edit-node-description) {
+    border-color: #4a5568; /* 회색 테두리 */
+    background-color: #1a202c; /* 어두운 배경 */
+    color: #ffffff; /* 흰색 텍스트 */
+}
+
+/* 모달 내부 입력 필드 포커스 효과 */
+body.theme-dark .modal .form-group input:focus,
+body.theme-dark .modal .form-group select:focus,
+body.theme-dark .modal .form-group textarea:not(#edit-node-description):focus {
+    outline: none; /* 기본 아웃라인 제거 */
+    border-color: #667eea; /* 파란색 테두리 */
+    box-shadow: 0 0 8px rgba(102, 126, 234, 0.3); /* 파란색 발광 효과 */
+    background-color: #2d3748; /* 더 밝은 배경 */
+}
+
+/* 모달 내부 폼 액션 버튼 영역 테두리 */
+body.theme-dark .modal .form-actions {
+    border-top-color: #4a5568; /* 회색 상단 테두리 */
+}

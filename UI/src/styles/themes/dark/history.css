@@ -1,0 +1,246 @@
+/* ========================================== */
+/* 다크 모드 실행 기록 페이지 스타일 */
+/* ========================================== */
+
+/* 다크 모드 컨테이너 */
+body.theme-dark .history-container {
+    background-color: #1a202c;
+    color: #ffffff;
+}
+
+/* 다크 모드 헤더 */
+body.theme-dark .history-header h1 {
+    color: #ffffff;
+}
+
+body.theme-dark .history-header p {
+    color: #a0aec0;
+}
+
+/* 다크 모드 필터 영역 */
+body.theme-dark .history-filters {
+    background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+    border-color: #4a5568;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+body.theme-dark .history-filter-label {
+    color: #cbd5e0;
+}
+
+body.theme-dark .history-filter-select {
+    background: #2d3748;
+    border-color: #4a5568;
+    color: #ffffff;
+}
+
+body.theme-dark .history-filter-select:hover {
+    background: #374151;
+    border-color: #3182ce;
+}
+
+body.theme-dark .history-filter-select:focus {
+    background: #374151;
+    box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.3);
+}
+
+body.theme-dark .history-refresh-btn {
+    background: linear-gradient(135deg, #3182ce 0%, #2c5282 100%);
+    box-shadow: 0 4px 12px rgba(49, 130, 206, 0.4);
+}
+
+body.theme-dark .history-refresh-btn:hover {
+    background: linear-gradient(135deg, #2c5282 0%, #2a4d7a 100%);
+    box-shadow: 0 6px 20px rgba(49, 130, 206, 0.5);
+}
+
+/* 다크 모드 통계 카드 */
+body.theme-dark .history-stat-card {
+    background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+    border-color: #4a5568;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+body.theme-dark .history-stat-card:hover {
+    background: linear-gradient(135deg, #374151 0%, #2d3748 100%);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    border-color: #3182ce;
+}
+
+body.theme-dark .history-stat-label {
+    color: #a0aec0;
+}
+
+body.theme-dark .history-stat-value {
+    color: #ffffff;
+}
+
+/* 다크 모드 실행 그룹 */
+body.theme-dark .history-execution-group {
+    background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+    border-color: #4a5568;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+body.theme-dark .history-execution-group:hover {
+    background: linear-gradient(135deg, #374151 0%, #2d3748 100%);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+    border-color: #3182ce;
+}
+
+body.theme-dark .history-execution-header {
+    background: transparent;
+}
+
+body.theme-dark .history-execution-header:hover {
+    background: rgba(49, 130, 206, 0.1);
+}
+
+body.theme-dark .history-execution-id {
+    color: #ffffff;
+}
+
+body.theme-dark .history-execution-meta {
+    color: #a0aec0;
+}
+
+body.theme-dark .history-execution-meta span {
+    background: #374151;
+    color: #cbd5e0;
+    border: 1px solid #4a5568;
+}
+
+body.theme-dark .history-toggle-indicator {
+    color: #a0aec0;
+}
+
+body.theme-dark .history-execution-header:hover .history-toggle-indicator {
+    color: #ffffff;
+}
+
+body.theme-dark .history-execution-body {
+    background: #1a202c;
+    border-top-color: #4a5568;
+}
+
+/* 다크 모드 로그 아이템 */
+body.theme-dark .history-item {
+    background: #1a202c;
+    border-color: #4a5568;
+}
+
+body.theme-dark .history-item:hover {
+    background: #2d3748;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+body.theme-dark .history-item-completed {
+    border-left-color: #10b981;
+    background: linear-gradient(to right, rgba(16, 185, 129, 0.1) 0%, #1a202c 5%);
+}
+
+body.theme-dark .history-item-failed {
+    border-left-color: #ef4444;
+    background: linear-gradient(to right, rgba(239, 68, 68, 0.1) 0%, #1a202c 5%);
+}
+
+body.theme-dark .history-item-running {
+    border-left-color: #f59e0b;
+    background: linear-gradient(to right, rgba(245, 158, 11, 0.1) 0%, #1a202c 5%);
+}
+
+body.theme-dark .status-text {
+    color: #ffffff;
+}
+
+body.theme-dark .history-item-node {
+    color: #ffffff;
+}
+
+body.theme-dark .history-item-type {
+    background: #374151;
+    color: #cbd5e0;
+    border: 1px solid #4a5568;
+}
+
+body.theme-dark .history-item-time {
+    color: #a0aec0;
+}
+
+body.theme-dark .history-item-details {
+    border-top-color: #4a5568;
+}
+
+body.theme-dark .timeline-label {
+    color: #a0aec0;
+}
+
+body.theme-dark .timeline-value {
+    color: #ffffff;
+}
+
+body.theme-dark .history-item-label {
+    color: #a0aec0;
+}
+
+body.theme-dark .history-item-value {
+    background: #2d3748;
+    border-color: #4a5568;
+    color: #e2e8f0;
+}
+
+body.theme-dark .history-item-error-message {
+    background: rgba(239, 68, 68, 0.15);
+    border-left-color: #ef4444;
+    color: #fca5a5;
+}
+
+body.theme-dark .history-item-traceback summary {
+    background: #2d3748;
+    color: #a0aec0;
+    border: 1px solid #4a5568;
+}
+
+body.theme-dark .history-item-traceback summary:hover {
+    background: #374151;
+}
+
+body.theme-dark .history-item-traceback pre {
+    background: #2d3748;
+    border: 1px solid #4a5568;
+    color: #e2e8f0;
+}
+
+body.theme-dark .history-empty-message {
+    color: #a0aec0;
+}
+
+body.theme-dark .history-delete-all-btn {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+
+body.theme-dark .history-delete-all-btn:hover {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.5);
+}
+
+body.theme-dark .history-delete-execution-btn {
+    border-color: #4a5568;
+    color: #ffffff;
+}
+
+body.theme-dark .history-delete-execution-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: #ef4444;
+}
+
+body.theme-dark .history-delete-item-btn {
+    border-color: #4a5568;
+    color: #ffffff;
+}
+
+body.theme-dark .history-delete-item-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: #ef4444;
+}

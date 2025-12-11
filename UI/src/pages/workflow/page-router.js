@@ -6,6 +6,7 @@
 
 import { getDashboardManagerInstance } from './dashboard.js';
 import { getSettingsManagerInstance } from './settings.js';
+import { getHistoryManagerInstance } from './history.js';
 
 /**
  * 로거 유틸리티 가져오기
@@ -146,7 +147,7 @@ export class PageRouter {
                 break;
             case 'history':
                 titleEl.textContent = '실행 기록';
-                descEl.textContent = '과거 실행 내역을 확인하세요';
+                descEl.textContent = '과거 실행 내역 및 노드 실행 로그를 확인하세요';
                 break;
             case 'settings':
                 titleEl.textContent = '설정';
@@ -212,10 +213,13 @@ export class PageRouter {
     /**
      * 실행 기록 초기화
      */
-    initHistory() {
+    async initHistory() {
         const logger = getLogger();
         logger.log('[PageRouter] 실행 기록 페이지 초기화');
-        // TODO: 실행 기록 데이터 로드
+
+        // 실행 기록 페이지에 로그 기능 통합
+        const historyManager = getHistoryManagerInstance();
+        await historyManager.init();
     }
 
     /**

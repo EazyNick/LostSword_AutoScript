@@ -129,6 +129,24 @@ export class NodeUpdateService {
             updatedNodeData.description = description;
         }
 
+        // 입력 데이터 가져오기 (편집 가능한 입력 필드)
+        const inputPreview = document.getElementById('node-input-preview');
+        if (inputPreview) {
+            const inputValue = inputPreview.value.trim();
+            if (inputValue) {
+                // JSON 파싱 시도
+                try {
+                    updatedNodeData.input_data = JSON.parse(inputValue);
+                } catch (e) {
+                    // JSON이 아니면 문자열로 저장 (표현식 포함 가능)
+                    updatedNodeData.input_data = inputValue;
+                }
+            } else {
+                // 빈 값이면 입력 데이터 제거
+                updatedNodeData.input_data = null;
+            }
+        }
+
         // 출력 오버라이드 값 가져오기 (항상 편집 가능하므로 textarea 값이 있으면 저장)
         const outputOverrideTextarea = document.getElementById('edit-node-output-value');
 
@@ -169,73 +187,6 @@ export class NodeUpdateService {
         }
 
         console.log('[NodeUpdateService] 최종 업데이트된 노드 데이터:', updatedNodeData);
-
-        // 레거시 특수 설정 처리 (하위 호환성 유지)
-        // 파라미터로 처리되지 않은 경우에만 레거시 로직 사용
-        if (newDetailNodeType === 'http-api-request' && !config?.detailTypes?.[newDetailNodeType]?.parameters) {
-            const url = document.getElementById('edit-http-url')?.value || '';
-            const method = document.getElementById('edit-http-method')?.value || 'GET';
-            const headersText = document.getElementById('edit-http-headers')?.value || '{}';
-            const bodyText = document.getElementById('edit-http-body')?.value || '';
-            const timeout = document.getElementById('edit-http-timeout')?.value || '30';
-
-            if (url) {
-                updatedNodeData.url = url;
-            }
-            updatedNodeData.method = method;
-
-            // 헤더 파싱
-            try {
-                updatedNodeData.headers = JSON.parse(headersText);
-            } catch (e) {
-                updatedNodeData.headers = {};
-            }
-
-            // 본문 파싱 시도 (JSON이면 파싱, 아니면 문자열로 저장)
-            if (bodyText) {
-                try {
-                    updatedNodeData.body = JSON.parse(bodyText);
-                } catch (e) {
-                    updatedNodeData.body = bodyText;
-                }
-            }
-
-            updatedNodeData.timeout = parseFloat(timeout) || 30;
-        }
-
-        // 타입별 추가 데이터 (레거시)
-        if (newType === NODE_TYPES.IMAGE_TOUCH && !config?.parameters?.folder_path) {
-            const folderPath = document.getElementById('edit-node-folder-path')?.value || '';
-            if (folderPath) {
-                updatedNodeData.folder_path = folderPath;
-            }
-        } else if (newType === NODE_TYPES.CONDITION && !config?.parameters?.condition) {
-            const condition = document.getElementById('edit-node-condition')?.value || '';
-            if (condition) {
-                updatedNodeData.condition = condition;
-            }
-        } else if (newType === NODE_TYPES.WAIT && !config?.parameters?.wait_time) {
-            const waitTime = document.getElementById('edit-node-wait-time')?.value || '1';
-            updatedNodeData.wait_time = parseFloat(waitTime) || 1;
-        } else if (newType === 'process-focus' && !config?.parameters) {
-            const processId = document.getElementById('edit-node-process-id')?.value || '';
-            const hwnd = document.getElementById('edit-node-process-hwnd')?.value || '';
-            const processName = document.getElementById('edit-node-process-name')?.value || '';
-            const windowTitle = document.getElementById('edit-node-window-title')?.value || '';
-
-            if (processId) {
-                updatedNodeData.process_id = parseInt(processId);
-            }
-            if (hwnd) {
-                updatedNodeData.hwnd = parseInt(hwnd);
-            }
-            if (processName) {
-                updatedNodeData.process_name = processName;
-            }
-            if (windowTitle) {
-                updatedNodeData.window_title = windowTitle;
-            }
-        }
 
         return updatedNodeData;
     }

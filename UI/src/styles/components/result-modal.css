@@ -1,0 +1,246 @@
+/* ========================================== */
+/* 실행 결과 모달 기본 구조 스타일 (테마 무관) */
+/* ========================================== */
+
+/* 실행 결과 모달: 가운데 팝업 형태의 모달 */
+.result-modal {
+    display: none; /* 기본적으로 숨김 */
+    position: fixed; /* 화면에 고정 */
+    z-index: 3000; /* 다른 모달보다 위에 표시 */
+    left: 0; /* 왼쪽 끝 */
+    top: 0; /* 상단 끝 */
+    width: 100%; /* 전체 너비 */
+    height: 100%; /* 전체 높이 */
+    background-color: rgba(0, 0, 0, 0.5); /* 반투명 검은색 배경 */
+    backdrop-filter: blur(3px); /* 배경 블러 효과 */
+    animation: resultModalFadeIn 0.2s ease-out; /* 페이드인 애니메이션 */
+}
+
+/* 실행 결과 모달 콘텐츠: 가운데 정렬된 작은 팝업 (사이드바 제외 영역 기준) */
+.result-modal-content {
+    position: absolute; /* 절대 위치 */
+    top: 50%; /* 세로 중앙 */
+    /* 사이드바 너비를 제외한 영역의 중앙에 배치 */
+    left: calc(
+        var(--sidebar-width, 350px) + (100% - var(--sidebar-width, 350px)) / 2
+    ); /* 사이드바 제외 영역의 가로 중앙 */
+    transform: translate(-50%, -50%); /* 정확한 중앙 정렬 */
+    background-color: #ffffff; /* 화이트 배경 (테마별로 오버라이드) */
+    border-radius: 12px; /* 둥근 모서리 */
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3); /* 그림자 효과 */
+    width: 90%; /* 너비 90% */
+    max-width: 600px; /* 최대 너비 600px */
+    max-height: 80vh; /* 최대 높이 80vh */
+    display: flex; /* 플렉스박스 레이아웃 */
+    flex-direction: column; /* 세로 방향 */
+    overflow: hidden; /* 내용이 넘치면 숨김 */
+    animation: resultModalSlideIn 0.3s ease-out; /* 슬라이드인 애니메이션 */
+}
+
+/* 실행 결과 모달 헤더: 제목과 닫기 버튼 영역 */
+.result-modal-header {
+    padding: 1.5rem; /* 내부 여백 1.5rem */
+    border-bottom: 1px solid; /* 하단 테두리 (색상은 테마별로 설정) */
+    display: flex; /* 플렉스박스 레이아웃 */
+    justify-content: space-between; /* 양쪽 정렬 */
+    align-items: center; /* 수직 중앙 정렬 */
+    flex-shrink: 0; /* 축소 방지 */
+}
+
+/* 실행 결과 모달 제목 */
+.result-modal-title {
+    font-size: 1.5rem; /* 큰 글씨 크기 */
+    font-weight: 600; /* 중간 굵기 */
+    margin: 0; /* 여백 제거 */
+}
+
+/* 실행 결과 모달 닫기 버튼 */
+.result-modal-close {
+    font-size: 24px; /* 큰 글씨 크기 */
+    font-weight: bold; /* 굵은 글씨 */
+    cursor: pointer; /* 클릭 가능한 커서 */
+    line-height: 1; /* 줄 높이 1 (수직 정렬) */
+    transition: opacity 0.2s ease; /* 부드러운 전환 효과 */
+    padding: 0.25rem; /* 내부 여백 0.25rem */
+    border-radius: 4px; /* 둥근 모서리 */
+}
+
+/* 실행 결과 모달 닫기 버튼 호버 효과 */
+.result-modal-close:hover {
+    opacity: 0.7; /* 호버 시 약간 투명하게 */
+}
+
+/* 실행 결과 모달 본문: 스크롤 가능한 영역 */
+.result-modal-body {
+    padding: 1.5rem; /* 내부 여백 1.5rem */
+    overflow-y: auto; /* 세로 스크롤 가능 */
+    flex: 1; /* 남은 공간 모두 사용 */
+    min-height: 0; /* 플렉스박스에서 스크롤을 위해 필요 */
+}
+
+/* 실행 결과 모달 푸터: 버튼 영역 */
+.result-modal-footer {
+    padding: 1rem 1.5rem; /* 내부 여백 */
+    border-top: 1px solid; /* 상단 테두리 (색상은 테마별로 설정) */
+    display: flex; /* 플렉스박스 레이아웃 */
+    justify-content: flex-end; /* 오른쪽 정렬 */
+    gap: 0.75rem; /* 버튼들 사이 간격 */
+    flex-shrink: 0; /* 축소 방지 */
+}
+
+/* 실행 결과 요약 정보: 성공/실패/중단 노드 개수 표시 */
+.result-summary {
+    margin-bottom: 1.5rem; /* 하단 여백 1.5rem */
+    padding: 1rem; /* 내부 여백 1rem */
+    border-radius: 8px; /* 둥근 모서리 */
+    border: 1px solid; /* 테두리 (색상은 테마별로 설정) */
+}
+
+/* 실행 결과 요약 제목 */
+.result-summary-title {
+    font-size: 1.1rem; /* 중간 글씨 크기 */
+    font-weight: 600; /* 중간 굵기 */
+    margin-bottom: 0.75rem; /* 하단 여백 0.75rem */
+}
+
+/* 실행 결과 요약 항목: 성공/실패/중단 노드 개수 */
+.result-summary-item {
+    display: flex; /* 플렉스박스 레이아웃 */
+    justify-content: space-between; /* 양쪽 정렬 */
+    align-items: center; /* 수직 중앙 정렬 */
+    padding: 0.5rem 0; /* 상하 여백 0.5rem */
+    font-size: 0.95rem; /* 작은 글씨 크기 */
+}
+
+/* 실행 결과 요약 항목 라벨 */
+.result-summary-label {
+    font-weight: 500; /* 중간 굵기 */
+}
+
+/* 실행 결과 요약 항목 값 */
+.result-summary-value {
+    font-weight: 600; /* 중간 굵기 */
+}
+
+/* 실행 결과 노드 목록: 각 노드의 실행 결과 표시 */
+.result-nodes-list {
+    margin-top: 1.5rem; /* 상단 여백 1.5rem */
+}
+
+/* 실행 결과 노드 목록 제목 */
+.result-nodes-title {
+    font-size: 1.1rem; /* 중간 글씨 크기 */
+    font-weight: 600; /* 중간 굵기 */
+    margin-bottom: 1rem; /* 하단 여백 1rem */
+}
+
+/* 실행 결과 노드 항목: 개별 노드의 실행 결과 */
+.result-node-item {
+    padding: 1rem; /* 내부 여백 1rem */
+    border-radius: 8px; /* 둥근 모서리 */
+    border: 1px solid; /* 테두리 (색상은 테마별로 설정) */
+    margin-bottom: 0.75rem; /* 하단 여백 0.75rem */
+}
+
+/* 실행 결과 노드 항목: 마지막 항목 */
+.result-node-item:last-child {
+    margin-bottom: 0; /* 하단 여백 없음 */
+}
+
+/* 실행 결과 노드 헤더: 노드 이름과 상태 표시 */
+.result-node-header {
+    display: flex; /* 플렉스박스 레이아웃 */
+    justify-content: space-between; /* 양쪽 정렬 */
+    align-items: center; /* 수직 중앙 정렬 */
+    margin-bottom: 0.5rem; /* 하단 여백 0.5rem */
+}
+
+/* 실행 결과 노드 이름 */
+.result-node-name {
+    font-weight: 600; /* 중간 굵기 */
+    font-size: 1rem; /* 기본 글씨 크기 */
+}
+
+/* 실행 결과 노드 상태 배지: 성공/실패/중단 표시 */
+.result-node-status {
+    padding: 0.25rem 0.75rem; /* 내부 여백 */
+    border-radius: 12px; /* 둥근 모서리 */
+    font-size: 0.85rem; /* 작은 글씨 크기 */
+    font-weight: 500; /* 중간 굵기 */
+}
+
+/* 실행 결과 노드 메시지: 에러 메시지 또는 성공 메시지 */
+.result-node-message {
+    font-size: 0.9rem; /* 작은 글씨 크기 */
+    margin-top: 0.5rem; /* 상단 여백 0.5rem */
+    padding: 0.5rem; /* 내부 여백 0.5rem */
+    border-radius: 4px; /* 둥근 모서리 */
+    background-color: rgba(0, 0, 0, 0.05); /* 연한 배경 (테마별로 오버라이드) */
+}
+
+/* 실행 결과 모달 표시 상태 */
+.result-modal.show {
+    display: block; /* 블록 요소로 표시 */
+}
+
+/* 실행 결과 모달 숨김 상태 */
+.result-modal.hide {
+    animation: resultModalFadeOut 0.2s ease-out; /* 페이드아웃 애니메이션 */
+}
+
+/* 실행 결과 모달 페이드인 애니메이션 */
+@keyframes resultModalFadeIn {
+    from {
+        opacity: 0; /* 투명 */
+    }
+    to {
+        opacity: 1; /* 완전히 불투명 */
+    }
+}
+
+/* 실행 결과 모달 페이드아웃 애니메이션 */
+@keyframes resultModalFadeOut {
+    from {
+        opacity: 1; /* 완전히 불투명 */
+    }
+    to {
+        opacity: 0; /* 투명 */
+    }
+}
+
+/* 실행 결과 모달 슬라이드인 애니메이션 */
+@keyframes resultModalSlideIn {
+    from {
+        opacity: 0; /* 투명 */
+        transform: translate(-50%, -48%); /* 약간 위에서 시작 */
+    }
+    to {
+        opacity: 1; /* 완전히 불투명 */
+        transform: translate(-50%, -50%); /* 정확한 중앙 (사이드바 제외 영역 기준) */
+    }
+}
+
+/* 반응형: 작은 화면에서 모달 크기 조정 */
+@media (max-width: 768px) {
+    /* 모바일에서 모달 콘텐츠 크기 조정 */
+    .result-modal-content {
+        width: 95%; /* 너비 95%로 확대 */
+        max-width: none; /* 최대 너비 제한 없음 */
+        max-height: 90vh; /* 최대 높이 90vh */
+    }
+
+    /* 모바일에서 모달 헤더 패딩 축소 */
+    .result-modal-header {
+        padding: 1rem; /* 패딩 축소 */
+    }
+
+    /* 모바일에서 모달 본문 패딩 축소 */
+    .result-modal-body {
+        padding: 1rem; /* 패딩 축소 */
+    }
+
+    /* 모바일에서 모달 푸터 패딩 축소 */
+    .result-modal-footer {
+        padding: 0.75rem 1rem; /* 패딩 축소 */
+    }
+}

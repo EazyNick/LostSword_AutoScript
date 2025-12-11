@@ -361,30 +361,8 @@ export class WorkflowLoadService {
                     }
                 }
 
-                // 레거시 하위 호환성 (파라미터로 처리되지 않은 경우)
-                if (
-                    nodeType === NODE_TYPES.IMAGE_TOUCH &&
-                    !nodeManager.nodeData[nodeData.id].folder_path &&
-                    nodeData.parameters.folder_path
-                ) {
-                    nodeManager.nodeData[nodeData.id].folder_path = nodeData.parameters.folder_path;
-                    nodeDataForManager.folder_path = nodeData.parameters.folder_path;
-                } else if (
-                    nodeType === NODE_TYPES.CONDITION &&
-                    !nodeManager.nodeData[nodeData.id].condition &&
-                    nodeData.parameters.condition
-                ) {
-                    nodeManager.nodeData[nodeData.id].condition = nodeData.parameters.condition;
-                    nodeDataForManager.condition = nodeData.parameters.condition;
-                } else if (
-                    nodeType === NODE_TYPES.WAIT &&
-                    nodeManager.nodeData[nodeData.id].wait_time === undefined &&
-                    nodeData.parameters.wait_time !== undefined
-                ) {
-                    nodeManager.nodeData[nodeData.id].wait_time = nodeData.parameters.wait_time;
-                    nodeDataForManager.wait_time = nodeData.parameters.wait_time;
-                } else if (nodeType === 'process-focus') {
-                    // 프로세스 포커스 노드: 프로세스 정보 복원 (비동기로 검증)
+                // process-focus 노드는 별도 처리 (비동기 검증 필요)
+                if (nodeType === 'process-focus') {
                     await this.restoreProcessFocusNode(nodeData, nodeManager, nodeDataForManager);
                 }
             }

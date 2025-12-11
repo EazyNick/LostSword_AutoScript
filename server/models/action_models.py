@@ -38,3 +38,6 @@ class NodeExecutionRequest(BaseModel):
 
     nodes: list[dict[str, Any]]
     execution_mode: str = "sequential"  # sequential, parallel
+    total_nodes: int | None = None  # 전체 노드 개수 (로깅용)
+    current_node_index: int | None = None  # 현재 노드 순번 (0부터 시작, 로깅용)
+    previous_node_result: dict[str, Any] | None = None  # 이전 노드의 실행 결과 (데이터 전달용)
