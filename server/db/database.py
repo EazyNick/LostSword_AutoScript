@@ -5,6 +5,9 @@ import os
 import sys
 from typing import Any
 
+# 로거 초기화
+logger = logging.getLogger(__name__)
+
 # 직접 실행 시와 모듈로 import 시 모두 지원
 try:
     from .connection import DatabaseConnection
@@ -145,30 +148,122 @@ class DatabaseManager:
         return self.scripts.update_script_order(script_orders)
 
     # 대시보드 통계 메서드들
-    def get_dashboard_stats(self) -> dict[str, int]:
-        """대시보드 통계 조회"""
-        return self.dashboard_stats.get_all_stats()
+    def get_dashboard_stats(self, use_cache: bool = True) -> dict[str, int | float | None]:
+        """
+        대시보드 통계 조회
+
+        Args:
+            use_cache: 캐시 사용 여부 (기본값: True, 현재는 사용하지 않음)
+
+        Returns:
+            통계 딕셔너리
+        """
+        # 항상 최신 데이터로 계산
+        return self.calculate_and_update_dashboard_stats()
+
+    def _is_cache_valid(self, cached_stats: dict[str, int]) -> bool:
+        """
+        캐시가 유효한지 확인
+
+        Args:
+            cached_stats: 캐시된 통계 딕셔너리
+
+        Returns:
+            캐시 유효 여부
+        """
+        if not cached_stats or len(cached_stats) == 0:
+            return False
+
+        # 모든 통계 키가 있는지 확인
+        required_keys = ["total_scripts", "all_executions", "all_failed_scripts", "inactive_scripts"]
+        if not all(key in cached_stats for key in required_keys):
+            return False
+
+        # updated_at 확인 (5분 이내 업데이트된 경우 유효)
+        conn = self.connection.get_connection()
+        cursor = self.connection.get_cursor(conn)
+
+        try:
+            cursor.execute(
+                """
+                SELECT MIN(updated_at) FROM dashboard_stats
+                WHERE stat_key IN ('total_scripts', 'all_executions', 'all_failed_scripts', 'inactive_scripts')
+                """
+            )
+            result = cursor.fetchone()
+            if not result or not result[0]:
+                return False
+
+            # SQLite datetime 비교 (5분 = 300초)
+            cursor.execute(
+                """
+                SELECT COUNT(*) FROM dashboard_stats
+                WHERE stat_key IN ('total_scripts', 'all_executions', 'all_failed_scripts', 'inactive_scripts')
+                AND datetime(updated_at) > datetime('now', '-5 minutes')
+                """
+            )
+            count = cursor.fetchone()[0]
+            return count > 0
+        finally:
+            conn.close()
 
     def update_dashboard_stats(self, stats: dict[str, int]) -> bool:
         """대시보드 통계 업데이트"""
         return self.dashboard_stats.update_all_stats(stats)
 
-    def calculate_and_update_dashboard_stats(self) -> dict[str, int]:
+    def set_all_execution_stats(self, total_executions: int, failed_count: int) -> bool:
         """
-        대시보드 통계 계산 및 업데이트
-        - 전체 스크립트 개수
-        - 오늘 실행 횟수
-        - 오늘 실패한 스크립트 개수
-        - 비활성 스크립트 개수
+        전체 실행 통계 설정 (전체 실행 기준)
+
+        Args:
+            total_executions: 전체 실행 시 실행된 스크립트 개수
+            failed_count: 전체 실행 시 실패한 스크립트 개수
+
+        Returns:
+            성공 여부
         """
-        # 전체 스크립트 개수
-        all_scripts = self.get_all_scripts()
-        total_scripts = len(all_scripts)
+        stats = {"all_executions": total_executions, "all_failed_scripts": failed_count}
+        return self.dashboard_stats.update_all_stats(stats)
 
-        # 비활성 스크립트 개수
-        inactive_scripts = sum(1 for script in all_scripts if not script.get("active", True))
+    def update_stat(self, stat_key: str) -> bool:
+        """
+        특정 통계만 업데이트 (이벤트 기반)
 
-        # 오늘 실행 횟수 및 실패한 스크립트 개수
+        Args:
+            stat_key: 통계 키 ('total_scripts', 'today_executions', 'today_failed_scripts', 'inactive_scripts')
+
+        Returns:
+            성공 여부
+        """
+        if stat_key == "total_scripts":
+            # 전체 스크립트 개수
+            all_scripts = self.get_all_scripts()
+            total_scripts = len(all_scripts)
+            return self.dashboard_stats.set_stat("total_scripts", total_scripts)
+
+        if stat_key == "inactive_scripts":
+            # 비활성 스크립트 개수
+            all_scripts = self.get_all_scripts()
+            inactive_scripts = sum(1 for script in all_scripts if not script.get("active", True))
+            return self.dashboard_stats.set_stat("inactive_scripts", inactive_scripts)
+
+        if stat_key == "today_executions":
+            # 오늘 실행 횟수
+            today_executions = self._get_today_executions_count()
+            return self.dashboard_stats.set_stat("today_executions", today_executions)
+
+        if stat_key == "today_failed_scripts":
+            # 오늘 실패한 스크립트 개수
+            today_failed = self._get_today_failed_scripts_count()
+            logger.info(f"[DB 통계] today_failed_scripts 계산 결과: {today_failed}")
+            result = self.dashboard_stats.set_stat("today_failed_scripts", today_failed)
+            logger.info(f"[DB 통계] today_failed_scripts DB 저장 결과: {result}")
+            return result
+
+        return False
+
+    def _get_today_executions_count(self) -> int:
+        """오늘 실행 횟수 조회"""
         conn = self.connection.get_connection()
         cursor = self.connection.get_cursor(conn)
 
@@ -178,41 +273,250 @@ class DatabaseManager:
             table_exists = cursor.fetchone() is not None
 
             if table_exists:
-                # 오늘 실행 횟수 (SQLite datetime 함수 사용)
+                # 오늘 실행 횟수 (SQLite datetime 함수 사용, 타임존 고려)
+                # date(started_at, 'localtime'): UTC로 저장된 started_at을 로컬 타임존으로 변환 후 날짜 추출
+                # date('now', 'localtime'): 현재 로컬 날짜
                 cursor.execute(
                     """
                     SELECT COUNT(*) FROM script_executions
-                    WHERE date(started_at) = date('now')
+                    WHERE date(started_at, 'localtime') = date('now', 'localtime')
                     """
                 )
-                today_executions = cursor.fetchone()[0] or 0
-
-                # 오늘 실패한 스크립트 개수
-                cursor.execute(
-                    """
-                    SELECT COUNT(DISTINCT script_id) FROM script_executions
-                    WHERE date(started_at) = date('now') AND status = 'error'
-                    """
-                )
-                today_failed = cursor.fetchone()[0] or 0
-            else:
-                # 테이블이 없으면 0으로 설정
-                today_executions = 0
-                today_failed = 0
+                result = cursor.fetchone()
+                return result[0] if result else 0
+            return 0
         finally:
             conn.close()
 
+    def _get_today_failed_scripts_count(self) -> int:
+        """오늘 실패한 스크립트 개수 조회"""
+        conn = self.connection.get_connection()
+        cursor = self.connection.get_cursor(conn)
+
+        try:
+            # script_executions 테이블이 존재하는지 확인
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='script_executions'")
+            table_exists = cursor.fetchone() is not None
+
+            if table_exists:
+                # 디버깅: 오늘의 모든 실행 기록 확인
+                cursor.execute(
+                    """
+                    SELECT script_id, status, started_at FROM script_executions
+                    WHERE date(started_at, 'localtime') = date('now', 'localtime')
+                    ORDER BY started_at DESC
+                    """
+                )
+                all_today_executions = cursor.fetchall()
+                logger.debug(f"[DB 통계] 오늘의 모든 실행 기록: {all_today_executions}")
+
+                # 오늘 실패한 스크립트 개수 (고유 스크립트 수)
+                cursor.execute(
+                    """
+                    SELECT COUNT(DISTINCT script_id) FROM script_executions
+                    WHERE date(started_at, 'localtime') = date('now', 'localtime') AND status = 'error'
+                    """
+                )
+                result = cursor.fetchone()
+                failed_count = result[0] if result else 0
+
+                # 디버깅: 실패한 스크립트 ID 목록 확인
+                cursor.execute(
+                    """
+                    SELECT DISTINCT script_id FROM script_executions
+                    WHERE date(started_at, 'localtime') = date('now', 'localtime') AND status = 'error'
+                    """
+                )
+                failed_script_ids = [row[0] for row in cursor.fetchall()]
+                logger.info(
+                    f"[DB 통계] 오늘 실패한 스크립트 개수: {failed_count}, 스크립트 ID 목록: {failed_script_ids}"
+                )
+
+                return failed_count
+            return 0
+        finally:
+            conn.close()
+
+    def _get_yesterday_executions_count(self) -> int:
+        """어제 실행 횟수 조회"""
+        conn = self.connection.get_connection()
+        cursor = self.connection.get_cursor(conn)
+
+        try:
+            # script_executions 테이블이 존재하는지 확인
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='script_executions'")
+            table_exists = cursor.fetchone() is not None
+
+            if table_exists:
+                # 어제 실행 횟수 (SQLite datetime 함수 사용, 타임존 고려)
+                cursor.execute(
+                    """
+                    SELECT COUNT(*) FROM script_executions
+                    WHERE date(started_at, 'localtime') = date('now', '-1 day', 'localtime')
+                    """
+                )
+                result = cursor.fetchone()
+                return result[0] if result else 0
+            return 0
+        finally:
+            conn.close()
+
+    def _calculate_executions_change_percent(self, today_count: int, yesterday_count: int) -> float | None:
+        """
+        어제 대비 오늘 실행 횟수 변화율 계산
+
+        Args:
+            today_count: 오늘 실행 횟수
+            yesterday_count: 어제 실행 횟수
+
+        Returns:
+            변화율 (퍼센트), 어제 데이터가 없으면 None
+        """
+        if yesterday_count == 0:
+            # 어제 데이터가 없으면 None 반환
+            return None
+
+        # 변화율 계산: ((오늘 - 어제) / 어제) * 100
+        change_percent = ((today_count - yesterday_count) / yesterday_count) * 100
+        return round(change_percent, 1)
+
+    def calculate_and_update_dashboard_stats(self) -> dict[str, int | float | None]:
+        """
+        대시보드 통계 계산 및 업데이트
+        - 전체 스크립트 개수
+        - 전체 실행 횟수 (전체 실행 시 실행된 스크립트 개수)
+        - 전체 실패한 스크립트 개수 (전체 실행 시 실패한 스크립트 개수)
+        - 비활성 스크립트 개수
+        """
+        # 전체 스크립트 개수
+        all_scripts = self.get_all_scripts()
+        total_scripts = len(all_scripts)
+
+        # 비활성 스크립트 개수
+        inactive_scripts = sum(1 for script in all_scripts if not script.get("active", True))
+
+        # 전체 실행 통계 조회 (dashboard_stats 테이블에서)
+        all_executions = self.dashboard_stats.get_stat("all_executions") or 0
+        all_failed_scripts = self.dashboard_stats.get_stat("all_failed_scripts") or 0
+
         stats = {
             "total_scripts": total_scripts,
-            "today_executions": today_executions,
-            "today_failed": today_failed,
+            "all_executions": all_executions,  # 전체 실행 시 실행된 스크립트 개수
+            "all_failed_scripts": all_failed_scripts,  # 전체 실행 시 실패한 스크립트 개수
             "inactive_scripts": inactive_scripts,
         }
 
         # 통계 업데이트
-        self.update_dashboard_stats(stats)
+        stats_to_cache = {
+            "total_scripts": total_scripts,
+            "all_executions": all_executions,
+            "all_failed_scripts": all_failed_scripts,
+            "inactive_scripts": inactive_scripts,
+        }
+        self.update_dashboard_stats(stats_to_cache)
 
         return stats
+
+    def record_script_execution(
+        self,
+        script_id: int,
+        status: str,
+        error_message: str | None = None,
+        execution_time_ms: int | None = None,
+        execution_id: int | None = None,
+    ) -> int | None:
+        """
+        스크립트 실행 기록 저장 또는 업데이트
+
+        Args:
+            script_id: 스크립트 ID
+            status: 실행 상태 ('running', 'success', 'error', 'cancelled')
+            error_message: 에러 메시지 (실패 시)
+            execution_time_ms: 실행 시간 (밀리초)
+            execution_id: 실행 기록 ID (업데이트 시 필요, None이면 새로 생성)
+
+        Returns:
+            실행 기록 ID (실패 시 None)
+        """
+        conn = self.connection.get_connection()
+        cursor = self.connection.get_cursor(conn)
+
+        try:
+            # script_executions 테이블이 존재하는지 확인
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='script_executions'")
+            table_exists = cursor.fetchone() is not None
+
+            if not table_exists:
+                logger.warning("[DB] script_executions 테이블이 존재하지 않습니다. 실행 기록 저장 건너뜀")
+                return None
+
+            from datetime import datetime
+
+            if execution_id is None:
+                # 새 실행 기록 생성 (시작)
+                started_at = datetime.now().isoformat()
+                finished_at = None
+
+                cursor.execute(
+                    """
+                    INSERT INTO script_executions
+                    (script_id, status, started_at, finished_at, error_message, execution_time_ms)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (script_id, status, started_at, finished_at, error_message, execution_time_ms),
+                )
+
+                conn.commit()
+                execution_id = cursor.lastrowid
+
+                logger.info(
+                    f"[DB] 스크립트 실행 기록 저장 (시작) - 실행 ID: {execution_id}, 스크립트 ID: {script_id}, 상태: {status}"
+                )
+            else:
+                # 기존 실행 기록 업데이트 (완료)
+                finished_at = datetime.now().isoformat()
+
+                cursor.execute(
+                    """
+                    UPDATE script_executions
+                    SET status = ?, finished_at = ?, error_message = ?, execution_time_ms = ?
+                    WHERE id = ?
+                    """,
+                    (status, finished_at, error_message, execution_time_ms, execution_id),
+                )
+
+                conn.commit()
+
+                logger.info(
+                    f"[DB] 스크립트 실행 기록 업데이트 (완료) - 실행 ID: {execution_id}, 스크립트 ID: {script_id}, 상태: {status}"
+                )
+
+            # 통계 업데이트 (완료 상태일 때만)
+            if status in ("success", "error", "cancelled"):
+                try:
+                    self.update_stat("today_executions")
+                    if status == "error":
+                        logger.info(f"[DB 통계] 실패한 스크립트 통계 업데이트 시작 - 스크립트 ID: {script_id}")
+                        update_result = self.update_stat("today_failed_scripts")
+                        if update_result:
+                            # 업데이트 후 현재 실패한 스크립트 개수 확인
+                            current_failed_count = self._get_today_failed_scripts_count()
+                            logger.info(
+                                f"[DB 통계] 실패한 스크립트 통계 업데이트 완료 - 현재 실패한 스크립트 개수: {current_failed_count}"
+                            )
+                        else:
+                            logger.warning(f"[DB 통계] 실패한 스크립트 통계 업데이트 실패 - 스크립트 ID: {script_id}")
+                    logger.debug("[DB 통계] 실행 기록 저장 후 통계 업데이트 완료")
+                except Exception as e:
+                    logger.warning(f"[DB 통계] 통계 업데이트 실패 (무시): {e!s}")
+
+            return execution_id
+        except Exception as e:
+            logger.error(f"[DB] 스크립트 실행 기록 저장/업데이트 실패 - 스크립트 ID: {script_id}, 에러: {e!s}")
+            conn.rollback()
+            return None
+        finally:
+            conn.close()
 
     def seed_example_data(self, logger: logging.Logger | None = None) -> None:
         """
@@ -272,19 +576,11 @@ class DatabaseManager:
                     "parameters": {"condition": "check_login_success"},
                     "description": "로그인 성공 여부 확인",
                 },
-                {
-                    "id": "end",
-                    "type": "end",
-                    "position": {"x": 900.0, "y": 0.0},
-                    "data": {"title": "종료"},
-                    "parameters": {},
-                },
             ]
 
             script1_connections = [
                 {"from": "start", "to": "node1", "outputType": None},
                 {"from": "node1", "to": "node2", "outputType": None},
-                {"from": "node2", "to": "end", "outputType": "true"},
             ]
 
             self.nodes.save_nodes(script1_id, script1_nodes, script1_connections)
@@ -319,19 +615,11 @@ class DatabaseManager:
                     "parameters": {"condition": "check_payment_success"},
                     "description": "결제 성공 여부 확인",
                 },
-                {
-                    "id": "end",
-                    "type": "end",
-                    "position": {"x": 900.0, "y": 0.0},
-                    "data": {"title": "종료"},
-                    "parameters": {},
-                },
             ]
 
             script2_connections = [
                 {"from": "start", "to": "node1", "outputType": None},
                 {"from": "node1", "to": "node2", "outputType": None},
-                {"from": "node2", "to": "end", "outputType": "true"},
             ]
 
             self.nodes.save_nodes(script2_id, script2_nodes, script2_connections)
@@ -364,19 +652,11 @@ class DatabaseManager:
                     "data": {"title": "대기"},
                     "parameters": {"wait_time": 2.0},
                 },
-                {
-                    "id": "end",
-                    "type": "end",
-                    "position": {"x": 900.0, "y": 0.0},
-                    "data": {"title": "종료"},
-                    "parameters": {},
-                },
             ]
 
             script3_connections = [
                 {"from": "start", "to": "node1", "outputType": None},
                 {"from": "node1", "to": "node2", "outputType": None},
-                {"from": "node2", "to": "end", "outputType": None},
             ]
 
             self.nodes.save_nodes(script3_id, script3_nodes, script3_connections)

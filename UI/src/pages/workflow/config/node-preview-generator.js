@@ -178,6 +178,12 @@ export async function collectPreviousNodeOutput(previousNodes, getNodeConfig) {
 
     const outputSchema = lastNodeConfig.output_schema || {};
 
-    // 스키마 기반 예시 데이터 생성
-    return generatePreviewFromSchema(outputSchema, lastNode.data || {});
+    // output_schema는 표준 형식: {action, status, output: {type: "object", properties: {...}}}
+    // output_schema.output.properties를 사용 (표준 형식)
+    if (outputSchema.output && outputSchema.output.properties) {
+        return generatePreviewFromSchema(outputSchema.output.properties, lastNode.data || {});
+    } else {
+        // 레거시 형식: output_schema가 직접 properties를 정의한 경우
+        return generatePreviewFromSchema(outputSchema, lastNode.data || {});
+    }
 }

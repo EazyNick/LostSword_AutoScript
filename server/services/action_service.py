@@ -13,12 +13,11 @@ from nodes.actionnodes import (
     HttpApiRequestNode,
     ProcessFocusNode,
 )
-from nodes.boundarynodes import EndNode, StartNode
+from nodes.boundarynodes import StartNode
 from nodes.conditionnodes import ConditionNode
 from nodes.imagenodes import ImageTouchNode
 from nodes.waitnodes import WaitNode
 from services.condition_service import ConditionService
-from services.expression_parser import ExpressionParser
 from services.node_execution_context import NodeExecutionContext
 
 # config 모듈은 직접 import (같은 레벨에 있으므로)
@@ -41,7 +40,6 @@ class ActionService:
         self.node_handlers = {
             # 경계 노드들
             "start": StartNode.execute,
-            "end": EndNode.execute,
             # 액션 노드들
             "click": ClickNode.execute,
             "action": ActionNode.execute,
@@ -196,9 +194,7 @@ class ActionService:
                 if node_type == "condition":
                     node_data = ConditionService.prepare_condition_node_data(node_data, context)
 
-                # 파라미터에 표현식이 있으면 파싱
-                node_data = ExpressionParser.parse_parameters(node_data, context)
-                logger.debug(f"파싱된 노드 데이터: {node_data}")
+                logger.debug(f"준비된 노드 데이터: {node_data}")
 
             # 실제 노드 종류 가져오기
             action_node_type = node_data.get("action_node_type")

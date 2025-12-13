@@ -124,7 +124,47 @@ export function generateParameterInput(paramKey, paramConfig, prefix = 'node-', 
                                 </div>
                             `;
                     } else {
-                        inputHtml = `
+                        // field_path 파라미터인 경우 자동완성 입력 필드 생성
+                        const isFieldPath = paramKey.toLowerCase() === 'field_path';
+
+                        if (isFieldPath) {
+                            // 커스텀 자동완성 입력 필드 (회색 미리보기 포함)
+                            const datalistId = `${fieldId}-datalist`;
+                            const autocompleteId = `${fieldId}-autocomplete`;
+                            inputHtml = `
+                                <div style="position: relative; display: flex; gap: 8px; align-items: center;">
+                                    <div style="position: relative; flex: 1;">
+                                        <input 
+                                            type="text" 
+                                            id="${fieldId}" 
+                                            list="${datalistId}"
+                                            value="${escapeHtml(value)}" 
+                                            ${requiredAttr}
+                                            placeholder="${escapeHtml(placeholder)}"
+                                            class="node-settings-input node-field-path-input"
+                                            style="width: 100%; padding: 8px; padding-right: 8px; position: relative; z-index: 2;"
+                                            autocomplete="off">
+                                        <div 
+                                            id="${autocompleteId}"
+                                            class="field-path-autocomplete-preview"
+                                            style="position: absolute; left: 8px; top: 8px; right: 8px; pointer-events: none; color: #999; z-index: 1; white-space: pre; font-size: inherit; font-family: inherit; line-height: inherit;">
+                                        </div>
+                                    </div>
+                                    <datalist id="${datalistId}">
+                                        <!-- 이전 노드 출력 변수 목록이 여기에 동적으로 추가됨 -->
+                                    </datalist>
+                                    <button 
+                                        type="button" 
+                                        id="${fieldId}-expand-btn"
+                                        class="btn btn-small field-path-expand-btn"
+                                        style="white-space: nowrap; padding: 8px 12px; font-size: 12px; flex-shrink: 0; min-width: 40px;"
+                                        title="입력 데이터에서 변수 선택">
+                                        <span class="expand-icon">▼</span>
+                                    </button>
+                                </div>
+                            `;
+                        } else {
+                            inputHtml = `
                                 <input 
                                     type="text" 
                                     id="${fieldId}" 
@@ -134,6 +174,7 @@ export function generateParameterInput(paramKey, paramConfig, prefix = 'node-', 
                                     class="node-settings-input"
                                     style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
                             `;
+                        }
                     }
                 }
             }

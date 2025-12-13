@@ -37,6 +37,45 @@
 }
 
 /* ========================================== */
+/* 필드 경로 자동완성 */
+/* ========================================== */
+
+/* 필드 경로 입력 필드 컨테이너 */
+.node-field-path-input {
+    position: relative;
+}
+
+/* 자동완성 미리보기 (회색 텍스트) */
+.field-path-autocomplete-preview {
+    color: #999 !important;
+    opacity: 0.6;
+    user-select: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 필드 경로 펼치기 버튼 */
+.field-path-expand-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.field-path-expand-btn .expand-icon {
+    font-size: 10px;
+    transition: transform 0.2s;
+}
+
+/* 필드 경로 드롭다운 */
+.field-path-dropdown {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.field-path-dropdown-item:hover {
+    background-color: var(--bg-hover, #f5f5f5) !important;
+}
+
+/* ========================================== */
 /* 폼 요소 기본 구조 */
 /* ========================================== */
 
@@ -229,4 +268,101 @@
     100% {
         background-position: 200% 0; /* 배경을 오른쪽 밖에 배치 */
     }
+}
+
+/* ========================================== */
+/* 이전 노드 출력 변수 목록 (n8n 스타일) */
+/* ========================================== */
+
+/* 이전 노드 출력 변수 컨테이너 */
+.node-previous-output-variables {
+    padding: 12px;
+    background-color: var(--bg-secondary, #f5f5f5);
+    border-radius: 6px;
+    border: 1px solid var(--border-color, #e5e7eb);
+}
+
+/* 이전 노드 출력 변수 헤더 */
+.node-previous-output-header {
+    margin-bottom: 8px;
+}
+
+/* 이전 노드 출력 변수 목록 */
+.node-previous-output-variables-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+/* 변수 태그 */
+.node-output-variable-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background-color: var(--bg-primary, #ffffff);
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.node-output-variable-tag:hover {
+    background-color: var(--primary-color, #2673ea);
+    color: #ffffff;
+    border-color: var(--primary-color, #2673ea);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.node-output-variable-tag:hover .node-output-variable-icon,
+.node-output-variable-tag:hover .node-output-variable-key,
+.node-output-variable-tag:hover .node-output-variable-value {
+    color: #ffffff;
+}
+
+/* 변수 아이콘 */
+.node-output-variable-icon {
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+/* 변수 키 (이름) */
+.node-output-variable-key {
+    font-weight: 500;
+    color: var(--text-primary, #333);
+}
+
+/* 변수 값 (미리보기) */
+.node-output-variable-value {
+    color: var(--text-secondary, #666);
+    font-size: 11px;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 이전 노드 정보 표시 */
+.node-previous-node-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    padding: 4px 8px;
+    background-color: var(--bg-secondary, #f5f5f5);
+    border-radius: 4px;
+    border: 1px solid var(--border-color, #e5e7eb);
+}
+
+.node-previous-node-info span:first-child,
+.node-previous-node-info span:last-child {
+    opacity: 0.7;
+}
+
+#node-previous-node-name-display {
+    color: var(--primary-color, #2673ea);
+    font-weight: 500;
 }

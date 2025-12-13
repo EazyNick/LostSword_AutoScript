@@ -3,12 +3,14 @@
 """
 
 import os
+import time
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
 from api.response_helpers import error_response, list_response, success_response
 from api.router_wrapper import api_handler
+from db.database import db_manager
 from log import log_manager
 from models import (
     ActionRequest,
@@ -59,6 +61,22 @@ async def execute_nodes(request: NodeExecutionRequest) -> ActionResponse:
 
     # 스크립트 ID 추출 (요청에서 가져오거나 None)
     script_id = getattr(request, "script_id", None)
+
+    # 실행 시작 시간 기록
+    execution_start_time = time.time()
+    execution_record_id = None
+
+    # 스크립트 실행 기록 저장 (시작)
+    if script_id:
+        try:
+            execution_record_id = db_manager.record_script_execution(
+                script_id=script_id, status="running", error_message=None, execution_time_ms=None
+            )
+            logger.info(
+                f"[API] 스크립트 실행 기록 저장 (시작) - 실행 ID: {execution_record_id}, 스크립트 ID: {script_id}"
+            )
+        except Exception as e:
+            logger.warning(f"[API] 스크립트 실행 기록 저장 실패 (무시): {e!s}")
 
     # 노드 실행 컨텍스트 생성 (데이터 전달)
     context = NodeExecutionContext()
@@ -156,6 +174,26 @@ async def execute_nodes(request: NodeExecutionRequest) -> ActionResponse:
         f"[API] 모든 노드 실행 완료 - 총 {len(request.nodes)}개 노드, 성공: {len([r for r in results if r.get('status') != 'failed' and not r.get('error')])}개, 실패: {len([r for r in results if r.get('status') == 'failed' or r.get('error')])}개"
     )
     logger.debug(f"[API] 실행 결과 상세: {results}")
+
+    # 실행 완료 시간 계산
+    execution_time_ms = int((time.time() - execution_start_time) * 1000) if execution_start_time else None
+
+    # 스크립트 실행 기록 업데이트 (완료)
+    if script_id and execution_record_id:
+        try:
+            final_status = "error" if has_error else "success"
+            db_manager.record_script_execution(
+                script_id=script_id,
+                status=final_status,
+                error_message=error_message,
+                execution_time_ms=execution_time_ms,
+                execution_id=execution_record_id,
+            )
+            logger.info(
+                f"[API] 스크립트 실행 기록 업데이트 (완료) - 실행 ID: {execution_record_id}, 상태: {final_status}"
+            )
+        except Exception as e:
+            logger.warning(f"[API] 스크립트 실행 기록 업데이트 실패 (무시): {e!s}")
 
     # 에러가 발생했으면 success: False 반환
     if has_error:

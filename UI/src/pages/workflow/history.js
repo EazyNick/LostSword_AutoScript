@@ -3,7 +3,7 @@
  * ES6 모듈 방식으로 작성됨
  */
 
-import { LogService } from '../logs/services/log-service.js';
+import { LogService } from '../../logs/services/log-service.js';
 import { ScriptAPI } from '../../js/api/scriptapi.js';
 import { LogAPI } from '../../js/api/logapi.js';
 

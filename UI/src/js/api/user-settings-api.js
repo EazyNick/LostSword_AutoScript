@@ -59,7 +59,10 @@ export const UserSettingsAPI = {
             const errorMessage = error.message || '';
             const errorString = errorMessage.toString();
 
+            // NotFoundError 또는 404 에러 체크
             if (
+                error.name === 'NotFoundError' ||
+                error.status === 404 ||
                 errorMessage.includes('404') ||
                 errorMessage.includes('찾을 수 없습니다') ||
                 errorMessage.includes('Not Found') ||

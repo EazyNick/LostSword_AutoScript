@@ -93,18 +93,9 @@ export class NodeCreationService {
             );
         });
 
-        const hasEndNode = nodeElements.some((nodeElement) => {
-            const nodeId = nodeElement.id || nodeElement.dataset?.nodeId;
-            return (
-                nodeId === 'end' ||
-                nodeData[nodeId]?.type === 'end' ||
-                nodeElement.querySelector('.node-title')?.textContent?.includes('종료')
-            );
-        });
-
         const logger = this.workflowPage.getLogger();
         const log = logger.log;
-        log(`[NodeCreationService] 기본 경계 노드 생성 시도 - start 존재: ${hasStartNode}, end 존재: ${hasEndNode}`);
+        log(`[NodeCreationService] 기본 시작 노드 생성 시도 - start 존재: ${hasStartNode}`);
 
         const baseX = 0;
         const baseY = 0;
@@ -122,28 +113,17 @@ export class NodeCreationService {
             });
         }
 
-        // end 노드가 없을 때만 추가
-        if (!hasEndNode) {
-            boundaryNodes.push({
-                id: 'end',
-                type: 'end',
-                title: '종료',
-                x: baseX + 200,
-                y: baseY
-            });
-        }
-
         if (boundaryNodes.length === 0) {
-            log('[NodeCreationService] 이미 경계 노드가 존재하여 기본 경계 노드를 생성하지 않습니다.');
+            log('[NodeCreationService] 이미 시작 노드가 존재하여 기본 시작 노드를 생성하지 않습니다.');
             return;
         }
 
-        log(`[NodeCreationService] ${boundaryNodes.length}개의 경계 노드 생성 중...`);
+        log(`[NodeCreationService] ${boundaryNodes.length}개의 시작 노드 생성 중...`);
 
         boundaryNodes.forEach((nodeData) => {
             try {
                 nodeManager.createNode(nodeData);
-                log(`[NodeCreationService] 경계 노드 생성 완료: ${nodeData.id}`);
+                log(`[NodeCreationService] 시작 노드 생성 완료: ${nodeData.id}`);
             } catch (error) {
                 console.error('노드 생성 실패:', error);
             }

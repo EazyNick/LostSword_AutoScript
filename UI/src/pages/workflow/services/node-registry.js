@@ -14,14 +14,6 @@ const FALLBACK_NODES_CONFIG = {
         script: 'node-start.js',
         isBoundary: true,
         category: 'system'
-    },
-    end: {
-        label: '종료 노드',
-        title: '종료',
-        description: '워크플로우의 종료점입니다.',
-        script: 'node-end.js',
-        isBoundary: true,
-        category: 'system'
     }
 };
 

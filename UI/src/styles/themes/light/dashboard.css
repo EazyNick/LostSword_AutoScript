@@ -128,3 +128,102 @@ body.theme-light .btn-new-workflow {
 body.theme-light .btn-new-workflow:hover {
     background-color: #2c5282;
 }
+
+/* 실행 중인 스크립트 카드 - 라이트 모드 */
+body.theme-light .script-card.executing {
+    opacity: 0.8;
+    border-color: #f6ad55;
+    background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+    position: relative;
+    animation: pulse-executing-card-light 2s ease-in-out infinite;
+}
+
+body.theme-light .script-card.executing::before {
+    background: linear-gradient(90deg, #f6ad55 0%, #ed8936 100%);
+    opacity: 1;
+    height: 4px;
+}
+
+body.theme-light .script-card.executing .script-card-icon {
+    background: linear-gradient(135deg, #f6ad55 0%, #ed8936 100%);
+    position: relative;
+}
+
+body.theme-light .script-card.executing .script-card-icon::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+body.theme-light .script-card.executing .script-card-title {
+    color: #c05621;
+}
+
+body.theme-light .script-card.executing .btn-run {
+    background-color: #f6ad55;
+    pointer-events: none;
+}
+
+body.theme-light .script-card.executing .btn-run .btn-run-icon {
+    display: none;
+}
+
+body.theme-light .script-card.executing .btn-run .btn-run-text::after {
+    content: ' 실행 중...';
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+/* 실행 성공한 스크립트 카드 - 라이트 모드 */
+body.theme-light .script-card.execution-success {
+    border-color: #22c55e;
+}
+
+body.theme-light .script-card.execution-success::before {
+    background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
+    opacity: 1;
+    height: 4px;
+}
+
+/* 실행 실패한 스크립트 카드 - 라이트 모드 */
+body.theme-light .script-card.execution-failed {
+    border-color: #ef4444 !important;
+    background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%) !important;
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2) !important;
+}
+
+body.theme-light .script-card.execution-failed::before {
+    background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%) !important;
+    opacity: 1 !important;
+    height: 4px !important;
+}
+
+body.theme-light .script-card.execution-failed .script-card-title {
+    color: #dc2626 !important;
+}
+
+/* 실행 중 펄스 애니메이션 - 라이트 모드 */
+@keyframes pulse-executing-card-light {
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(246, 173, 85, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 0 6px rgba(246, 173, 85, 0);
+    }
+}
+
+/* 스피너 회전 애니메이션 */
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

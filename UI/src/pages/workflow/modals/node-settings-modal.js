@@ -6,6 +6,7 @@
 import { getDefaultDescription } from '../config/node-defaults.js';
 import { NODE_TYPES, isBoundaryNode, NODE_TYPE_LABELS } from '../constants/node-types.js';
 import { escapeHtml, getNodeType, getNodeData } from '../utils/node-utils.js';
+import { extractOutputVariables, getNodeResult, collectPreviousNodeVariables } from '../utils/node-output-parser.js';
 import { NodeValidationUtils } from '../utils/node-validation-utils.js';
 import { getDetailNodeTypes, getDetailNodeConfig } from '../config/action-node-types.js';
 import { generateParameterForm, extractParameterValues } from '../utils/parameter-form-generator.js';
@@ -74,6 +75,18 @@ export class NodeSettingsModal {
 
         // 입력/출력 미리보기 업데이트 (즉시 표시)
         this.updateInputOutputPreview(nodeElement, nodeId, nodeType, nodeData);
+
+        // 이전 노드 출력 변수 목록 표시
+        this.updatePreviousNodeVariables(nodeId);
+
+        // field_path 필드 설정 (조건 노드 등에서 사용)
+        // 약간의 지연을 두어 DOM이 완전히 렌더링된 후 설정
+        setTimeout(() => {
+            const fieldPathInput = document.getElementById('edit-node-field_path');
+            if (fieldPathInput) {
+                this.setupFieldPathInput(nodeId, fieldPathInput);
+            }
+        }, 100);
     }
 
     /**
@@ -423,13 +436,32 @@ export class NodeSettingsModal {
                 <textarea id="edit-node-description" rows="3" placeholder="노드에 대한 설명을 입력하세요 (선택사항)" class="node-settings-textarea">${escapeHtml(currentDescription)}</textarea>
             </div>
             <div class="form-group node-settings-form-group node-settings-section-divider">
-                <label class="node-settings-label node-settings-preview-label">입력 데이터:</label>
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <label class="node-settings-label node-settings-preview-label" style="margin: 0;">입력 데이터:</label>
+                    <!-- 이전 노드 정보 표시 -->
+                    <div id="node-previous-node-info" class="node-previous-node-info" style="display: none; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary, #666);">
+                        <span style="opacity: 0.7;">←</span>
+                        <span id="node-previous-node-name-display" style="color: var(--primary-color, #2673ea); font-weight: 500;"></span>
+                        <span style="opacity: 0.7;">노드에서 가져옴</span>
+                    </div>
+                </div>
+                
+                <!-- 이전 노드 출력 변수 목록 -->
+                <div id="node-previous-output-variables" class="node-previous-output-variables" style="margin-bottom: 12px; display: none;">
+                    <div class="node-previous-output-header" style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                        <span style="font-size: 12px; font-weight: 500; color: var(--text-secondary, #666);">이전 노드 출력 변수:</span>
+                        <span id="node-previous-output-node-name" style="font-size: 12px; color: var(--primary-color, #2673ea); font-weight: 500;"></span>
+                    </div>
+                    <div id="node-previous-output-variables-list" class="node-previous-output-variables-list" style="display: flex; flex-wrap: wrap; gap: 6px;">
+                        <!-- 변수 태그들이 여기에 동적으로 추가됨 -->
+                    </div>
+                </div>
+                
                 <div style="margin-bottom: 8px;">
                     <button id="node-input-load-from-previous" class="btn btn-small" style="font-size: 12px; padding: 4px 8px;">이전 노드에서 가져오기</button>
-                    <button id="node-input-use-expression" class="btn btn-small" style="font-size: 12px; padding: 4px 8px; margin-left: 4px;">표현식 사용</button>
                 </div>
                 <textarea id="node-input-preview" class="node-settings-textarea node-preview-textarea" rows="8" placeholder='{"action": "start", "status": "completed", "output": {}}'></textarea>
-                <small class="node-settings-help-text">이 노드로 전달되는 입력 데이터입니다. JSON 형식으로 입력하거나 표현식({{$json.field}})을 사용할 수 있습니다.</small>
+                <small class="node-settings-help-text">이 노드로 전달되는 입력 데이터입니다. JSON 형식으로 입력하세요.</small>
             </div>
             <div class="form-group node-settings-form-group node-settings-section-divider">
                 <label class="node-settings-label node-settings-preview-label">출력 미리보기:</label>
@@ -601,6 +633,15 @@ export class NodeSettingsModal {
                     this.handleFileSelection(fieldId);
                 });
             });
+
+            // field_path 필드에 이전 노드 출력 변수 목록 추가
+            const fieldPathInput = document.getElementById('edit-node-field_path');
+            if (fieldPathInput) {
+                console.log('[setupEventListeners] field_path 필드 찾음, setupFieldPathInput 호출');
+                this.setupFieldPathInput(nodeId, fieldPathInput);
+            } else {
+                console.log('[setupEventListeners] field_path 필드를 찾을 수 없음');
+            }
         }, 100); // 지연 시간 증가
 
         // 프로세스 선택 관련
@@ -631,14 +672,6 @@ export class NodeSettingsModal {
         if (loadFromPreviousBtn) {
             loadFromPreviousBtn.addEventListener('click', async () => {
                 await this.loadInputFromPreviousNode(nodeId, nodeElement);
-            });
-        }
-
-        const useExpressionBtn = document.getElementById('node-input-use-expression');
-        if (useExpressionBtn) {
-            useExpressionBtn.addEventListener('click', () => {
-                // 표현식 예시 삽입
-                this.insertExpression('{{$json.output}}');
             });
         }
     }
@@ -1021,36 +1054,26 @@ export class NodeSettingsModal {
                 return;
             }
 
-            // 저장된 데이터가 없으면 이전 노드의 출력 스키마 기반 예시 생성
+            // 이전 노드의 실제 실행 결과 또는 스키마 기반 예시 생성
             const previousNodes = this.getPreviousNodeChain(nodeId);
             if (previousNodes.length > 0) {
                 const registry = getNodeRegistry();
                 const lastNode = previousNodes[previousNodes.length - 1];
                 const lastNodeType = lastNode.type || lastNode.nodeType;
-                const lastNodeConfig = await registry.getConfig(lastNodeType);
+                const lastNodeData = lastNode.data || {};
+                const lastNodeName = lastNodeData.title || lastNode.type || lastNode.id;
 
-                if (lastNodeConfig?.output_schema) {
-                    const exampleOutput = generatePreviewFromSchema(lastNodeConfig.output_schema, lastNode.data || {});
-                    const exampleInput = {
-                        action: lastNodeType,
-                        status: 'completed',
-                        output: exampleOutput
-                    };
-                    inputPreview.value = JSON.stringify(exampleInput, null, 2);
-                } else {
-                    // 스키마가 없으면 기본 형식
-                    inputPreview.value = JSON.stringify(
-                        {
-                            action: lastNodeType || 'start',
-                            status: 'completed',
-                            output: {}
-                        },
-                        null,
-                        2
-                    );
-                }
+                // 이전 노드 이름 표시
+                this.updatePreviousNodeInfoDisplay(lastNodeName);
+
+                // loadInputFromPreviousNode와 동일한 로직 사용
+                const result = await this.buildPreviousNodeOutput(lastNode, lastNodeType, lastNodeData, registry);
+
+                // 표준 형식으로 표시
+                inputPreview.value = JSON.stringify(result, null, 2);
             } else {
                 // 이전 노드가 없으면 빈 입력
+                this.hidePreviousNodeInfoDisplay();
                 inputPreview.value = JSON.stringify({}, null, 2);
             }
         } catch (error) {
@@ -1075,24 +1098,20 @@ export class NodeSettingsModal {
                 return;
             }
 
-            // 마지막 이전 노드의 출력 스키마 기반 데이터 생성
+            // 마지막 이전 노드의 실제 실행 결과 또는 스키마 기반 데이터 생성
             const registry = getNodeRegistry();
             const lastNode = previousNodes[previousNodes.length - 1];
             const lastNodeType = lastNode.type || lastNode.nodeType;
-            const lastNodeConfig = await registry.getConfig(lastNodeType);
+            const lastNodeData = lastNode.data || {};
+            const lastNodeName = lastNodeData.title || lastNode.type || lastNode.id;
 
-            let previousOutput = {};
-            if (lastNodeConfig?.output_schema) {
-                previousOutput = generatePreviewFromSchema(lastNodeConfig.output_schema, lastNode.data || {});
-            }
-
-            const inputData = {
-                action: lastNodeType,
-                status: 'completed',
-                output: previousOutput
-            };
+            // buildPreviousNodeOutput 공통 함수 사용
+            const inputData = await this.buildPreviousNodeOutput(lastNode, lastNodeType, lastNodeData, registry);
 
             inputPreview.value = JSON.stringify(inputData, null, 2);
+
+            // 이전 노드 이름 표시
+            this.updatePreviousNodeInfoDisplay(lastNodeName);
         } catch (error) {
             console.error('이전 노드에서 데이터 가져오기 오류:', error);
             alert(`오류: ${error.message}`);
@@ -1100,29 +1119,166 @@ export class NodeSettingsModal {
     }
 
     /**
-     * 표현식 삽입 도우미
+     * 이전 노드 출력 데이터 생성 (공통 로직)
+     * @param {Object} lastNode - 마지막 이전 노드 객체
+     * @param {string} lastNodeType - 마지막 이전 노드 타입
+     * @param {Object} lastNodeData - 마지막 이전 노드 데이터
+     * @param {Object} registry - 노드 레지스트리
+     * @returns {Object} 표준 형식의 입력 데이터
      */
-    insertExpression(expression) {
-        const inputPreview = document.getElementById('node-input-preview');
-        if (!inputPreview) {
-            return;
+    async buildPreviousNodeOutput(lastNode, lastNodeType, lastNodeData, registry) {
+        // 우선순위: 1) 실제 실행 결과, 2) 스키마 기반 예시, 3) output: {data} 형식
+        let previousOutput = null;
+        let hasKnownOutput = false;
+
+        // 실제 실행 결과가 있으면 사용 (새로운 표준 형식: {action, status, output: {...}})
+        if (lastNodeData.result && lastNodeData.result.output) {
+            // 표준 형식의 실행 결과 사용
+            previousOutput = lastNodeData.result.output;
+            hasKnownOutput = true;
+
+            // 노드 메타데이터를 별도 필드로 추가
+            const metadata = lastNodeData.metadata || {};
+
+            // output이 여러 키를 가진 딕셔너리면 data 객체로 래핑 (metadata 제외)
+            const outputWithoutMetadata = { ...previousOutput };
+            delete outputWithoutMetadata.metadata;
+            delete outputWithoutMetadata.id;
+            delete outputWithoutMetadata.x;
+            delete outputWithoutMetadata.y;
+            delete outputWithoutMetadata.createdAt;
+            delete outputWithoutMetadata.updatedAt;
+
+            if (
+                Object.keys(outputWithoutMetadata).length > 1 ||
+                (Object.keys(outputWithoutMetadata).length === 1 && !('data' in outputWithoutMetadata))
+            ) {
+                previousOutput = {
+                    data: outputWithoutMetadata
+                };
+            } else if (Object.keys(outputWithoutMetadata).length === 0) {
+                previousOutput = {
+                    data: {}
+                };
+            } else {
+                previousOutput = outputWithoutMetadata;
+            }
+
+            // 메타데이터가 있으면 output에 metadata 필드 추가 (data 밖에)
+            if (Object.keys(metadata).length > 0) {
+                previousOutput.metadata = metadata;
+            }
+        } else if (lastNodeData.output) {
+            // 레거시 형식: output 필드가 직접 있는 경우
+            previousOutput = lastNodeData.output;
+            hasKnownOutput = true;
+        } else {
+            // 스키마 기반 예시 생성 시도
+            const lastNodeConfig = await registry.getConfig(lastNodeType);
+            if (lastNodeConfig?.output_schema) {
+                if (lastNodeConfig.output_schema.output && lastNodeConfig.output_schema.output.properties) {
+                    previousOutput = generatePreviewFromSchema(
+                        lastNodeConfig.output_schema.output.properties,
+                        lastNodeData
+                    );
+                    hasKnownOutput = true;
+                }
+            }
         }
 
-        const textarea = inputPreview;
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const text = textarea.value;
-        const before = text.substring(0, start);
-        const after = text.substring(end);
+        // output 데이터를 알 수 없으면 output: {data} 형식으로 설정
+        if (!hasKnownOutput || !previousOutput || Object.keys(previousOutput || {}).length === 0) {
+            const dataObject = {};
+            const standardFields = ['result', 'output', 'type', 'title', 'description', 'action_node_type', 'metadata'];
+            const metadataFields = ['id', 'x', 'y', 'createdAt', 'updatedAt'];
+            for (const [key, value] of Object.entries(lastNodeData)) {
+                if (!standardFields.includes(key) && !metadataFields.includes(key)) {
+                    dataObject[key] = value;
+                }
+            }
 
-        // 표현식 삽입
-        const newText = before + expression + after;
-        textarea.value = newText;
+            previousOutput = {
+                data: Object.keys(dataObject).length > 0 ? dataObject : {}
+            };
 
-        // 커서 위치 조정
-        const newCursorPos = start + expression.length;
-        textarea.setSelectionRange(newCursorPos, newCursorPos);
-        textarea.focus();
+            const metadata = lastNodeData.metadata || {};
+            if (Object.keys(metadata).length > 0) {
+                previousOutput.metadata = metadata;
+            }
+        } else if (previousOutput && typeof previousOutput === 'object' && !Array.isArray(previousOutput)) {
+            const metadata = previousOutput.metadata;
+            const outputWithoutMetadata = { ...previousOutput };
+            delete outputWithoutMetadata.metadata;
+
+            if (!('data' in outputWithoutMetadata)) {
+                const outputKeys = Object.keys(outputWithoutMetadata);
+                if (outputKeys.length > 0) {
+                    previousOutput = {
+                        data: outputWithoutMetadata
+                    };
+                    if (metadata) {
+                        previousOutput.metadata = metadata;
+                    }
+                } else if (metadata) {
+                    previousOutput = {
+                        data: {},
+                        metadata: metadata
+                    };
+                }
+            } else if (metadata) {
+                previousOutput.metadata = metadata;
+            }
+        } else {
+            const metadata = lastNodeData.metadata || {};
+            if (Object.keys(metadata).length > 0) {
+                if (!previousOutput || typeof previousOutput !== 'object' || Array.isArray(previousOutput)) {
+                    previousOutput = {
+                        data: previousOutput || {}
+                    };
+                }
+                previousOutput.metadata = metadata;
+            }
+        }
+
+        // 메타데이터 추가 (모든 경우에, 아직 추가되지 않았으면)
+        if (previousOutput && typeof previousOutput === 'object' && !Array.isArray(previousOutput)) {
+            const metadata = lastNodeData.metadata || {};
+            if (Object.keys(metadata).length > 0 && !previousOutput.metadata) {
+                previousOutput.metadata = metadata;
+            }
+        }
+
+        return {
+            action: lastNodeType,
+            status: 'completed',
+            output: previousOutput
+        };
+    }
+
+    /**
+     * 이전 노드 정보 표시 업데이트
+     * @param {string} nodeName - 이전 노드 이름
+     */
+    updatePreviousNodeInfoDisplay(nodeName) {
+        const infoDisplay = document.getElementById('node-previous-node-info');
+        const nameDisplay = document.getElementById('node-previous-node-name-display');
+
+        if (infoDisplay && nameDisplay && nodeName) {
+            nameDisplay.textContent = nodeName;
+            infoDisplay.style.display = 'flex';
+        } else if (infoDisplay) {
+            infoDisplay.style.display = 'none';
+        }
+    }
+
+    /**
+     * 이전 노드 정보 표시 숨기기
+     */
+    hidePreviousNodeInfoDisplay() {
+        const infoDisplay = document.getElementById('node-previous-node-info');
+        if (infoDisplay) {
+            infoDisplay.style.display = 'none';
+        }
     }
 
     /**
@@ -1592,6 +1748,656 @@ export class NodeSettingsModal {
         } catch (error) {
             console.error('프로세스 목록 로드 중 오류:', error);
             alert('프로세스 목록을 불러오는데 실패했습니다. 서버가 실행 중인지 확인하세요.');
+        }
+    }
+
+    /**
+     * 이전 노드 출력 변수 목록 업데이트 (n8n 스타일)
+     *
+     * 이전 노드의 output 필드에서 변수 목록을 추출하여 태그 형태로 표시합니다.
+     * 각 변수를 클릭하면 입력 필드에 자동으로 입력됩니다.
+     *
+     * @param {string} nodeId - 현재 노드 ID
+     */
+    async updatePreviousNodeVariables(nodeId) {
+        const variablesContainer = document.getElementById('node-previous-output-variables');
+        const variablesList = document.getElementById('node-previous-output-variables-list');
+        const nodeNameSpan = document.getElementById('node-previous-output-node-name');
+
+        if (!variablesContainer || !variablesList) {
+            return;
+        }
+
+        try {
+            // 이전 노드 체인 가져오기
+            const previousNodes = this.getPreviousNodeChain(nodeId);
+
+            if (previousNodes.length === 0) {
+                // 이전 노드가 없으면 숨김
+                variablesContainer.style.display = 'none';
+                return;
+            }
+
+            // 마지막 이전 노드의 변수 추출
+            const lastNode = previousNodes[previousNodes.length - 1];
+            const lastNodeData = lastNode.data || {};
+            const lastNodeName = lastNodeData.title || lastNode.type || lastNode.id;
+
+            // 노드 실행 결과 가져오기
+            const nodeResult = getNodeResult(lastNodeData);
+
+            if (!nodeResult || !nodeResult.output) {
+                // 실행 결과가 없으면 숨김
+                variablesContainer.style.display = 'none';
+                return;
+            }
+
+            // output 변수 추출
+            const variables = extractOutputVariables(nodeResult);
+
+            if (variables.length === 0) {
+                // 변수가 없으면 숨김
+                variablesContainer.style.display = 'none';
+                return;
+            }
+
+            // 변수 목록 표시
+            variablesContainer.style.display = 'block';
+            if (nodeNameSpan) {
+                nodeNameSpan.textContent = lastNodeName;
+            }
+
+            // 기존 변수 태그 제거
+            variablesList.innerHTML = '';
+
+            // 각 변수를 태그로 표시
+            variables.forEach((variable) => {
+                const tag = document.createElement('div');
+                tag.className = 'node-output-variable-tag';
+                tag.dataset.variableKey = variable.key;
+                tag.dataset.variableValue =
+                    typeof variable.value === 'string' ? variable.value : JSON.stringify(variable.value);
+
+                // 변수 타입 아이콘
+                let typeIcon = '📄';
+                if (variable.type === 'string') {
+                    typeIcon = '📝';
+                } else if (variable.type === 'number') {
+                    typeIcon = '🔢';
+                } else if (variable.type === 'boolean') {
+                    typeIcon = '✓';
+                } else if (variable.type === 'array') {
+                    typeIcon = '📋';
+                } else if (variable.type === 'object') {
+                    typeIcon = '📦';
+                }
+
+                // 변수 값 미리보기 (최대 50자)
+                let valuePreview = String(variable.value);
+                if (valuePreview.length > 50) {
+                    valuePreview = valuePreview.substring(0, 50) + '...';
+                }
+
+                tag.innerHTML = `
+                    <span class="node-output-variable-icon">${typeIcon}</span>
+                    <span class="node-output-variable-key">${escapeHtml(variable.key)}</span>
+                    <span class="node-output-variable-value">${escapeHtml(valuePreview)}</span>
+                `;
+
+                // 변수 클릭 시 입력 필드에 변수 키만 삽입
+                tag.addEventListener('click', () => {
+                    const inputPreview = document.getElementById('node-input-preview');
+                    if (inputPreview) {
+                        // 현재 커서 위치에 변수 키 삽입
+                        const cursorPos = inputPreview.selectionStart;
+                        const textBefore = inputPreview.value.substring(0, cursorPos);
+                        const textAfter = inputPreview.value.substring(inputPreview.selectionEnd);
+
+                        // 변수 키만 삽입
+                        const variableKey = variable.key;
+                        inputPreview.value = textBefore + variableKey + textAfter;
+
+                        // 커서 위치 조정
+                        const newCursorPos = cursorPos + variableKey.length;
+                        inputPreview.setSelectionRange(newCursorPos, newCursorPos);
+                        inputPreview.focus();
+                    }
+                });
+
+                variablesList.appendChild(tag);
+            });
+        } catch (error) {
+            console.error('[NodeSettingsModal] 이전 노드 변수 목록 업데이트 오류:', error);
+            variablesContainer.style.display = 'none';
+        }
+    }
+
+    /**
+     * field_path 입력 필드 설정 (이전 노드 출력 변수 목록 추가)
+     *
+     * @param {string} nodeId - 현재 노드 ID
+     * @param {HTMLElement} fieldPathInput - field_path 입력 필드 요소
+     */
+    async setupFieldPathInput(nodeId, fieldPathInput) {
+        if (!fieldPathInput) {
+            console.log('[setupFieldPathInput] fieldPathInput이 없습니다.');
+            return;
+        }
+
+        console.log('[setupFieldPathInput] 시작:', { nodeId, fieldId: fieldPathInput.id });
+
+        const datalistId = fieldPathInput.getAttribute('list');
+        const datalist = datalistId ? document.getElementById(datalistId) : null;
+        const expandBtn = document.getElementById(`${fieldPathInput.id}-expand-btn`);
+
+        console.log('[setupFieldPathInput] 요소 찾기:', {
+            datalistId,
+            hasDatalist: !!datalist,
+            hasExpandBtn: !!expandBtn
+        });
+
+        // 입력 데이터 미리보기에서 데이터 가져오기
+        const inputPreview = document.getElementById('node-input-preview');
+        if (!inputPreview) {
+            console.log('[setupFieldPathInput] 입력 데이터 미리보기를 찾을 수 없습니다.');
+            if (datalist) {
+                datalist.innerHTML = '';
+            }
+            if (expandBtn) {
+                expandBtn.style.display = 'none';
+            }
+            return;
+        }
+
+        // 입력 데이터 파싱
+        let inputData = null;
+        try {
+            const inputText = inputPreview.value.trim();
+            if (!inputText) {
+                console.log('[setupFieldPathInput] 입력 데이터가 비어있습니다.');
+                if (datalist) {
+                    datalist.innerHTML = '';
+                }
+                if (expandBtn) {
+                    expandBtn.style.display = 'none';
+                }
+                return;
+            }
+            inputData = JSON.parse(inputText);
+            console.log('[setupFieldPathInput] 입력 데이터 파싱 성공:', inputData);
+        } catch (error) {
+            console.warn('[setupFieldPathInput] 입력 데이터 파싱 실패:', error);
+            if (datalist) {
+                datalist.innerHTML = '';
+            }
+            if (expandBtn) {
+                expandBtn.style.display = 'none';
+            }
+            return;
+        }
+
+        // 모든 가능한 경로 수집 (입력 데이터 기반)
+        // allPaths를 외부에서 접근 가능하도록 설정
+        let allPaths = [];
+        const addNestedPaths = (obj, prefix = '') => {
+            if (typeof obj !== 'object' || obj === null) {
+                return;
+            }
+
+            // 배열인 경우 인덱스 경로 추가
+            if (Array.isArray(obj)) {
+                obj.forEach((item, index) => {
+                    const path = prefix ? `${prefix}[${index}]` : `[${index}]`;
+                    if (!allPaths.includes(path)) {
+                        allPaths.push(path);
+                    }
+                    // 배열 항목이 객체인 경우 재귀 처리
+                    if (typeof item === 'object' && item !== null) {
+                        addNestedPaths(item, path);
+                    }
+                });
+                return;
+            }
+
+            // 객체인 경우
+            for (const [key, value] of Object.entries(obj)) {
+                const path = prefix ? `${prefix}.${key}` : key;
+                if (!allPaths.includes(path)) {
+                    allPaths.push(path);
+                }
+
+                // 재귀적으로 중첩된 객체 처리
+                if (typeof value === 'object' && value !== null) {
+                    addNestedPaths(value, path);
+                }
+            }
+        };
+
+        // 입력 데이터 전체에서 경로 수집
+        addNestedPaths(inputData);
+
+        console.log('[setupFieldPathInput] 수집된 모든 경로:', allPaths);
+
+        if (allPaths.length === 0) {
+            console.log('[setupFieldPathInput] 수집된 경로가 없습니다.');
+            if (datalist) {
+                datalist.innerHTML = '';
+            }
+            if (expandBtn) {
+                expandBtn.style.display = 'none';
+            }
+            return;
+        }
+
+        // datalist에 경로 목록 추가
+        if (datalist) {
+            datalist.innerHTML = '';
+
+            // 모든 경로를 datalist에 추가
+            allPaths.forEach((path) => {
+                if (!Array.from(datalist.children).some((opt) => opt.value === path)) {
+                    const option = document.createElement('option');
+                    option.value = path;
+                    datalist.appendChild(option);
+                }
+            });
+        }
+
+        // 입력 데이터 변경 시 경로 목록 업데이트
+        const updatePathsFromInput = () => {
+            // inputPreview를 다시 찾아서 최신 값 사용
+            const currentInputPreview = document.getElementById('node-input-preview');
+            if (!currentInputPreview) {
+                console.warn('[setupFieldPathInput] 입력 데이터 미리보기를 찾을 수 없습니다 (업데이트)');
+                return;
+            }
+
+            try {
+                const inputText = currentInputPreview.value.trim();
+                if (!inputText) {
+                    if (datalist) {
+                        datalist.innerHTML = '';
+                    }
+                    if (expandBtn) {
+                        expandBtn.style.display = 'none';
+                    }
+                    allPaths = [];
+                    return;
+                }
+
+                const newInputData = JSON.parse(inputText);
+                const newPaths = [];
+
+                // 재귀 함수 (로컬 스코프)
+                const addNestedPathsLocal = (obj, prefix = '') => {
+                    if (typeof obj !== 'object' || obj === null) {
+                        return;
+                    }
+
+                    if (Array.isArray(obj)) {
+                        obj.forEach((item, index) => {
+                            const path = prefix ? `${prefix}[${index}]` : `[${index}]`;
+                            if (!newPaths.includes(path)) {
+                                newPaths.push(path);
+                            }
+                            if (typeof item === 'object' && item !== null) {
+                                addNestedPathsLocal(item, path);
+                            }
+                        });
+                        return;
+                    }
+
+                    for (const [key, value] of Object.entries(obj)) {
+                        const path = prefix ? `${prefix}.${key}` : key;
+                        if (!newPaths.includes(path)) {
+                            newPaths.push(path);
+                        }
+                        if (typeof value === 'object' && value !== null) {
+                            addNestedPathsLocal(value, path);
+                        }
+                    }
+                };
+
+                addNestedPathsLocal(newInputData);
+
+                // datalist 업데이트
+                if (datalist) {
+                    datalist.innerHTML = '';
+                    newPaths.forEach((path) => {
+                        const option = document.createElement('option');
+                        option.value = path;
+                        datalist.appendChild(option);
+                    });
+                }
+
+                // allPaths 업데이트 (드롭다운에서 사용)
+                allPaths = [...newPaths];
+
+                console.log('[setupFieldPathInput] 입력 데이터 변경으로 경로 업데이트:', newPaths);
+            } catch (error) {
+                console.warn('[setupFieldPathInput] 입력 데이터 파싱 실패 (업데이트):', error);
+            }
+        };
+
+        // 입력 데이터 변경 감지 (debounce)
+        let updateTimer = null;
+        const inputHandler = () => {
+            clearTimeout(updateTimer);
+            updateTimer = setTimeout(updatePathsFromInput, 500);
+        };
+
+        // 이벤트 리스너 추가 (이미 설정되어 있으면 중복 방지)
+        if (!inputPreview.dataset.pathUpdateListener) {
+            inputPreview.dataset.pathUpdateListener = 'true';
+            inputPreview.addEventListener('input', inputHandler);
+        }
+
+        // 초기 경로 목록 설정
+        updatePathsFromInput();
+
+        // 커스텀 자동완성 기능 설정
+        const autocompletePreview = document.getElementById(`${fieldPathInput.id}-autocomplete`);
+        console.log('[setupFieldPathInput] 자동완성 미리보기 요소:', {
+            autocompleteId: `${fieldPathInput.id}-autocomplete`,
+            hasAutocompletePreview: !!autocompletePreview
+        });
+
+        if (autocompletePreview) {
+            // 이미 이벤트 리스너가 설정되어 있는지 확인 (중복 방지)
+            if (fieldPathInput.dataset.autocompleteSetup === 'true') {
+                console.log('[setupFieldPathInput] 자동완성 이미 설정됨, 건너뜀');
+                return;
+            }
+
+            // 마커 설정 (중복 방지)
+            fieldPathInput.dataset.autocompleteSetup = 'true';
+            console.log('[setupFieldPathInput] 자동완성 이벤트 리스너 설정 시작');
+
+            let currentSuggestion = '';
+
+            // 입력 이벤트: 매칭되는 경로 찾기 및 미리보기 표시
+            fieldPathInput.addEventListener('input', (e) => {
+                const inputValue = e.target.value;
+                console.log('[자동완성] 입력 이벤트:', { inputValue, allPathsCount: allPaths.length });
+
+                if (!inputValue || allPaths.length === 0) {
+                    console.log('[자동완성] 입력값이 없거나 경로가 없음');
+                    autocompletePreview.textContent = '';
+                    currentSuggestion = '';
+                    return;
+                }
+
+                // 입력값과 매칭되는 경로 찾기 (가장 긴 매칭 경로 우선)
+                const matchingPaths = allPaths
+                    .filter((path) => path.startsWith(inputValue) && path !== inputValue)
+                    .sort((a, b) => a.length - b.length); // 짧은 경로 우선
+
+                console.log('[자동완성] 매칭된 경로:', matchingPaths);
+
+                if (matchingPaths.length > 0) {
+                    const matchingPath = matchingPaths[0];
+                    // 입력된 부분은 투명하게, 나머지는 회색으로 표시
+                    const remaining = matchingPath.substring(inputValue.length);
+                    console.log('[자동완성] 미리보기 표시:', { matchingPath, remaining });
+                    autocompletePreview.textContent = remaining;
+                    currentSuggestion = matchingPath;
+                } else {
+                    console.log('[자동완성] 매칭되는 경로 없음');
+                    autocompletePreview.textContent = '';
+                    currentSuggestion = '';
+                }
+            });
+
+            // Tab 키: 자동완성 적용
+            fieldPathInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Tab' && currentSuggestion) {
+                    console.log('[자동완성] Tab 키로 자동완성 적용:', currentSuggestion);
+                    e.preventDefault();
+                    fieldPathInput.value = currentSuggestion;
+                    autocompletePreview.textContent = '';
+                    currentSuggestion = '';
+                    // input 이벤트 발생시켜서 다른 리스너들이 반응하도록
+                    fieldPathInput.dispatchEvent(new Event('input', { bubbles: true }));
+                } else if (e.key === 'Escape') {
+                    console.log('[자동완성] ESC 키로 미리보기 제거');
+                    // ESC 키로 미리보기 제거
+                    autocompletePreview.textContent = '';
+                    currentSuggestion = '';
+                }
+            });
+
+            // 포커스 아웃 시 미리보기 제거
+            fieldPathInput.addEventListener('blur', () => {
+                // 약간의 지연을 두어 클릭 이벤트가 먼저 처리되도록
+                setTimeout(() => {
+                    autocompletePreview.textContent = '';
+                    currentSuggestion = '';
+                }, 200);
+            });
+
+            console.log('[setupFieldPathInput] 자동완성 이벤트 리스너 설정 완료');
+        } else {
+            console.warn(
+                '[setupFieldPathInput] 자동완성 미리보기 요소를 찾을 수 없습니다:',
+                `${fieldPathInput.id}-autocomplete`
+            );
+        }
+
+        // "펼치기" 버튼 클릭 시 변수 목록 표시 (드롭다운)
+        if (expandBtn) {
+            expandBtn.style.display = 'block';
+            console.log('[setupFieldPathInput] 펼치기 버튼 설정 시작');
+
+            // 기존 이벤트 리스너 제거 후 새로 추가
+            const newBtn = expandBtn.cloneNode(true);
+            expandBtn.parentNode.replaceChild(newBtn, expandBtn);
+
+            let isDropdownOpen = false;
+
+            newBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('[펼치기 버튼] 클릭됨, 현재 상태:', isDropdownOpen);
+
+                // 기존 드롭다운 찾기
+                const existingDropdown = fieldPathInput.parentElement.querySelector('.field-path-dropdown');
+
+                if (isDropdownOpen && existingDropdown) {
+                    // 드롭다운 닫기
+                    console.log('[펼치기 버튼] 드롭다운 닫기');
+                    existingDropdown.remove();
+                    isDropdownOpen = false;
+                    newBtn.querySelector('.expand-icon').textContent = '▼';
+                } else {
+                    // 드롭다운 열기
+                    console.log('[펼치기 버튼] 드롭다운 열기');
+
+                    // 최신 입력 데이터에서 경로 다시 수집
+                    const currentInputPreview = document.getElementById('node-input-preview');
+                    let currentPaths = [];
+
+                    if (currentInputPreview) {
+                        try {
+                            const inputText = currentInputPreview.value.trim();
+                            if (inputText) {
+                                const inputData = JSON.parse(inputText);
+                                const tempPaths = [];
+
+                                const collectPaths = (obj, prefix = '') => {
+                                    if (typeof obj !== 'object' || obj === null) {
+                                        return;
+                                    }
+
+                                    if (Array.isArray(obj)) {
+                                        obj.forEach((item, index) => {
+                                            const path = prefix ? `${prefix}[${index}]` : `[${index}]`;
+                                            if (!tempPaths.includes(path)) {
+                                                tempPaths.push(path);
+                                            }
+                                            if (typeof item === 'object' && item !== null) {
+                                                collectPaths(item, path);
+                                            }
+                                        });
+                                        return;
+                                    }
+
+                                    for (const [key, value] of Object.entries(obj)) {
+                                        const path = prefix ? `${prefix}.${key}` : key;
+                                        if (!tempPaths.includes(path)) {
+                                            tempPaths.push(path);
+                                        }
+                                        if (typeof value === 'object' && value !== null) {
+                                            collectPaths(value, path);
+                                        }
+                                    }
+                                };
+
+                                collectPaths(inputData);
+                                currentPaths = tempPaths;
+                            }
+                        } catch (error) {
+                            console.warn('[펼치기 버튼] 입력 데이터 파싱 실패:', error);
+                            currentPaths = [...allPaths]; // 기존 경로 사용
+                        }
+                    } else {
+                        currentPaths = [...allPaths]; // 기존 경로 사용
+                    }
+
+                    const dropdown = document.createElement('div');
+                    dropdown.className = 'field-path-dropdown';
+                    dropdown.style.cssText = `
+                        position: absolute;
+                        top: 100%;
+                        left: 0;
+                        right: 0;
+                        margin-top: 4px;
+                        background: var(--bg-primary, white);
+                        border: 1px solid var(--border-color, #ddd);
+                        border-radius: 4px;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                        max-height: 300px;
+                        overflow-y: auto;
+                        z-index: 1000;
+                    `;
+
+                    // 헤더 추가
+                    const header = document.createElement('div');
+                    header.className = 'field-path-dropdown-header';
+                    header.style.cssText = `
+                        padding: 10px 12px;
+                        font-weight: 600;
+                        font-size: 13px;
+                        color: var(--text-primary, #333);
+                        border-bottom: 1px solid var(--border-color, #e5e7eb);
+                        background: var(--bg-secondary, #f5f5f5);
+                    `;
+                    header.textContent = '입력 데이터에서 선택:';
+                    dropdown.appendChild(header);
+
+                    // 모든 경로를 정렬하여 리스트로 표시
+                    const sortedPaths = [...currentPaths].sort();
+
+                    if (sortedPaths.length === 0) {
+                        const emptyItem = document.createElement('div');
+                        emptyItem.className = 'field-path-dropdown-item';
+                        emptyItem.style.cssText = `
+                            padding: 12px;
+                            text-align: center;
+                            color: var(--text-secondary, #999);
+                            font-size: 13px;
+                        `;
+                        emptyItem.textContent = '사용 가능한 경로가 없습니다';
+                        dropdown.appendChild(emptyItem);
+                    } else {
+                        // 경로 목록을 리스트 형태로 표시
+                        sortedPaths.forEach((path, index) => {
+                            const item = document.createElement('div');
+                            item.className = 'field-path-dropdown-item';
+                            item.dataset.path = path;
+                            item.style.cssText = `
+                                padding: 12px 16px;
+                                cursor: pointer;
+                                border-bottom: 1px solid var(--border-color, #e5e7eb);
+                                color: var(--text-primary, #333);
+                                font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+                                font-size: 13px;
+                                transition: all 0.15s ease;
+                                display: flex;
+                                align-items: center;
+                                gap: 8px;
+                            `;
+
+                            // 경로 표시
+                            const pathText = document.createElement('span');
+                            pathText.textContent = path;
+                            pathText.style.flex = '1';
+                            item.appendChild(pathText);
+
+                            // 선택 아이콘 (호버 시 표시)
+                            const selectIcon = document.createElement('span');
+                            selectIcon.textContent = '✓';
+                            selectIcon.style.cssText = `
+                                opacity: 0;
+                                color: var(--primary-color, #2673ea);
+                                font-weight: bold;
+                                transition: opacity 0.15s ease;
+                            `;
+                            item.appendChild(selectIcon);
+
+                            item.addEventListener('click', () => {
+                                console.log('[펼치기 버튼] 경로 선택:', path);
+                                fieldPathInput.value = path;
+                                fieldPathInput.dispatchEvent(new Event('input', { bubbles: true }));
+                                dropdown.remove();
+                                isDropdownOpen = false;
+                                newBtn.querySelector('.expand-icon').textContent = '▼';
+                            });
+
+                            item.addEventListener('mouseenter', () => {
+                                item.style.backgroundColor = 'var(--bg-hover, #f5f5f5)';
+                                selectIcon.style.opacity = '1';
+                            });
+
+                            item.addEventListener('mouseleave', () => {
+                                item.style.backgroundColor = 'transparent';
+                                selectIcon.style.opacity = '0';
+                            });
+
+                            dropdown.appendChild(item);
+                        });
+                    }
+
+                    // 기존 드롭다운 제거
+                    if (existingDropdown) {
+                        existingDropdown.remove();
+                    }
+
+                    // 드롭다운 추가
+                    const inputContainer =
+                        fieldPathInput.closest('div[style*="position: relative"]') || fieldPathInput.parentElement;
+                    inputContainer.style.position = 'relative';
+                    inputContainer.appendChild(dropdown);
+                    isDropdownOpen = true;
+                    newBtn.querySelector('.expand-icon').textContent = '▲';
+
+                    // 외부 클릭 시 드롭다운 닫기
+                    const closeDropdown = (e) => {
+                        if (!dropdown.contains(e.target) && e.target !== newBtn && !newBtn.contains(e.target)) {
+                            dropdown.remove();
+                            isDropdownOpen = false;
+                            newBtn.querySelector('.expand-icon').textContent = '▼';
+                            document.removeEventListener('click', closeDropdown);
+                        }
+                    };
+                    setTimeout(() => {
+                        document.addEventListener('click', closeDropdown);
+                    }, 0);
+                }
+            });
+
+            console.log('[setupFieldPathInput] 펼치기 버튼 설정 완료');
+        } else {
+            console.warn('[setupFieldPathInput] 펼치기 버튼을 찾을 수 없습니다:', `${fieldPathInput.id}-expand-btn`);
         }
     }
 }

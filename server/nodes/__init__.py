@@ -9,7 +9,7 @@ from .actionnodes import (
     HttpApiRequestNode,
     ProcessFocusNode,
 )
-from .boundarynodes import EndNode, StartNode
+from .boundarynodes import StartNode
 from .conditionnodes import ConditionNode
 from .imagenodes import ImageTouchNode
 from .node_executor_wrapper import NodeExecutor
@@ -19,7 +19,6 @@ __all__ = [
     "ActionNode",
     "ClickNode",
     "ConditionNode",
-    "EndNode",
     "HttpApiRequestNode",
     "ImageTouchNode",
     "NodeExecutor",

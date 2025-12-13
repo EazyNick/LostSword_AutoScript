@@ -24,6 +24,12 @@ body.theme-dark .node-settings-textarea {
     color: #e2e8f0; /* 밝은 회색 텍스트 */
 }
 
+/* 필드 경로 자동완성 미리보기 (다크 모드) */
+body.theme-dark .field-path-autocomplete-preview {
+    color: #718096 !important; /* 밝은 회색 */
+    opacity: 0.7;
+}
+
 /* 노드 설정 입력 필드 포커스 효과 */
 body.theme-dark .node-settings-input:focus,
 body.theme-dark .node-settings-select:focus,
@@ -100,4 +106,63 @@ body.theme-dark #edit-node-output-value:focus {
 /* 미리보기 텍스트 영역 색상 */
 body.theme-dark .node-preview-textarea {
     color: #e2e8f0; /* 밝은 회색 텍스트 */
+}
+
+/* 이전 노드 출력 변수 목록 다크 모드 스타일 */
+body.theme-dark .node-previous-output-variables {
+    background-color: #2d3748; /* 다크 그레이 배경 */
+    border-color: #4a5568; /* 회색 테두리 */
+}
+
+body.theme-dark .node-output-variable-tag {
+    background-color: #1a202c; /* 어두운 배경 */
+    border-color: #4a5568; /* 회색 테두리 */
+    color: #e2e8f0; /* 밝은 회색 텍스트 */
+}
+
+body.theme-dark .node-output-variable-tag:hover {
+    background-color: #2673ea; /* 파란색 배경 */
+    border-color: #2673ea;
+    color: #ffffff;
+}
+
+body.theme-dark .node-output-variable-key {
+    color: #e2e8f0; /* 밝은 회색 텍스트 */
+}
+
+body.theme-dark .node-output-variable-value {
+    color: #a0aec0; /* 회색 텍스트 */
+}
+
+/* 이전 노드 정보 표시 다크 모드 스타일 */
+body.theme-dark .node-previous-node-info {
+    background-color: #2d3748; /* 다크 그레이 배경 */
+    border-color: #4a5568; /* 회색 테두리 */
+    color: #e2e8f0; /* 밝은 회색 텍스트 */
+}
+
+body.theme-dark #node-previous-node-name-display {
+    color: #60a5fa; /* 밝은 파란색 */
+}
+
+/* 필드 경로 드롭다운 다크 모드 */
+body.theme-dark .field-path-dropdown {
+    background-color: #2d3748 !important;
+    border-color: #4a5568 !important;
+}
+
+body.theme-dark .field-path-dropdown-header {
+    background-color: #1a202c !important;
+    color: #e2e8f0 !important;
+    border-bottom-color: #4a5568 !important;
+}
+
+body.theme-dark .field-path-dropdown-item {
+    color: #e2e8f0 !important;
+    border-bottom-color: #4a5568 !important;
+}
+
+body.theme-dark .field-path-dropdown-item:hover {
+    background-color: #374151 !important;
+    color: #ffffff !important;
 }

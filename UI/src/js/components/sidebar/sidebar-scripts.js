@@ -14,6 +14,7 @@ import { ScriptAPI } from '../../api/scriptapi.js';
 import { UserSettingsAPI } from '../../api/user-settings-api.js';
 import { getModalManagerInstance } from '../../utils/modal.js';
 import { getLogger, formatDate } from './sidebar-utils.js';
+import { getDashboardManagerInstance } from '../../../pages/workflow/dashboard.js';
 
 /**
  * 스크립트 관리 클래스
@@ -756,6 +757,13 @@ export class SidebarScriptManager {
                 const script = activeScripts[i];
                 log(`[Sidebar] 스크립트 ${i + 1}/${activeScripts.length} 실행 중: ${script.name} (ID: ${script.id})`);
 
+                // 대시보드에 실행 시작 이벤트 전달
+                document.dispatchEvent(
+                    new CustomEvent('scriptExecutionStarted', {
+                        detail: { scriptId: script.id, scriptName: script.name, index: i, total: activeScripts.length }
+                    })
+                );
+
                 try {
                     // 1. 스크립트 선택 (포커스)
                     // allScripts 배열에서 실제 인덱스를 찾아야 함
@@ -832,6 +840,32 @@ export class SidebarScriptManager {
 
                         successCount++;
                         log(`[Sidebar] ✅ 스크립트 "${script.name}" 실행 완료`);
+
+                        // 스크립트 실행 기록 저장
+                        try {
+                            const executionStartTime = workflowPage.executionService?.executionStartTime;
+                            const executionTimeMs = executionStartTime ? Date.now() - executionStartTime : null;
+
+                            const dashboardManager = getDashboardManagerInstance();
+                            if (dashboardManager && typeof dashboardManager.recordScriptExecution === 'function') {
+                                await dashboardManager.recordScriptExecution(script.id, {
+                                    status: 'success',
+                                    error_message: null,
+                                    execution_time_ms: executionTimeMs
+                                });
+                                log(`[Sidebar] 스크립트 실행 기록 저장 완료 - 스크립트 ID: ${script.id}`);
+                            }
+                        } catch (recordError) {
+                            logWarn(`[Sidebar] 스크립트 실행 기록 저장 실패 (무시): ${recordError.message}`);
+                        }
+
+                        // 대시보드에 실행 완료 이벤트 전달
+                        document.dispatchEvent(
+                            new CustomEvent('scriptExecutionCompleted', {
+                                detail: { scriptId: script.id, scriptName: script.name, status: 'success' }
+                            })
+                        );
+
                         scriptResults.push({
                             name: script.name || script.id || '알 수 없는 스크립트',
                             status: 'success',
@@ -845,6 +879,37 @@ export class SidebarScriptManager {
                             message: execError.message,
                             stack: execError.stack
                         });
+
+                        // 스크립트 실행 기록 저장 (실패)
+                        try {
+                            const executionStartTime = workflowPage.executionService?.executionStartTime;
+                            const executionTimeMs = executionStartTime ? Date.now() - executionStartTime : null;
+
+                            const dashboardManager = getDashboardManagerInstance();
+                            if (dashboardManager && typeof dashboardManager.recordScriptExecution === 'function') {
+                                await dashboardManager.recordScriptExecution(script.id, {
+                                    status: 'error',
+                                    error_message: execError.message,
+                                    execution_time_ms: executionTimeMs
+                                });
+                                log(`[Sidebar] 스크립트 실행 기록 저장 완료 (실패) - 스크립트 ID: ${script.id}`);
+                            }
+                        } catch (recordError) {
+                            logWarn(`[Sidebar] 스크립트 실행 기록 저장 실패 (무시): ${recordError.message}`);
+                        }
+
+                        // 대시보드에 실행 실패 이벤트 전달
+                        document.dispatchEvent(
+                            new CustomEvent('scriptExecutionCompleted', {
+                                detail: {
+                                    scriptId: script.id,
+                                    scriptName: script.name,
+                                    status: 'failed',
+                                    error: execError.message
+                                }
+                            })
+                        );
+
                         scriptResults.push({
                             name: script.name || script.id || '알 수 없는 스크립트',
                             status: 'failed',
@@ -867,6 +932,38 @@ export class SidebarScriptManager {
                         message: error.message,
                         stack: error.stack
                     });
+
+                    // 스크립트 실행 기록 저장 (외부 예외 발생 시)
+                    try {
+                        const workflowPage = getWorkflowPage();
+                        const executionStartTime = workflowPage?.executionService?.executionStartTime;
+                        const executionTimeMs = executionStartTime ? Date.now() - executionStartTime : null;
+
+                        const dashboardManager = getDashboardManagerInstance();
+                        if (dashboardManager && typeof dashboardManager.recordScriptExecution === 'function') {
+                            await dashboardManager.recordScriptExecution(script.id, {
+                                status: 'error',
+                                error_message: error.message || '스크립트 처리 중 오류 발생',
+                                execution_time_ms: executionTimeMs
+                            });
+                            log(`[Sidebar] 스크립트 실행 기록 저장 완료 (외부 예외) - 스크립트 ID: ${script.id}`);
+                        }
+                    } catch (recordError) {
+                        logWarn(`[Sidebar] 스크립트 실행 기록 저장 실패 (무시): ${recordError.message}`);
+                    }
+
+                    // 대시보드에 실행 실패 이벤트 전달
+                    document.dispatchEvent(
+                        new CustomEvent('scriptExecutionCompleted', {
+                            detail: {
+                                scriptId: script.id,
+                                scriptName: script.name,
+                                status: 'failed',
+                                error: error.message
+                            }
+                        })
+                    );
+
                     scriptResults.push({
                         name: script.name || script.id || '알 수 없는 스크립트',
                         status: 'failed',
@@ -879,6 +976,29 @@ export class SidebarScriptManager {
             }
 
             log(`[Sidebar] 모든 스크립트 실행 완료 - 성공: ${successCount}개, 실패: ${failCount}개`);
+
+            // 전체 실행 요약 정보 저장
+            try {
+                const dashboardManager = getDashboardManagerInstance();
+                if (dashboardManager && typeof dashboardManager.recordExecutionSummary === 'function') {
+                    await dashboardManager.recordExecutionSummary({
+                        total_executions: activeScripts.length,
+                        failed_count: failCount
+                    });
+                    log(
+                        `[Sidebar] 전체 실행 요약 정보 저장 완료 - 총 실행: ${activeScripts.length}, 실패: ${failCount}`
+                    );
+                }
+            } catch (summaryError) {
+                logWarn(`[Sidebar] 전체 실행 요약 정보 저장 실패 (무시): ${summaryError.message}`);
+            }
+
+            // 대시보드에 전체 실행 완료 이벤트 전달
+            document.dispatchEvent(
+                new CustomEvent('allScriptsExecutionCompleted', {
+                    detail: { successCount, failCount, totalCount: activeScripts.length }
+                })
+            );
 
             // 실행 결과 모달 표시 (가운데 팝업)
             if (modalManager) {
@@ -895,6 +1015,18 @@ export class SidebarScriptManager {
                 });
             }
         } catch (error) {
+            // 대시보드에 전체 실행 실패 이벤트 전달
+            document.dispatchEvent(
+                new CustomEvent('allScriptsExecutionCompleted', {
+                    detail: {
+                        successCount: 0,
+                        failCount: activeScripts.length,
+                        totalCount: activeScripts.length,
+                        error: error.message
+                    }
+                })
+            );
+
             logError('[Sidebar] ❌ 모든 스크립트 실행 중 오류 발생:', error);
             logError('[Sidebar] 에러 상세:', {
                 name: error.name,

@@ -133,8 +133,8 @@ export class ConnectionEventHandler {
             logger.log('[ConnectionManager] 출력 커넥터 바인딩 완료:', nodeId);
         } else {
             // 종료 노드는 출력이 없으므로 경고 출력하지 않음
-            const nodeType = nodeElement.dataset.nodeType || (nodeId === 'end' ? 'end' : null);
-            if (nodeType !== 'end' && nodeId !== 'end') {
+            const nodeType = nodeElement.dataset.nodeType || null;
+            if (nodeType) {
                 logger.warn('[ConnectionManager] 출력 커넥터를 찾을 수 없습니다:', nodeId);
             }
         }

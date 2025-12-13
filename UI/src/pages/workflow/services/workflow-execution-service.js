@@ -5,12 +5,14 @@
 
 import { getResultModalManagerInstance } from '../../../js/utils/result-modal.js';
 import { getNodeRegistry } from './node-registry.js';
+import { getDashboardManagerInstance } from '../dashboard.js';
 
 export class WorkflowExecutionService {
     constructor(workflowPage) {
         this.workflowPage = workflowPage;
         this.isCancelled = false; // 실행 취소 플래그
         this.isRunningAllScripts = false; // 전체 스크립트 실행 중인지 여부
+        this.executionStartTime = null; // 실행 시작 시간
     }
 
     /**
@@ -39,6 +41,9 @@ export class WorkflowExecutionService {
         const modalManager = this.workflowPage.getModalManager();
         const nodes = document.querySelectorAll('.workflow-node');
 
+        // 실행 시작 시간 기록
+        this.executionStartTime = Date.now();
+
         if (nodes.length === 0) {
             if (toastManager) {
                 toastManager.warning('실행할 노드가 없습니다.');
@@ -57,8 +62,8 @@ export class WorkflowExecutionService {
             return;
         }
 
-        // 전체 노드 개수 계산 (시작/종료 노드 포함)
-        const totalNodesCount = nodes.length; // 화면의 모든 노드 개수 (시작/종료 포함)
+        // 전체 노드 개수 계산 (시작 노드 포함)
+        const totalNodesCount = nodes.length; // 화면의 모든 노드 개수 (시작 노드 포함)
 
         // 실행 중 플래그 설정 (중복 실행 방지)
         if (this.isExecuting) {
@@ -73,7 +78,7 @@ export class WorkflowExecutionService {
         this.isCancelled = false; // 취소 플래그 초기화
 
         // 전체 노드 개수 계산 (start와 end 포함)
-        // prepareWorkflowData에서 start와 end를 제외하므로, 실제 화면의 모든 노드 개수를 계산
+        // prepareWorkflowData에서 start를 제외하므로, 실제 화면의 모든 노드 개수를 계산
         const allNodes = document.querySelectorAll('.workflow-node');
 
         // 조건 노드의 분기 경로 중 실행되지 않은 경로 노드들을 제외한 실제 실행 가능한 노드 수 계산
@@ -99,7 +104,7 @@ export class WorkflowExecutionService {
                 const branchConnections = connections.filter((c) => c.from === nodeId);
                 branchConnections.forEach((conn) => {
                     // 실행 대상에 포함되지 않은 분기 경로 노드 (end 제외)
-                    if (!executedNodeIds.has(conn.to) && conn.to !== 'end') {
+                    if (!executedNodeIds.has(conn.to)) {
                         conditionBranchNodes.add(conn.to);
                     }
                 });
@@ -107,23 +112,14 @@ export class WorkflowExecutionService {
         });
 
         // 전체 노드 수에서 조건 노드의 실행 안 된 분기 경로 노드만 제외
-        // End 노드는 포함 (정상 완료 시 성공으로 카운팅, 에러 발생 시 중단으로 카운팅)
+        // 조건 분기 노드는 제외하고 카운팅
         const totalNodeCount = allNodes.length - conditionBranchNodes.size;
-
-        // End 노드 존재 여부 확인 (정상 완료 시 성공으로 카운팅하기 위해)
-        const endNodeExists = Array.from(allNodes).some((node) => {
-            const nodeId = node.id || node.dataset.nodeId;
-            const nodeType = this.workflowPage.getNodeType(node);
-            const title = node.querySelector('.node-title')?.textContent || '';
-            return nodeId === 'end' || nodeType === 'end' || title.includes('종료');
-        });
 
         // 디버깅: 노드 카운팅 정보 로깅
         const logger = this.workflowPage.getLogger();
         logger.log('[WorkflowExecutionService] 노드 카운팅 초기화:', {
             전체노드수: allNodes.length,
             조건분기제외: conditionBranchNodes.size,
-            End노드존재: endNodeExists,
             최종노드수: totalNodeCount,
             실행대상노드: executedNodeIds.size,
             조건분기노드목록: Array.from(conditionBranchNodes)
@@ -222,8 +218,24 @@ export class WorkflowExecutionService {
                     // 3. 실행 완료 UI 표시
                     const nodeResult = result.data?.results?.[0];
 
-                    // 이전 노드 결과 업데이트 (다음 노드 실행 시 전달)
+                    // 노드 실행 결과를 DOM에 저장 (새로운 표준 형식: {action, status, output: {...}})
                     if (nodeResult) {
+                        // nodeManager에 실행 결과 저장
+                        const nodeManager = this.workflowPage.getNodeManager();
+                        if (nodeManager && nodeManager.nodeData) {
+                            const nodeId = nodeData.id;
+                            if (!nodeManager.nodeData[nodeId]) {
+                                nodeManager.nodeData[nodeId] = {};
+                            }
+                            // 실행 결과 저장 (표준 형식: {action, status, output: {...}})
+                            nodeManager.nodeData[nodeId].result = nodeResult;
+                            // output 필드가 dict인지 확인하고 저장
+                            if (nodeResult.output && typeof nodeResult.output === 'object') {
+                                nodeManager.nodeData[nodeId].output = nodeResult.output;
+                            }
+                        }
+
+                        // 이전 노드 결과 업데이트 (다음 노드 실행 시 전달)
                         previousNodeResult = {
                             ...nodeResult,
                             node_id: nodeData.id,
@@ -329,14 +341,6 @@ export class WorkflowExecutionService {
 
             // 중단된 노드 개수 계산 (취소되지 않았으면 0)
             if (!this.isCancelled) {
-                // 모든 노드가 정상적으로 실행 완료된 경우, End 노드를 성공으로 카운팅
-                // End 노드는 실행 대상에서 제외되지만, 워크플로우 완료 시 성공으로 간주
-                if (endNodeExists && failCount === 0) {
-                    // 에러가 없고 End 노드가 있으면 End 노드를 성공으로 카운팅
-                    successCount++;
-                    logger.log('[WorkflowExecutionService] End 노드를 성공으로 카운팅');
-                }
-
                 cancelledCount = totalNodeCount - successCount - failCount;
             }
 
@@ -371,6 +375,32 @@ export class WorkflowExecutionService {
                 } else if (toastManager) {
                     toastManager.success(`워크플로우 실행 완료 (${workflowData.nodes.length}개 노드)`);
                 }
+
+                // 단일 스크립트 실행 기록 저장 (전체 실행이 아닐 때만)
+                try {
+                    const currentScript = this.workflowPage.getCurrentScript();
+                    if (currentScript && currentScript.id) {
+                        const executionTimeMs = this.executionStartTime ? Date.now() - this.executionStartTime : null;
+
+                        const dashboardManager = getDashboardManagerInstance();
+                        if (dashboardManager && typeof dashboardManager.recordScriptExecution === 'function') {
+                            await dashboardManager.recordScriptExecution(currentScript.id, {
+                                status: failCount > 0 ? 'error' : 'success',
+                                error_message: failCount > 0 ? `${failCount}개 노드 실행 실패` : null,
+                                execution_time_ms: executionTimeMs
+                            });
+                            const logger = this.workflowPage.getLogger();
+                            logger.log(
+                                `[WorkflowExecutionService] 스크립트 실행 기록 저장 완료 - 스크립트 ID: ${currentScript.id}`
+                            );
+                        }
+                    }
+                } catch (recordError) {
+                    const logger = this.workflowPage.getLogger();
+                    logger.warn(
+                        `[WorkflowExecutionService] 스크립트 실행 기록 저장 실패 (무시): ${recordError.message}`
+                    );
+                }
             }
         } catch (error) {
             console.error('워크플로우 실행 오류:', error);
@@ -384,13 +414,40 @@ export class WorkflowExecutionService {
             // 디버깅: 계산 결과 확인
             const logger = this.workflowPage.getLogger();
             logger.log('[WorkflowExecutionService] 노드 카운팅 계산:', {
-                totalNodeCount: `전체 노드(Start/End 포함): ${totalNodeCount}`,
+                totalNodeCount: `전체 노드(Start 포함): ${totalNodeCount}`,
                 successCount: `Start(1) + 실행 성공(${successCount - 1}) = ${successCount}`,
                 failCount,
                 cancelledCount: `실행 안 된 노드들(대기, 종료 등): ${cancelledCount}`,
                 currentNodeIndex,
                 계산: `${totalNodeCount} - ${successCount} - ${failCount} = ${cancelledCount}`
             });
+
+            // 단일 스크립트 실행 시 예외 발생 시에도 실행 기록 저장
+            if (!this.isRunningAllScripts) {
+                try {
+                    const currentScript = this.workflowPage.getCurrentScript();
+                    if (currentScript && currentScript.id) {
+                        const executionTimeMs = this.executionStartTime ? Date.now() - this.executionStartTime : null;
+
+                        const dashboardManager = getDashboardManagerInstance();
+                        if (dashboardManager && typeof dashboardManager.recordScriptExecution === 'function') {
+                            await dashboardManager.recordScriptExecution(currentScript.id, {
+                                status: 'error',
+                                error_message: error.message || '워크플로우 실행 중 오류 발생',
+                                execution_time_ms: executionTimeMs
+                            });
+                            logger.log(
+                                `[WorkflowExecutionService] 스크립트 실행 기록 저장 완료 (예외 발생) - 스크립트 ID: ${currentScript.id}`
+                            );
+                        }
+                    }
+                } catch (recordError) {
+                    logger.warn(
+                        `[WorkflowExecutionService] 스크립트 실행 기록 저장 실패 (무시): ${recordError.message}`
+                    );
+                }
+            }
+
             // 전체 스크립트 실행 중이면 토스트만 표시하고 에러를 다시 throw하여 상위로 전파
             if (this.isRunningAllScripts) {
                 if (toastManager) {

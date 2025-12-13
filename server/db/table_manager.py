@@ -194,7 +194,8 @@ class TableManager:
                 CREATE TABLE IF NOT EXISTS dashboard_stats (
                     stat_key TEXT PRIMARY KEY,
                     stat_value INTEGER NOT NULL DEFAULT 0,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_dashboard_stats_key ON dashboard_stats(stat_key)")

@@ -47,7 +47,8 @@ class NodeRepository:
                 """
                 SELECT id, node_id, node_type, position_x, position_y, node_data,
                        connected_to, connected_from,
-                       COALESCE(parameters, '{}') as parameters, description
+                       COALESCE(parameters, '{}') as parameters, description,
+                       created_at, updated_at
                 FROM nodes
                 WHERE script_id = ?
                 ORDER BY id
@@ -61,7 +62,8 @@ class NodeRepository:
 
             for row in cursor.fetchall():
                 # SELECT 순서: id(0), node_id(1), node_type(2), position_x(3), position_y(4),
-                #              node_data(5), connected_to(6), connected_from(7), parameters(8), description(9)
+                #              node_data(5), connected_to(6), connected_from(7), parameters(8), description(9),
+                #              created_at(10), updated_at(11)
                 node_type = row[2]
 
                 # nodes_config.py에 정의되지 않은 노드는 제외
@@ -75,6 +77,8 @@ class NodeRepository:
                 connected_from_raw = row[7] if len(row) > 7 else None
                 parameters_raw = row[8] if len(row) > 8 else None
                 description = row[9] if len(row) > 9 else None
+                created_at = row[10] if len(row) > 10 else None
+                updated_at = row[11] if len(row) > 11 else None
 
                 connected_to = self._parse_json_field(connected_to_raw, [])
                 connected_from = self._parse_json_field(connected_from_raw, [])
@@ -83,12 +87,27 @@ class NodeRepository:
                 db_id = row[0]
                 node_id = row[1]
 
+                # node_data는 원본 그대로 사용 (메타데이터 제외)
+                node_data = json.loads(row[5])
+
+                # 메타데이터를 별도 딕셔너리로 분리
+                metadata = {
+                    "id": node_id,
+                    "x": row[3],
+                    "y": row[4],
+                }
+                if created_at:
+                    metadata["createdAt"] = created_at
+                if updated_at:
+                    metadata["updatedAt"] = updated_at
+
                 nodes.append(
                     {
                         "id": node_id,
                         "type": node_type,
                         "position": {"x": row[3], "y": row[4]},
-                        "data": json.loads(row[5]),
+                        "data": node_data,
+                        "metadata": metadata,  # 메타데이터를 별도 필드로 추가
                         "connected_to": connected_to,
                         "connected_from": connected_from,
                         "parameters": parameters,
@@ -302,7 +321,6 @@ class NodeRepository:
     ) -> list[dict[str, Any]]:
         """중복 경계 노드 정리 구현"""
         start_nodes = [n for n in nodes if n.get("type") == "start" or n.get("id") == "start"]
-        end_nodes = [n for n in nodes if n.get("type") == "end" or n.get("id") == "end"]
 
         # start 노드 정리
         if len(start_nodes) > 1:
@@ -317,20 +335,6 @@ class NodeRepository:
 
             conn.commit()
             print(f"[DB 정리] start 노드 중복 제거: {len(nodes_to_delete)}개 삭제, 1개 유지")
-
-        # end 노드 정리
-        if len(end_nodes) > 1:
-            end_nodes.sort(key=lambda n: n.get("_db_id", 0))
-            nodes_to_delete = end_nodes[1:]
-
-            for node in nodes_to_delete:
-                db_id = node.get("_db_id")
-                if db_id:
-                    cursor.execute("DELETE FROM nodes WHERE id = ?", (db_id,))
-                    nodes[:] = [n for n in nodes if n.get("_db_id") != db_id]
-
-            conn.commit()
-            print(f"[DB 정리] end 노드 중복 제거: {len(nodes_to_delete)}개 삭제, 1개 유지")
 
         # _db_id 필드 제거
         for node in nodes:
