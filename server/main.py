@@ -49,22 +49,20 @@ def initialize_database() -> None:
     db_path = db_manager.connection.db_path
     is_new_db = not os.path.exists(db_path)  # 새 데이터베이스 여부
 
-    if is_new_db:
-        # 새 데이터베이스인 경우: 테이블 생성 및 기본 데이터 삽입
-        logger.info(f"데이터베이스 파일이 없습니다. 생성 중... ({db_path})")
-        try:
-            db_manager.init_database()  # 테이블 생성
-            logger.info("✅ 데이터베이스 테이블 생성 완료")
+    try:
+        # 모든 경우에 테이블 생성 및 마이그레이션 실행
+        # (create_tables는 IF NOT EXISTS를 사용하므로 안전)
+        db_manager.init_database()  # 테이블 생성 및 마이그레이션
+        logger.info("✅ 데이터베이스 테이블 생성/마이그레이션 완료")
 
+        if is_new_db:
+            # 새 데이터베이스인 경우: 기본 데이터 삽입
+            logger.info(f"새 데이터베이스 파일 생성됨: {db_path}")
             db_manager.seed_example_data(logger=logger)  # 예시 데이터 삽입
             logger.info("✅ 기본 데이터 삽입 완료")
-        except Exception as e:
-            logger.error(f"❌ 데이터베이스 초기화 실패: {e}")
-            raise e
-    else:
-        # 기존 데이터베이스인 경우: 설정값 확인 및 추가
-        logger.info(f"기존 데이터베이스 파일 발견: {db_path}")
-        try:
+        else:
+            # 기존 데이터베이스인 경우: 설정값 확인 및 추가
+            logger.info(f"기존 데이터베이스 파일 발견: {db_path}")
             scripts = db_manager.get_all_scripts()
             script_count = len(scripts)
 
@@ -96,8 +94,9 @@ def initialize_database() -> None:
                     script_order_json = "[]"
                 db_manager.save_user_setting("script-order", script_order_json)
                 logger.info(f"✅ 기본 설정값 추가: script-order = {script_order_json}")
-        except Exception as e:
-            logger.warning(f"기본 설정값 추가 중 오류 발생 (무시): {e}")
+    except Exception as e:
+        logger.error(f"❌ 데이터베이스 초기화 실패: {e}")
+        raise e
 
 
 app = FastAPI(title="자동화 도구", description="자동화를 위한 API 서버", version="1.0.0")

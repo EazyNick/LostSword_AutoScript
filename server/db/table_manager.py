@@ -165,6 +165,31 @@ class TableManager:
                 "CREATE INDEX IF NOT EXISTS idx_node_logs_script_started ON node_execution_logs(script_id, started_at DESC)"
             )
 
+            # 로그 통계 테이블 생성 (실행 기록 페이지 통계)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS log_stats (
+                    stat_key TEXT PRIMARY KEY,
+                    stat_value INTEGER NOT NULL DEFAULT 0,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_log_stats_key ON log_stats(stat_key)")
+
+            # 로그 통계 초기값 설정
+            # total: 전체 로그 개수
+            # completed: 완료된 로그 개수
+            # failed: 실패한 로그 개수
+            # average_execution_time: 평균 실행 시간 (밀리초)
+            cursor.execute("""
+                INSERT OR IGNORE INTO log_stats (stat_key, stat_value, updated_at, created_at)
+                VALUES
+                    ('total', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+                    ('completed', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+                    ('failed', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+                    ('average_execution_time', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            """)
+
             # 태그 테이블 생성 (스크립트 분류 및 검색용)
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS tags (
@@ -199,6 +224,18 @@ class TableManager:
                 )
             """)
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_dashboard_stats_key ON dashboard_stats(stat_key)")
+
+            # 대시보드 통계 초기값 설정
+            # all_executions: 전체 실행 시 실행된 스크립트 개수
+            # all_failed_scripts: 전체 실행 시 실패한 스크립트 개수
+            cursor.execute("""
+                INSERT OR IGNORE INTO dashboard_stats (stat_key, stat_value, updated_at, created_at)
+                VALUES
+                    ('all_executions', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+                    ('all_failed_scripts', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+                    ('total_scripts', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+                    ('inactive_scripts', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            """)
 
             # 통계 뷰 생성 (대시보드용)
             self._create_views(cursor)
@@ -294,6 +331,37 @@ class TableManager:
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_user_settings_user_id ON user_settings(user_id)")
             with contextlib.suppress(sqlite3.OperationalError):
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_user_settings_key ON user_settings(setting_key)")
+
+            # 대시보드 통계 초기값 마이그레이션 (기존 DB에 all_executions, all_failed_scripts가 없으면 추가)
+            with contextlib.suppress(sqlite3.OperationalError):
+                cursor.execute("""
+                    INSERT OR IGNORE INTO dashboard_stats (stat_key, stat_value, updated_at, created_at)
+                    VALUES
+                        ('all_executions', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+                        ('all_failed_scripts', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                """)
+
+            # 로그 통계 테이블 마이그레이션 (기존 DB에 log_stats 테이블이 없으면 생성)
+            with contextlib.suppress(sqlite3.OperationalError):
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS log_stats (
+                        stat_key TEXT PRIMARY KEY,
+                        stat_value INTEGER NOT NULL DEFAULT 0,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_log_stats_key ON log_stats(stat_key)")
+
+                # 로그 통계 초기값 설정
+                cursor.execute("""
+                    INSERT OR IGNORE INTO log_stats (stat_key, stat_value, updated_at, created_at)
+                    VALUES
+                        ('total', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+                        ('completed', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+                        ('failed', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+                        ('average_execution_time', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                """)
 
             conn.commit()
         finally:

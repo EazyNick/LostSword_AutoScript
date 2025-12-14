@@ -118,27 +118,6 @@
     margin-bottom: 8px;
 }
 
-/* 통계 변화 */
-.stat-change {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 12px;
-    font-weight: 500;
-}
-
-.stat-change.positive {
-    color: #22c55e;
-}
-
-.stat-change.negative {
-    color: #ef4444;
-}
-
-.stat-change-icon {
-    font-size: 14px;
-}
-
 /* 워크플로우 섹션 */
 .dashboard-scripts {
     margin-top: 40px;

@@ -15,6 +15,7 @@ import { UserSettingsAPI } from '../../api/user-settings-api.js';
 import { getModalManagerInstance } from '../../utils/modal.js';
 import { getLogger, formatDate } from './sidebar-utils.js';
 import { getDashboardManagerInstance } from '../../../pages/workflow/dashboard.js';
+import { LogAPI } from '../../api/logapi.js';
 
 /**
  * 스크립트 관리 클래스
@@ -51,20 +52,20 @@ export class SidebarScriptManager {
         const logWarn = logger.warn;
         const logError = logger.error;
 
-        log('[Sidebar] loadScriptsFromServer() 시작');
-        log('[Sidebar] ScriptAPI 상태:', this.scriptAPI !== undefined ? '존재' : '없음');
-        log('[Sidebar] apiCall 상태:', typeof window.apiCall);
+        log('[Scripts] loadScriptsFromServer() 시작');
+        log('[Scripts] ScriptAPI 상태:', this.scriptAPI !== undefined ? '존재' : '없음');
+        log('[Scripts] apiCall 상태:', typeof window.apiCall);
 
         try {
             // ScriptAPI는 이미 import되었으므로 바로 사용 가능
             if (this.scriptAPI && typeof this.scriptAPI.getAllScripts === 'function') {
-                log('[Sidebar] ✅ ScriptAPI.getAllScripts() 호출 준비 완료');
-                log('[Sidebar] 서버에 스크립트 목록 요청 전송...');
+                log('[Scripts] ✅ ScriptAPI.getAllScripts() 호출 준비 완료');
+                log('[Scripts] 서버에 스크립트 목록 요청 전송...');
 
                 const scripts = await this.scriptAPI.getAllScripts();
 
-                log('[Sidebar] ✅ 서버에서 스크립트 목록 받음:', scripts);
-                log(`[Sidebar] 받은 스크립트 개수: ${scripts.length}개`);
+                log('[Scripts] ✅ 서버에서 스크립트 목록 받음:', scripts);
+                log(`[Scripts] 받은 스크립트 개수: ${scripts.length}개`);
 
                 // 서버에서 이미 execution_order 기준으로 정렬되어 반환되므로 별도 정렬 불필요
 
@@ -91,15 +92,15 @@ export class SidebarScriptManager {
                         const foundIndex = this.sidebarManager.scripts.findIndex((script) => script.id === scriptId);
                         if (foundIndex !== -1) {
                             focusedScriptIndex = foundIndex;
-                            log(`[Sidebar] 저장된 포커스된 스크립트 복원: ID=${scriptId}, Index=${foundIndex}`);
+                            log(`[Scripts] 저장된 포커스된 스크립트 복원: ID=${scriptId}, Index=${foundIndex}`);
                         } else {
                             log(
-                                `[Sidebar] 저장된 포커스된 스크립트를 찾을 수 없음: ID=${scriptId}, 첫 번째 스크립트 선택`
+                                `[Scripts] 저장된 포커스된 스크립트를 찾을 수 없음: ID=${scriptId}, 첫 번째 스크립트 선택`
                             );
                         }
                     }
                 } catch (error) {
-                    log('[Sidebar] 포커스된 스크립트 복원 실패 (첫 번째 스크립트 선택):', error);
+                    log('[Scripts] 포커스된 스크립트 복원 실패 (첫 번째 스크립트 선택):', error);
                 }
 
                 // 포커스된 스크립트 활성화
@@ -120,9 +121,9 @@ export class SidebarScriptManager {
                     this.sidebarManager.dispatchScriptChangeEvent();
                 }
             } else {
-                logWarn('[Sidebar] ⚠️ ScriptAPI를 사용할 수 없습니다. 기본 스크립트를 사용합니다.');
-                logWarn('[Sidebar] ScriptAPI:', this.scriptAPI);
-                logWarn('[Sidebar] window.apiCall:', window.apiCall);
+                logWarn('[Scripts] ⚠️ ScriptAPI를 사용할 수 없습니다. 기본 스크립트를 사용합니다.');
+                logWarn('[Scripts] ScriptAPI:', this.scriptAPI);
+                logWarn('[Scripts] window.apiCall:', window.apiCall);
                 // API가 없을 때의 폴백 (개발용)
                 this.sidebarManager.scripts = [
                     {
@@ -136,8 +137,8 @@ export class SidebarScriptManager {
                 this.sidebarManager.uiManager.loadScripts();
             }
         } catch (error) {
-            logError('[Sidebar] ❌ 스크립트 목록 로드 실패:', error);
-            logError('[Sidebar] 에러 상세:', {
+            logError('[Scripts] ❌ 스크립트 목록 로드 실패:', error);
+            logError('[Scripts] 에러 상세:', {
                 name: error.name,
                 message: error.message,
                 stack: error.stack
@@ -162,7 +163,7 @@ export class SidebarScriptManager {
             toIndex < 0 ||
             toIndex > this.sidebarManager.scripts.length
         ) {
-            log(`[Sidebar] ⚠️ 유효하지 않은 인덱스 - fromIndex: ${fromIndex}, toIndex: ${toIndex}`);
+            log(`[Scripts] ⚠️ 유효하지 않은 인덱스 - fromIndex: ${fromIndex}, toIndex: ${toIndex}`);
             return;
         }
 
@@ -171,7 +172,7 @@ export class SidebarScriptManager {
             return;
         }
 
-        log(`[Sidebar] 스크립트 순서 변경 - ${fromIndex} -> ${toIndex}`);
+        log(`[Scripts] 스크립트 순서 변경 - ${fromIndex} -> ${toIndex}`);
 
         // 배열에서 항목 이동
         const [movedScript] = this.sidebarManager.scripts.splice(fromIndex, 1);
@@ -208,10 +209,10 @@ export class SidebarScriptManager {
         // 순서 저장 (비동기) - DB에 execution_order 업데이트
         this.saveScriptOrderToDB().catch((error) => {
             const logger = getLogger();
-            logger.error('[Sidebar] 스크립트 실행 순서 DB 저장 실패:', error);
+            logger.error('[Scripts] 스크립트 실행 순서 DB 저장 실패:', error);
         });
 
-        log('[Sidebar] ✅ 스크립트 순서 변경 완료');
+        log('[Scripts] ✅ 스크립트 순서 변경 완료');
     }
 
     /**
@@ -234,12 +235,12 @@ export class SidebarScriptManager {
             // ScriptAPI를 통해 DB에 실행 순서 업데이트
             if (this.scriptAPI && typeof this.scriptAPI.updateScriptOrder === 'function') {
                 await this.scriptAPI.updateScriptOrder(scriptOrders);
-                log('[Sidebar] 스크립트 실행 순서 DB에 저장됨:', scriptOrders);
+                log('[Scripts] 스크립트 실행 순서 DB에 저장됨:', scriptOrders);
             } else {
-                logWarn('[Sidebar] ScriptAPI.updateScriptOrder를 사용할 수 없습니다.');
+                logWarn('[Scripts] ScriptAPI.updateScriptOrder를 사용할 수 없습니다.');
             }
         } catch (error) {
-            logError('[Sidebar] 스크립트 실행 순서 DB 저장 실패:', error);
+            logError('[Scripts] 스크립트 실행 순서 DB 저장 실패:', error);
             throw error;
         }
     }
@@ -258,14 +259,14 @@ export class SidebarScriptManager {
             // 서버에 저장 시도
             if (this.userSettingsAPI) {
                 await this.userSettingsAPI.saveSetting('script-order', JSON.stringify(order));
-                log('[Sidebar] 스크립트 순서 서버에 저장됨:', order);
+                log('[Scripts] 스크립트 순서 서버에 저장됨:', order);
             } else {
                 // 폴백: 로컬 스토리지에 저장
                 localStorage.setItem('script-order', JSON.stringify(order));
-                log('[Sidebar] 스크립트 순서 로컬 스토리지에 저장됨:', order);
+                log('[Scripts] 스크립트 순서 로컬 스토리지에 저장됨:', order);
             }
         } catch (error) {
-            logError('[Sidebar] 서버 저장 실패, 로컬 스토리지에 저장:', error);
+            logError('[Scripts] 서버 저장 실패, 로컬 스토리지에 저장:', error);
             // 서버 저장 실패 시 로컬 스토리지에 저장 (폴백)
             localStorage.setItem('script-order', JSON.stringify(order));
         }
@@ -288,10 +289,10 @@ export class SidebarScriptManager {
                     const orderStr = await this.userSettingsAPI.getSetting('script-order');
                     if (orderStr) {
                         savedOrder = JSON.parse(orderStr);
-                        log('[Sidebar] 스크립트 순서 서버에서 로드됨:', savedOrder);
+                        log('[Scripts] 스크립트 순서 서버에서 로드됨:', savedOrder);
                     }
                 } catch (error) {
-                    log('[Sidebar] 서버에서 설정을 찾을 수 없음, 로컬 스토리지 확인');
+                    log('[Scripts] 서버에서 설정을 찾을 수 없음, 로컬 스토리지 확인');
                 }
             }
 
@@ -300,13 +301,13 @@ export class SidebarScriptManager {
                 const orderStr = localStorage.getItem('script-order');
                 if (orderStr) {
                     savedOrder = JSON.parse(orderStr);
-                    log('[Sidebar] 스크립트 순서 로컬 스토리지에서 로드됨:', savedOrder);
+                    log('[Scripts] 스크립트 순서 로컬 스토리지에서 로드됨:', savedOrder);
                 }
             }
 
             return savedOrder;
         } catch (error) {
-            logError('[Sidebar] 스크립트 순서 로드 실패:', error);
+            logError('[Scripts] 스크립트 순서 로드 실패:', error);
             return null;
         }
     }
@@ -345,7 +346,7 @@ export class SidebarScriptManager {
         }
 
         this.sidebarManager.scripts = orderedScripts;
-        log('[Sidebar] 저장된 순서 적용 완료');
+        log('[Scripts] 저장된 순서 적용 완료');
     }
 
     /**
@@ -369,11 +370,11 @@ export class SidebarScriptManager {
             try {
                 await this.userSettingsAPI.saveSetting('focused-script-id', selectedScript.id.toString());
                 const logger = getLogger();
-                logger.log(`[Sidebar] 포커스된 스크립트 ID 저장됨: ${selectedScript.id}`);
+                logger.log(`[Scripts] 포커스된 스크립트 ID 저장됨: ${selectedScript.id}`);
             } catch (error) {
                 // 에러는 무시 (설정 저장 실패해도 스크립트 선택은 계속 진행)
                 const logger = getLogger();
-                logger.log('[Sidebar] 포커스된 스크립트 ID 저장 실패 (무시):', error);
+                logger.log('[Scripts] 포커스된 스크립트 ID 저장 실패 (무시):', error);
             }
         }
 
@@ -435,27 +436,27 @@ export class SidebarScriptManager {
 
         const modalManager = getModalManagerInstance();
 
-        log('[Sidebar] addScript() 호출됨');
-        log('[Sidebar] 입력된 스크립트 이름:', scriptName);
-        log('[Sidebar] 입력된 스크립트 설명:', scriptDescription);
+        log('[Scripts] addScript() 호출됨');
+        log('[Scripts] 입력된 스크립트 이름:', scriptName);
+        log('[Scripts] 입력된 스크립트 설명:', scriptDescription);
 
         if (!scriptName.trim()) {
-            log('[Sidebar] ⚠️ 스크립트 이름이 비어있음');
+            log('[Scripts] ⚠️ 스크립트 이름이 비어있음');
             modalManager.showAlert('오류', '스크립트 이름을 입력해주세요.');
             return;
         }
 
         try {
             if (this.scriptAPI) {
-                log('[Sidebar] 서버에 스크립트 생성 요청 전송...');
+                log('[Scripts] 서버에 스크립트 생성 요청 전송...');
                 // 서버에 스크립트 생성 요청
                 const result = await this.scriptAPI.createScript(scriptName, scriptDescription || '');
-                log('[Sidebar] ✅ 서버에서 스크립트 생성 성공 응답 받음:', result);
-                log('[Sidebar] 생성된 스크립트 ID:', result.id);
-                log('[Sidebar] 생성된 스크립트 이름:', result.name);
+                log('[Scripts] ✅ 서버에서 스크립트 생성 성공 응답 받음:', result);
+                log('[Scripts] 생성된 스크립트 ID:', result.id);
+                log('[Scripts] 생성된 스크립트 이름:', result.name);
 
                 // 클라이언트에서 목록에 추가 (효율적인 방식)
-                log('[Sidebar] 클라이언트에서 스크립트 목록 업데이트 시작');
+                log('[Scripts] 클라이언트에서 스크립트 목록 업데이트 시작');
                 const newScript = {
                     id: result.id,
                     name: result.name,
@@ -466,27 +467,27 @@ export class SidebarScriptManager {
 
                 // 목록 맨 앞에 추가 (최신 스크립트가 위에 오도록)
                 this.sidebarManager.scripts.unshift(newScript);
-                log('[Sidebar] 스크립트 목록에 추가됨 - ID:', result.id, '이름:', result.name);
+                log('[Scripts] 스크립트 목록에 추가됨 - ID:', result.id, '이름:', result.name);
 
                 // 순서 저장 (비동기)
                 this.saveScriptOrder().catch((error) => {
-                    logger.error('[Sidebar] 스크립트 순서 저장 실패:', error);
+                    logger.error('[Scripts] 스크립트 순서 저장 실패:', error);
                 });
 
                 // UI 업데이트
                 this.sidebarManager.uiManager.loadScripts();
 
                 // 새로 생성된 스크립트를 선택 (맨 앞에 추가했으므로 인덱스 0)
-                log('[Sidebar] 새로 생성된 스크립트 선택 - 인덱스: 0');
+                log('[Scripts] 새로 생성된 스크립트 선택 - 인덱스: 0');
                 await this.selectScript(0);
 
                 // 헤더 업데이트
                 this.sidebarManager.uiManager.updateHeader();
 
-                log('[Sidebar] ✅ 스크립트 추가 완료');
-                log('[Sidebar] 현재 스크립트 개수:', this.sidebarManager.scripts.length);
+                log('[Scripts] ✅ 스크립트 추가 완료');
+                log('[Scripts] 현재 스크립트 개수:', this.sidebarManager.scripts.length);
             } else {
-                log('[Sidebar] ⚠️ ScriptAPI를 사용할 수 없음. 로컬 폴백 사용');
+                log('[Scripts] ⚠️ ScriptAPI를 사용할 수 없음. 로컬 폴백 사용');
                 // API가 없을 때의 폴백
                 const newScript = {
                     id: Date.now(),
@@ -502,8 +503,8 @@ export class SidebarScriptManager {
 
             modalManager.close();
         } catch (error) {
-            logError('[Sidebar] ❌ 스크립트 추가 실패:', error);
-            logError('[Sidebar] 에러 상세:', {
+            logError('[Scripts] ❌ 스크립트 추가 실패:', error);
+            logError('[Scripts] 에러 상세:', {
                 name: error.name,
                 message: error.message,
                 stack: error.stack
@@ -518,7 +519,7 @@ export class SidebarScriptManager {
     async deleteScript(index) {
         if (index < 0 || index >= this.sidebarManager.scripts.length) {
             const logger = getLogger();
-            logger.log('[Sidebar] ⚠️ 유효하지 않은 스크립트 인덱스:', index);
+            logger.log('[Scripts] ⚠️ 유효하지 않은 스크립트 인덱스:', index);
             return;
         }
 
@@ -529,8 +530,8 @@ export class SidebarScriptManager {
         const logError = logger.error;
         const modalManager = getModalManagerInstance();
 
-        log('[Sidebar] deleteScript() 호출됨');
-        log('[Sidebar] 삭제 대상 스크립트:', { id: script.id, name: script.name, index: index });
+        log('[Scripts] deleteScript() 호출됨');
+        log('[Scripts] 삭제 대상 스크립트:', { id: script.id, name: script.name, index: index });
 
         // 사용자 확인 모달 표시 (사용자 경험 향상)
         modalManager.showConfirm(
@@ -544,21 +545,21 @@ export class SidebarScriptManager {
                 </p>
             </div>`,
             async () => {
-                log('[Sidebar] 사용자가 삭제 확인함');
+                log('[Scripts] 사용자가 삭제 확인함');
 
                 try {
                     if (this.scriptAPI) {
-                        log('[Sidebar] 서버에 스크립트 삭제 요청 전송...');
+                        log('[Scripts] 서버에 스크립트 삭제 요청 전송...');
                         // 서버에 삭제 요청
                         const result = await this.scriptAPI.deleteScript(script.id);
-                        log('[Sidebar] ✅ 서버에서 스크립트 삭제 성공 응답 받음:', result);
+                        log('[Scripts] ✅ 서버에서 스크립트 삭제 성공 응답 받음:', result);
 
                         // 클라이언트에서 목록에서 삭제 (효율적인 방식)
-                        log('[Sidebar] 클라이언트에서 스크립트 목록 업데이트 시작');
+                        log('[Scripts] 클라이언트에서 스크립트 목록 업데이트 시작');
                         const deletedIndex = this.sidebarManager.scripts.findIndex((s) => s.id === script.id);
                         if (deletedIndex >= 0) {
                             this.sidebarManager.scripts.splice(deletedIndex, 1);
-                            log('[Sidebar] 스크립트 목록에서 삭제됨 - 인덱스:', deletedIndex);
+                            log('[Scripts] 스크립트 목록에서 삭제됨 - 인덱스:', deletedIndex);
                         }
 
                         // 현재 선택된 스크립트 인덱스 조정
@@ -571,7 +572,7 @@ export class SidebarScriptManager {
 
                         // 순서 저장 (비동기)
                         this.saveScriptOrder().catch((error) => {
-                            logger.error('[Sidebar] 스크립트 순서 저장 실패:', error);
+                            logger.error('[Scripts] 스크립트 순서 저장 실패:', error);
                         });
 
                         // UI 업데이트
@@ -580,11 +581,11 @@ export class SidebarScriptManager {
                         // 삭제된 스크립트가 현재 선택된 스크립트였던 경우
                         if (this.sidebarManager.scripts.length > 0) {
                             // 첫 번째 스크립트 선택
-                            log('[Sidebar] 첫 번째 스크립트 선택');
+                            log('[Scripts] 첫 번째 스크립트 선택');
                             await this.selectScript(0);
                         } else {
                             // 스크립트가 모두 삭제된 경우
-                            log('[Sidebar] 모든 스크립트가 삭제됨');
+                            log('[Scripts] 모든 스크립트가 삭제됨');
                             this.sidebarManager.currentScriptIndex = -1;
                             this.sidebarManager.uiManager.updateHeader();
                             // 헤더 초기화
@@ -598,13 +599,13 @@ export class SidebarScriptManager {
                             }
                         }
 
-                        log('[Sidebar] ✅ 스크립트 삭제 완료:', script.name);
-                        log('[Sidebar] 남은 스크립트 개수:', this.sidebarManager.scripts.length);
+                        log('[Scripts] ✅ 스크립트 삭제 완료:', script.name);
+                        log('[Scripts] 남은 스크립트 개수:', this.sidebarManager.scripts.length);
 
                         // 성공 메시지 표시
                         modalManager.showAlert('삭제 완료', `"${script.name}" 스크립트가 삭제되었습니다.`);
                     } else {
-                        log('[Sidebar] ⚠️ ScriptAPI를 사용할 수 없음. 로컬 폴백 사용');
+                        log('[Scripts] ⚠️ ScriptAPI를 사용할 수 없음. 로컬 폴백 사용');
                         // API가 없을 때의 폴백
                         this.sidebarManager.scripts.splice(index, 1);
 
@@ -620,11 +621,11 @@ export class SidebarScriptManager {
                         this.sidebarManager.uiManager.updateHeader();
                         this.sidebarManager.dispatchScriptChangeEvent();
 
-                        log('[Sidebar] 로컬에서 스크립트 삭제됨:', script.name);
+                        log('[Scripts] 로컬에서 스크립트 삭제됨:', script.name);
                     }
                 } catch (error) {
-                    logError('[Sidebar] ❌ 스크립트 삭제 실패:', error);
-                    logError('[Sidebar] 에러 상세:', {
+                    logError('[Scripts] ❌ 스크립트 삭제 실패:', error);
+                    logError('[Scripts] 에러 상세:', {
                         name: error.name,
                         message: error.message,
                         stack: error.stack
@@ -633,7 +634,7 @@ export class SidebarScriptManager {
                 }
             },
             () => {
-                log('[Sidebar] 사용자가 삭제 취소함');
+                log('[Scripts] 사용자가 삭제 취소함');
             }
         );
     }
@@ -643,18 +644,209 @@ export class SidebarScriptManager {
      * 최상단 스크립트부터 차례대로 하나씩 실행합니다.
      * 각 스크립트를 선택하고, 기존 실행 방식대로 노드 하나씩 서버에 요청을 보냅니다.
      */
+    /**
+     * 단일 스크립트 실행 (핵심 로직 통합)
+     * 스크립트 선택, 실행, 기록 저장, 이벤트 발생 등 모든 핵심 로직을 포함합니다.
+     *
+     * @param {Object} script - 실행할 스크립트 객체
+     * @param {Object} options - 실행 옵션
+     * @param {boolean} options.isRunningAllScripts - 전체 실행 중인지 여부
+     * @returns {Promise<Object>} 실행 결과 {success: boolean, message: string, error?: string}
+     */
+    async executeSingleScript(script, options = {}) {
+        const logger = getLogger();
+        const log = logger.log;
+        const logError = logger.error;
+        const logWarn = logger.warn;
+
+        const { isRunningAllScripts = false } = options;
+
+        // getWorkflowPage 함수 정의 (메서드 전체에서 사용 가능하도록 상단에 정의)
+        const getWorkflowPage = () => {
+            if (window.workflowPage) {
+                return window.workflowPage;
+            }
+            if (window.getWorkflowPageInstance) {
+                return window.getWorkflowPageInstance();
+            }
+            return null;
+        };
+
+        log(`[Scripts] 단일 스크립트 실행 시작: ${script.name} (ID: ${script.id})`);
+
+        try {
+            // 1. 스크립트 선택 (포커스)
+            const allScripts = this.sidebarManager.scripts;
+            const localIndex = allScripts.findIndex((s) => s.id === script.id);
+
+            if (localIndex === -1) {
+                // 로컬에 없으면 서버에서 다시 로드
+                await this.loadScriptsFromServer();
+                const newLocalIndex = this.sidebarManager.scripts.findIndex((s) => s.id === script.id);
+                if (newLocalIndex === -1) {
+                    logWarn(`[Scripts] 스크립트 "${script.name}" (ID: ${script.id})를 찾을 수 없습니다.`);
+                    return {
+                        success: false,
+                        message: `스크립트를 찾을 수 없습니다: ${script.name}`,
+                        error: 'SCRIPT_NOT_FOUND'
+                    };
+                }
+                await this.selectScript(newLocalIndex);
+            } else {
+                await this.selectScript(localIndex);
+            }
+
+            // 2. 스크립트 로드 완료 대기 (노드들이 화면에 렌더링될 때까지)
+            await new Promise((resolve) => setTimeout(resolve, 500));
+
+            // 3. WorkflowPage 인스턴스 가져오기
+            const workflowPage = getWorkflowPage();
+            if (!workflowPage || !workflowPage.executionService) {
+                logWarn('[Scripts] WorkflowPage 또는 ExecutionService를 찾을 수 없습니다.');
+                return {
+                    success: false,
+                    message: '워크플로우 실행 서비스를 찾을 수 없습니다.',
+                    error: 'EXECUTION_SERVICE_NOT_FOUND'
+                };
+            }
+
+            // 4. 현재 화면의 노드들이 있는지 확인
+            const nodes = document.querySelectorAll('.workflow-node');
+            if (nodes.length === 0) {
+                logWarn(`[Scripts] 스크립트 "${script.name}"에 실행할 노드가 없습니다.`);
+                return {
+                    success: true,
+                    message: '실행할 노드가 없음'
+                };
+            }
+
+            log(`[Scripts] 스크립트 "${script.name}" 실행 시작 - 노드 개수: ${nodes.length}개`);
+
+            // 5. 대시보드에 실행 시작 이벤트 전달
+            document.dispatchEvent(
+                new CustomEvent('scriptExecutionStarted', {
+                    detail: { scriptId: script.id, scriptName: script.name }
+                })
+            );
+
+            // 6. 실행 서비스에 플래그 설정
+            workflowPage.executionService.isCancelled = this.sidebarManager.isCancelled;
+            workflowPage.executionService.isRunningAllScripts = isRunningAllScripts;
+
+            // 7. 워크플로우 실행
+            await workflowPage.executionService.execute();
+
+            // 8. 취소되었는지 확인
+            if (this.sidebarManager.isCancelled || workflowPage.executionService.isCancelled) {
+                log('[Scripts] 실행이 취소되었습니다.');
+                return {
+                    success: false,
+                    message: '실행이 취소되었습니다.',
+                    error: 'CANCELLED'
+                };
+            }
+
+            // 9. 실행 기록 저장
+            const executionStartTime = workflowPage.executionService?.executionStartTime;
+            const executionTimeMs = executionStartTime ? Date.now() - executionStartTime : null;
+
+            try {
+                const dashboardManager = getDashboardManagerInstance();
+                if (dashboardManager && typeof dashboardManager.recordScriptExecution === 'function') {
+                    await dashboardManager.recordScriptExecution(script.id, {
+                        status: 'success',
+                        error_message: null,
+                        execution_time_ms: executionTimeMs
+                    });
+                    log(`[Scripts] 스크립트 실행 기록 저장 완료 - 스크립트 ID: ${script.id}`);
+                }
+            } catch (recordError) {
+                logWarn(`[Scripts] 스크립트 실행 기록 저장 실패 (무시): ${recordError.message}`);
+            }
+
+            // 10. 대시보드에 실행 완료 이벤트 전달
+            document.dispatchEvent(
+                new CustomEvent('scriptExecutionCompleted', {
+                    detail: { scriptId: script.id, scriptName: script.name, status: 'success' }
+                })
+            );
+
+            // 11. 실행 기록 페이지에 로그 업데이트 알림 (단일 실행 완료 시)
+            // 서버에서 로그가 저장될 때까지 확인 후 이벤트 dispatch
+            if (!isRunningAllScripts) {
+                await this.waitForLogsAndDispatch(script.id, script.name, 'workflowExecutionCompleted');
+            }
+
+            log(`[Scripts] ✅ 스크립트 "${script.name}" 실행 완료`);
+            return {
+                success: true,
+                message: '정상 실행 완료'
+            };
+        } catch (execError) {
+            logError(`[Scripts] ❌ 스크립트 "${script.name}" 실행 중 오류 발생:`, execError);
+            logError('[Scripts] 에러 상세:', {
+                name: execError.name,
+                message: execError.message,
+                stack: execError.stack
+            });
+
+            // 실행 기록 저장 (실패)
+            try {
+                const workflowPage = getWorkflowPage();
+                const executionStartTime = workflowPage?.executionService?.executionStartTime;
+                const executionTimeMs = executionStartTime ? Date.now() - executionStartTime : null;
+
+                const dashboardManager = getDashboardManagerInstance();
+                if (dashboardManager && typeof dashboardManager.recordScriptExecution === 'function') {
+                    await dashboardManager.recordScriptExecution(script.id, {
+                        status: 'error',
+                        error_message: execError.message,
+                        execution_time_ms: executionTimeMs
+                    });
+                    log(`[Scripts] 스크립트 실행 기록 저장 완료 (실패) - 스크립트 ID: ${script.id}`);
+                }
+            } catch (recordError) {
+                logWarn(`[Scripts] 스크립트 실행 기록 저장 실패 (무시): ${recordError.message}`);
+            }
+
+            // 대시보드에 실행 실패 이벤트 전달
+            document.dispatchEvent(
+                new CustomEvent('scriptExecutionCompleted', {
+                    detail: {
+                        scriptId: script.id,
+                        scriptName: script.name,
+                        status: 'failed',
+                        error: execError.message
+                    }
+                })
+            );
+
+            // 실행 기록 페이지에 로그 업데이트 알림 (실패 시)
+            // 서버에서 로그가 저장될 때까지 확인 후 이벤트 dispatch
+            if (!isRunningAllScripts) {
+                await this.waitForLogsAndDispatch(script.id, script.name, 'workflowExecutionFailed');
+            }
+
+            return {
+                success: false,
+                message: execError.message,
+                error: execError.message
+            };
+        }
+    }
+
     async runAllScripts() {
         const logger = getLogger();
         const log = logger.log;
         const logError = logger.error;
         const logWarn = logger.warn;
 
-        log('[Sidebar] runAllScripts() 호출됨');
+        log('[Scripts] runAllScripts() 호출됨');
 
         // 실행 중 플래그 설정 (중복 실행 방지 / 취소 처리)
         if (this.sidebarManager.isRunningAllScripts === true) {
             // 실행 중인 경우 취소 처리
-            log('[Sidebar] 실행 취소 요청');
+            log('[Scripts] 실행 취소 요청');
             this.sidebarManager.cancelExecution();
             return;
         }
@@ -666,18 +858,18 @@ export class SidebarScriptManager {
         this.sidebarManager.setButtonsState('running', 'run-all-scripts-btn');
 
         // 서버에서 최신 스크립트 목록 조회 (DB의 active 필드 기준)
-        log('[Sidebar] 서버에서 최신 스크립트 목록 조회 중...');
+        log('[Scripts] 서버에서 최신 스크립트 목록 조회 중...');
         let allScripts = [];
         try {
             if (this.scriptAPI && typeof this.scriptAPI.getAllScripts === 'function') {
                 allScripts = await this.scriptAPI.getAllScripts();
-                log(`[Sidebar] 서버에서 ${allScripts.length}개 스크립트 조회 완료`);
+                log(`[Scripts] 서버에서 ${allScripts.length}개 스크립트 조회 완료`);
             } else {
-                logWarn('[Sidebar] ScriptAPI를 사용할 수 없습니다. 로컬 스크립트 목록 사용');
+                logWarn('[Scripts] ScriptAPI를 사용할 수 없습니다. 로컬 스크립트 목록 사용');
                 allScripts = this.sidebarManager.scripts;
             }
         } catch (error) {
-            logError('[Sidebar] 스크립트 목록 조회 실패, 로컬 스크립트 목록 사용:', error);
+            logError('[Scripts] 스크립트 목록 조회 실패, 로컬 스크립트 목록 사용:', error);
             allScripts = this.sidebarManager.scripts;
         }
 
@@ -689,7 +881,7 @@ export class SidebarScriptManager {
         });
 
         if (activeScripts.length === 0) {
-            logWarn('[Sidebar] 실행할 활성화된 스크립트가 없습니다.');
+            logWarn('[Scripts] 실행할 활성화된 스크립트가 없습니다.');
             const modalManager = getModalManagerInstance();
             if (modalManager) {
                 modalManager.showAlert('알림', '실행할 활성화된 스크립트가 없습니다.');
@@ -707,6 +899,9 @@ export class SidebarScriptManager {
         // 스크립트 실행 결과 수집 (실행 결과 모달 표시용)
         const scriptResults = [];
 
+        // 모든 스크립트의 execution_id 수집 (로그 저장 완료 확인용)
+        const executionIds = [];
+
         // WorkflowPage 인스턴스 가져오기 (finally 블록에서도 접근 가능하도록 밖에서 정의)
         const getWorkflowPage = () => {
             // window에서 직접 접근 시도
@@ -723,13 +918,13 @@ export class SidebarScriptManager {
         try {
             const modalManager = getModalManagerInstance();
 
-            log(`[Sidebar] 총 ${totalCount}개 활성화된 스크립트 실행 시작`);
+            log(`[Scripts] 총 ${totalCount}개 활성화된 스크립트 실행 시작`);
 
             // 최상단 스크립트부터 순차적으로 실행 (활성화된 스크립트만)
             for (let i = 0; i < activeScripts.length; i++) {
                 // 취소 플래그 체크
                 if (this.sidebarManager.isCancelled) {
-                    log('[Sidebar] 실행이 취소되었습니다.');
+                    log('[Scripts] 실행이 취소되었습니다.');
                     // 실행 취소 시 남은 스크립트들을 중단으로 표시
                     for (let j = i + 1; j < activeScripts.length; j++) {
                         const remainingScript = activeScripts[j];
@@ -739,7 +934,7 @@ export class SidebarScriptManager {
                             message: '실행 취소로 인해 실행되지 않음'
                         });
                     }
-
+                    // modalManager 인스턴스가 있는경우 실행 취소 모달 표시
                     if (modalManager) {
                         const { getResultModalManagerInstance } = await import('../../utils/result-modal.js');
                         const resultModalManager = getResultModalManagerInstance();
@@ -755,227 +950,64 @@ export class SidebarScriptManager {
                 }
 
                 const script = activeScripts[i];
-                log(`[Sidebar] 스크립트 ${i + 1}/${activeScripts.length} 실행 중: ${script.name} (ID: ${script.id})`);
+                log(`[Scripts] 스크립트 ${i + 1}/${activeScripts.length} 실행 중: ${script.name} (ID: ${script.id})`);
 
-                // 대시보드에 실행 시작 이벤트 전달
+                // 대시보드에 실행 시작 이벤트 전달 (인덱스 정보 포함)
                 document.dispatchEvent(
                     new CustomEvent('scriptExecutionStarted', {
                         detail: { scriptId: script.id, scriptName: script.name, index: i, total: activeScripts.length }
                     })
                 );
 
-                try {
-                    // 1. 스크립트 선택 (포커스)
-                    // allScripts 배열에서 실제 인덱스를 찾아야 함
-                    const actualIndex = allScripts.findIndex((s) => s.id === script.id);
-                    if (actualIndex === -1) {
-                        logWarn(
-                            `[Sidebar] 스크립트 "${script.name}" (ID: ${script.id})를 스크립트 목록에서 찾을 수 없습니다. 건너뜀.`
-                        );
-                        failCount++;
-                        continue;
-                    }
-                    log(`[Sidebar] 스크립트 "${script.name}" 선택 중... (실제 인덱스: ${actualIndex})`);
-                    // selectScript는 this.scripts 배열의 인덱스를 기대하므로,
-                    // 먼저 this.scripts를 업데이트한 후 선택
-                    const localIndex = this.sidebarManager.scripts.findIndex((s) => s.id === script.id);
-                    if (localIndex !== -1) {
-                        await this.selectScript(localIndex);
-                    } else {
-                        // 로컬에 없으면 서버에서 다시 로드
-                        await this.loadScriptsFromServer();
-                        const newLocalIndex = this.sidebarManager.scripts.findIndex((s) => s.id === script.id);
-                        if (newLocalIndex !== -1) {
-                            await this.selectScript(newLocalIndex);
-                        } else {
-                            logWarn(
-                                `[Sidebar] 스크립트 "${script.name}" (ID: ${script.id})를 로컬에서 찾을 수 없습니다. 건너뜀.`
-                            );
-                            failCount++;
-                            continue;
-                        }
-                    }
+                // executeSingleScript를 사용하여 스크립트 실행 (전체 실행 모드)
+                const result = await this.executeSingleScript(script, { isRunningAllScripts: true });
 
-                    // 2. 스크립트 로드 완료 대기 (노드들이 화면에 렌더링될 때까지)
-                    await new Promise((resolve) => setTimeout(resolve, 500));
+                // execution_id 수집 (로그 저장 완료 확인용)
+                const workflowPage = getWorkflowPage();
+                if (workflowPage?.executionService?.lastExecutionId) {
+                    executionIds.push(workflowPage.executionService.lastExecutionId);
+                }
 
-                    // 3. WorkflowPage 인스턴스 가져오기
-                    const workflowPage = getWorkflowPage();
-                    if (!workflowPage || !workflowPage.executionService) {
-                        logWarn(
-                            `[Sidebar] WorkflowPage 또는 ExecutionService를 찾을 수 없습니다. 스크립트 "${script.name}" 건너뜀.`
-                        );
-                        failCount++;
-                        continue;
-                    }
-
-                    // 4. 현재 화면의 노드들이 있는지 확인
-                    const nodes = document.querySelectorAll('.workflow-node');
-                    if (nodes.length === 0) {
-                        logWarn(`[Sidebar] 스크립트 "${script.name}"에 실행할 노드가 없습니다.`);
-                        // 노드가 없는 스크립트는 성공으로 카운트 (스크립트 단위로 카운트)
-                        successCount++;
-                        scriptResults.push({
-                            name: script.name || script.id || '알 수 없는 스크립트',
-                            status: 'success',
-                            message: '실행할 노드가 없음'
-                        });
-                        continue;
-                    }
-
-                    log(`[Sidebar] 스크립트 "${script.name}" 실행 시작 - 노드 개수: ${nodes.length}개`);
-
-                    // 5. 기존 실행 방식 사용 (노드 하나씩 서버에 요청)
-                    try {
-                        // 취소 플래그와 전체 실행 플래그를 executionService에 전달
-                        workflowPage.executionService.isCancelled = this.sidebarManager.isCancelled;
-                        workflowPage.executionService.isRunningAllScripts = true; // 전체 스크립트 실행 중임을 표시
-                        await workflowPage.executionService.execute();
-
-                        // 취소되었는지 확인
-                        if (this.sidebarManager.isCancelled || workflowPage.executionService.isCancelled) {
-                            log('[Sidebar] 실행이 취소되었습니다.');
-                            break;
-                        }
-
-                        successCount++;
-                        log(`[Sidebar] ✅ 스크립트 "${script.name}" 실행 완료`);
-
-                        // 스크립트 실행 기록 저장
-                        try {
-                            const executionStartTime = workflowPage.executionService?.executionStartTime;
-                            const executionTimeMs = executionStartTime ? Date.now() - executionStartTime : null;
-
-                            const dashboardManager = getDashboardManagerInstance();
-                            if (dashboardManager && typeof dashboardManager.recordScriptExecution === 'function') {
-                                await dashboardManager.recordScriptExecution(script.id, {
-                                    status: 'success',
-                                    error_message: null,
-                                    execution_time_ms: executionTimeMs
-                                });
-                                log(`[Sidebar] 스크립트 실행 기록 저장 완료 - 스크립트 ID: ${script.id}`);
-                            }
-                        } catch (recordError) {
-                            logWarn(`[Sidebar] 스크립트 실행 기록 저장 실패 (무시): ${recordError.message}`);
-                        }
-
-                        // 대시보드에 실행 완료 이벤트 전달
-                        document.dispatchEvent(
-                            new CustomEvent('scriptExecutionCompleted', {
-                                detail: { scriptId: script.id, scriptName: script.name, status: 'success' }
-                            })
-                        );
-
-                        scriptResults.push({
-                            name: script.name || script.id || '알 수 없는 스크립트',
-                            status: 'success',
-                            message: '정상 실행 완료'
-                        });
-                    } catch (execError) {
-                        failCount++;
-                        logError(`[Sidebar] ❌ 스크립트 "${script.name}" 실행 중 오류 발생:`, execError);
-                        logError('[Sidebar] 에러 상세:', {
-                            name: execError.name,
-                            message: execError.message,
-                            stack: execError.stack
-                        });
-
-                        // 스크립트 실행 기록 저장 (실패)
-                        try {
-                            const executionStartTime = workflowPage.executionService?.executionStartTime;
-                            const executionTimeMs = executionStartTime ? Date.now() - executionStartTime : null;
-
-                            const dashboardManager = getDashboardManagerInstance();
-                            if (dashboardManager && typeof dashboardManager.recordScriptExecution === 'function') {
-                                await dashboardManager.recordScriptExecution(script.id, {
-                                    status: 'error',
-                                    error_message: execError.message,
-                                    execution_time_ms: executionTimeMs
-                                });
-                                log(`[Sidebar] 스크립트 실행 기록 저장 완료 (실패) - 스크립트 ID: ${script.id}`);
-                            }
-                        } catch (recordError) {
-                            logWarn(`[Sidebar] 스크립트 실행 기록 저장 실패 (무시): ${recordError.message}`);
-                        }
-
-                        // 대시보드에 실행 실패 이벤트 전달
-                        document.dispatchEvent(
-                            new CustomEvent('scriptExecutionCompleted', {
-                                detail: {
-                                    scriptId: script.id,
-                                    scriptName: script.name,
-                                    status: 'failed',
-                                    error: execError.message
-                                }
-                            })
-                        );
-
-                        scriptResults.push({
-                            name: script.name || script.id || '알 수 없는 스크립트',
-                            status: 'failed',
-                            error: execError.message,
-                            message: execError.message
-                        });
-                        // 에러 발생 시 해당 스크립트는 실패로 처리하고 다음 스크립트 계속 실행
-                        continue;
-                    }
-
-                    // 스크립트 간 대기 시간 (선택적, 필요시 조정)
-                    if (i < activeScripts.length - 1) {
-                        await new Promise((resolve) => setTimeout(resolve, 500));
-                    }
-                } catch (error) {
-                    failCount++;
-                    logError(`[Sidebar] ❌ 스크립트 "${script.name}" 처리 중 오류 발생:`, error);
-                    logError('[Sidebar] 에러 상세:', {
-                        name: error.name,
-                        message: error.message,
-                        stack: error.stack
-                    });
-
-                    // 스크립트 실행 기록 저장 (외부 예외 발생 시)
-                    try {
-                        const workflowPage = getWorkflowPage();
-                        const executionStartTime = workflowPage?.executionService?.executionStartTime;
-                        const executionTimeMs = executionStartTime ? Date.now() - executionStartTime : null;
-
-                        const dashboardManager = getDashboardManagerInstance();
-                        if (dashboardManager && typeof dashboardManager.recordScriptExecution === 'function') {
-                            await dashboardManager.recordScriptExecution(script.id, {
-                                status: 'error',
-                                error_message: error.message || '스크립트 처리 중 오류 발생',
-                                execution_time_ms: executionTimeMs
-                            });
-                            log(`[Sidebar] 스크립트 실행 기록 저장 완료 (외부 예외) - 스크립트 ID: ${script.id}`);
-                        }
-                    } catch (recordError) {
-                        logWarn(`[Sidebar] 스크립트 실행 기록 저장 실패 (무시): ${recordError.message}`);
-                    }
-
-                    // 대시보드에 실행 실패 이벤트 전달
-                    document.dispatchEvent(
-                        new CustomEvent('scriptExecutionCompleted', {
-                            detail: {
-                                scriptId: script.id,
-                                scriptName: script.name,
-                                status: 'failed',
-                                error: error.message
-                            }
-                        })
-                    );
-
+                // 결과 처리
+                if (result.success) {
+                    successCount++;
                     scriptResults.push({
                         name: script.name || script.id || '알 수 없는 스크립트',
-                        status: 'failed',
-                        error: error.message,
-                        message: error.message
+                        status: 'success',
+                        message: result.message || '정상 실행 완료'
                     });
-                    // 에러 발생 시 해당 스크립트는 실패로 처리하고 다음 스크립트 계속 실행
-                    continue;
+                } else {
+                    failCount++;
+                    scriptResults.push({
+                        name: script.name || script.id || '알 수 없는 스크립트',
+                        status: result.error === 'CANCELLED' ? 'cancelled' : 'failed',
+                        error: result.error,
+                        message: result.message
+                    });
+
+                    // 취소된 경우 루프 종료
+                    if (result.error === 'CANCELLED') {
+                        log('[Scripts] 실행이 취소되었습니다.');
+                        // 남은 스크립트들을 중단으로 표시
+                        for (let j = i + 1; j < activeScripts.length; j++) {
+                            const remainingScript = activeScripts[j];
+                            scriptResults.push({
+                                name: remainingScript.name || remainingScript.id || '알 수 없는 스크립트',
+                                status: 'cancelled',
+                                message: '실행 취소로 인해 실행되지 않음'
+                            });
+                        }
+                        break;
+                    }
+                }
+
+                // 스크립트 간 대기 시간 (선택적, 필요시 조정)
+                if (i < activeScripts.length - 1) {
+                    await new Promise((resolve) => setTimeout(resolve, 500));
                 }
             }
 
-            log(`[Sidebar] 모든 스크립트 실행 완료 - 성공: ${successCount}개, 실패: ${failCount}개`);
+            log(`[Scripts] 모든 스크립트 실행 완료 - 성공: ${successCount}개, 실패: ${failCount}개`);
 
             // 전체 실행 요약 정보 저장
             try {
@@ -986,11 +1018,11 @@ export class SidebarScriptManager {
                         failed_count: failCount
                     });
                     log(
-                        `[Sidebar] 전체 실행 요약 정보 저장 완료 - 총 실행: ${activeScripts.length}, 실패: ${failCount}`
+                        `[Scripts] 전체 실행 요약 정보 저장 완료 - 총 실행: ${activeScripts.length}, 실패: ${failCount}`
                     );
                 }
             } catch (summaryError) {
-                logWarn(`[Sidebar] 전체 실행 요약 정보 저장 실패 (무시): ${summaryError.message}`);
+                logWarn(`[Scripts] 전체 실행 요약 정보 저장 실패 (무시): ${summaryError.message}`);
             }
 
             // 대시보드에 전체 실행 완료 이벤트 전달
@@ -1027,8 +1059,8 @@ export class SidebarScriptManager {
                 })
             );
 
-            logError('[Sidebar] ❌ 모든 스크립트 실행 중 오류 발생:', error);
-            logError('[Sidebar] 에러 상세:', {
+            logError('[Scripts] ❌ 모든 스크립트 실행 중 오류 발생:', error);
+            logError('[Scripts] 에러 상세:', {
                 name: error.name,
                 message: error.message,
                 stack: error.stack
@@ -1048,6 +1080,57 @@ export class SidebarScriptManager {
                 });
             }
         } finally {
+            // 로딩 오버레이 표시 (모든 로그 저장 완료 대기)
+            this.showLoadingOverlay();
+
+            try {
+                // 모든 execution_id의 로그 저장 완료 확인
+                if (executionIds.length > 0) {
+                    log(`[Scripts] 전체 실행 완료 - ${executionIds.length}개 스크립트의 로그 저장 완료 대기 중...`);
+
+                    // 모든 execution_id에 대해 로그 저장 완료 확인 (병렬 처리)
+                    const checkPromises = executionIds.map(async (executionId) => {
+                        try {
+                            // completed 또는 failed 상태의 로그가 저장될 때까지 대기
+                            await LogAPI.checkLogsReady(executionId, null);
+                            log(`[Scripts] 로그 저장 완료 확인 - execution_id: ${executionId}`);
+                        } catch (error) {
+                            logWarn(
+                                `[Scripts] 로그 저장 완료 확인 실패 - execution_id: ${executionId}: ${error.message}`
+                            );
+                        }
+                    });
+
+                    // 모든 로그 저장 완료 대기
+                    await Promise.all(checkPromises);
+                    log('[Scripts] 모든 로그 저장 완료 확인됨');
+                } else {
+                    logWarn('[Scripts] execution_id를 찾을 수 없어 로그 저장 완료 확인 건너뜀');
+                }
+            } catch (error) {
+                logWarn(`[Scripts] 로그 저장 완료 확인 중 오류 발생: ${error.message}`);
+            } finally {
+                // 로딩 오버레이 숨기기
+                this.hideLoadingOverlay();
+            }
+
+            // 실행 기록 페이지에 로그 업데이트 알림 (성공/실패 모두)
+            // 모든 로그 저장이 완료된 후 이벤트 dispatch
+            try {
+                document.dispatchEvent(
+                    new CustomEvent('logsUpdated', {
+                        detail: {
+                            type: 'allScriptsExecutionCompleted',
+                            successCount,
+                            failCount,
+                            totalCount: activeScripts.length
+                        }
+                    })
+                );
+            } catch (logError) {
+                logWarn(`[Scripts] 로그 업데이트 이벤트 전송 실패 (무시): ${logError.message}`);
+            }
+
             // 실행 중 플래그 해제
             this.sidebarManager.isRunningAllScripts = false;
             this.sidebarManager.isCancelled = false;
@@ -1144,5 +1227,167 @@ export class SidebarScriptManager {
                 console.error('스크립트 로드 실패:', error);
             }
         }
+    }
+
+    /**
+     * 로딩 오버레이 표시
+     */
+    showLoadingOverlay() {
+        let overlay = document.getElementById('logs-loading-overlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'logs-loading-overlay';
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 10000;
+            `;
+            overlay.innerHTML = `
+                <div style="background: white; padding: 20px; border-radius: 8px; text-align: center;">
+                    <div style="border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 10px;"></div>
+                    <div>로그 저장 중...</div>
+                </div>
+            `;
+            // 스핀 애니메이션 추가
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+            `;
+            document.head.appendChild(style);
+            document.body.appendChild(overlay);
+        } else {
+            overlay.style.display = 'flex';
+        }
+    }
+
+    /**
+     * 로딩 오버레이 숨기기
+     */
+    hideLoadingOverlay() {
+        const overlay = document.getElementById('logs-loading-overlay');
+        if (overlay) {
+            overlay.style.display = 'none';
+        }
+    }
+
+    /**
+     * 서버에서 로그가 저장될 때까지 대기한 후 logsUpdated 이벤트 dispatch
+     * @param {number} scriptId - 스크립트 ID
+     * @param {string} scriptName - 스크립트 이름
+     * @param {string} eventType - 이벤트 타입 ('workflowExecutionCompleted' | 'workflowExecutionFailed')
+     */
+    async waitForLogsAndDispatch(scriptId, scriptName, eventType) {
+        const logger = getLogger();
+        const log = logger.log;
+        const logWarn = logger.warn;
+
+        // getWorkflowPage 함수 정의
+        const getWorkflowPage = () => {
+            if (window.workflowPage) {
+                return window.workflowPage;
+            }
+            if (window.getWorkflowPageInstance) {
+                return window.getWorkflowPageInstance();
+            }
+            return null;
+        };
+
+        try {
+            // execution_id 가져오기 (workflow-execution-service에서)
+            const workflowPage = getWorkflowPage();
+            const executionId = workflowPage?.executionService?.lastExecutionId;
+
+            if (!executionId) {
+                logWarn('[Scripts] execution_id를 찾을 수 없음, 즉시 이벤트 dispatch');
+                // execution_id가 없으면 즉시 이벤트 dispatch
+                document.dispatchEvent(
+                    new CustomEvent('logsUpdated', {
+                        detail: {
+                            type: eventType,
+                            scriptId: scriptId,
+                            scriptName: scriptName
+                        }
+                    })
+                );
+                return;
+            }
+
+            // 로딩 오버레이 표시
+            this.showLoadingOverlay();
+
+            try {
+                // 서버에서 로그 저장 완료 신호 대기
+                const expectedStatus = eventType === 'workflowExecutionFailed' ? 'failed' : 'completed';
+                const result = await LogAPI.checkLogsReady(executionId, expectedStatus);
+
+                if (result && result.data && result.data.ready) {
+                    log(`[Scripts] 로그 저장 완료 확인 - execution_id: ${executionId}, 상태: ${expectedStatus}`);
+                } else {
+                    logWarn(`[Scripts] 로그 저장 확인 타임아웃 또는 실패 - execution_id: ${executionId}`);
+                }
+            } catch (error) {
+                logWarn(`[Scripts] 로그 저장 완료 확인 실패: ${error.message}`);
+            } finally {
+                // 로딩 오버레이 숨기기
+                this.hideLoadingOverlay();
+            }
+
+            // 이벤트 dispatch
+            document.dispatchEvent(
+                new CustomEvent('logsUpdated', {
+                    detail: {
+                        type: eventType,
+                        scriptId: scriptId,
+                        scriptName: scriptName
+                    }
+                })
+            );
+        } catch (error) {
+            logWarn(`[Scripts] 로그 확인 중 오류 발생, 이벤트 dispatch: ${error.message}`);
+            // 로딩 오버레이 숨기기
+            this.hideLoadingOverlay();
+            // 오류 발생 시에도 이벤트 dispatch (폴백)
+            document.dispatchEvent(
+                new CustomEvent('logsUpdated', {
+                    detail: {
+                        type: eventType,
+                        scriptId: scriptId,
+                        scriptName: scriptName
+                    }
+                })
+            );
+        }
+    }
+
+    /**
+     * script_id로 최신 로그가 저장될 때까지 대기 (execution_id가 없는 경우)
+     * 이 메서드는 더 이상 사용되지 않지만, 호환성을 위해 유지
+     * @param {number} scriptId - 스크립트 ID
+     * @param {string} scriptName - 스크립트 이름
+     * @param {string} eventType - 이벤트 타입
+     */
+    async waitForLogsByScriptId(scriptId, scriptName, eventType) {
+        // execution_id가 없는 경우 즉시 이벤트 dispatch
+        const logger = getLogger();
+        logger.warn('[Scripts] execution_id가 없어 즉시 이벤트 dispatch');
+        document.dispatchEvent(
+            new CustomEvent('logsUpdated', {
+                detail: {
+                    type: eventType,
+                    scriptId: scriptId,
+                    scriptName: scriptName
+                }
+            })
+        );
     }
 }

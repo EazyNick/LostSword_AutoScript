@@ -7,13 +7,24 @@ pages/workflow/
 ├── workflow.js              # 워크플로우 편집기 메인 컨트롤러
 ├── page-router.js           # SPA 페이지 라우팅 관리
 ├── dashboard.js             # 대시보드 페이지
-├── settings.js              # 설정 페이지
+├── history.js               # 실행 기록 페이지
+├── settings.js               # 설정 페이지
 ├── config/                  # 설정 (nodes.config.js)
 ├── constants/               # 상수 (node-types.js)
 ├── modals/                  # 모달 (add-node-modal.js, node-settings-modal.js)
 ├── services/                # 비즈니스 로직 (저장/로드/실행)
 └── utils/                   # 유틸리티
+
+styles/pages/workflow/
+├── workflow.css             # 워크플로우 편집기 스타일
+├── dashboard.css            # 대시보드 페이지 스타일
+├── history.css              # 실행 기록 페이지 스타일
+└── settings.css             # 설정 페이지 스타일
 ```
+
+**참고**: 
+- CSS 파일은 `styles/pages/workflow/` 디렉토리에 위치합니다.
+- JavaScript 파일은 `pages/workflow/` 루트 디렉토리에 위치합니다 (기능별로 분리).
 
 **참고**: `workflow.html`은 `index.html`로 통합되었습니다.
 

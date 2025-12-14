@@ -204,6 +204,7 @@ async def execute_nodes(request: NodeExecutionRequest) -> ActionResponse:
             data={
                 "results": results,
                 "context": context.to_dict(),  # 컨텍스트 정보도 반환 (디버깅용)
+                "execution_id": execution_id,  # 실행 ID 반환 (로그 확인용)
             },
         )
 
@@ -214,6 +215,7 @@ async def execute_nodes(request: NodeExecutionRequest) -> ActionResponse:
         data={
             "results": results,
             "context": context.to_dict(),  # 컨텍스트 정보도 반환 (디버깅용)
+            "execution_id": execution_id,  # 실행 ID 반환 (로그 확인용)
         },
     )
 

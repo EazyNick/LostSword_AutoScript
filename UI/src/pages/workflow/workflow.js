@@ -49,6 +49,9 @@ const GlobalDependencies = {
 const getNodeManager = () => GlobalDependencies.getNodeManager();
 const getSidebarManager = () => getSidebarInstance();
 const getModalManager = () => getModalManagerInstance();
+
+// getSidebarManager를 전역으로 export (다른 모듈에서 사용)
+window.getSidebarManager = getSidebarManager;
 const getNodeAPI = () => NodeAPI;
 const getConnectionManager = () => ConnectionManager;
 
@@ -382,7 +385,17 @@ export class WorkflowPage {
             this.setButtonsState('running', 'run-btn');
 
             try {
-                await this.executionService.execute();
+                // 단일 스크립트 실행은 executeSingleScript를 사용
+                const sidebarManager = getSidebarManager();
+                const currentScript = this.getCurrentScript();
+                if (sidebarManager && sidebarManager.scriptManager && currentScript) {
+                    await sidebarManager.scriptManager.executeSingleScript(currentScript, {
+                        isRunningAllScripts: false
+                    });
+                } else {
+                    // 폴백: 기존 방식 사용
+                    await this.executionService.execute();
+                }
             } finally {
                 // 버튼 상태 복원
                 this.setButtonsState('idle');

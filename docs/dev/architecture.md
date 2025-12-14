@@ -52,9 +52,13 @@
   - `theme-manager.js`: 라이트/다크 모드 테마 관리
   - `toast.js`: 토스트 알림 관리
   - `modal.js`: 모달 창 관리
-- **styles/themes/**: 테마별 스타일
-  - `dark/`: 다크 모드 스타일
-  - `light/`: 라이트 모드 스타일
+  - `result-modal.js`: 실행 결과 모달 관리
+- **logs/services/**: 로그 서비스 계층
+  - `log-service.js`: 로그 데이터 로드, 통계 계산, 그룹화
+- **styles/**: 스타일시트
+  - `themes/dark/`: 다크 모드 스타일
+  - `themes/light/`: 라이트 모드 스타일
+  - `pages/workflow/`: 워크플로우 관련 페이지 스타일
 
 ## 설정
 

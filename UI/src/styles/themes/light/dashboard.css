@@ -24,14 +24,6 @@ body.theme-light .stat-value {
     color: #1f2937;
 }
 
-body.theme-light .stat-change.positive {
-    color: #22c55e;
-}
-
-body.theme-light .stat-change.negative {
-    color: #ef4444;
-}
-
 /* 워크플로우 카드 - 라이트 모드용 밝은 배경 */
 body.theme-light .script-card {
     background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);

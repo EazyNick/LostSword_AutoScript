@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 try:
     from .connection import DatabaseConnection
     from .dashboard_stats_repository import DashboardStatsRepository
+    from .log_stats_repository import LogStatsRepository
     from .node_execution_log_repository import NodeExecutionLogRepository
     from .node_repository import NodeRepository
     from .script_repository import ScriptRepository
@@ -22,6 +23,7 @@ except ImportError:
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from db.connection import DatabaseConnection
     from db.dashboard_stats_repository import DashboardStatsRepository
+    from db.log_stats_repository import LogStatsRepository
     from db.node_execution_log_repository import NodeExecutionLogRepository
     from db.node_repository import NodeRepository
     from db.script_repository import ScriptRepository
@@ -54,13 +56,16 @@ class DatabaseManager:
         self.nodes = NodeRepository(self.connection)  # 노드
         self.dashboard_stats = DashboardStatsRepository(self.connection)  # 대시보드 통계
         self.node_execution_logs = NodeExecutionLogRepository(self.connection)  # 노드 실행 로그
+        self.log_stats = LogStatsRepository(self.connection)  # 로그 통계
 
-        # 데이터베이스 초기화 (테이블 생성)
-        self.init_database()
+        # 데이터베이스 초기화는 main.py의 startup_event에서 수행
+        # (모듈 로드 시점에는 DB 파일이 없을 수 있으므로)
 
     def init_database(self) -> None:
         """데이터베이스 초기화"""
         self.table_manager.initialize()
+        # 기존 로그가 있으면 통계 계산 및 저장
+        self._initialize_log_stats()
 
     # 사용자 설정 메서드들 (기존 API 호환성 유지)
     def get_user_setting(self, setting_key: str, default_value: str | None = None) -> str | None:
@@ -337,49 +342,6 @@ class DatabaseManager:
         finally:
             conn.close()
 
-    def _get_yesterday_executions_count(self) -> int:
-        """어제 실행 횟수 조회"""
-        conn = self.connection.get_connection()
-        cursor = self.connection.get_cursor(conn)
-
-        try:
-            # script_executions 테이블이 존재하는지 확인
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='script_executions'")
-            table_exists = cursor.fetchone() is not None
-
-            if table_exists:
-                # 어제 실행 횟수 (SQLite datetime 함수 사용, 타임존 고려)
-                cursor.execute(
-                    """
-                    SELECT COUNT(*) FROM script_executions
-                    WHERE date(started_at, 'localtime') = date('now', '-1 day', 'localtime')
-                    """
-                )
-                result = cursor.fetchone()
-                return result[0] if result else 0
-            return 0
-        finally:
-            conn.close()
-
-    def _calculate_executions_change_percent(self, today_count: int, yesterday_count: int) -> float | None:
-        """
-        어제 대비 오늘 실행 횟수 변화율 계산
-
-        Args:
-            today_count: 오늘 실행 횟수
-            yesterday_count: 어제 실행 횟수
-
-        Returns:
-            변화율 (퍼센트), 어제 데이터가 없으면 None
-        """
-        if yesterday_count == 0:
-            # 어제 데이터가 없으면 None 반환
-            return None
-
-        # 변화율 계산: ((오늘 - 어제) / 어제) * 100
-        change_percent = ((today_count - yesterday_count) / yesterday_count) * 100
-        return round(change_percent, 1)
-
     def calculate_and_update_dashboard_stats(self) -> dict[str, int | float | None]:
         """
         대시보드 통계 계산 및 업데이트
@@ -396,8 +358,9 @@ class DatabaseManager:
         inactive_scripts = sum(1 for script in all_scripts if not script.get("active", True))
 
         # 전체 실행 통계 조회 (dashboard_stats 테이블에서)
-        all_executions = self.dashboard_stats.get_stat("all_executions") or 0
-        all_failed_scripts = self.dashboard_stats.get_stat("all_failed_scripts") or 0
+        # 초기값이 없으면 0으로 설정 (마이그레이션 대비)
+        all_executions = self.dashboard_stats.get_stat("all_executions", 0)
+        all_failed_scripts = self.dashboard_stats.get_stat("all_failed_scripts", 0)
 
         stats = {
             "total_scripts": total_scripts,
@@ -406,7 +369,7 @@ class DatabaseManager:
             "inactive_scripts": inactive_scripts,
         }
 
-        # 통계 업데이트
+        # 통계 업데이트 (초기값이 없으면 자동으로 생성됨)
         stats_to_cache = {
             "total_scripts": total_scripts,
             "all_executions": all_executions,
@@ -416,6 +379,25 @@ class DatabaseManager:
         self.update_dashboard_stats(stats_to_cache)
 
         return stats
+
+    def _initialize_log_stats(self) -> None:
+        """
+        서버 최초 실행 시 기존 로그가 있으면 통계를 계산하여 저장합니다.
+        """
+        try:
+            # 기존 로그가 있는지 확인
+            conn = self.connection.get_connection()
+            cursor = self.connection.get_cursor(conn)
+            try:
+                cursor.execute("SELECT COUNT(*) FROM node_execution_logs")
+                log_count = cursor.fetchone()[0] or 0
+                if log_count > 0:
+                    # 기존 로그가 있으면 통계 계산 및 저장
+                    self.log_stats.calculate_and_update_stats()
+            finally:
+                conn.close()
+        except Exception as e:
+            logger.warning(f"로그 통계 초기화 실패 (무시됨): {e!s}")
 
     def record_script_execution(
         self,

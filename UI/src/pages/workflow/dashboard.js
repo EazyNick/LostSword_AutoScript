@@ -5,6 +5,9 @@
 
 import { ScriptAPI } from '../../js/api/scriptapi.js';
 import { apiCall } from '../../js/api/api.js';
+import { getSidebarInstance } from '../../js/components/sidebar/sidebar.js';
+
+const getSidebarManager = () => getSidebarInstance();
 
 /**
  * 로거 유틸리티 가져오기
@@ -340,11 +343,6 @@ export class DashboardManager {
             if (valueEl) {
                 valueEl.textContent = stats.allExecutions;
             }
-            // 변화량 표시 제거 (전체 실행 기준이므로 어제 대비 불필요)
-            const changeEl = allExecutionsCard.querySelector('.stat-change');
-            if (changeEl) {
-                changeEl.innerHTML = '';
-            }
         }
 
         // 전체 실행 실패한 스크립트 카드
@@ -526,9 +524,16 @@ export class DashboardManager {
         this.switchToEditor(scriptId);
 
         // 잠시 후 실행 (에디터 로드 대기)
-        setTimeout(() => {
-            if (window.workflowPage && window.workflowPage.executionService) {
-                window.workflowPage.executionService.execute();
+        setTimeout(async () => {
+            // 단일 스크립트 실행은 executeSingleScript를 사용
+            const sidebarManager = getSidebarManager();
+            const workflowPage = window.workflowPage;
+            const currentScript = workflowPage?.getCurrentScript();
+            if (sidebarManager && sidebarManager.scriptManager && currentScript) {
+                await sidebarManager.scriptManager.executeSingleScript(currentScript, { isRunningAllScripts: false });
+            } else if (workflowPage && workflowPage.executionService) {
+                // 폴백: 기존 방식 사용
+                await workflowPage.executionService.execute();
             }
         }, 500);
     }
