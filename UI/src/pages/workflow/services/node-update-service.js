@@ -83,11 +83,11 @@ export class NodeUpdateService {
             nodeManager.nodeData && nodeManager.nodeData[nodeId]
                 ? nodeManager.nodeData[nodeId].type || nodeElement.dataset.nodeType
                 : nodeElement.dataset.nodeType;
-        const isStartOrEnd = currentType === 'start' || currentType === 'end';
-        let newType = isStartOrEnd ? currentType : document.getElementById('edit-node-type')?.value || currentType;
+        const isStart = currentType === 'start';
+        let newType = isStart ? currentType : document.getElementById('edit-node-type')?.value || currentType;
 
-        // 노드 타입 변경 시 검증 (시작/종료 노드로 변경하려는 경우)
-        if (!isStartOrEnd && newType !== currentType) {
+        // 노드 타입 변경 시 검증 (시작 노드로 변경하려는 경우)
+        if (!isStart && newType !== currentType) {
             const validation = NodeValidationUtils.validateNodeTypeChange(newType, nodeId, nodeManager);
             if (!validation.canChange) {
                 const modalManager = this.workflowPage.getModalManager();
@@ -138,7 +138,7 @@ export class NodeUpdateService {
                 try {
                     updatedNodeData.input_data = JSON.parse(inputValue);
                 } catch (e) {
-                    // JSON이 아니면 문자열로 저장 (표현식 포함 가능)
+                    // JSON이 아니면 문자열로 저장
                     updatedNodeData.input_data = inputValue;
                 }
             } else {
@@ -225,28 +225,52 @@ export class NodeUpdateService {
         // 노드 타입별 콘텐츠 재생성
         const nodeContent = nodeManager.generateNodeContent(nodeData);
 
-        // 기존 연결점 정보 저장
-        const existingInput = nodeElement.querySelector('.node-input');
-        const existingOutput = nodeElement.querySelector('.node-output');
-        const existingSettings = nodeElement.querySelector('.node-settings');
+        // generateNodeContent가 이미 전체 구조(입력, 콘텐츠, 출력, 설정)를 포함하는지 확인
+        // 조건 노드 같은 경우 renderContent가 .node-outputs를 포함한 전체를 반환할 수 있음
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = nodeContent;
 
-        const inputConnector = existingInput ? existingInput.outerHTML : '<div class="node-input"></div>';
-        let outputConnector = '<div class="node-output"></div>';
-        if (existingOutput) {
-            outputConnector = existingOutput.outerHTML;
+        // nodeContent에 이미 포함된 요소 확인
+        const hasNodeInput = tempDiv.querySelector('.node-input') !== null;
+        const hasOutputsContainer = tempDiv.querySelector('.node-outputs') !== null;
+        const hasNodeOutput = tempDiv.querySelector('.node-output:not(.true-output):not(.false-output)') !== null;
+        const hasNodeSettings = tempDiv.querySelector('.node-settings') !== null;
+
+        // nodeContent가 이미 완전한 구조를 포함하는 경우 그대로 사용
+        if (hasNodeInput && (hasOutputsContainer || hasNodeOutput) && hasNodeSettings) {
+            console.log('[updateNodeDOM] nodeContent가 완전한 구조를 포함하므로 그대로 사용');
+            nodeElement.innerHTML = nodeContent;
         } else {
-            const outputsContainer = nodeElement.querySelector('.node-outputs');
-            if (outputsContainer) {
-                outputConnector = outputsContainer.outerHTML;
-            }
-        }
+            // 부분적으로만 포함된 경우 기존 요소와 병합
+            console.log('[updateNodeDOM] nodeContent가 부분 구조만 포함, 기존 요소와 병합');
 
-        nodeElement.innerHTML = `
-            ${inputConnector}
-            ${nodeContent}
-            ${outputConnector}
-            ${existingSettings ? existingSettings.outerHTML : `<div class="node-settings" data-node-id="${nodeData.id}">⚙</div>`}
-        `;
+            const existingInput = nodeElement.querySelector('.node-input');
+            const existingOutput = nodeElement.querySelector('.node-output:not(.true-output):not(.false-output)');
+            const existingOutputsContainer = nodeElement.querySelector('.node-outputs');
+            const existingSettings = nodeElement.querySelector('.node-settings');
+
+            const inputConnector = existingInput ? existingInput.outerHTML : '<div class="node-input"></div>';
+            let outputConnector = '';
+
+            // nodeContent에 .node-outputs가 이미 포함되어 있으면 추가하지 않음
+            if (!hasOutputsContainer && !hasNodeOutput) {
+                // 조건 노드처럼 .node-outputs가 있는 경우
+                if (existingOutputsContainer) {
+                    outputConnector = existingOutputsContainer.outerHTML;
+                } else if (existingOutput) {
+                    outputConnector = existingOutput.outerHTML;
+                } else {
+                    outputConnector = '<div class="node-output"></div>';
+                }
+            }
+
+            nodeElement.innerHTML = `
+                ${inputConnector}
+                ${nodeContent}
+                ${outputConnector}
+                ${existingSettings ? existingSettings.outerHTML : `<div class="node-settings" data-node-id="${nodeData.id}">⚙</div>`}
+            `;
+        }
 
         // 이벤트 리스너 다시 설정
         nodeManager.setupNodeEventListeners(nodeElement);

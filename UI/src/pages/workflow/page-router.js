@@ -105,6 +105,8 @@ export class PageRouter {
         if (pageName === 'dashboard') {
             this.initDashboard();
         } else if (pageName === 'editor') {
+            // 에디터 페이지는 스크립트 변경 시에만 로드하도록 수정
+            // (초기 로드는 scriptChanged 이벤트에서 처리)
             this.initEditor();
         } else if (pageName === 'history') {
             this.initHistory();
@@ -188,25 +190,89 @@ export class PageRouter {
         const logger = getLogger();
         logger.log('[PageRouter] 스크립트 페이지 초기화');
 
-        // 서버에서 최신 스크립트 목록 다시 조회 (비활성화 상태 반영을 위해)
-        const sidebarManager = window.sidebarManager;
-        if (sidebarManager && typeof sidebarManager.loadScriptsFromServer === 'function') {
-            logger.log('[PageRouter] 서버에서 최신 스크립트 목록 조회 중...');
-            await sidebarManager.loadScriptsFromServer();
-            logger.log('[PageRouter] 최신 스크립트 목록 조회 완료');
+        // 노드 로딩 오버레이 표시 (워크플로우 페이지가 있는 경우)
+        if (window.workflowPage && typeof window.workflowPage.showNodeLoading === 'function') {
+            window.workflowPage.showNodeLoading();
         }
 
         // 헤더 업데이트 (현재 스크립트 정보 반영)
         this.updateHeader('editor');
 
-        // 워크플로우 페이지가 있으면 현재 스크립트 로드
+        // 워크플로우 페이지가 있으면 현재 스크립트 확인 및 선택
         if (window.workflowPage && window.workflowPage.loadService) {
+            const sidebarManager = window.sidebarManager;
             if (sidebarManager) {
-                const currentScript = sidebarManager.getCurrentScript();
-                if (currentScript) {
-                    window.workflowPage.loadService.load(currentScript);
+                // 스크립트 목록이 로드될 때까지 대기
+                if (!sidebarManager.scripts || sidebarManager.scripts.length === 0) {
+                    logger.log('[PageRouter] 스크립트 목록이 아직 로드되지 않았습니다. 잠시 대기...');
+                    let waitCount = 0;
+                    while ((!sidebarManager.scripts || sidebarManager.scripts.length === 0) && waitCount < 20) {
+                        await new Promise((resolve) => setTimeout(resolve, 50));
+                        waitCount++;
+                    }
+                }
+
+                let currentScript = sidebarManager.getCurrentScript();
+
+                // 현재 스크립트가 없으면 첫 번째 스크립트를 자동으로 선택
+                // selectScript 호출 시 scriptChanged 이벤트가 발생하므로,
+                // onScriptChanged에서 로드를 처리하도록 함 (중복 로드 방지)
+                if (!currentScript && sidebarManager.scripts && sidebarManager.scripts.length > 0) {
+                    logger.log('[PageRouter] 현재 선택된 스크립트가 없습니다. 첫 번째 스크립트를 자동 선택합니다.');
+                    if (
+                        sidebarManager.scriptManager &&
+                        typeof sidebarManager.scriptManager.selectScript === 'function'
+                    ) {
+                        // selectScript 호출 시 scriptChanged 이벤트가 발생하여 onScriptChanged에서 로드 처리
+                        await sidebarManager.scriptManager.selectScript(0);
+                    } else {
+                        // selectScript가 없으면 직접 설정 (이벤트 발생 안 함)
+                        currentScript = sidebarManager.scripts[0];
+                        if (
+                            sidebarManager.currentScriptIndex === undefined ||
+                            sidebarManager.currentScriptIndex === null
+                        ) {
+                            sidebarManager.currentScriptIndex = 0;
+                        }
+                        // 이 경우에는 직접 로드
+                        const loadService = window.workflowPage.loadService;
+                        if (!loadService.isLoading) {
+                            logger.log('[PageRouter] 스크립트 직접 로드 시작:', currentScript);
+                            await loadService.load(currentScript);
+                        }
+                    }
+                } else if (currentScript) {
+                    // 스크립트 페이지로 이동할 때마다 현재 스크립트를 다시 로드 (초기화)
+                    const loadService = window.workflowPage.loadService;
+                    if (!loadService.isLoading) {
+                        // 이미 로드된 스크립트인 경우 기존 노드를 먼저 제거
+                        if (loadService.isScriptLoaded(currentScript.id)) {
+                            logger.log(
+                                '[PageRouter] 스크립트 페이지 초기화: 기존 노드 제거 후 다시 로드:',
+                                currentScript
+                            );
+                            const nodeManager = window.workflowPage.getNodeManager();
+                            if (nodeManager) {
+                                loadService.clearExistingNodes(nodeManager);
+                            }
+                            // _lastLoadedScriptId를 초기화하여 강제로 다시 로드
+                            loadService._lastLoadedScriptId = null;
+                        } else {
+                            logger.log('[PageRouter] 스크립트 페이지 초기화: 스크립트 로드 시작:', currentScript);
+                        }
+                        await loadService.load(currentScript);
+                    } else {
+                        logger.log('[PageRouter] 이미 로딩 중입니다. 건너뜀');
+                    }
+                } else {
+                    logger.warn('[PageRouter] 로드할 스크립트가 없습니다.');
                 }
             }
+        }
+
+        // 노드 로딩 오버레이 숨김 (워크플로우 페이지가 있는 경우)
+        if (window.workflowPage && typeof window.workflowPage.hideNodeLoading === 'function') {
+            window.workflowPage.hideNodeLoading();
         }
     }
 

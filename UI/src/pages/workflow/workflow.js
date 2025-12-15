@@ -49,6 +49,9 @@ const GlobalDependencies = {
 const getNodeManager = () => GlobalDependencies.getNodeManager();
 const getSidebarManager = () => getSidebarInstance();
 const getModalManager = () => getModalManagerInstance();
+
+// getSidebarManager를 전역으로 export (다른 모듈에서 사용)
+window.getSidebarManager = getSidebarManager;
 const getNodeAPI = () => NodeAPI;
 const getConnectionManager = () => ConnectionManager;
 
@@ -99,6 +102,14 @@ export class WorkflowPage {
     getNodeAPI() {
         return getNodeAPI();
     }
+    /**
+     * 현재 선택된 스크립트 가져오기
+     * @returns {Object|null} 현재 스크립트 객체 또는 null
+     */
+    getCurrentScript() {
+        const sidebarManager = this.getSidebarManager();
+        return sidebarManager ? sidebarManager.getCurrentScript() : null;
+    }
     getLogger() {
         return getLogger();
     }
@@ -121,8 +132,20 @@ export class WorkflowPage {
         const pageRouter = getPageRouterInstance();
         this.pageRouter = pageRouter;
 
+        // 노드 로딩 오버레이 표시
+        this.showNodeLoading();
+
         // 노드 레지스트리 초기화 및 노드 스크립트 동적 로드
-        await this.loadNodeScripts();
+        try {
+            await this.loadNodeScripts();
+
+            // 노드 기본값 초기화 (서버 설정 로드)
+            const { initializeDefaults } = await import('./config/node-defaults.js');
+            await initializeDefaults();
+        } finally {
+            // 노드 로딩 오버레이 숨김
+            this.hideNodeLoading();
+        }
 
         this.addNodeModal = new AddNodeModal(this);
         this.nodeSettingsModal = new NodeSettingsModal(this);
@@ -137,12 +160,30 @@ export class WorkflowPage {
         this.setupComponentIntegration();
         this.setupKeyboardShortcuts();
 
-        // 스크립트 페이지로 전환 시에만 초기 노드 생성
-        if (this.pageRouter.currentPage === 'editor') {
-            this.createInitialNodes();
-        }
+        // 스크립트 로드는 page-router.js의 initEditor()에서 처리하므로 여기서는 호출하지 않음
+        // (중복 로드 방지)
 
         this._initialized = true;
+    }
+
+    /**
+     * 노드 로딩 오버레이 표시
+     */
+    showNodeLoading() {
+        const overlay = document.getElementById('node-loading-overlay');
+        if (overlay) {
+            overlay.style.display = 'flex';
+        }
+    }
+
+    /**
+     * 노드 로딩 오버레이 숨김
+     */
+    hideNodeLoading() {
+        const overlay = document.getElementById('node-loading-overlay');
+        if (overlay) {
+            overlay.style.display = 'none';
+        }
     }
 
     /**
@@ -344,7 +385,17 @@ export class WorkflowPage {
             this.setButtonsState('running', 'run-btn');
 
             try {
-                await this.executionService.execute();
+                // 단일 스크립트 실행은 executeSingleScript를 사용
+                const sidebarManager = getSidebarManager();
+                const currentScript = this.getCurrentScript();
+                if (sidebarManager && sidebarManager.scriptManager && currentScript) {
+                    await sidebarManager.scriptManager.executeSingleScript(currentScript, {
+                        isRunningAllScripts: false
+                    });
+                } else {
+                    // 폴백: 기존 방식 사용
+                    await this.executionService.execute();
+                }
             } finally {
                 // 버튼 상태 복원
                 this.setButtonsState('idle');
@@ -519,10 +570,24 @@ export class WorkflowPage {
         log('[WorkflowPage] 현재 스크립트:', script);
         log('[WorkflowPage] 이전 스크립트:', previousScript);
 
-        // 중복 로드 방지
-        if (this.loadService && this.loadService.isLoading) {
-            log('[WorkflowPage] ⚠️ 이미 로딩 중입니다. 중복 로드 방지');
+        // 유효성 검사
+        if (!script || !script.id) {
+            log('[WorkflowPage] ⚠️ 유효하지 않은 스크립트 정보. 건너뜀');
             return;
+        }
+
+        // 중복 로드 방지
+        if (this.loadService) {
+            if (this.loadService.isLoading) {
+                log('[WorkflowPage] ⚠️ 이미 로딩 중입니다. 중복 로드 방지');
+                return;
+            }
+
+            // 이미 같은 스크립트가 로드되었으면 건너뛰기
+            if (this.loadService.isScriptLoaded(script.id)) {
+                log('[WorkflowPage] 같은 스크립트가 이미 로드되었습니다. 중복 로드 방지:', script.id);
+                return;
+            }
         }
 
         // 이전 스크립트가 있으면 저장 후 새 스크립트 로드

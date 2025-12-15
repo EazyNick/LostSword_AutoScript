@@ -297,6 +297,204 @@ export class ModalManager {
     }
 
     /**
+     * 중앙 확인 모달 표시 (가운데 팝업)
+     * @param {string} title - 모달 제목
+     * @param {string} message - 모달 메시지
+     * @param {Function} onConfirm - 확인 버튼 클릭 시 실행할 함수
+     * @param {Function} onCancel - 취소 버튼 클릭 시 실행할 함수 (선택적)
+     */
+    showCenterConfirm(title, message, onConfirm, onCancel = null) {
+        const resultModal = document.getElementById('result-modal');
+        const resultModalContent = resultModal.querySelector('.result-modal-content');
+
+        // HTML 이스케이프 함수
+        const escapeHtml = (text) => {
+            if (text === null || text === undefined) {
+                return '';
+            }
+            const div = document.createElement('div');
+            div.textContent = String(text);
+            return div.innerHTML;
+        };
+
+        const content = `
+            <div class="result-modal-header">
+                <h3 class="result-modal-title">${escapeHtml(title)}</h3>
+                <span class="result-modal-close">&times;</span>
+            </div>
+            <div class="result-modal-body">
+                <p>${escapeHtml(message)}</p>
+            </div>
+            <div class="result-modal-footer">
+                <button id="center-confirm-btn" class="btn btn-primary">확인</button>
+                <button id="center-cancel-btn" class="btn btn-secondary">취소</button>
+            </div>
+        `;
+
+        resultModalContent.innerHTML = content;
+
+        // 사이드바 너비를 CSS 변수로 설정 (중앙 정렬 계산용)
+        const sidebar = document.querySelector('.sidebar');
+        const sidebarWidth = sidebar ? sidebar.offsetWidth : 350;
+        document.documentElement.style.setProperty('--sidebar-width', `${sidebarWidth}px`);
+
+        // 모달 표시
+        resultModal.style.display = 'block';
+        setTimeout(() => {
+            resultModal.classList.add('show');
+        }, 10);
+
+        // 닫기 함수
+        const closeModal = () => {
+            resultModal.classList.remove('show');
+            resultModal.classList.add('hide');
+            setTimeout(() => {
+                resultModal.style.display = 'none';
+                resultModal.classList.remove('hide');
+            }, 200);
+        };
+
+        // 이벤트 리스너
+        const confirmBtn = document.getElementById('center-confirm-btn');
+        const cancelBtn = document.getElementById('center-cancel-btn');
+        const closeBtn = resultModalContent.querySelector('.result-modal-close');
+
+        confirmBtn.addEventListener('click', () => {
+            closeModal();
+            if (onConfirm) {
+                onConfirm();
+            }
+        });
+
+        cancelBtn.addEventListener('click', () => {
+            closeModal();
+            if (onCancel) {
+                onCancel();
+            }
+        });
+
+        closeBtn.addEventListener('click', closeModal);
+
+        // 배경 클릭으로 닫기
+        const bgClickHandler = (e) => {
+            if (e.target === resultModal) {
+                closeModal();
+                if (onCancel) {
+                    onCancel();
+                }
+                resultModal.removeEventListener('click', bgClickHandler);
+            }
+        };
+        resultModal.addEventListener('click', bgClickHandler);
+
+        // ESC 키로 닫기
+        const escHandler = (e) => {
+            if (e.key === 'Escape' && resultModal.classList.contains('show')) {
+                closeModal();
+                if (onCancel) {
+                    onCancel();
+                }
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
+    }
+
+    /**
+     * 중앙 알림 모달 표시 (가운데 팝업)
+     * @param {string} title - 모달 제목
+     * @param {string} message - 모달 메시지
+     * @param {Function} onOk - 확인 버튼 클릭 시 실행할 함수 (선택적)
+     */
+    showCenterAlert(title, message, onOk = null) {
+        const resultModal = document.getElementById('result-modal');
+        const resultModalContent = resultModal.querySelector('.result-modal-content');
+
+        // HTML 이스케이프 함수
+        const escapeHtml = (text) => {
+            if (text === null || text === undefined) {
+                return '';
+            }
+            const div = document.createElement('div');
+            div.textContent = String(text);
+            return div.innerHTML;
+        };
+
+        const content = `
+            <div class="result-modal-header">
+                <h3 class="result-modal-title">${escapeHtml(title)}</h3>
+                <span class="result-modal-close">&times;</span>
+            </div>
+            <div class="result-modal-body">
+                <p>${escapeHtml(message)}</p>
+            </div>
+            <div class="result-modal-footer">
+                <button id="center-ok-btn" class="btn btn-primary">확인</button>
+            </div>
+        `;
+
+        resultModalContent.innerHTML = content;
+
+        // 사이드바 너비를 CSS 변수로 설정 (중앙 정렬 계산용)
+        const sidebar = document.querySelector('.sidebar');
+        const sidebarWidth = sidebar ? sidebar.offsetWidth : 350;
+        document.documentElement.style.setProperty('--sidebar-width', `${sidebarWidth}px`);
+
+        // 모달 표시
+        resultModal.style.display = 'block';
+        setTimeout(() => {
+            resultModal.classList.add('show');
+        }, 10);
+
+        // 닫기 함수
+        const closeModal = () => {
+            resultModal.classList.remove('show');
+            resultModal.classList.add('hide');
+            setTimeout(() => {
+                resultModal.style.display = 'none';
+                resultModal.classList.remove('hide');
+            }, 200);
+        };
+
+        // 이벤트 리스너
+        const okBtn = document.getElementById('center-ok-btn');
+        const closeBtn = resultModalContent.querySelector('.result-modal-close');
+
+        okBtn.addEventListener('click', () => {
+            closeModal();
+            if (onOk) {
+                onOk();
+            }
+        });
+
+        closeBtn.addEventListener('click', closeModal);
+
+        // 배경 클릭으로 닫기
+        const bgClickHandler = (e) => {
+            if (e.target === resultModal) {
+                closeModal();
+                if (onOk) {
+                    onOk();
+                }
+                resultModal.removeEventListener('click', bgClickHandler);
+            }
+        };
+        resultModal.addEventListener('click', bgClickHandler);
+
+        // ESC 키로 닫기
+        const escHandler = (e) => {
+            if (e.key === 'Escape' && resultModal.classList.contains('show')) {
+                closeModal();
+                if (onOk) {
+                    onOk();
+                }
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
+    }
+
+    /**
      * 실행 결과 모달 표시 (가운데 팝업)
      * @param {string} title - 모달 제목
      * @param {Object} resultData - 실행 결과 데이터

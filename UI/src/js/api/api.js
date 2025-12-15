@@ -95,10 +95,15 @@ export async function apiCall(endpoint, options = {}) {
                     errorData.detail?.includes('찾을 수 없습니다'))
             ) {
                 log(`[apiCall] ⚠️ 리소스를 찾을 수 없음 (정상, 처음 사용 시): ${response.status} ${endpoint}`);
+                // 404 에러를 특별한 에러 타입으로 throw (호출자가 정상 케이스로 처리할 수 있도록)
+                const notFoundError = new Error(errorMessage);
+                notFoundError.name = 'NotFoundError';
+                notFoundError.status = 404;
+                throw notFoundError;
             } else {
                 logError(`[apiCall] ❌ HTTP 에러: ${response.status}`, errorData);
+                throw new Error(errorMessage);
             }
-            throw new Error(errorMessage);
         }
 
         const data = await response.json();
@@ -108,9 +113,11 @@ export async function apiCall(endpoint, options = {}) {
     } catch (error) {
         const errorMessage = error.message || '';
 
-        // 404 에러 중 "찾을 수 없습니다"가 포함된 경우는 조용히 처리 (정상적인 경우)
-        if (errorMessage.includes('404') && errorMessage.includes('찾을 수 없습니다')) {
+        // NotFoundError는 조용히 처리 (정상적인 경우)
+        if (error.name === 'NotFoundError' || (error.status === 404 && errorMessage.includes('찾을 수 없습니다'))) {
             log(`[apiCall] ⚠️ 리소스를 찾을 수 없음 (정상, 처음 사용 시): ${endpoint}`);
+            // NotFoundError는 그대로 throw (호출자가 처리하도록)
+            throw error;
         } else {
             logError(`[apiCall] ❌ API 호출 실패 (${endpoint}):`, error);
             logError('[apiCall] 에러 타입:', error.constructor.name);

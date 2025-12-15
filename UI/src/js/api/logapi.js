@@ -99,6 +99,40 @@ export const LogAPI = {
     },
 
     /**
+     * 로그 저장 완료 확인 (서버에서 완료될 때까지 대기)
+     * @param {string} executionId - 실행 ID
+     * @param {string} expectedStatus - 예상 상태 ('completed' 또는 'failed', 선택사항)
+     * @returns {Promise<Object>} 로그 저장 완료 여부
+     */
+    async checkLogsReady(executionId, expectedStatus = null) {
+        const logger = getLogger();
+        logger.log('[LogAPI] checkLogsReady() 호출됨');
+        logger.log('[LogAPI] executionId:', executionId, 'expectedStatus:', expectedStatus);
+
+        try {
+            const params = new URLSearchParams();
+            params.append('execution_id', executionId);
+            if (expectedStatus) {
+                params.append('expected_status', expectedStatus);
+            }
+
+            const endpoint = `/api/logs/node-execution/check-ready?${params.toString()}`;
+
+            const startTime = performance.now();
+            const result = await apiCall(endpoint);
+            const endTime = performance.now();
+
+            logger.log('[LogAPI] ✅ 로그 저장 완료 확인 성공:', result);
+            logger.log(`[LogAPI] 응답 시간: ${(endTime - startTime).toFixed(2)}ms`);
+
+            return result;
+        } catch (error) {
+            logger.error('[LogAPI] ❌ 로그 저장 완료 확인 실패:', error);
+            throw error;
+        }
+    },
+
+    /**
      * 실패한 노드 실행 로그 조회
      * @param {Object} filters - 필터 옵션 (script_id, limit)
      * @returns {Promise<Array>} 실패한 로그 목록

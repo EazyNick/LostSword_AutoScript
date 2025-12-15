@@ -35,8 +35,25 @@ export class ViewportUtils {
             maxY = -Infinity;
 
         nodeElements.forEach((node) => {
-            const left = parseFloat(node.style.left) || 0;
-            const top = parseFloat(node.style.top) || 0;
+            // 노드의 실제 위치 가져오기 (style.left/top 또는 getBoundingClientRect 사용)
+            let left = parseFloat(node.style.left);
+            let top = parseFloat(node.style.top);
+
+            // style.left/top이 없거나 0이면 getBoundingClientRect 사용
+            if (isNaN(left) || isNaN(top) || (left === 0 && top === 0 && nodeElements.length > 1)) {
+                const rect = node.getBoundingClientRect();
+                const canvasContentRect = canvasContent.getBoundingClientRect();
+                // canvas-content 기준 상대 위치 계산
+                left = rect.left - canvasContentRect.left;
+                top = rect.top - canvasContentRect.top;
+            }
+
+            // 여전히 유효하지 않으면 기본값 사용
+            if (isNaN(left) || isNaN(top)) {
+                left = 0;
+                top = 0;
+            }
+
             const width = node.offsetWidth || 200;
             const height = node.offsetHeight || 80;
 

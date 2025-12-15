@@ -16,6 +16,24 @@ export class WorkflowLoadService {
     constructor(workflowPage) {
         this.workflowPage = workflowPage; // WorkflowPage 인스턴스 참조
         this.isLoading = false; // 중복 로드 방지 플래그
+        this._lastLoadedScriptId = null; // 마지막으로 로드한 스크립트 ID (중복 로드 방지용)
+    }
+
+    /**
+     * 마지막으로 로드한 스크립트 ID 가져오기
+     * @returns {string|null} 마지막으로 로드한 스크립트 ID
+     */
+    getLastLoadedScriptId() {
+        return this._lastLoadedScriptId;
+    }
+
+    /**
+     * 특정 스크립트가 이미 로드되었는지 확인
+     * @param {string} scriptId - 확인할 스크립트 ID
+     * @returns {boolean} 이미 로드되었으면 true
+     */
+    isScriptLoaded(scriptId) {
+        return this._lastLoadedScriptId === scriptId;
     }
 
     /**
@@ -30,21 +48,32 @@ export class WorkflowLoadService {
 
         // 중복 로드 방지
         if (this.isLoading) {
-            log('[WorkflowPage] ⚠️ 이미 로딩 중입니다. 중복 로드 방지');
+            log('[WorkflowLoadService] ⚠️ 이미 로딩 중입니다. 중복 로드 방지');
             return;
         }
 
-        log('[WorkflowPage] loadScriptData() 호출됨');
-        log('[WorkflowPage] 로드할 스크립트:', { id: script?.id, name: script?.name });
+        // 같은 스크립트를 다시 로드하려는 경우 방지 (단, 최초 로드는 허용)
+        if (script && script.id && this._lastLoadedScriptId === script.id) {
+            log('[WorkflowLoadService] 같은 스크립트가 이미 로드되었습니다. 중복 로드 방지:', script.id);
+            return;
+        }
+
+        log('[WorkflowLoadService] loadScriptData() 호출됨');
+        log('[WorkflowLoadService] 로드할 스크립트:', { id: script?.id, name: script?.name });
 
         // 유효성 검사
         if (!script || !script.id) {
-            logError('[WorkflowPage] ⚠️ 유효하지 않은 스크립트 정보:', script);
+            logError('[WorkflowLoadService] ⚠️ 유효하지 않은 스크립트 정보:', script);
             return;
         }
 
         // 로딩 시작
         this.isLoading = true;
+
+        // 노드 로딩 오버레이 표시
+        if (this.workflowPage && typeof this.workflowPage.showNodeLoading === 'function') {
+            this.workflowPage.showNodeLoading();
+        }
 
         // 1. 연결선 매니저 초기화 확인
         this.workflowPage.ensureConnectionManagerInitialized();
@@ -52,7 +81,19 @@ export class WorkflowLoadService {
         const nodeManager = this.workflowPage.getNodeManager();
 
         // 2. 기존 노드들 제거 (스크립트 전환 시)
-        this.clearExistingNodes(nodeManager);
+        // 같은 스크립트를 다시 로드하는 경우가 아니면 기존 노드 제거
+        const previousScriptId = this._lastLoadedScriptId;
+        if (previousScriptId && previousScriptId !== script.id) {
+            log('[WorkflowLoadService] 기존 노드 제거 시작 (스크립트 변경)');
+            this.clearExistingNodes(nodeManager);
+        } else if (!previousScriptId) {
+            log('[WorkflowLoadService] 첫 로드이므로 기존 노드 제거 건너뜀');
+        } else {
+            log('[WorkflowLoadService] 같은 스크립트이므로 기존 노드 제거 건너뜀');
+        }
+
+        // 스크립트 ID 저장 (노드 제거 후에 저장)
+        this._lastLoadedScriptId = script.id;
 
         try {
             if (ScriptAPI && script.id) {
@@ -73,16 +114,15 @@ export class WorkflowLoadService {
                 log('[WorkflowPage] 연결 정보:', connections);
 
                 if (nodes.length > 0) {
-                    // 서버에서 불러온 노드에 start/end가 포함되어 있는지 확인
+                    // 서버에서 불러온 노드에 start가 포함되어 있는지 확인
                     const hasStartNode = nodes.some((n) => n.id === 'start' || n.type === 'start');
-                    const hasEndNode = nodes.some((n) => n.id === 'end' || n.type === 'end');
 
-                    log(`[WorkflowPage] 서버 노드 확인 - start: ${hasStartNode}, end: ${hasEndNode}`);
+                    log(`[WorkflowPage] 서버 노드 확인 - start: ${hasStartNode}`);
 
                     await this.renderNodes(nodes, connections, nodeManager);
                 } else {
-                    // 노드가 없을 때만 기본 경계 노드 생성
-                    log('[WorkflowPage] 노드가 없어 기본 경계 노드 생성');
+                    // 노드가 없을 때만 기본 시작 노드 생성
+                    log('[WorkflowPage] 노드가 없어 기본 시작 노드 생성');
                     this.workflowPage.createDefaultBoundaryNodes();
                 }
             } else {
@@ -95,6 +135,13 @@ export class WorkflowLoadService {
         } finally {
             // 로딩 완료
             this.isLoading = false;
+
+            // 노드 로딩 오버레이 숨김
+            if (this.workflowPage && typeof this.workflowPage.hideNodeLoading === 'function') {
+                this.workflowPage.hideNodeLoading();
+            }
+
+            // 스크립트 ID는 유지 (같은 스크립트 중복 로드 방지)
         }
     }
 
@@ -114,45 +161,105 @@ export class WorkflowLoadService {
             return;
         }
 
-        // 1. NodeManager의 nodes 배열에서 제거
+        // 1. 연결선 먼저 제거 (노드 삭제 전에 연결선 제거)
+        if (nodeManager.connectionManager) {
+            try {
+                // 모든 연결선 제거
+                const allConnections = document.querySelectorAll('.connection-line');
+                allConnections.forEach((conn) => conn.remove());
+                log('[WorkflowPage] 연결선 제거 완료');
+            } catch (error) {
+                log(`[WorkflowPage] 연결선 제거 중 오류: ${error}`);
+            }
+        }
+
+        // 2. NodeManager의 nodes 배열에서 제거
         if (nodeManager.nodes && nodeManager.nodes.length > 0) {
             const nodesToDelete = [...nodeManager.nodes]; // 배열 복사 (반복 중 수정 방지)
             log(`[WorkflowPage] NodeManager에서 제거할 노드 개수: ${nodesToDelete.length}개`);
 
+            // 각 노드의 연결선 먼저 제거
+            nodesToDelete.forEach((nodeObj) => {
+                if (nodeObj && nodeObj.element && nodeManager.connectionManager) {
+                    const nodeId = nodeObj.element.id || nodeObj.element.dataset?.nodeId || nodeObj.id;
+                    if (nodeId) {
+                        try {
+                            nodeManager.connectionManager.removeNodeConnections(nodeId);
+                        } catch (error) {
+                            log(`[WorkflowPage] 연결선 제거 중 오류: ${error}`);
+                        }
+                    }
+                }
+            });
+
+            // 노드 제거
             nodesToDelete.forEach((nodeObj) => {
                 if (nodeObj && nodeObj.element) {
                     try {
-                        // true: 시작/종료 노드도 포함하여 강제 삭제
+                        // true: 시작 노드도 포함하여 강제 삭제
                         nodeManager.deleteNode(nodeObj.element, true);
                     } catch (error) {
                         log(`[WorkflowPage] 노드 삭제 중 오류: ${error}`);
+                        // deleteNode가 실패하면 직접 DOM에서 제거
+                        try {
+                            nodeObj.element.remove();
+                        } catch (removeError) {
+                            log(`[WorkflowPage] DOM 직접 제거 중 오류: ${removeError}`);
+                        }
                     }
                 }
             });
         }
 
-        // 2. DOM에서 직접 제거 (혹시 남아있는 경우)
+        // 3. DOM에서 직접 제거 (혹시 남아있는 경우)
+        // 단, NodeManager의 nodes 배열에 없는 노드만 제거 (이미 위에서 제거된 노드는 건너뛰기)
         const existingNodes = document.querySelectorAll('.workflow-node');
         if (existingNodes.length > 0) {
-            log(`[WorkflowPage] DOM에서 추가로 제거할 노드 개수: ${existingNodes.length}개`);
-            existingNodes.forEach((node) => {
-                try {
-                    if (nodeManager) {
-                        nodeManager.deleteNode(node, true);
-                    } else {
-                        node.remove();
-                    }
-                } catch (error) {
-                    log(`[WorkflowPage] DOM 노드 삭제 중 오류: ${error}`);
-                }
+            const remainingNodeIds = new Set(
+                nodeManager.nodes ? nodeManager.nodes.map((n) => n.id || n.element?.id) : []
+            );
+            const nodesToRemove = Array.from(existingNodes).filter((node) => {
+                const nodeId = node.id || node.dataset?.nodeId;
+                return !remainingNodeIds.has(nodeId);
             });
+
+            if (nodesToRemove.length > 0) {
+                log(`[WorkflowPage] DOM에서 추가로 제거할 노드 개수: ${nodesToRemove.length}개`);
+                nodesToRemove.forEach((node) => {
+                    try {
+                        // 연결선 제거
+                        if (nodeManager.connectionManager) {
+                            const nodeId = node.id || node.dataset?.nodeId;
+                            if (nodeId) {
+                                nodeManager.connectionManager.removeNodeConnections(nodeId);
+                            }
+                        }
+                        // 노드 제거
+                        node.remove();
+                    } catch (error) {
+                        log(`[WorkflowPage] DOM 노드 삭제 중 오류: ${error}`);
+                    }
+                });
+            }
         }
 
-        // 3. nodeData 초기화
+        // 4. nodeData 초기화
         if (nodeManager.nodeData) {
-            nodeManager.nodeData = {};
+            // 기존 nodeData를 완전히 새 객체로 교체하지 않고, 키만 삭제
+            const keysToDelete = Object.keys(nodeManager.nodeData);
+            keysToDelete.forEach((key) => {
+                delete nodeManager.nodeData[key];
+            });
             log('[WorkflowPage] nodeData 초기화 완료');
         }
+
+        // 5. NodeManager의 nodes 배열 초기화 (배열은 유지하되 요소만 제거)
+        if (nodeManager.nodes && Array.isArray(nodeManager.nodes)) {
+            nodeManager.nodes.length = 0; // 배열 길이를 0으로 설정하여 요소만 제거
+            log('[WorkflowPage] NodeManager.nodes 배열 초기화 완료');
+        }
+
+        log('[WorkflowPage] ✅ 기존 노드 제거 완료');
 
         log('[WorkflowPage] ✅ 기존 노드 제거 완료');
     }
@@ -271,40 +378,46 @@ export class WorkflowLoadService {
             log(`[WorkflowPage] 필터링: ${connections.length}개 연결 중 ${filteredConnections.length}개만 유효합니다.`);
         }
 
-        // 연결선 매니저가 완전히 초기화될 때까지 대기
-        setTimeout(() => {
-            log('[WorkflowPage] 노드 생성 시작');
+        // 노드 생성 (비동기 처리)
+        // setTimeout 제거하고 바로 실행 (타이밍 문제 방지)
+        log('[WorkflowPage] 노드 생성 시작');
 
-            // 노드들 생성 (비동기 처리)
-            (async () => {
-                for (let index = 0; index < filteredNodes.length; index++) {
-                    const nodeData = filteredNodes[index];
-                    await this.createNodeFromServerData(nodeData, nodeManager);
+        // 노드들 생성 (비동기 처리)
+        for (let index = 0; index < filteredNodes.length; index++) {
+            const nodeData = filteredNodes[index];
+            await this.createNodeFromServerData(nodeData, nodeManager);
 
-                    log(`[WorkflowPage] 노드 ${index + 1}/${filteredNodes.length} 생성 중:`, {
-                        id: nodeData.id,
-                        type: nodeData.type
-                    });
-                }
+            log(`[WorkflowPage] 노드 ${index + 1}/${filteredNodes.length} 생성 중:`, {
+                id: nodeData.id,
+                type: nodeData.type
+            });
+        }
 
-                log('[WorkflowPage] 모든 노드 생성 완료');
+        log('[WorkflowPage] 모든 노드 생성 완료');
 
-                // 노드가 DOM에 완전히 렌더링될 때까지 대기
-                requestAnimationFrame(() => {
-                    this.restoreConnections(filteredConnections, nodeManager);
+        // 노드가 DOM에 완전히 렌더링되고 위치가 설정될 때까지 대기
+        // (createNodeFromServerData에서 이미 각 노드가 DOM에 추가될 때까지 대기했으므로, 여기서는 짧게 대기)
+        await new Promise((resolve) => {
+            // 노드 생성이 완료되었으므로 짧은 대기 후 연결 복원 및 뷰포트 조정
+            requestAnimationFrame(() => {
+                this.restoreConnections(filteredConnections, nodeManager);
+
+                // 뷰포트 조정 전에 한 번 더 대기 (노드 위치가 완전히 적용될 때까지)
+                setTimeout(() => {
                     this.workflowPage.fitNodesToView();
 
                     // 뷰포트 조정 후 연결선 위치를 다시 한 번 업데이트
                     setTimeout(() => {
-                        if (nodeManager && nodeManager.connectionManager && connections.length > 0) {
+                        if (nodeManager && nodeManager.connectionManager && filteredConnections.length > 0) {
                             log('[WorkflowPage] 뷰포트 조정 후 연결선 위치 최종 업데이트');
                             nodeManager.connectionManager.updateAllConnections();
                         }
                         log('[WorkflowPage] ✅ 스크립트 데이터 로드 및 화면 그리기 완료');
+                        resolve();
                     }, 150);
-                });
-            })();
-        }, 100);
+                }, 100);
+            });
+        });
     }
 
     /**
@@ -318,13 +431,28 @@ export class WorkflowLoadService {
         const originalY = nodeData.position?.y || 0;
 
         // API 응답 형식을 NodeManager 형식으로 변환
+        // nodeData.data에서 메타데이터 필드 제거
+        const nodeDataClean = { ...(nodeData.data || {}) };
+        const metadataFields = ['id', 'x', 'y', 'createdAt', 'updatedAt'];
+        metadataFields.forEach((field) => {
+            delete nodeDataClean[field];
+        });
+
         const nodeDataForManager = {
             id: nodeData.id,
             title: nodeData.data?.title || nodeData.id,
             type: nodeData.type,
             x: originalX,
             y: originalY,
-            ...nodeData.data
+            ...nodeDataClean, // 메타데이터가 제거된 data만 포함
+            // 메타데이터를 별도 필드로 저장
+            metadata: nodeData.metadata || {
+                id: nodeData.id,
+                x: originalX,
+                y: originalY,
+                createdAt: null,
+                updatedAt: null
+            }
         };
 
         // parameters 복원 (nodes_config.py에서 정의한 파라미터 동적 복원)
@@ -379,13 +507,50 @@ export class WorkflowLoadService {
             }
         }
 
-        // 타입 저장
+        // 타입 및 메타데이터 저장
         if (nodeManager && nodeManager.nodeData && nodeManager.nodeData[nodeData.id]) {
             nodeManager.nodeData[nodeData.id].type = nodeData.type;
+            // 메타데이터 저장
+            if (nodeData.metadata) {
+                nodeManager.nodeData[nodeData.id].metadata = nodeData.metadata;
+            }
         }
 
         if (nodeManager) {
+            // 노드 생성
             nodeManager.createNode(nodeDataForManager);
+
+            // 노드가 DOM에 추가되고 위치가 설정될 때까지 대기 (최대 1초)
+            await new Promise((resolve) => {
+                let checkCount = 0;
+                const maxChecks = 20; // 최대 20번 확인 (약 1초)
+
+                const checkNode = () => {
+                    const nodeElement =
+                        document.getElementById(nodeDataForManager.id) ||
+                        document.querySelector(`[data-node-id="${nodeDataForManager.id}"]`);
+                    if (nodeElement) {
+                        // 노드가 DOM에 추가되었는지 확인
+                        const hasPosition = nodeElement.style.left && nodeElement.style.top;
+                        if (hasPosition) {
+                            resolve();
+                            return;
+                        }
+                    }
+
+                    // 최대 체크 횟수에 도달하면 강제로 resolve (무한 대기 방지)
+                    if (checkCount >= maxChecks) {
+                        const logger = this.workflowPage.getLogger();
+                        logger.log(`[WorkflowLoadService] 노드 ${nodeDataForManager.id} 위치 확인 타임아웃, 계속 진행`);
+                        resolve();
+                        return;
+                    }
+
+                    checkCount++;
+                    requestAnimationFrame(checkNode);
+                };
+                requestAnimationFrame(checkNode);
+            });
 
             // 프로세스 포커스 노드인 경우, 노드 생성 후 내용 업데이트
             if (nodeData.type === 'process-focus' && nodeManager.nodeData[nodeData.id]) {

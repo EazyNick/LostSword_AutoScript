@@ -4,6 +4,10 @@
  */
 
 import { ScriptAPI } from '../../js/api/scriptapi.js';
+import { apiCall } from '../../js/api/api.js';
+import { getSidebarInstance } from '../../js/components/sidebar/sidebar.js';
+
+const getSidebarManager = () => getSidebarInstance();
 
 /**
  * 로거 유틸리티 가져오기
@@ -25,10 +29,12 @@ export class DashboardManager {
         this.scripts = [];
         this.executionStats = {
             totalScripts: 0,
-            todayExecutions: 0,
-            todayFailed: 0,
+            allExecutions: 0, // 전체 실행 시 실행된 스크립트 개수
+            allFailed: 0, // 전체 실행 시 실패한 스크립트 개수
             inactiveScripts: 0
         };
+        this.runningScriptId = null; // 현재 실행 중인 스크립트 ID
+        this.setupExecutionEventListeners();
     }
 
     /**
@@ -40,6 +46,195 @@ export class DashboardManager {
 
         await this.loadDashboardData();
         this.renderDashboard();
+    }
+
+    /**
+     * 스크립트 실행 이벤트 리스너 설정
+     */
+    setupExecutionEventListeners() {
+        // 스크립트 실행 시작 이벤트
+        document.addEventListener('scriptExecutionStarted', (event) => {
+            const { scriptId } = event.detail;
+            this.setScriptRunning(scriptId, true);
+        });
+
+        // 스크립트 실행 완료 이벤트
+        document.addEventListener('scriptExecutionCompleted', (event) => {
+            const { scriptId, status } = event.detail;
+            this.setScriptRunning(scriptId, false);
+            // 실행 완료 후 잠시 성공/실패 상태 표시
+            if (status === 'success') {
+                this.setScriptStatus(scriptId, 'success');
+                setTimeout(() => this.setScriptStatus(scriptId, null), 2000);
+            } else if (status === 'failed') {
+                // 실패한 스크립트는 팝업이 뜰 때까지 빨간색으로 유지
+                this.setScriptStatus(scriptId, 'failed');
+                if (!this.failedScriptIds) {
+                    this.failedScriptIds = new Set();
+                }
+                this.failedScriptIds.add(scriptId);
+            }
+        });
+
+        // 전체 실행 완료 이벤트
+        document.addEventListener('allScriptsExecutionCompleted', () => {
+            // 모든 스크립트의 실행 중 상태 제거 (실패 상태는 유지)
+            this.clearAllRunningStates();
+        });
+
+        // 실행 결과 모달 표시 이벤트 (팝업이 뜬 후 실패 상태 제거)
+        // this 컨텍스트 보존을 위한 참조
+        const self = this;
+        document.addEventListener('executionResultModalShown', () => {
+            // 실패한 스크립트들의 상태 제거
+            if (self && typeof self.clearFailedStates === 'function') {
+                self.clearFailedStates();
+            }
+        });
+    }
+
+    /**
+     * 스크립트 실행 중 상태 설정
+     */
+    setScriptRunning(scriptId, isRunning) {
+        const logger = getLogger();
+        logger.log(`[Dashboard] 스크립트 실행 상태 변경: ${scriptId}, 실행 중: ${isRunning}`);
+
+        this.runningScriptId = isRunning ? scriptId : null;
+
+        // 스크립트 카드 찾기
+        const card = document.querySelector(`.script-card[data-script-id="${scriptId}"]`);
+        if (!card) {
+            // data-script-id가 없으면 버튼의 data-script-id로 찾기
+            const runBtn = document.querySelector(`.btn-run[data-script-id="${scriptId}"]`);
+            if (runBtn) {
+                const parentCard = runBtn.closest('.script-card');
+                if (parentCard) {
+                    this.updateScriptCardState(parentCard, isRunning);
+                }
+            }
+        } else {
+            this.updateScriptCardState(card, isRunning);
+        }
+    }
+
+    /**
+     * 스크립트 카드 상태 업데이트
+     */
+    updateScriptCardState(card, isRunning) {
+        if (isRunning) {
+            card.classList.add('executing');
+            card.setAttribute('data-script-id', card.querySelector('.btn-run')?.dataset?.scriptId || '');
+        } else {
+            card.classList.remove('executing');
+        }
+    }
+
+    /**
+     * 스크립트 상태 설정 (성공/실패)
+     */
+    setScriptStatus(scriptId, status) {
+        const logger = getLogger();
+        logger.log(`[Dashboard] setScriptStatus 호출: scriptId=${scriptId}, status=${status}`);
+
+        // 먼저 data-script-id로 카드 찾기
+        let card = document.querySelector(`.script-card[data-script-id="${scriptId}"]`);
+
+        // 없으면 버튼의 data-script-id로 찾기
+        if (!card) {
+            const runBtn = document.querySelector(`.btn-run[data-script-id="${scriptId}"]`);
+            if (runBtn) {
+                card = runBtn.closest('.script-card');
+            }
+        }
+
+        // 여전히 없으면 모든 스크립트 카드를 순회하며 찾기
+        if (!card) {
+            const allCards = document.querySelectorAll('.script-card');
+            for (const c of allCards) {
+                const btn = c.querySelector(`.btn-run[data-script-id="${scriptId}"]`);
+                if (btn) {
+                    card = c;
+                    // data-script-id 속성도 설정
+                    card.setAttribute('data-script-id', scriptId);
+                    break;
+                }
+            }
+        }
+
+        if (card) {
+            logger.log(`[Dashboard] 스크립트 카드 찾음: ${scriptId}`);
+            this.updateScriptCardStatus(card, status);
+        } else {
+            logger.warn(`[Dashboard] 스크립트 카드를 찾을 수 없음: ${scriptId}`);
+        }
+    }
+
+    /**
+     * 스크립트 카드 상태 업데이트 (성공/실패)
+     */
+    updateScriptCardStatus(card, status) {
+        const logger = getLogger();
+        logger.log(`[Dashboard] updateScriptCardStatus 호출: status=${status}`);
+
+        // 기존 상태 클래스 제거
+        card.classList.remove('execution-success', 'execution-failed');
+
+        if (status === 'success') {
+            card.classList.add('execution-success');
+            logger.log('[Dashboard] execution-success 클래스 추가됨');
+        } else if (status === 'failed') {
+            card.classList.add('execution-failed');
+            logger.log('[Dashboard] execution-failed 클래스 추가됨');
+        } else if (status === null) {
+            // 상태 제거
+            logger.log('[Dashboard] 상태 클래스 제거됨');
+        }
+    }
+
+    /**
+     * 모든 실행 중 상태 제거 (실패 상태는 유지)
+     */
+    clearAllRunningStates() {
+        const logger = getLogger();
+        logger.log('[Dashboard] 모든 실행 중 상태 제거 (실패 상태는 유지)');
+
+        const executingCards = document.querySelectorAll('.script-card.executing');
+        executingCards.forEach((card) => {
+            card.classList.remove('executing');
+        });
+
+        // 성공 상태만 제거 (실패 상태는 유지)
+        const successCards = document.querySelectorAll('.script-card.execution-success');
+        successCards.forEach((card) => {
+            card.classList.remove('execution-success');
+        });
+
+        this.runningScriptId = null;
+    }
+
+    /**
+     * 실패한 스크립트 상태 제거 (팝업 표시 후 호출)
+     */
+    clearFailedStates() {
+        const logger = getLogger();
+        logger.log('[Dashboard] 실패한 스크립트 상태 제거');
+
+        // failedScriptIds가 없으면 초기화
+        if (!this.failedScriptIds) {
+            this.failedScriptIds = new Set();
+            return;
+        }
+
+        // 실패한 스크립트 ID 목록을 순회하며 상태 제거
+        if (this.failedScriptIds.size > 0) {
+            this.failedScriptIds.forEach((scriptId) => {
+                this.setScriptStatus(scriptId, null);
+            });
+        }
+
+        // 실패한 스크립트 ID 목록 초기화
+        this.failedScriptIds.clear();
     }
 
     /**
@@ -79,7 +274,8 @@ export class DashboardManager {
         try {
             const apiHost = window.API_HOST || 'localhost';
             const apiPort = window.API_PORT || 8001;
-            const response = await fetch(`http://${apiHost}:${apiPort}/api/dashboard/stats`);
+            // 실행 기록 저장 후에는 캐시를 사용하지 않고 최신 데이터 조회
+            const response = await fetch(`http://${apiHost}:${apiPort}/api/dashboard/stats?use_cache=false`);
 
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -94,8 +290,8 @@ export class DashboardManager {
             // 통계 데이터 설정
             this.executionStats = {
                 totalScripts: stats.total_scripts || 0,
-                todayExecutions: stats.today_executions || 0,
-                todayFailed: stats.today_failed || 0,
+                allExecutions: stats.all_executions || 0, // 전체 실행 시 실행된 스크립트 개수
+                allFailed: stats.all_failed_scripts || 0, // 전체 실행 시 실패한 스크립트 개수
                 inactiveScripts: stats.inactive_scripts || 0
             };
         } catch (error) {
@@ -110,8 +306,9 @@ export class DashboardManager {
      */
     calculateStats() {
         this.executionStats.totalScripts = this.scripts.length;
-        // TODO: 실제 실행 기록 데이터를 서버에서 가져와서 계산
-        this.executionStats.todayExecutions = 0; // 임시값
+        // 전체 실행 통계는 서버에서 관리하므로 로컬 계산 불필요
+        this.executionStats.allExecutions = 0;
+        this.executionStats.allFailed = 0;
         // 비활성 스크립트 개수 계산
         this.executionStats.inactiveScripts = this.scripts.filter((script) => !script.active).length;
     }
@@ -139,27 +336,21 @@ export class DashboardManager {
             }
         }
 
-        // 오늘 실행 횟수 카드
-        const todayExecutionsCard = document.querySelector('.stat-card:nth-child(2)');
-        if (todayExecutionsCard) {
-            const valueEl = todayExecutionsCard.querySelector('.stat-value');
+        // 전체 실행 횟수 카드
+        const allExecutionsCard = document.querySelector('.stat-card:nth-child(2)');
+        if (allExecutionsCard) {
+            const valueEl = allExecutionsCard.querySelector('.stat-value');
             if (valueEl) {
-                valueEl.textContent = stats.todayExecutions;
-            }
-            // 변화량 표시 (임시로 +12% 설정)
-            const changeEl = todayExecutionsCard.querySelector('.stat-change');
-            if (changeEl) {
-                changeEl.innerHTML =
-                    '<span class="change-icon">↑</span><span class="change-text">+12% 어제 대비</span>';
+                valueEl.textContent = stats.allExecutions;
             }
         }
 
-        // 오늘 실패한 스크립트 카드
-        const todayFailedCard = document.querySelector('.stat-card:nth-child(3)');
-        if (todayFailedCard) {
-            const valueEl = todayFailedCard.querySelector('.stat-value');
+        // 전체 실행 실패한 스크립트 카드
+        const allFailedCard = document.querySelector('.stat-card:nth-child(3)');
+        if (allFailedCard) {
+            const valueEl = allFailedCard.querySelector('.stat-value');
             if (valueEl) {
-                valueEl.textContent = stats.todayFailed;
+                valueEl.textContent = stats.allFailed;
             }
         }
 
@@ -204,6 +395,7 @@ export class DashboardManager {
     createScriptCard(script) {
         const card = document.createElement('div');
         card.className = 'script-card';
+        card.setAttribute('data-script-id', script.id);
 
         // active 필드가 있으면 사용, 없으면 기본값 true
         const isActive = script.active !== undefined ? script.active : true;
@@ -231,8 +423,8 @@ export class DashboardManager {
                 <div class="script-card-actions">
                     <button class="btn-edit" data-script-id="${script.id}">편집</button>
                     <button class="btn-run" data-script-id="${script.id}">
-                        <span>▶</span>
-                        <span>실행</span>
+                        <span class="btn-run-icon">▶</span>
+                        <span class="btn-run-text">실행</span>
                     </button>
                 </div>
             </div>
@@ -332,9 +524,16 @@ export class DashboardManager {
         this.switchToEditor(scriptId);
 
         // 잠시 후 실행 (에디터 로드 대기)
-        setTimeout(() => {
-            if (window.workflowPage && window.workflowPage.executionService) {
-                window.workflowPage.executionService.execute();
+        setTimeout(async () => {
+            // 단일 스크립트 실행은 executeSingleScript를 사용
+            const sidebarManager = getSidebarManager();
+            const workflowPage = window.workflowPage;
+            const currentScript = workflowPage?.getCurrentScript();
+            if (sidebarManager && sidebarManager.scriptManager && currentScript) {
+                await sidebarManager.scriptManager.executeSingleScript(currentScript, { isRunningAllScripts: false });
+            } else if (workflowPage && workflowPage.executionService) {
+                // 폴백: 기존 방식 사용
+                await workflowPage.executionService.execute();
             }
         }, 500);
     }
@@ -377,6 +576,72 @@ export class DashboardManager {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    /**
+     * 스크립트 실행 기록 저장
+     * @param {number} scriptId - 스크립트 ID
+     * @param {Object} executionData - 실행 데이터 {status: string, error_message?: string, execution_time_ms?: number}
+     * @returns {Promise<Object>} 저장 결과
+     */
+    async recordScriptExecution(scriptId, executionData) {
+        const logger = getLogger();
+        logger.log('[Dashboard] recordScriptExecution() 호출됨');
+        logger.log('[Dashboard] 스크립트 ID:', scriptId);
+        logger.log('[Dashboard] 실행 데이터:', executionData);
+
+        try {
+            const result = await apiCall(`/api/scripts/${scriptId}/execution-record`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(executionData)
+            });
+
+            logger.log('[Dashboard] ✅ 스크립트 실행 기록 저장 완료:', result);
+
+            // 실행 기록 저장 후 대시보드 통계 즉시 업데이트
+            await this.loadDashboardStats();
+            this.updateStats();
+
+            return result;
+        } catch (error) {
+            logger.error('[Dashboard] ❌ 스크립트 실행 기록 저장 실패:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * 전체 실행 요약 정보 저장
+     * @param {Object} summary - 실행 요약 정보 {total_executions: number, failed_count: number}
+     * @returns {Promise<Object>} 저장 결과
+     */
+    async recordExecutionSummary(summary) {
+        const logger = getLogger();
+        logger.log('[Dashboard] recordExecutionSummary() 호출됨');
+        logger.log('[Dashboard] 실행 요약 정보:', summary);
+
+        try {
+            const result = await apiCall('/api/dashboard/execution-summary', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(summary)
+            });
+
+            logger.log('[Dashboard] ✅ 전체 실행 요약 정보 저장 완료:', result);
+
+            // 실행 요약 저장 후 대시보드 통계 즉시 업데이트
+            await this.loadDashboardStats();
+            this.updateStats();
+
+            return result;
+        } catch (error) {
+            logger.error('[Dashboard] ❌ 전체 실행 요약 정보 저장 실패:', error);
+            throw error;
+        }
     }
 }
 

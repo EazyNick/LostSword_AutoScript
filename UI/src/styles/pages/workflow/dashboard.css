@@ -113,26 +113,6 @@
     margin-bottom: 8px;
 }
 
-/* 통계 변화량 */
-.stat-change {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 12px;
-}
-
-.stat-change.positive {
-    color: #22c55e; /* 초록색 */
-}
-
-.stat-change.negative {
-    color: #ef4444; /* 빨간색 */
-}
-
-.stat-change .change-icon {
-    font-size: 12px;
-}
-
 /* ========================================== */
 /* 스크립트 목록 */
 /* ========================================== */

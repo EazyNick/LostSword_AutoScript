@@ -38,9 +38,6 @@ export function getNodeType(nodeElement) {
     if (title.includes('시작') || nodeId === 'start') {
         return 'start';
     }
-    if (title.includes('종료') || nodeId === 'end') {
-        return 'end';
-    }
     if (title.includes('조건')) {
         return 'condition';
     }

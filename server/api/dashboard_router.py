@@ -2,7 +2,7 @@
 대시보드 관련 API 라우터
 """
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Body, HTTPException, Request
 
 from api.response_helpers import success_response
 from db.database import db_manager
@@ -14,16 +14,50 @@ logger = log_manager.logger
 
 
 @router.get("/dashboard/stats", response_model=SuccessResponse)
-async def get_dashboard_stats(request: Request) -> SuccessResponse:
-    """대시보드 통계 조회"""
+async def get_dashboard_stats(request: Request, use_cache: bool = True) -> SuccessResponse:
+    """
+    대시보드 통계 조회
+
+    Args:
+        request: HTTP 요청 객체
+        use_cache: 캐시 사용 여부 (기본값: True)
+    """
     client_ip = request.client.host if request.client else "unknown"
-    logger.info(f"[API] 대시보드 통계 조회 요청 - 클라이언트 IP: {client_ip}")
+    logger.info(f"[API] 대시보드 통계 조회 요청 - 클라이언트 IP: {client_ip}, 캐시 사용: {use_cache}")
 
     try:
-        # 통계 계산 및 업데이트
-        stats = db_manager.calculate_and_update_dashboard_stats()
+        # 캐시 우선 조회 또는 강제 재계산
+        stats = db_manager.get_dashboard_stats(use_cache=use_cache)
         logger.info(f"[API] 대시보드 통계 조회 성공: {stats}")
         return success_response(stats, "대시보드 통계 조회 완료")
     except Exception as e:
         logger.error(f"[API] 대시보드 통계 조회 실패: {e!s}")
         raise HTTPException(status_code=500, detail=f"대시보드 통계 조회 실패: {e!s}")
+
+
+@router.post("/dashboard/execution-summary", response_model=SuccessResponse)
+async def record_execution_summary(request: Request, summary: dict = Body(...)) -> SuccessResponse:
+    """
+    전체 실행 요약 정보 저장
+
+    Args:
+        request: HTTP 요청 객체
+        summary: 실행 요약 정보 {total_executions: int, failed_count: int}
+    """
+    client_ip = request.client.host if request.client else "unknown"
+    logger.info(f"[API] 전체 실행 요약 정보 저장 요청 - 클라이언트 IP: {client_ip}, 요약: {summary}")
+
+    try:
+        total_executions = summary.get("total_executions", 0)
+        failed_count = summary.get("failed_count", 0)
+
+        # 전체 실행 통계를 직접 저장 (오늘 기준이 아닌 전체 실행 기준)
+        db_manager.set_all_execution_stats(total_executions, failed_count)
+
+        logger.info(f"[API] 전체 실행 요약 정보 저장 완료 - 총 실행: {total_executions}, 실패: {failed_count}")
+        return success_response(
+            {"total_executions": total_executions, "failed_count": failed_count}, "전체 실행 요약 정보 저장 완료"
+        )
+    except Exception as e:
+        logger.error(f"[API] 전체 실행 요약 정보 저장 실패: {e!s}")
+        raise HTTPException(status_code=500, detail=f"전체 실행 요약 정보 저장 실패: {e!s}")

@@ -39,16 +39,20 @@
 - **pages/workflow/**: 워크플로우 편집기 및 페이지
   - `page-router.js`: SPA 페이지 라우팅
   - `dashboard.js`: 대시보드 페이지
+  - `history.js`: 실행 기록 페이지
   - `settings.js`: 설정 페이지
   - `workflow.js`: 워크플로우 편집기
   - **services/**: 저장/로드/실행 로직
   - **modals/**: 노드 추가/설정 모달
   - **config/**: 노드 설정 파일
     - `node-preview-outputs.js`: 노드 타입별 예시 출력 정의
+- **logs/services/**: 로그 서비스
+  - `log-service.js`: 로그 데이터 로드 및 통계 계산
 - **styles/**: 스타일시트
   - `themes/dark/`: 다크 모드 스타일
   - `themes/light/`: 라이트 모드 스타일
   - `components/`: 컴포넌트별 스타일
+  - `pages/workflow/`: 워크플로우 관련 페이지 스타일
 
 ## 파일 명명 규칙
 

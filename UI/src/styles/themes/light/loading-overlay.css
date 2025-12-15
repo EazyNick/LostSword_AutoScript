@@ -1,0 +1,30 @@
+/* 라이트 모드 로딩 오버레이 스타일 */
+
+body.theme-light #logs-loading-overlay {
+    background: rgba(255, 255, 255, 0.85);
+}
+
+body.theme-light .loading-overlay-content {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    color: #1e293b;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+}
+
+body.theme-light .loading-spinner {
+    color: #3b82f6;
+}
+
+body.theme-light .loading-spinner::before {
+    border-top-color: #2563eb;
+    border-right-color: #3b82f6;
+}
+
+body.theme-light .loading-spinner::after {
+    border-bottom-color: #2563eb;
+    border-left-color: #3b82f6;
+}
+
+body.theme-light .loading-text {
+    color: #475569;
+}

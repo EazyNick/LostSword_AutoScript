@@ -189,12 +189,26 @@ export class ResultModalManager {
         const closeBtn = resultModalContent.querySelector('.result-modal-close');
         const okBtn = resultModalContent.querySelector('#result-ok-btn');
 
+        // 모달이 실제로 표시되었는지 추적하는 플래그
+        let modalWasShown = false;
+
         const closeModal = () => {
             resultModal.classList.remove('show');
             resultModal.classList.add('hide');
+
+            // 모달이 실제로 표시된 후에만 닫힐 때 이벤트 dispatch (대시보드에서 실패 상태 제거를 위해)
+            if (modalWasShown) {
+                document.dispatchEvent(
+                    new CustomEvent('executionResultModalShown', {
+                        detail: { title, resultData }
+                    })
+                );
+            }
+
             setTimeout(() => {
                 resultModal.style.display = 'none';
                 resultModal.classList.remove('hide');
+                modalWasShown = false; // 플래그 리셋
                 if (onOk) {
                     onOk();
                 }
@@ -211,6 +225,20 @@ export class ResultModalManager {
             }
         });
 
+        // 모달 표시
+        resultModal.style.display = 'block';
+        // 모달이 화면에 표시되도록 약간의 지연 후 애니메이션 클래스 추가
+        setTimeout(() => {
+            resultModal.classList.add('show');
+
+            // 모달이 실제로 표시된 후 플래그 설정
+            requestAnimationFrame(() => {
+                modalWasShown = true;
+                // 모달이 표시되었을 때는 이벤트를 dispatch하지 않음
+                // (사용자가 확인 버튼을 누를 때까지 실패 상태를 유지하기 위해)
+            });
+        }, 10);
+
         // ESC 키로 닫기
         const escHandler = (e) => {
             if (e.key === 'Escape' && resultModal.classList.contains('show')) {
@@ -222,12 +250,6 @@ export class ResultModalManager {
 
         // 사이드바 너비를 CSS 변수로 설정 (중앙 정렬 계산용)
         this.updateModalPosition();
-
-        // 모달 표시
-        resultModal.style.display = 'block';
-        setTimeout(() => {
-            resultModal.classList.add('show');
-        }, 10);
     }
 
     /**

@@ -43,7 +43,12 @@ class NodeExecutionLogRepository:
         error_traceback: str | None = None,
     ) -> int:
         """
-        노드 실행 로그 생성
+        노드 실행 로그 생성 또는 업데이트
+
+        - running 상태: 같은 execution_id와 node_id의 기존 running 로그를 삭제하고 새로 생성
+          (단, 이미 completed/failed 로그가 있으면 생성하지 않음)
+        - completed/failed 상태: 같은 execution_id와 node_id의 running 로그를 찾아서 업데이트
+          (없으면 새로 생성)
 
         Args:
             execution_id: 워크플로우 실행 ID (같은 실행의 노드들을 그룹화)
@@ -61,7 +66,7 @@ class NodeExecutionLogRepository:
             error_traceback: 에러 스택 트레이스 (실패 시)
 
         Returns:
-            생성된 로그 ID
+            생성/업데이트된 로그 ID
         """
         conn = self.connection.get_connection()
         cursor = self.connection.get_cursor(conn)
@@ -71,6 +76,99 @@ class NodeExecutionLogRepository:
             parameters_json = json.dumps(parameters) if parameters else "{}"
             result_json = json.dumps(result) if result else "{}"
 
+            # execution_id와 node_id가 있는 경우에만 중복 방지 로직 적용
+            if execution_id and node_id:
+                if status == "running":
+                    # running 상태: 이미 completed/failed 로그가 있으면 생성하지 않음
+                    cursor.execute(
+                        """
+                        SELECT id FROM node_execution_logs
+                        WHERE execution_id = ? AND node_id = ? AND status IN ('completed', 'failed')
+                        ORDER BY id DESC
+                        LIMIT 1
+                        """,
+                        (execution_id, node_id),
+                    )
+                    completed_log = cursor.fetchone()
+                    if completed_log:
+                        conn.commit()
+                        return completed_log[0]
+
+                    # 기존 running 로그 삭제 (중복 방지)
+                    cursor.execute(
+                        """
+                        DELETE FROM node_execution_logs
+                        WHERE execution_id = ? AND node_id = ? AND status = 'running'
+                        """,
+                        (execution_id, node_id),
+                    )
+
+                elif status in ("completed", "failed"):
+                    # completed/failed 상태: running 로그를 찾아서 업데이트
+                    cursor.execute(
+                        """
+                        SELECT id FROM node_execution_logs
+                        WHERE execution_id = ? AND node_id = ? AND status = 'running'
+                        ORDER BY id DESC
+                        LIMIT 1
+                        """,
+                        (execution_id, node_id),
+                    )
+                    running_log = cursor.fetchone()
+
+                    if running_log:
+                        # running 로그를 completed/failed로 업데이트
+                        log_id_to_update = running_log[0]
+                        cursor.execute(
+                            """
+                            UPDATE node_execution_logs
+                            SET status = ?,
+                                finished_at = ?,
+                                execution_time_ms = ?,
+                                result = ?,
+                                error_message = ?,
+                                error_traceback = ?
+                            WHERE id = ?
+                            """,
+                            (
+                                status,
+                                finished_at,
+                                execution_time_ms,
+                                result_json,
+                                error_message,
+                                error_traceback,
+                                log_id_to_update,
+                            ),
+                        )
+
+                        # 남아있는 모든 running 로그 삭제 (중복 방지)
+                        cursor.execute(
+                            """
+                            DELETE FROM node_execution_logs
+                            WHERE execution_id = ? AND node_id = ? AND status = 'running'
+                            """,
+                            (execution_id, node_id),
+                        )
+
+                        conn.commit()
+                        return log_id_to_update
+
+                    # running 로그가 없고 이미 completed/failed 로그가 있으면 기존 로그 반환
+                    cursor.execute(
+                        """
+                        SELECT id FROM node_execution_logs
+                        WHERE execution_id = ? AND node_id = ? AND status IN ('completed', 'failed')
+                        ORDER BY id DESC
+                        LIMIT 1
+                        """,
+                        (execution_id, node_id),
+                    )
+                    existing_log = cursor.fetchone()
+                    if existing_log:
+                        conn.commit()
+                        return existing_log[0]
+
+            # 새 로그 생성
             cursor.execute(
                 """
                 INSERT INTO node_execution_logs (

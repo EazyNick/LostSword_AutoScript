@@ -17,10 +17,11 @@
         <link rel="stylesheet" href="/static/styles/components/modal.css" />
         <link rel="stylesheet" href="/static/styles/components/node-settings-modal.css" />
         <link rel="stylesheet" href="/static/styles/components/result-modal.css" />
-        <link rel="stylesheet" href="/static/pages/workflow/workflow.css" />
-        <link rel="stylesheet" href="/static/pages/workflow/dashboard.css" />
-        <link rel="stylesheet" href="/static/pages/workflow/settings.css" />
-        <link rel="stylesheet" href="/static/pages/workflow/history.css" />
+        <link rel="stylesheet" href="/static/styles/components/loading-overlay.css" />
+        <link rel="stylesheet" href="/static/styles/pages/workflow/workflow.css" />
+        <link rel="stylesheet" href="/static/styles/pages/workflow/dashboard.css" />
+        <link rel="stylesheet" href="/static/styles/pages/workflow/settings.css" />
+        <link rel="stylesheet" href="/static/styles/pages/workflow/history.css" />
         <!-- 테마 스타일 -->
         <!-- 다크 모드 -->
         <link rel="stylesheet" href="/static/styles/themes/dark/common.css" />
@@ -32,6 +33,7 @@
         <link rel="stylesheet" href="/static/styles/themes/dark/settings.css" />
         <link rel="stylesheet" href="/static/styles/themes/dark/workflow.css" />
         <link rel="stylesheet" href="/static/styles/themes/dark/history.css" />
+        <link rel="stylesheet" href="/static/styles/themes/dark/loading-overlay.css" />
         <!-- 라이트 모드 -->
         <link rel="stylesheet" href="/static/styles/themes/light/common.css" />
         <link rel="stylesheet" href="/static/styles/themes/light/components.css" />
@@ -42,6 +44,7 @@
         <link rel="stylesheet" href="/static/styles/themes/light/settings.css" />
         <link rel="stylesheet" href="/static/styles/themes/light/workflow.css" />
         <link rel="stylesheet" href="/static/styles/themes/light/history.css" />
+        <link rel="stylesheet" href="/static/styles/themes/light/loading-overlay.css" />
     </head>
     <body>
         <!-- 메인 앱 컨테이너 -->
@@ -168,17 +171,13 @@
                             </div>
                             <div class="stat-card">
                                 <div class="stat-card-icon">▶</div>
-                                <div class="stat-label">오늘 실행 횟수</div>
-                                <div class="stat-value" id="stat-today-executions">0</div>
-                                <div class="stat-change positive" id="stat-execution-change">
-                                    <span class="change-icon">↑</span>
-                                    <span class="change-text">+0% 어제 대비</span>
-                                </div>
+                                <div class="stat-label">전체 실행 횟수</div>
+                                <div class="stat-value" id="stat-all-executions">0</div>
                             </div>
                             <div class="stat-card">
                                 <div class="stat-card-icon">✗</div>
-                                <div class="stat-label">오늘 실패한 스크립트</div>
-                                <div class="stat-value" id="stat-today-failed">0</div>
+                                <div class="stat-label">실행 실패한 스크립트</div>
+                                <div class="stat-value" id="stat-all-failed">0</div>
                             </div>
                             <div class="stat-card">
                                 <div class="stat-card-icon">⏸</div>
@@ -199,6 +198,13 @@
 
                 <!-- 에디터 페이지 (기존 워크플로우 영역) -->
                 <div class="page-content workflow-area" id="page-editor" style="display: none">
+                    <!-- 노드 로딩 오버레이 -->
+                    <div id="node-loading-overlay" class="node-loading-overlay" style="display: none">
+                        <div class="loading-content">
+                            <div class="loading-spinner"></div>
+                            <p class="loading-text">노드를 불러오는 중...</p>
+                        </div>
+                    </div>
                     <!-- 워크플로우 캔버스: 노드들이 배치되는 메인 영역 -->
                     <!-- tabindex="0": 키보드 포커스 가능하게 설정 (줌 기능을 위해 필요) -->
                     <div class="workflow-canvas" id="workflow-canvas" tabindex="0">
@@ -337,7 +343,6 @@
 
         <!-- 7. 각 노드 타입 정의 (NodeManager.registerNodeType 사용) -->
         <script src="/static/js/components/node/node-start.js"></script>
-        <script src="/static/js/components/node/node-end.js"></script>
         <script src="/static/js/components/node/node-condition.js"></script>
         <script src="/static/js/components/node/node-loop.js"></script>
         <script src="/static/js/components/node/node-wait.js"></script>

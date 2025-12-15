@@ -3,9 +3,10 @@
  * ES6 모듈 방식으로 작성됨
  */
 
-import { LogService } from '../logs/services/log-service.js';
+import { LogService } from '../../logs/services/log-service.js';
 import { ScriptAPI } from '../../js/api/scriptapi.js';
 import { LogAPI } from '../../js/api/logapi.js';
+import { getModalManagerInstance } from '../../js/utils/modal.js';
 
 /**
  * 로거 유틸리티 가져오기
@@ -32,6 +33,7 @@ export class HistoryManager {
             status: 'all',
             limit: 100
         };
+        this.modalManager = getModalManagerInstance();
     }
 
     /**
@@ -345,32 +347,52 @@ export class HistoryManager {
     async deleteLogItem(logId, itemElement) {
         const logger = getLogger();
 
-        if (!confirm('이 로그를 삭제하시겠습니까?')) {
-            return;
-        }
+        this.modalManager.showCenterConfirm(
+            '로그 삭제',
+            '이 로그를 삭제하시겠습니까?',
+            async () => {
+                try {
+                    const result = await LogAPI.deleteNodeExecutionLog(logId);
+                    logger.log(`[HistoryManager] 로그 삭제 성공 - 로그 ID: ${logId}`);
+                    logger.log('[HistoryManager] 삭제 응답 데이터:', result);
 
-        try {
-            await LogAPI.deleteNodeExecutionLog(logId);
-            logger.log(`[HistoryManager] 로그 삭제 성공 - 로그 ID: ${logId}`);
+                    // UI에서 제거
+                    itemElement.remove();
 
-            // UI에서 제거
-            itemElement.remove();
+                    // 로그 목록에서도 제거 (LogService의 logs를 직접 업데이트)
+                    this.logService.logs = this.logService.logs.filter((log) => log.id !== logId);
 
-            // 로그 목록에서도 제거 (LogService의 logs를 직접 업데이트)
-            this.logService.logs = this.logService.logs.filter((log) => log.id !== logId);
+                    // 서버에서 받은 통계로 업데이트
+                    if (result && result.data && result.data.stats) {
+                        const stats = {
+                            total: result.data.stats.total || 0,
+                            completed: result.data.stats.completed || 0,
+                            failed: result.data.stats.failed || 0,
+                            averageExecutionTime: result.data.stats.average_execution_time || 0
+                        };
+                        logger.log('[HistoryManager] 서버 통계로 업데이트:', stats);
+                        this.updateStats(stats);
+                    } else {
+                        // 통계가 없으면 로컬 계산
+                        logger.log('[HistoryManager] 서버 통계 없음, 로컬 계산 사용');
+                        const stats = this.logService.calculateStats();
+                        logger.log('[HistoryManager] 로컬 계산 통계:', stats);
+                        this.updateStats(stats);
+                    }
 
-            // 통계 업데이트 (즉시 반영)
-            const stats = this.logService.calculateStats();
-            this.updateStats(stats);
-
-            // 로그 목록이 비어있으면 메시지 표시
-            if (this.logs.length === 0) {
-                this.renderLogs();
+                    // 로그 목록이 비어있으면 메시지 표시
+                    if (this.logs.length === 0) {
+                        this.renderLogs();
+                    }
+                } catch (error) {
+                    logger.error(`[HistoryManager] 로그 삭제 실패 - 로그 ID: ${logId}`, error);
+                    this.modalManager.showCenterAlert('오류', '로그 삭제에 실패했습니다.');
+                }
+            },
+            () => {
+                // 취소 시 아무 작업도 하지 않음
             }
-        } catch (error) {
-            logger.error(`[HistoryManager] 로그 삭제 실패 - 로그 ID: ${logId}`, error);
-            alert('로그 삭제에 실패했습니다.');
-        }
+        );
     }
 
     /**
@@ -379,32 +401,51 @@ export class HistoryManager {
     async deleteExecutionGroup(executionId, groupElement) {
         const logger = getLogger();
 
-        if (!confirm('이 실행 기록의 모든 로그를 삭제하시겠습니까?')) {
-            return;
-        }
+        this.modalManager.showCenterConfirm(
+            '실행 기록 삭제',
+            '이 실행 기록의 모든 로그를 삭제하시겠습니까?',
+            async () => {
+                try {
+                    const result = await LogAPI.deleteNodeExecutionLogsByExecutionId(executionId);
+                    logger.log(`[HistoryManager] 실행 그룹 삭제 성공 - execution_id: ${executionId}`);
 
-        try {
-            await LogAPI.deleteNodeExecutionLogsByExecutionId(executionId);
-            logger.log(`[HistoryManager] 실행 그룹 삭제 성공 - execution_id: ${executionId}`);
+                    // UI에서 제거
+                    groupElement.remove();
 
-            // UI에서 제거
-            groupElement.remove();
+                    // 로그 목록에서도 제거 (LogService의 logs를 직접 업데이트)
+                    this.logService.logs = this.logService.logs.filter((log) => log.execution_id !== executionId);
 
-            // 로그 목록에서도 제거 (LogService의 logs를 직접 업데이트)
-            this.logService.logs = this.logService.logs.filter((log) => log.execution_id !== executionId);
+                    // 서버에서 받은 통계로 업데이트
+                    if (result && result.data && result.data.stats) {
+                        const stats = {
+                            total: result.data.stats.total || 0,
+                            completed: result.data.stats.completed || 0,
+                            failed: result.data.stats.failed || 0,
+                            averageExecutionTime: result.data.stats.average_execution_time || 0
+                        };
+                        logger.log('[HistoryManager] 서버 통계로 업데이트:', stats);
+                        this.updateStats(stats);
+                    } else {
+                        // 통계가 없으면 로컬 계산
+                        logger.log('[HistoryManager] 서버 통계 없음, 로컬 계산 사용');
+                        const stats = this.logService.calculateStats();
+                        logger.log('[HistoryManager] 로컬 계산 통계:', stats);
+                        this.updateStats(stats);
+                    }
 
-            // 통계 업데이트 (즉시 반영)
-            const stats = this.logService.calculateStats();
-            this.updateStats(stats);
-
-            // 로그 목록이 비어있으면 메시지 표시
-            if (this.logs.length === 0) {
-                this.renderLogs();
+                    // 로그 목록이 비어있으면 메시지 표시
+                    if (this.logs.length === 0) {
+                        this.renderLogs();
+                    }
+                } catch (error) {
+                    logger.error(`[HistoryManager] 실행 그룹 삭제 실패 - execution_id: ${executionId}`, error);
+                    this.modalManager.showCenterAlert('오류', '실행 기록 삭제에 실패했습니다.');
+                }
+            },
+            () => {
+                // 취소 시 아무 작업도 하지 않음
             }
-        } catch (error) {
-            logger.error(`[HistoryManager] 실행 그룹 삭제 실패 - execution_id: ${executionId}`, error);
-            alert('실행 기록 삭제에 실패했습니다.');
-        }
+        );
     }
 
     /**
@@ -413,45 +454,85 @@ export class HistoryManager {
     async deleteAllLogs() {
         const logger = getLogger();
 
-        if (!confirm('모든 로그를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
-            return;
-        }
+        this.modalManager.showCenterConfirm(
+            '전체 로그 삭제',
+            '모든 로그를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.',
+            async () => {
+                try {
+                    const result = await LogAPI.deleteAllNodeExecutionLogs();
+                    logger.log('[HistoryManager] 전체 로그 삭제 성공');
 
-        try {
-            await LogAPI.deleteAllNodeExecutionLogs();
-            logger.log('[HistoryManager] 전체 로그 삭제 성공');
+                    // 로그 목록 초기화 (LogService의 logs를 직접 업데이트)
+                    this.logService.logs = [];
 
-            // 로그 목록 초기화 (LogService의 logs를 직접 업데이트)
-            this.logService.logs = [];
+                    // 서버에서 받은 통계로 업데이트
+                    if (result.data && result.data.stats) {
+                        const stats = {
+                            total: result.data.stats.total || 0,
+                            completed: result.data.stats.completed || 0,
+                            failed: result.data.stats.failed || 0,
+                            averageExecutionTime: result.data.stats.average_execution_time || 0
+                        };
+                        this.updateStats(stats);
+                    } else {
+                        // 통계가 없으면 0으로 설정
+                        const stats = {
+                            total: 0,
+                            completed: 0,
+                            failed: 0,
+                            averageExecutionTime: 0
+                        };
+                        this.updateStats(stats);
+                    }
 
-            // UI 업데이트 (renderLogs 내부에서 통계도 업데이트됨)
-            this.renderLogs();
-        } catch (error) {
-            logger.error('[HistoryManager] 전체 로그 삭제 실패', error);
-            alert('전체 로그 삭제에 실패했습니다.');
-        }
+                    // UI 업데이트 (renderLogs 내부에서 통계도 업데이트됨)
+                    this.renderLogs();
+                } catch (error) {
+                    logger.error('[HistoryManager] 전체 로그 삭제 실패', error);
+                    this.modalManager.showCenterAlert('오류', '전체 로그 삭제에 실패했습니다.');
+                }
+            },
+            () => {
+                // 취소 시 아무 작업도 하지 않음
+            }
+        );
     }
 
     /**
      * 통계 카드 업데이트
      */
     updateStats(stats) {
+        const logger = getLogger();
+        logger.log('[HistoryManager] 통계 업데이트 시작:', stats);
+
         const totalEl = document.getElementById('history-stat-total');
         const completedEl = document.getElementById('history-stat-completed');
         const failedEl = document.getElementById('history-stat-failed');
         const avgTimeEl = document.getElementById('history-stat-avg-time');
 
         if (totalEl) {
-            totalEl.textContent = stats.total;
+            totalEl.textContent = stats.total || 0;
+            logger.log(`[HistoryManager] 전체 로그 개수 업데이트: ${stats.total || 0}`);
+        } else {
+            logger.warn('[HistoryManager] history-stat-total 요소를 찾을 수 없습니다.');
         }
         if (completedEl) {
-            completedEl.textContent = stats.completed;
+            completedEl.textContent = stats.completed || 0;
+            logger.log(`[HistoryManager] 완료 로그 개수 업데이트: ${stats.completed || 0}`);
+        } else {
+            logger.warn('[HistoryManager] history-stat-completed 요소를 찾을 수 없습니다.');
         }
         if (failedEl) {
-            failedEl.textContent = stats.failed;
+            failedEl.textContent = stats.failed || 0;
+            logger.log(`[HistoryManager] 실패 로그 개수 업데이트: ${stats.failed || 0}`);
+        } else {
+            logger.warn('[HistoryManager] history-stat-failed 요소를 찾을 수 없습니다.');
         }
         if (avgTimeEl) {
-            avgTimeEl.textContent = this.formatExecutionTime(stats.averageExecutionTime);
+            avgTimeEl.textContent = this.formatExecutionTime(stats.averageExecutionTime || 0);
+            logger.log(`[HistoryManager] 평균 실행 시간 업데이트: ${stats.averageExecutionTime || 0}ms`);
+        } else {
+            logger.warn('[HistoryManager] history-stat-avg-time 요소를 찾을 수 없습니다.');
         }
     }
 
@@ -517,6 +598,94 @@ export class HistoryManager {
                 await this.deleteAllLogs();
             });
         }
+
+        // 워크플로우 실행 완료 시 로그 자동 새로고침
+        // 중복 이벤트 방지를 위한 플래그
+        let isRefreshing = false;
+        let lastEventTime = 0;
+
+        document.addEventListener('logsUpdated', async (e) => {
+            const logger = getLogger();
+            logger.log('[HistoryManager] 로그 업데이트 이벤트 수신:', e.detail);
+
+            // 실행 기록 페이지가 현재 표시 중인지 확인
+            const historyPage = document.getElementById('page-history');
+            if (!historyPage || historyPage.style.display === 'none') {
+                return;
+            }
+
+            // 중복 이벤트 방지 (같은 이벤트가 500ms 이내에 여러 번 발생하면 무시)
+            const currentTime = Date.now();
+            if (isRefreshing || currentTime - lastEventTime < 500) {
+                logger.log('[HistoryManager] 중복 이벤트 무시');
+                return;
+            }
+
+            isRefreshing = true;
+            lastEventTime = currentTime;
+
+            // 서버에서 로그 저장이 완료된 후 이벤트가 dispatch되므로 즉시 로그 조회
+            // 실패 시에는 로그 저장이 더 오래 걸릴 수 있으므로 재시도 로직 추가
+            const isFailed = e.detail?.type === 'workflowExecutionFailed';
+            let retryCount = 0;
+            const maxRetries = isFailed ? 3 : 1; // 실패 시 3번 재시도, 성공 시 1번
+            const retryInterval = 500; // 500ms 간격
+
+            while (retryCount < maxRetries) {
+                try {
+                    await this.loadLogs();
+                    const currentLogCount = this.logs.length;
+
+                    // 실패 시에는 failed 상태의 로그가 있는지 확인
+                    if (isFailed && currentLogCount > 0) {
+                        const hasFailedLog = this.logs.some((log) => log.status === 'failed');
+                        if (hasFailedLog || retryCount === maxRetries - 1) {
+                            // failed 로그가 있거나 마지막 재시도인 경우 렌더링
+                            this.renderLogs();
+                            logger.log(
+                                `[HistoryManager] 로그 자동 새로고침 완료 (재시도: ${retryCount + 1}회, 로그 개수: ${currentLogCount}개)`
+                            );
+                            break;
+                        } else {
+                            // failed 로그가 없으면 재시도
+                            retryCount++;
+                            logger.log(
+                                `[HistoryManager] 실패 로그가 아직 저장되지 않음, 재시도 ${retryCount}/${maxRetries} (500ms 후)`
+                            );
+                            await new Promise((resolve) => setTimeout(resolve, retryInterval));
+                            continue;
+                        }
+                    } else {
+                        // 성공 시 또는 로그가 없는 경우 즉시 렌더링
+                        this.renderLogs();
+                        logger.log(`[HistoryManager] 로그 자동 새로고침 완료 (로그 개수: ${currentLogCount}개)`);
+                        break;
+                    }
+                } catch (error) {
+                    logger.error(
+                        `[HistoryManager] 로그 새로고침 실패 (재시도 ${retryCount + 1}/${maxRetries}):`,
+                        error
+                    );
+                    retryCount++;
+                    if (retryCount < maxRetries) {
+                        await new Promise((resolve) => setTimeout(resolve, retryInterval));
+                    } else {
+                        // 마지막 재시도 실패 시에도 렌더링 시도 (폴백)
+                        try {
+                            this.renderLogs();
+                        } catch (renderError) {
+                            logger.error('[HistoryManager] 렌더링 실패:', renderError);
+                        }
+                    }
+                }
+            }
+
+            isRefreshing = false;
+        });
+
+        // 전체 스크립트 실행 완료 시 로그 자동 새로고침
+        // (logsUpdated 이벤트로 이미 처리되므로 여기서는 제거)
+        // allScriptsExecutionCompleted는 대시보드에서만 사용
     }
 
     /**

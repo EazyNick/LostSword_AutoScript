@@ -44,6 +44,14 @@ async def create_node_execution_log(request: NodeExecutionLogRequest, api_reques
             error_traceback=request.error_traceback,
         )
 
+        # 통계 업데이트 (completed 또는 failed 상태일 때만, running은 제외)
+        # running 상태는 나중에 completed/failed로 업데이트되므로 중복 카운팅 방지
+        if request.status in ("completed", "failed"):
+            try:
+                db_manager.log_stats.calculate_and_update_stats()
+            except Exception as stats_error:
+                logger.warning(f"[API] 로그 통계 업데이트 실패 (무시): {stats_error!s}")
+
         logger.info(
             f"[API] 노드 실행 로그 생성 성공 - 로그 ID: {log_id}, 노드 ID: {request.node_id}, 상태: {request.status}"
         )
@@ -128,8 +136,14 @@ async def delete_node_execution_log(log_id: int, http_request: Request) -> Succe
         if not deleted:
             raise HTTPException(status_code=404, detail="로그를 찾을 수 없습니다.")
 
+        # 통계 업데이트
+        stats = db_manager.log_stats.calculate_and_update_stats()
+
         logger.info(f"[API] 노드 실행 로그 삭제 성공 - 로그 ID: {log_id}")
-        return success_response({"log_id": log_id}, "노드 실행 로그가 삭제되었습니다.")
+        return success_response(
+            {"log_id": log_id, "stats": stats},
+            "노드 실행 로그가 삭제되었습니다.",
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -148,11 +162,15 @@ async def delete_node_execution_logs_by_execution_id(execution_id: str, http_req
 
     try:
         deleted_count = db_manager.node_execution_logs.delete_logs_by_execution_id(execution_id)
+
+        # 통계 업데이트
+        stats = db_manager.log_stats.calculate_and_update_stats()
+
         logger.info(
             f"[API] 실행 ID별 노드 실행 로그 삭제 성공 - execution_id: {execution_id}, 삭제된 개수: {deleted_count}"
         )
         return success_response(
-            {"execution_id": execution_id, "deleted_count": deleted_count},
+            {"execution_id": execution_id, "deleted_count": deleted_count, "stats": stats},
             f"{deleted_count}개의 노드 실행 로그가 삭제되었습니다.",
         )
     except Exception as e:
@@ -171,11 +189,88 @@ async def delete_all_node_execution_logs(http_request: Request) -> SuccessRespon
 
     try:
         deleted_count = db_manager.node_execution_logs.delete_all_logs()
+
+        # 통계 업데이트
+        stats = db_manager.log_stats.calculate_and_update_stats()
+
         logger.info(f"[API] 전체 노드 실행 로그 삭제 성공 - 삭제된 개수: {deleted_count}")
         return success_response(
-            {"deleted_count": deleted_count},
+            {"deleted_count": deleted_count, "stats": stats},
             f"모든 노드 실행 로그({deleted_count}개)가 삭제되었습니다.",
         )
     except Exception as e:
         logger.error(f"[API] 전체 노드 실행 로그 삭제 실패: {e!s}")
         raise HTTPException(status_code=500, detail=f"로그 삭제 실패: {e!s}")
+
+
+@router.get("/node-execution/check-ready", response_model=SuccessResponse)
+@api_handler
+async def check_logs_ready(
+    http_request: Request,
+    execution_id: str = Query(..., description="워크플로우 실행 ID"),
+    expected_status: str | None = Query(None, description="예상 상태 (completed 또는 failed)"),
+) -> SuccessResponse:
+    """
+    execution_id의 로그가 저장 완료되었는지 확인합니다.
+    서버에서 로그 저장이 완료될 때까지 대기하고 완료되면 응답합니다.
+    """
+    client_ip = http_request.client.host if http_request.client else "unknown"
+    logger.debug(
+        f"[API] 로그 저장 완료 확인 요청 - execution_id: {execution_id}, expected_status: {expected_status}, 클라이언트 IP: {client_ip}"
+    )
+
+    try:
+        import asyncio
+        from datetime import datetime
+
+        max_wait_time = 30  # 최대 30초 대기
+        check_interval = 0.5  # 0.5초마다 확인
+        start_time = datetime.now()
+
+        while (datetime.now() - start_time).total_seconds() < max_wait_time:
+            logs = db_manager.node_execution_logs.get_logs_by_execution_id(execution_id)
+
+            if logs and len(logs) > 0:
+                # expected_status가 지정된 경우 해당 상태의 로그 확인
+                if expected_status:
+                    has_expected_status = any(log.get("status") == expected_status for log in logs)
+                    if has_expected_status:
+                        logger.info(
+                            f"[API] 로그 저장 완료 확인 성공 - execution_id: {execution_id}, 상태: {expected_status}, 로그 개수: {len(logs)}"
+                        )
+                        return success_response(
+                            {
+                                "execution_id": execution_id,
+                                "ready": True,
+                                "logs_count": len(logs),
+                                "status": expected_status,
+                            },
+                            "로그 저장이 완료되었습니다.",
+                        )
+                else:
+                    # expected_status가 없으면 로그가 있으면 완료로 간주
+                    # 단, 모든 로그가 running 상태가 아닌지 확인
+                    has_final_status = any(log.get("status") in ("completed", "failed") for log in logs)
+                    if has_final_status:
+                        logger.info(
+                            f"[API] 로그 저장 완료 확인 성공 - execution_id: {execution_id}, 로그 개수: {len(logs)}"
+                        )
+                        return success_response(
+                            {"execution_id": execution_id, "ready": True, "logs_count": len(logs)},
+                            "로그 저장이 완료되었습니다.",
+                        )
+
+            # 아직 로그가 저장되지 않았으면 잠시 대기 후 재확인
+            await asyncio.sleep(check_interval)
+
+        # 타임아웃
+        logger.warning(
+            f"[API] 로그 저장 완료 확인 타임아웃 - execution_id: {execution_id}, 최대 대기 시간: {max_wait_time}초"
+        )
+        return success_response(
+            {"execution_id": execution_id, "ready": False, "timeout": True},
+            "로그 저장 확인 타임아웃 (30초)",
+        )
+    except Exception as e:
+        logger.error(f"[API] 로그 저장 완료 확인 실패: {e!s}")
+        raise HTTPException(status_code=500, detail=f"로그 저장 확인 실패: {e!s}")

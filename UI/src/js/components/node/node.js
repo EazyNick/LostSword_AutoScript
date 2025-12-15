@@ -1888,7 +1888,7 @@ export class NodeManager {
         const nodeId = node.dataset.nodeId || node.id;
 
         // 시작/종료 노드는 삭제 금지 (단, force가 true이면 허용)
-        if (!force && (nodeId === 'start' || nodeId === 'end')) {
+        if (!force && nodeId === 'start') {
             logWarn('시작/종료 노드는 삭제할 수 없습니다.');
             return;
         }

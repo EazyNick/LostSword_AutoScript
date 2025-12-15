@@ -26,10 +26,46 @@ export class AddNodeModal {
             return;
         }
 
-        const content = await this.generateModalContent();
-        modalManager.show(content);
+        // 로딩 UI 표시
+        const loadingContent = `
+            <h3>노드 추가</h3>
+            <div class="node-loading-container" style="text-align: center; padding: 40px 20px;">
+                <div class="loading-spinner" style="display: inline-block; width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                <p style="margin-top: 20px; color: #666;">노드 목록을 불러오는 중...</p>
+            </div>
+            <style>
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+            </style>
+        `;
+        modalManager.show(loadingContent);
 
-        this.setupEventListeners();
+        try {
+            const content = await this.generateModalContent();
+            modalManager.show(content);
+            this.setupEventListeners();
+        } catch (error) {
+            console.error('[AddNodeModal] 노드 목록 로드 실패:', error);
+            const errorContent = `
+                <h3>노드 추가</h3>
+                <div style="text-align: center; padding: 40px 20px;">
+                    <p style="color: #e74c3c;">노드 목록을 불러오는 중 오류가 발생했습니다.</p>
+                    <button id="retry-load-nodes" class="btn btn-primary" style="margin-top: 20px;">다시 시도</button>
+                    <button id="close-modal-on-error" class="btn btn-secondary" style="margin-top: 10px;">닫기</button>
+                </div>
+            `;
+            modalManager.show(errorContent);
+
+            // 다시 시도 버튼 이벤트
+            document.getElementById('retry-load-nodes')?.addEventListener('click', () => {
+                this.show();
+            });
+            document.getElementById('close-modal-on-error')?.addEventListener('click', () => {
+                modalManager.hide();
+            });
+        }
     }
 
     /**
@@ -294,20 +330,20 @@ export class AddNodeModal {
                     }
                 }
 
-                // 기본 제목 설정 (nodes.config.js의 title 사용)
+                // 기본 제목 설정 (서버의 nodes_config.py의 title 사용)
                 const titleInput = document.getElementById('node-title');
                 if (titleInput && config) {
-                    // 노드 타입 변경 시 항상 nodes.config.js의 title로 초기화
+                    // 노드 타입 변경 시 항상 서버 설정의 title로 초기화
                     titleInput.value = config.title || getDefaultTitle(selectedType);
                 } else if (titleInput) {
                     // config가 없어도 기본값 설정
                     titleInput.value = getDefaultTitle(selectedType);
                 }
 
-                // 기본 설명 설정 (nodes.config.js의 description 사용)
+                // 기본 설명 설정 (서버의 nodes_config.py의 description 사용)
                 const descriptionInput = document.getElementById('node-description');
                 if (descriptionInput && config) {
-                    // 노드 타입 변경 시 항상 nodes.config.js의 description으로 초기화
+                    // 노드 타입 변경 시 항상 서버 설정의 description으로 초기화
                     descriptionInput.value = config.description || getDefaultDescription(selectedType);
                 } else if (descriptionInput) {
                     // config가 없어도 기본값 설정
@@ -534,18 +570,18 @@ export class AddNodeModal {
         let nodeTitle = document.getElementById('node-title').value.trim();
         let nodeDescription = document.getElementById('node-description').value.trim();
 
-        // nodes.config.js에서 기본 제목 가져오기
+        // 서버의 nodes_config.py에서 기본 제목 가져오기
         const registry = getNodeRegistry();
         const config = await registry.getConfig(nodeType);
         const defaultTitle = config?.title || getDefaultTitle(nodeType);
         const defaultDescription = config?.description || getDefaultDescription(nodeType);
 
-        // 제목이 비어있으면 nodes.config.js의 title 사용
+        // 제목이 비어있으면 서버 설정의 title 사용
         if (!nodeTitle) {
             nodeTitle = defaultTitle;
         }
 
-        // 설명이 비어있으면 nodes.config.js의 description 사용
+        // 설명이 비어있으면 서버 설정의 description 사용
         if (!nodeDescription) {
             nodeDescription = defaultDescription;
         }
@@ -555,7 +591,7 @@ export class AddNodeModal {
         const detailNodeType = detailNodeTypeSelect ? detailNodeTypeSelect.value : '';
 
         const nodeData = {
-            id: nodeType === NODE_TYPES.START ? 'start' : nodeType === NODE_TYPES.END ? 'end' : `node_${Date.now()}`,
+            id: nodeType === NODE_TYPES.START ? 'start' : `node_${Date.now()}`,
             type: nodeType,
             title: nodeTitle,
             description: nodeDescription,
@@ -721,7 +757,18 @@ export class AddNodeModal {
             }
 
             // 이전 노드의 출력 스키마 기반 예시 데이터 생성
-            const previousOutput = generatePreviewFromSchema(previousNodeConfig.output_schema, previousNodeData || {});
+            // output_schema는 표준 형식: {action, status, output: {type: "object", properties: {...}}}
+            let previousOutput = {};
+            if (previousNodeConfig.output_schema.output && previousNodeConfig.output_schema.output.properties) {
+                // 표준 형식: output_schema.output.properties를 사용
+                previousOutput = generatePreviewFromSchema(
+                    previousNodeConfig.output_schema.output.properties,
+                    previousNodeData || {}
+                );
+            } else {
+                // 레거시 형식: output_schema가 직접 properties를 정의한 경우
+                previousOutput = generatePreviewFromSchema(previousNodeConfig.output_schema, previousNodeData || {});
+            }
 
             // compare_value에 설정할 값 결정
             // output.value 형식으로 필드 경로를 설정하고, output 객체의 첫 번째 값을 compare_value로 설정

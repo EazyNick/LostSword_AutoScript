@@ -5,12 +5,14 @@
 
 import { getResultModalManagerInstance } from '../../../js/utils/result-modal.js';
 import { getNodeRegistry } from './node-registry.js';
+import { getDashboardManagerInstance } from '../dashboard.js';
 
 export class WorkflowExecutionService {
     constructor(workflowPage) {
         this.workflowPage = workflowPage;
         this.isCancelled = false; // 실행 취소 플래그
         this.isRunningAllScripts = false; // 전체 스크립트 실행 중인지 여부
+        this.executionStartTime = null; // 실행 시작 시간
     }
 
     /**
@@ -39,6 +41,9 @@ export class WorkflowExecutionService {
         const modalManager = this.workflowPage.getModalManager();
         const nodes = document.querySelectorAll('.workflow-node');
 
+        // 실행 시작 시간 기록
+        this.executionStartTime = Date.now();
+
         if (nodes.length === 0) {
             if (toastManager) {
                 toastManager.warning('실행할 노드가 없습니다.');
@@ -57,8 +62,8 @@ export class WorkflowExecutionService {
             return;
         }
 
-        // 전체 노드 개수 계산 (시작/종료 노드 포함)
-        const totalNodesCount = nodes.length; // 화면의 모든 노드 개수 (시작/종료 포함)
+        // 전체 노드 개수 계산 (시작 노드 포함)
+        const totalNodesCount = nodes.length; // 화면의 모든 노드 개수 (시작 노드 포함)
 
         // 실행 중 플래그 설정 (중복 실행 방지)
         if (this.isExecuting) {
@@ -71,9 +76,10 @@ export class WorkflowExecutionService {
         }
         this.isExecuting = true;
         this.isCancelled = false; // 취소 플래그 초기화
+        this.lastExecutionId = null; // 마지막 실행 ID 저장 (로그 확인용)
 
         // 전체 노드 개수 계산 (start와 end 포함)
-        // prepareWorkflowData에서 start와 end를 제외하므로, 실제 화면의 모든 노드 개수를 계산
+        // prepareWorkflowData에서 start를 제외하므로, 실제 화면의 모든 노드 개수를 계산
         const allNodes = document.querySelectorAll('.workflow-node');
 
         // 조건 노드의 분기 경로 중 실행되지 않은 경로 노드들을 제외한 실제 실행 가능한 노드 수 계산
@@ -99,7 +105,7 @@ export class WorkflowExecutionService {
                 const branchConnections = connections.filter((c) => c.from === nodeId);
                 branchConnections.forEach((conn) => {
                     // 실행 대상에 포함되지 않은 분기 경로 노드 (end 제외)
-                    if (!executedNodeIds.has(conn.to) && conn.to !== 'end') {
+                    if (!executedNodeIds.has(conn.to)) {
                         conditionBranchNodes.add(conn.to);
                     }
                 });
@@ -107,23 +113,14 @@ export class WorkflowExecutionService {
         });
 
         // 전체 노드 수에서 조건 노드의 실행 안 된 분기 경로 노드만 제외
-        // End 노드는 포함 (정상 완료 시 성공으로 카운팅, 에러 발생 시 중단으로 카운팅)
+        // 조건 분기 노드는 제외하고 카운팅
         const totalNodeCount = allNodes.length - conditionBranchNodes.size;
-
-        // End 노드 존재 여부 확인 (정상 완료 시 성공으로 카운팅하기 위해)
-        const endNodeExists = Array.from(allNodes).some((node) => {
-            const nodeId = node.id || node.dataset.nodeId;
-            const nodeType = this.workflowPage.getNodeType(node);
-            const title = node.querySelector('.node-title')?.textContent || '';
-            return nodeId === 'end' || nodeType === 'end' || title.includes('종료');
-        });
 
         // 디버깅: 노드 카운팅 정보 로깅
         const logger = this.workflowPage.getLogger();
         logger.log('[WorkflowExecutionService] 노드 카운팅 초기화:', {
             전체노드수: allNodes.length,
             조건분기제외: conditionBranchNodes.size,
-            End노드존재: endNodeExists,
             최종노드수: totalNodeCount,
             실행대상노드: executedNodeIds.size,
             조건분기노드목록: Array.from(conditionBranchNodes)
@@ -219,11 +216,74 @@ export class WorkflowExecutionService {
 
                     const result = await response.json();
 
+                    // execution_id 저장 (로그 확인용)
+                    if (result.data?.execution_id) {
+                        this.lastExecutionId = result.data.execution_id;
+                    }
+
                     // 3. 실행 완료 UI 표시
                     const nodeResult = result.data?.results?.[0];
 
-                    // 이전 노드 결과 업데이트 (다음 노드 실행 시 전달)
+                    // 노드 실행 결과를 DOM에 저장 (새로운 표준 형식: {action, status, output: {...}})
                     if (nodeResult) {
+                        // nodeManager에 실행 결과 저장
+                        const nodeManager = this.workflowPage.getNodeManager();
+                        if (nodeManager && nodeManager.nodeData) {
+                            const nodeId = nodeData.id;
+                            if (!nodeManager.nodeData[nodeId]) {
+                                nodeManager.nodeData[nodeId] = {};
+                            }
+                            // 실행 결과 저장 (표준 형식: {action, status, output: {...}})
+                            nodeManager.nodeData[nodeId].result = nodeResult;
+                            // output 필드가 dict인지 확인하고 저장
+                            if (nodeResult.output && typeof nodeResult.output === 'object') {
+                                nodeManager.nodeData[nodeId].output = nodeResult.output;
+                            }
+                        }
+
+                        // condition 노드인 경우 결과에 따라 다음 노드 동적으로 선택
+                        if (
+                            nodeData.type === 'condition' &&
+                            nodeResult.output &&
+                            typeof nodeResult.output.result === 'boolean'
+                        ) {
+                            const conditionResult = nodeResult.output.result;
+                            const logger = this.workflowPage.getLogger();
+                            logger.log(`[WorkflowExecutionService] Condition 노드 결과: ${conditionResult}`);
+
+                            // condition 노드의 연결 정보 가져오기
+                            const connectionManager = nodeManager?.connectionManager;
+                            if (connectionManager) {
+                                const connections = connectionManager.getConnections();
+                                const conditionConnections = connections.filter((c) => c.from === nodeData.id);
+
+                                // 실행되지 않은 경로의 노드들을 workflowData.nodes에서 제거
+                                const outputTypeToKeep = conditionResult ? 'true' : 'false';
+                                const outputTypeToRemove = conditionResult ? 'false' : 'true';
+
+                                // 제거할 노드 ID 찾기 (실행되지 않은 경로)
+                                const nodesToRemove = new Set();
+                                conditionConnections.forEach((conn) => {
+                                    if (conn.outputType === outputTypeToRemove) {
+                                        nodesToRemove.add(conn.to);
+                                        // 재귀적으로 해당 경로의 모든 하위 노드도 제거
+                                        this._collectNodesToRemove(conn.to, connections, nodesToRemove, nodeData.id);
+                                    }
+                                });
+
+                                // workflowData.nodes에서 제거할 노드들 필터링
+                                if (nodesToRemove.size > 0) {
+                                    logger.log(
+                                        `[WorkflowExecutionService] Condition 결과에 따라 제거할 노드: ${Array.from(nodesToRemove).join(', ')}`
+                                    );
+                                    workflowData.nodes = workflowData.nodes.filter(
+                                        (node) => !nodesToRemove.has(node.id)
+                                    );
+                                }
+                            }
+                        }
+
+                        // 이전 노드 결과 업데이트 (다음 노드 실행 시 전달)
                         previousNodeResult = {
                             ...nodeResult,
                             node_id: nodeData.id,
@@ -329,14 +389,6 @@ export class WorkflowExecutionService {
 
             // 중단된 노드 개수 계산 (취소되지 않았으면 0)
             if (!this.isCancelled) {
-                // 모든 노드가 정상적으로 실행 완료된 경우, End 노드를 성공으로 카운팅
-                // End 노드는 실행 대상에서 제외되지만, 워크플로우 완료 시 성공으로 간주
-                if (endNodeExists && failCount === 0) {
-                    // 에러가 없고 End 노드가 있으면 End 노드를 성공으로 카운팅
-                    successCount++;
-                    logger.log('[WorkflowExecutionService] End 노드를 성공으로 카운팅');
-                }
-
                 cancelledCount = totalNodeCount - successCount - failCount;
             }
 
@@ -371,6 +423,21 @@ export class WorkflowExecutionService {
                 } else if (toastManager) {
                     toastManager.success(`워크플로우 실행 완료 (${workflowData.nodes.length}개 노드)`);
                 }
+
+                // 폴백 경로에서 실행 기록 페이지에 로그 업데이트 알림 (성공 시)
+                // (executeSingleScript를 사용하지 않는 경우에만)
+                const currentScript = this.workflowPage?.getCurrentScript();
+                if (currentScript && currentScript.id && !this.isRunningAllScripts) {
+                    document.dispatchEvent(
+                        new CustomEvent('logsUpdated', {
+                            detail: {
+                                type: 'workflowExecutionCompleted',
+                                scriptId: currentScript.id,
+                                scriptName: currentScript.name
+                            }
+                        })
+                    );
+                }
             }
         } catch (error) {
             console.error('워크플로우 실행 오류:', error);
@@ -384,13 +451,17 @@ export class WorkflowExecutionService {
             // 디버깅: 계산 결과 확인
             const logger = this.workflowPage.getLogger();
             logger.log('[WorkflowExecutionService] 노드 카운팅 계산:', {
-                totalNodeCount: `전체 노드(Start/End 포함): ${totalNodeCount}`,
+                totalNodeCount: `전체 노드(Start 포함): ${totalNodeCount}`,
                 successCount: `Start(1) + 실행 성공(${successCount - 1}) = ${successCount}`,
                 failCount,
                 cancelledCount: `실행 안 된 노드들(대기, 종료 등): ${cancelledCount}`,
                 currentNodeIndex,
                 계산: `${totalNodeCount} - ${successCount} - ${failCount} = ${cancelledCount}`
             });
+
+            // 단일 스크립트 실행 시 예외 발생 시에도 실행 기록 저장 및 로그 업데이트는 executeSingleScript에서 처리
+            // (전체 실행이 아닐 때만 executeSingleScript가 호출되므로 여기서는 제거)
+
             // 전체 스크립트 실행 중이면 토스트만 표시하고 에러를 다시 throw하여 상위로 전파
             if (this.isRunningAllScripts) {
                 if (toastManager) {
@@ -415,6 +486,20 @@ export class WorkflowExecutionService {
                             message: '오류로 인해 실행되지 않음'
                         });
                     }
+                }
+
+                // 폴백 경로에서 실행 기록 페이지에 로그 업데이트 알림 (실패 시)
+                const currentScript = this.workflowPage?.getCurrentScript();
+                if (currentScript && currentScript.id) {
+                    document.dispatchEvent(
+                        new CustomEvent('logsUpdated', {
+                            detail: {
+                                type: 'workflowExecutionFailed',
+                                scriptId: currentScript.id,
+                                scriptName: currentScript.name
+                            }
+                        })
+                    );
                 }
 
                 if (modalManager) {
@@ -671,6 +756,31 @@ export class WorkflowExecutionService {
                     node.classList.remove('executing');
                 }, 500);
             }, index * 300);
+        });
+    }
+
+    /**
+     * 재귀적으로 제거할 노드 수집 (condition 노드의 실행되지 않은 경로)
+     * @param {string} nodeId - 시작 노드 ID
+     * @param {Array} connections - 모든 연결 정보
+     * @param {Set} nodesToRemove - 제거할 노드 ID 집합
+     * @param {string} conditionNodeId - condition 노드 ID (순환 방지용)
+     */
+    _collectNodesToRemove(nodeId, connections, nodesToRemove, conditionNodeId) {
+        // 이미 추가된 노드는 건너뛰기
+        if (nodesToRemove.has(nodeId) || nodeId === conditionNodeId || nodeId === 'end') {
+            return;
+        }
+
+        nodesToRemove.add(nodeId);
+
+        // 해당 노드에서 나가는 연결 찾기
+        const outgoingConnections = connections.filter((c) => c.from === nodeId);
+        outgoingConnections.forEach((conn) => {
+            // end 노드가 아니면 재귀적으로 수집
+            if (conn.to !== 'end' && !nodesToRemove.has(conn.to)) {
+                this._collectNodesToRemove(conn.to, connections, nodesToRemove, conditionNodeId);
+            }
         });
     }
 }

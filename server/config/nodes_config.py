@@ -24,24 +24,6 @@ NODES_CONFIG: dict[str, dict[str, Any]] = {
             "output": {"type": "any", "description": "출력 데이터"},
         },
     },
-    "end": {
-        "label": "종료 노드",
-        "title": "종료",
-        "description": "워크플로우의 종료점입니다.",
-        "script": "node-end.js",
-        "is_boundary": True,
-        "category": "system",
-        "input_schema": {
-            "action": {"type": "string", "description": "이전 노드 타입"},
-            "status": {"type": "string", "description": "이전 노드 실행 상태"},
-            "output": {"type": "any", "description": "이전 노드 출력 데이터"},
-        },
-        "output_schema": {
-            "action": {"type": "string", "description": "노드 타입"},
-            "status": {"type": "string", "description": "실행 상태"},
-            "output": {"type": "any", "description": "출력 데이터"},
-        },
-    },
     # === 액션 노드 (Action Nodes) ===
     # "action" 노드는 제거되었습니다.
     "image-touch": {
@@ -205,11 +187,11 @@ NODES_CONFIG: dict[str, dict[str, Any]] = {
             },
             "field_path": {
                 "type": "string",
-                "label": "필드 경로",
-                "description": "이전 노드 출력에서 비교할 필드 경로를 입력하세요. (예: output.value, output.status) 비워두면 전체 출력을 비교합니다.",
+                "label": "입력 필드",
+                "description": "이전 노드 출력에서 비교할 필드 경로를 선택하거나 입력하세요. (예: output.value, output.status) 비워두면 전체 출력을 비교합니다.",
                 "default": "",
                 "required": False,
-                "placeholder": "output.value 또는 비워두기",
+                "placeholder": "변수를 선택하거나 직접 입력하세요",
             },
             "compare_value": {
                 "type": "string",

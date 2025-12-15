@@ -24,6 +24,12 @@ body.theme-light .node-settings-textarea {
     color: #1f2937; /* 어두운 회색 텍스트 */
 }
 
+/* 필드 경로 자동완성 미리보기 (라이트 모드) */
+body.theme-light .field-path-autocomplete-preview {
+    color: #9ca3af !important; /* 회색 */
+    opacity: 0.6;
+}
+
 /* 노드 설정 입력 필드 포커스 효과 */
 body.theme-light .node-settings-input:focus,
 body.theme-light .node-settings-select:focus,
@@ -103,4 +109,63 @@ body.theme-light #edit-node-output-value:focus {
 /* 미리보기 텍스트 영역 색상 */
 body.theme-light .node-preview-textarea {
     color: #1a202c; /* 어두운 텍스트 */
+}
+
+/* 이전 노드 출력 변수 목록 라이트 모드 스타일 */
+body.theme-light .node-previous-output-variables {
+    background-color: #f5f5f5; /* 연한 회색 배경 */
+    border-color: #e5e7eb; /* 연한 회색 테두리 */
+}
+
+body.theme-light .node-output-variable-tag {
+    background-color: #ffffff; /* 화이트 배경 */
+    border-color: #e5e7eb; /* 연한 회색 테두리 */
+    color: #333; /* 어두운 텍스트 */
+}
+
+body.theme-light .node-output-variable-tag:hover {
+    background-color: #2673ea; /* 파란색 배경 */
+    border-color: #2673ea;
+    color: #ffffff;
+}
+
+body.theme-light .node-output-variable-key {
+    color: #333; /* 어두운 텍스트 */
+}
+
+body.theme-light .node-output-variable-value {
+    color: #666; /* 회색 텍스트 */
+}
+
+/* 이전 노드 정보 표시 라이트 모드 스타일 */
+body.theme-light .node-previous-node-info {
+    background-color: #f5f5f5; /* 연한 회색 배경 */
+    border-color: #e5e7eb; /* 연한 회색 테두리 */
+    color: #666; /* 회색 텍스트 */
+}
+
+body.theme-light #node-previous-node-name-display {
+    color: #2673ea; /* 파란색 */
+}
+
+/* 필드 경로 드롭다운 라이트 모드 */
+body.theme-light .field-path-dropdown {
+    background-color: #ffffff !important;
+    border-color: #e5e7eb !important;
+}
+
+body.theme-light .field-path-dropdown-header {
+    background-color: #f9fafb !important;
+    color: #1f2937 !important;
+    border-bottom-color: #e5e7eb !important;
+}
+
+body.theme-light .field-path-dropdown-item {
+    color: #1f2937 !important;
+    border-bottom-color: #e5e7eb !important;
+}
+
+body.theme-light .field-path-dropdown-item:hover {
+    background-color: #f3f4f6 !important;
+    color: #111827 !important;
 }
