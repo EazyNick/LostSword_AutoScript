@@ -1,15 +1,17 @@
+**최신 수정일자: 2025.12.00**
+
 # Python 노드 생성 가이드
 
 Python (서버)에서 커스텀 노드를 만드는 방법을 설명합니다.
 
 ## 빠른 시작
 
-1. **노드 설정 추가**: `server/config/nodes_config.py`에 노드 정보 추가
+1. **노드 설정 추가**: `server/config/nodes_config.py`에 노드 정보 추가 (필수: `input_schema`, `output_schema` 포함)
 2. **노드 클래스 생성**: `server/nodes/{카테고리}/{이름}.py` 파일 생성
-3. **JavaScript 렌더링 파일 생성**: `UI/src/js/components/node/node-{이름}.js` 파일 생성 (서버 API 요청용)
-4. **예시 출력 추가** (선택): `UI/src/pages/workflow/config/node-preview-outputs.js`에 예시 출력 함수 추가
+3. **JavaScript 렌더링 파일 생성**: `UI/src/js/components/node/node-{이름}.js` 파일 생성
+4. **HTML에 스크립트 추가**: `UI/src/index.html`에 JavaScript 파일 추가
 
-> **중요**: Python 노드도 클라이언트에서 렌더링하기 위해 JavaScript 파일이 필요합니다. 이 파일은 서버 API로 노드 실행을 요청하는 역할을 합니다.
+> **중요**: Python 노드도 클라이언트에서 렌더링하기 위해 JavaScript 파일이 필요합니다. 이 파일은 노드의 시각적 표현을 담당합니다.
 
 ## 1. 노드 설정 추가
 
@@ -24,8 +26,8 @@ NODES_CONFIG: dict[str, dict[str, Any]] = {
         "description": "노드 설명",
         "script": "node-my-node.js",  # 클라이언트 JS 파일명
         "is_boundary": False,          # 경계 노드 여부
-        "category": "action",           # 노드 카테고리
-        "parameters": {                 # 사용자 설정 파라미터 (선택)
+        "category": "action",          # 노드 카테고리: "action", "logic", "system" 등
+        "parameters": {                # 사용자 설정 파라미터 (선택)
             "value": {
                 "type": "string",
                 "label": "값",
@@ -34,17 +36,56 @@ NODES_CONFIG: dict[str, dict[str, Any]] = {
                 "required": True,
                 "placeholder": "값을 입력하세요"
             }
+        },
+        "detail_types": {},            # 상세 노드 타입 정의 (선택)
+        "input_schema": {              # 입력 스키마 (필수)
+            "action": {"type": "string", "description": "이전 노드 타입"},
+            "status": {"type": "string", "description": "이전 노드 실행 상태"},
+            "output": {"type": "any", "description": "이전 노드 출력 데이터"}
+        },
+        "output_schema": {             # 출력 스키마 (필수)
+            "action": {"type": "string", "description": "노드 타입"},
+            "status": {"type": "string", "description": "실행 상태"},
+            "output": {
+                "type": "object",
+                "description": "출력 데이터",
+                "properties": {
+                    "value": {"type": "string", "description": "입력받은 값"},
+                    "result": {"type": "string", "description": "처리 결과"}
+                }
+            }
         }
     }
 }
 ```
+
+### 필수 필드
+
+- **`input_schema`**: 노드의 입력 형식을 정의합니다. 노드 설정 모달의 입력 미리보기에 사용됩니다.
+- **`output_schema`**: 노드의 출력 형식을 정의합니다. 노드 설정 모달의 출력 미리보기에 사용됩니다.
 
 ### 파라미터 타입
 
 - **string**: 텍스트 입력 필드
 - **number**: 숫자 입력 필드 (min, max 옵션 가능)
 - **boolean**: 체크박스
-- **options**: 선택 옵션이 있는 경우 `options: ["옵션1", "옵션2"]` 추가
+- **options**: 선택 옵션이 있는 경우 `options` 배열 추가
+
+```python
+"parameters": {
+    "condition_type": {
+        "type": "options",
+        "label": "조건 타입",
+        "description": "평가할 조건의 타입을 선택하세요.",
+        "default": "equals",
+        "required": True,
+        "options": [
+            {"value": "equals", "label": "같음 (=)"},
+            {"value": "not_equals", "label": "다름 (!=)"}
+        ]
+    }
+}
+```
 
 ### 특수 파라미터
 
@@ -63,6 +104,10 @@ NODES_CONFIG: dict[str, dict[str, Any]] = {
     }
 }
 ```
+
+### 특수 속성
+
+- **`requires_folder_path`**: `True`로 설정하면 폴더 경로가 필수임을 표시합니다 (예: `image-touch` 노드)
 
 ## 2. 노드 클래스 생성
 
@@ -87,7 +132,7 @@ from typing import Any
 
 from nodes.base_node import BaseNode
 from nodes.node_executor_wrapper import NodeExecutor
-from utils import get_parameter
+from utils import create_failed_result, get_parameter
 
 
 class MyNode(BaseNode):
@@ -123,6 +168,8 @@ class MyNode(BaseNode):
 `get_parameter()` 함수를 사용하여 파라미터를 안전하게 추출합니다:
 
 ```python
+from utils import get_parameter
+
 # 필수 파라미터 (없으면 에러 발생)
 value = get_parameter(parameters, "value")
 
@@ -150,81 +197,115 @@ if timeout is not None:
 }
 ```
 
-에러 발생 시:
+### 에러 처리
+
+에러 발생 시 `create_failed_result()` 함수를 사용하세요:
 
 ```python
 from utils import create_failed_result
 
-return create_failed_result(
-    action="my-node",
-    reason="error_type",
-    message="에러 메시지",
-    output={"error": "상세 정보"}
-)
+# 에러 발생 시
+if not some_condition:
+    return create_failed_result(
+        action="my-node",
+        reason="error_type",
+        message="에러 메시지",
+        output={"error": "상세 정보"}
+    )
 ```
 
-## 3. 노드 등록
+실제 예시 (`server/nodes/actionnodes/click.py`):
+
+```python
+return {"action": "click", "status": "completed", "output": {"x": x, "y": y}}
+```
+
+## 3. JavaScript 렌더링 파일 생성
+
+Python 노드도 클라이언트에서 렌더링하기 위해 JavaScript 파일이 필요합니다.
+
+`UI/src/js/components/node/node-my-node.js` 파일을 생성하세요:
+
+```javascript
+// node-my-node.js
+(function () {
+    if (!window.NodeManager) {
+        return;
+    }
+
+    window.NodeManager.registerNodeType('my-node', {
+        /**
+         * 노드 내용 생성
+         * @param {Object} nodeData - 노드 데이터
+         */
+        renderContent(nodeData) {
+            // 노드 아이콘은 node-icons.config.js에서 중앙 관리
+            const NodeIcons = window.NodeIcons || {};
+            const icon = NodeIcons.getIcon('my-node', nodeData) || NodeIcons.icons?.default || '⚙';
+            
+            return `
+                <div class="node-input"></div>
+                <div class="node-content">
+                    <div class="node-icon-box">
+                        <div class="node-icon">${icon}</div>
+                    </div>
+                    <div class="node-text-area">
+                        <div class="node-title">${this.escapeHtml(nodeData.title || '내 노드')}</div>
+                        <div class="node-description">${this.escapeHtml(nodeData.description || '')}</div>
+                    </div>
+                </div>
+                <div class="node-output"></div>
+                <div class="node-settings" data-node-id="${nodeData.id}">⚙</div>
+            `;
+        }
+    });
+})();
+```
+
+## 4. HTML에 스크립트 추가
+
+`UI/src/index.html`에 생성한 JavaScript 파일을 추가하세요:
+
+```html
+<!-- 노드 스크립트 -->
+<script src="/static/js/components/node/node-my-node.js"></script>
+```
+
+## 5. 노드 등록
 
 노드는 `@NodeExecutor` 데코레이터로 자동 등록됩니다. 별도의 등록 코드는 필요하지 않습니다.
 
-## 4. 예시 출력 추가 (선택)
-
-노드 설정 모달의 출력 미리보기에 표시될 예시 출력을 정의하려면 `UI/src/pages/workflow/config/node-preview-outputs.js`에 함수를 추가하세요:
-
-```javascript
-// node-preview-outputs.js
-
-export function generatePreviewOutput(nodeType, nodeData) {
-    switch (nodeType) {
-        // ... 기존 노드들 ...
-        
-        case 'my-node':
-            return generateMyNodeOutput(nodeData);
-        
-        default:
-            return generateDefaultOutput(nodeType);
-    }
-}
-
-function generateMyNodeOutput(nodeData) {
-    const value = nodeData?.value || '기본값';
-    return JSON.stringify({
-        action: "my-node",
-        status: "completed",
-        output: {
-            value: value,
-            result: "성공"
-        }
-    }, null, 2);
-}
-```
-
-> **참고**: 대부분의 노드는 예시 출력을 사용하며, `wait`, `start`, `end` 노드만 실제 실행 결과를 표시합니다.
+서버를 재시작하면 새 노드가 자동으로 인식됩니다.
 
 ## 참고 파일
 
 ### Python (서버)
-- `server/config/nodes_config.py`: 노드 설정 파일
+- `server/config/nodes_config.py`: 노드 설정 파일 (실제 예시)
 - `server/nodes/actionnodes/click.py`: 클릭 노드 구현 예시
+- `server/nodes/actionnodes/process_focus.py`: 프로세스 포커스 노드 구현 예시 (복잡한 로직)
 - `server/nodes/base_node.py`: 기본 노드 클래스
 - `server/nodes/node_executor_wrapper.py`: 노드 실행 래퍼 (자동 에러 처리, 로깅 등)
-- `server/utils/parameter_utils.py`: 파라미터 추출 유틸리티
+- `server/utils/__init__.py`: 유틸리티 함수 (`get_parameter`, `create_failed_result` 등)
 
 ### JavaScript (클라이언트)
 - `UI/src/js/components/node/node-example.js`: 노드 생성 템플릿
-- `UI/src/js/components/node/node-click.js`: 클릭 노드 구현 예시
+- `UI/src/js/components/node/node-process-focus.js`: 프로세스 포커스 노드 렌더링 예시
 
 ## 주의사항
 
 1. **노드 이름 일치**: 
-   - `nodes_config.py`의 노드 타입
-   - `@NodeExecutor` 데코레이터의 액션 이름
-   - 이 두 가지가 일치해야 합니다.
+   - `nodes_config.py`의 노드 타입 (예: `"my-node"`)
+   - `@NodeExecutor` 데코레이터의 액션 이름 (예: `@NodeExecutor("my-node")`)
+   - `registerNodeType`의 노드 타입 (예: `'my-node'`)
+   - `script` 필드의 파일명 (예: `"node-my-node.js"`)
+   - 이 네 가지가 모두 일치해야 합니다.
 
 2. **파일명 규칙**: 
    - Python: 스네이크 케이스 (`my_node.py`)
+   - JavaScript: 케밥 케이스 (`node-my-node.js`)
 
 3. **노드 카테고리**: 적절한 디렉토리에 노드를 생성하세요.
 
-4. **서버 재시작**: 새 노드를 추가한 후 서버를 재시작하면 자동으로 인식됩니다.
+4. **스키마 정의**: `input_schema`와 `output_schema`는 필수입니다. 노드 설정 모달의 미리보기에 사용됩니다.
 
+5. **서버 재시작**: 새 노드를 추가한 후 서버를 재시작하면 자동으로 인식됩니다.
