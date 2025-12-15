@@ -1237,36 +1237,38 @@ export class SidebarScriptManager {
         if (!overlay) {
             overlay = document.createElement('div');
             overlay.id = 'logs-loading-overlay';
-            overlay.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0, 0, 0, 0.5);
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                z-index: 10000;
-            `;
             overlay.innerHTML = `
-                <div style="background: white; padding: 20px; border-radius: 8px; text-align: center;">
-                    <div style="border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 10px;"></div>
-                    <div>로그 저장 중...</div>
+                <div class="loading-overlay-content">
+                    <div class="loading-spinner-container">
+                        <div class="loading-spinner"></div>
+                    </div>
+                    <div class="loading-text">
+                        로그 저장 중<span class="loading-dots">...</span>
+                    </div>
                 </div>
             `;
-            // 스핀 애니메이션 추가
-            const style = document.createElement('style');
-            style.textContent = `
-                @keyframes spin {
-                    0% { transform: rotate(0deg); }
-                    100% { transform: rotate(360deg); }
-                }
-            `;
-            document.head.appendChild(style);
             document.body.appendChild(overlay);
+
+            // dots 애니메이션 효과
+            const dotsElement = overlay.querySelector('.loading-dots');
+            if (dotsElement) {
+                let dotCount = 0;
+                this.loadingDotsInterval = setInterval(() => {
+                    dotCount = (dotCount % 3) + 1;
+                    dotsElement.textContent = '.'.repeat(dotCount);
+                }, 500);
+            }
         } else {
             overlay.style.display = 'flex';
+            // dots 애니메이션 재시작
+            const dotsElement = overlay.querySelector('.loading-dots');
+            if (dotsElement && !this.loadingDotsInterval) {
+                let dotCount = 0;
+                this.loadingDotsInterval = setInterval(() => {
+                    dotCount = (dotCount % 3) + 1;
+                    dotsElement.textContent = '.'.repeat(dotCount);
+                }, 500);
+            }
         }
     }
 
@@ -1277,6 +1279,11 @@ export class SidebarScriptManager {
         const overlay = document.getElementById('logs-loading-overlay');
         if (overlay) {
             overlay.style.display = 'none';
+        }
+        // dots 애니메이션 정리
+        if (this.loadingDotsInterval) {
+            clearInterval(this.loadingDotsInterval);
+            this.loadingDotsInterval = null;
         }
     }
 

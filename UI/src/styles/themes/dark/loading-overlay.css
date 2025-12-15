@@ -1,0 +1,29 @@
+/* 다크 모드 로딩 오버레이 스타일 */
+
+body.theme-dark #logs-loading-overlay {
+    background: rgba(0, 0, 0, 0.75);
+}
+
+body.theme-dark .loading-overlay-content {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+}
+
+body.theme-dark .loading-spinner {
+    color: #60a5fa;
+}
+
+body.theme-dark .loading-spinner::before {
+    border-top-color: #3b82f6;
+    border-right-color: #60a5fa;
+}
+
+body.theme-dark .loading-spinner::after {
+    border-bottom-color: #3b82f6;
+    border-left-color: #60a5fa;
+}
+
+body.theme-dark .loading-text {
+    color: #e2e8f0;
+}
