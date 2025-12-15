@@ -61,3 +61,65 @@ async def record_execution_summary(request: Request, summary: dict = Body(...)) 
     except Exception as e:
         logger.error(f"[API] 전체 실행 요약 정보 저장 실패: {e!s}")
         raise HTTPException(status_code=500, detail=f"전체 실행 요약 정보 저장 실패: {e!s}")
+
+
+@router.post("/dashboard/increment-execution", response_model=SuccessResponse)
+async def increment_execution_count(request: Request, data: dict = Body(...)) -> SuccessResponse:
+    """
+    전체 실행 횟수 증가 (각 스크립트 실행 후 호출)
+
+    Args:
+        request: HTTP 요청 객체
+        data: {success: bool} - 성공 여부
+    """
+    client_ip = request.client.host if request.client else "unknown"
+    logger.info(f"[API] 전체 실행 횟수 증가 요청 - 클라이언트 IP: {client_ip}, 성공: {data.get('success', False)}")
+
+    try:
+        is_success = data.get("success", True)
+        current_stats = db_manager.get_dashboard_stats(use_cache=False)
+
+        # 현재 통계 가져오기 (None 체크 및 타입 보장)
+        current_executions = current_stats.get("all_executions", 0) or 0
+        current_failed = current_stats.get("all_failed_scripts", 0) or 0
+
+        # 타입 보장 (int로 변환)
+        current_executions = int(current_executions)
+        current_failed = int(current_failed)
+
+        # 통계 증가
+        new_executions = current_executions + 1
+        new_failed = current_failed + (0 if is_success else 1)
+
+        # 통계 업데이트
+        db_manager.set_all_execution_stats(new_executions, new_failed)
+
+        logger.info(f"[API] 전체 실행 횟수 증가 완료 - 총 실행: {new_executions}, 실패: {new_failed}")
+        return success_response(
+            {"all_executions": new_executions, "all_failed_scripts": new_failed}, "전체 실행 횟수 증가 완료"
+        )
+    except Exception as e:
+        logger.error(f"[API] 전체 실행 횟수 증가 실패: {e!s}")
+        raise HTTPException(status_code=500, detail=f"전체 실행 횟수 증가 실패: {e!s}")
+
+
+@router.post("/dashboard/reset-execution-stats", response_model=SuccessResponse)
+async def reset_execution_stats(request: Request) -> SuccessResponse:
+    """
+    전체 실행 통계 초기화 (전체 실행 시작 시 호출)
+
+    Args:
+        request: HTTP 요청 객체
+    """
+    client_ip = request.client.host if request.client else "unknown"
+    logger.info(f"[API] 전체 실행 통계 초기화 요청 - 클라이언트 IP: {client_ip}")
+
+    try:
+        # 통계를 0으로 초기화
+        db_manager.set_all_execution_stats(0, 0)
+
+        logger.info("[API] 전체 실행 통계 초기화 완료")
+        return success_response({"all_executions": 0, "all_failed_scripts": 0}, "전체 실행 통계 초기화 완료")
+    except Exception as e:
+        logger.error(f"[API] 전체 실행 통계 초기화 실패: {e!s}")
+        raise HTTPException(status_code=500, detail=f"전체 실행 통계 초기화 실패: {e!s}")
