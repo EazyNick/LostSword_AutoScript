@@ -356,18 +356,23 @@
 2. `server/nodes/{카테고리}/{이름}.py` - Python 구현 파일
 3. `UI/src/js/components/node/node-{이름}.js` - JavaScript 렌더링 파일
 4. `UI/src/pages/workflow/config/node-preview-outputs.js` - 예시 출력 함수 (선택)
-5. `UI/src/index.html` - 스크립트 태그 (수동 추가)
+
+**참고**: 
+- JavaScript 파일은 `NodeRegistry`를 통해 **자동으로 로드**됩니다. `index.html` 수정이 필요 없습니다.
+- `nodes_config.py`의 `script` 필드만 올바르게 설정하면 자동으로 로드됩니다.
 
 **JavaScript 노드의 경우**:
 1. `server/config/nodes_config.py` - 노드 설정 (하드코딩)
 2. `UI/src/js/components/node/node-{이름}.js` - JavaScript 구현 파일
 3. `UI/src/pages/workflow/config/node-preview-outputs.js` - 예시 출력 함수 (선택)
-4. `UI/src/index.html` - 스크립트 태그 (수동 추가)
+
+**참고**: 
+- JavaScript 파일은 `NodeRegistry`를 통해 **자동으로 로드**됩니다. `index.html` 수정이 필요 없습니다.
+- `nodes_config.py`의 `script` 필드만 올바르게 설정하면 자동으로 로드됩니다.
 
 **문제점**:
 - 노드가 여러 파일에 분산되어 있어 공유 시 모든 파일을 찾아야 함
-- `nodes_config.py`에 하드코딩되어 있어 동적 로드 불가
-- `index.html`에 수동으로 스크립트 태그 추가 필요
+- `nodes_config.py`에 하드코딩되어 있어 동적 로드 불가 (커스텀 노드의 경우)
 - 노드 설치 시 여러 위치에 파일을 복사해야 함
 
 ### 1.3 개선된 노드 패키지 구조
@@ -777,19 +782,23 @@ CREATE TABLE shared_node_file_changes (
 
 **JavaScript 동적 로드 상세**:
 
-1. **서버 측**:
-   - 노드 설치 시 설치된 JavaScript 파일 목록을 DB에 저장
-   - API 엔드포인트 `/api/nodes/scripts`에서 설치된 노드의 JavaScript 파일 목록 제공
-   - 또는 통합된 JavaScript 번들을 생성하여 제공
+> **참고**: 현재 시스템은 이미 동적 JavaScript 로드를 지원합니다. `NodeRegistry`가 서버의 `/api/config/nodes` API에서 노드 설정을 가져와 자동으로 JavaScript 파일을 로드합니다.
 
-2. **클라이언트 측**:
-   - 페이지 로드 시 `/api/nodes/scripts` 호출하여 설치된 노드의 JavaScript 파일 목록 가져오기
-   - 각 JavaScript 파일을 동적으로 로드 (`<script>` 태그 생성)
-   - 또는 통합 번들을 한 번에 로드
+1. **서버 측** (현재 구현됨):
+   - `/api/config/nodes` API에서 모든 노드 설정 제공 (표준 노드 + 커스텀 노드)
+   - 각 노드 설정에 `script` 필드 포함
+   - 커스텀 노드 설치 시 `custom_nodes_config.json`에 추가
 
-3. **실시간 업데이트**:
+2. **클라이언트 측** (현재 구현됨):
+   - `NodeRegistry`가 페이지 로드 시 `/api/config/nodes` 호출
+   - 각 노드의 `script` 필드를 확인하여 JavaScript 파일 동적 로드
+   - `/static/js/components/node/{script}` 경로에서 파일 로드
+   - `WorkflowPage` 초기화 시 `loadAllNodeScripts()` 자동 호출
+
+3. **실시간 업데이트** (향후 구현):
    - WebSocket 또는 Server-Sent Events를 통해 노드 설치/삭제 알림
    - 클라이언트가 알림을 받으면 해당 노드의 JavaScript 파일 동적 로드/제거
+   - 현재는 페이지 새로고침 시 자동으로 새 노드가 로드됨
 
 **구현 위치**:
 - `server/services/shared_node_loader.py` (신규) - 노드 파일 로드 서비스
