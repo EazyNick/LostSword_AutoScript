@@ -11,11 +11,11 @@
 
 ## 노드 개발
 
-- **[노드 추가 가이드](creating-nodes.md)** - 노드 추가 방법 개요 및 Python/JavaScript 노드 선택 가이드
-- **[Python 노드 생성](creating-nodes-python.md)** - Python (서버 측) 노드 생성 방법 및 스크립트 사용법
-- **[JavaScript 노드 생성](creating-nodes-javascript.md)** - JavaScript (클라이언트 측) 노드 생성 방법
-- **[커스텀 노드 시스템 설계](custom-node-system-design.md)** - 커스텀 노드 시스템의 설계 원칙 및 구조
-- **[웹훅 노드 구현](webhook-node-implementation.md)** - 웹훅 노드 구현 가이드
+- **[노드 추가 가이드](nodes/creating-nodes.md)** - 노드 추가 방법 개요 및 Python/JavaScript 노드 선택 가이드
+- **[Python 노드 생성](nodes/creating-nodes-python.md)** - Python (서버 측) 노드 생성 방법 및 스크립트 사용법
+- **[JavaScript 노드 생성](nodes/creating-nodes-javascript.md)** - JavaScript (클라이언트 측) 노드 생성 방법
+- **[커스텀 노드 시스템 설계](nodes/custom-node-system-design.md)** - 커스텀 노드 시스템의 설계 원칙 및 구조
+- **[웹훅 노드 구현](nodes/webhook-node-implementation.md)** - 웹훅 노드 구현 가이드
 
 ## 설정 및 기능
 
@@ -27,15 +27,18 @@
 
 - **[린팅 가이드](linting.md)** - 코드 린팅 및 포매팅 설정, Python/JavaScript 린팅 규칙
 
+## UI/UX 개발
+
+- **[입력/출력 미리보기](ui-ux/input-output-preview.md)** - 노드 입력/출력 미리보기 기능
+- **[입력/출력 UX](ui-ux/input-output-ux.md)** - 노드 입력/출력 사용자 경험 설계
+- **[대시보드](ui-ux/dashboard.md)** - 대시보드 페이지 구조 및 기능
+
 ## 시스템 이해
 
 - **[워크플로우 구조](workflow-structure.md)** - 워크플로우 데이터 구조 및 저장 형식
 - **[노드 실행 흐름](node-execution-flow.md)** - 노드 실행 프로세스 및 실행 순서
 - **[실행 로그 흐름](execution-log-flow.md)** - 실행 로그 생성 및 저장 프로세스
 - **[노드 출력 표준](node-output-standard.md)** - 노드 출력 데이터 형식 및 표준
-- **[입력/출력 미리보기](input-output-preview.md)** - 노드 입력/출력 미리보기 기능
-- **[입력/출력 UX](input-output-ux.md)** - 노드 입력/출력 사용자 경험 설계
-- **[대시보드](dashboard.md)** - 대시보드 페이지 구조 및 기능
 - **[API 참조](api-reference.md)** - REST API 엔드포인트 및 사용법
 
 ## 향후 계획

@@ -293,4 +293,4 @@ class RssFeedNode(BaseNode):
 
 - `server/utils/result_formatter.py`: 표준화 함수 구현
 - `server/nodes/node_executor_wrapper.py`: 자동 정규화 로직
-- `docs/dev/input-output-ux.md`: 전체 UX 가이드
+- `docs/dev/ui-ux/input-output-ux.md`: 전체 UX 가이드
