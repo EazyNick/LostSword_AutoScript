@@ -164,6 +164,18 @@ mypy server/main.py
 
 타입 체킹 설정은 `pyproject.toml`의 `[tool.mypy]` 섹션에 정의되어 있습니다.
 
+#### 주요 설정 항목
+
+- **`disable_error_code`**: 특정 타입 체크 에러를 전역적으로 무시합니다.
+  - `assignment`: 할당 타입 불일치 허용 (예: `pkgutil.iter_modules`의 타입 스텁 문제)
+  - `arg-type`: 함수 인자 타입 불일치 허용
+  - `return-value`: 반환 타입 불일치 허용
+  - 기타 프로젝트 특성상 필요한 에러 코드들
+
+#### 에러 코드 무시
+
+일부 표준 라이브러리 함수(예: `pkgutil.iter_modules`)는 타입 스텁이 완벽하지 않아 타입 체크 에러가 발생할 수 있습니다. 이러한 경우 `pyproject.toml`의 `disable_error_code`에 해당 에러 코드를 추가하여 전역적으로 무시할 수 있습니다.
+
 ## CI/CD 통합
 
 ### GitHub Actions 예시
@@ -332,7 +344,39 @@ mv .git/hooks/pre-commit .git/hooks/pre-commit.disabled
 mv .git/hooks/pre-commit.disabled .git/hooks/pre-commit
 ```
 
-### 3. VS Code / Cursor 설정 (선택사항)
+### 3. 통합 린팅 스크립트 (lint-all.bat)
+
+Windows에서 Python과 JavaScript 린팅을 한 번에 실행할 수 있는 배치 파일이 제공됩니다.
+
+#### 사용법
+
+```bash
+# 프로젝트 루트에서 실행
+scripts\lint-all.bat
+
+# 또는 scripts 폴더에서 실행
+cd scripts
+lint-all.bat
+```
+
+#### 실행 순서
+
+스크립트는 다음 순서로 실행됩니다:
+
+1. **[1/5] Python linting check and auto-fix**: `ruff check --fix server/`
+2. **[2/5] Python formatting**: `ruff format server/`
+3. **[3/5] Mypy type checking**: `mypy server/` (mypy가 설치되어 있는 경우)
+4. **[4/5] JavaScript linting check and auto-fix**: `npm run lint:fix` (UI 폴더에서)
+5. **[5/5] JavaScript formatting**: `npm run format` (UI 폴더에서)
+
+#### 특징
+
+- 가상환경 자동 감지 및 활성화 (`.venv`, `venv`, `env` 등)
+- 프로젝트 루트 자동 탐색
+- 각 단계별 성공/실패 메시지 표시
+- mypy가 설치되어 있지 않으면 경고 후 다음 단계 진행
+
+### 4. VS Code / Cursor 설정 (선택사항)
 
 `.vscode/tasks.json` 파일을 생성하여 작업으로 등록할 수 있습니다:
 

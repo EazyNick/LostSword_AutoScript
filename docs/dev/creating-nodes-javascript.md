@@ -1,12 +1,15 @@
+**최신 수정일자: 2025.12.00**
+
 # JavaScript 노드 생성 가이드
 
 JavaScript (클라이언트)에서 커스텀 노드를 만드는 방법을 설명합니다. JavaScript 노드는 서버 API를 호출하거나 클라이언트에서 직접 실행할 수 있습니다.
 
 ## 빠른 시작
 
-1. **노드 설정 추가**: `server/config/nodes_config.py`에 노드 정보 추가 (서버 측)
+1. **노드 설정 추가**: `server/config/nodes_config.py`에 노드 정보 추가 (서버 측, 필수: `input_schema`, `output_schema` 포함)
 2. **노드 렌더링 파일 생성**: `UI/src/js/components/node/node-{이름}.js` 파일 생성
-3. **예시 출력 추가** (선택): `UI/src/pages/workflow/config/node-preview-outputs.js`에 예시 출력 함수 추가
+
+> **중요**: JavaScript 파일은 **자동으로 로드**됩니다. `index.html`을 수정할 필요가 없습니다. `nodes_config.py`의 `script` 필드만 올바르게 설정하면 `NodeRegistry`가 자동으로 스크립트를 로드합니다.
 
 ## 1. 노드 설정 추가 (서버 측)
 
@@ -29,10 +32,29 @@ NODES_CONFIG: dict[str, dict[str, Any]] = {
                 "default": "",
                 "required": True
             }
+        },
+        "input_schema": {  # 필수
+            "action": {"type": "string", "description": "이전 노드 타입"},
+            "status": {"type": "string", "description": "이전 노드 실행 상태"},
+            "output": {"type": "any", "description": "이전 노드 출력 데이터"}
+        },
+        "output_schema": {  # 필수
+            "action": {"type": "string", "description": "노드 타입"},
+            "status": {"type": "string", "description": "실행 상태"},
+            "output": {
+                "type": "object",
+                "description": "출력 데이터",
+                "properties": {
+                    "value": {"type": "string", "description": "입력받은 값"},
+                    "result": {"type": "string", "description": "처리 결과"}
+                }
+            }
         }
     }
 }
 ```
+
+> **참고**: JavaScript 노드도 서버 측 설정이 필요합니다. `input_schema`와 `output_schema`는 필수입니다.
 
 ## 2. 노드 렌더링 파일 생성
 
@@ -77,7 +99,7 @@ NODES_CONFIG: dict[str, dict[str, Any]] = {
                         </div>
                     </div>
                     <div class="node-output"></div>
-                    <div class="node-settings"></div>
+                    <div class="node-settings" data-node-id="${nodeData.id}">⚙</div>
                 `;
             }
         });
@@ -90,6 +112,36 @@ NODES_CONFIG: dict[str, dict[str, Any]] = {
         registerNode();
     }
 })();
+```
+
+### 실제 예시
+
+`UI/src/js/components/node/node-process-focus.js`를 참고하세요:
+
+```javascript
+window.NodeManager.registerNodeType('process-focus', {
+    renderContent(nodeData) {
+        const icon = window.NodeIcons ? window.NodeIcons.getIcon('process-focus', nodeData) : '🖥️';
+        const processName = nodeData.process_name || '프로세스 미선택';
+        const windowTitle = nodeData.window_title || '';
+        const displayText = windowTitle ? `${processName} - ${windowTitle}` : processName;
+
+        return `
+            <div class="node-input"></div>
+            <div class="node-content">
+                <div class="node-icon-box">
+                    <div class="node-icon">${icon}</div>
+                </div>
+                <div class="node-text-area">
+                    <div class="node-title">${this.escapeHtml(nodeData.title || '프로세스 포커스')}</div>
+                    <div class="node-description">${this.escapeHtml(displayText)}</div>
+                </div>
+            </div>
+            <div class="node-output"></div>
+            <div class="node-settings" data-node-id="${nodeData.id}">⚙</div>
+        `;
+    }
+});
 ```
 
 ## 3. 노드 실행 구현 (선택)
@@ -183,71 +235,67 @@ window.NodeManager.registerNodeType('my-node', {
 });
 ```
 
-## 4. 예시 출력 추가 (선택)
+> **참고**: 대부분의 노드는 서버에서 실행되므로, JavaScript 노드에서 `execute` 메서드를 구현하는 경우는 드뭅니다. 일반적으로는 `renderContent`만 구현하면 됩니다.
 
-노드 설정 모달의 출력 미리보기에 표시될 예시 출력을 정의하려면 `UI/src/pages/workflow/config/node-preview-outputs.js`에 함수를 추가하세요:
+## 4. 자동 스크립트 로드 (Import)
 
-```javascript
-// node-preview-outputs.js
+**중요**: JavaScript 파일은 **자동으로 로드**됩니다. `index.html`을 수정할 필요가 없습니다.
 
-export function generatePreviewOutput(nodeType, nodeData) {
-    switch (nodeType) {
-        // ... 기존 노드들 ...
-        
-        case 'my-node':
-            return generateMyNodeOutput(nodeData);
-        
-        default:
-            return generateDefaultOutput(nodeType);
-    }
-}
+### 자동 로드 동작 원리
 
-function generateMyNodeOutput(nodeData) {
-    const value = nodeData?.value || '기본값';
-    return JSON.stringify({
-        action: "my-node",
-        status: "completed",
-        output: {
-            value: value,
-            result: "성공"
-        }
-    }, null, 2);
-}
+1. **서버 시작 시**: 서버가 `nodes_config.py`의 모든 노드 설정을 `/api/config/nodes` API로 제공합니다.
+2. **클라이언트 로드 시**: `WorkflowPage`가 초기화되면 `NodeRegistry`가 자동으로:
+   - 서버에서 노드 설정 목록을 가져옵니다
+   - 각 노드의 `script` 필드를 확인합니다
+   - 해당 JavaScript 파일을 동적으로 로드합니다 (`/static/js/components/node/{script}`)
+3. **노드 등록**: JavaScript 파일이 로드되면 `registerNodeType`이 자동으로 호출되어 노드가 등록됩니다.
+
+### 필요한 작업
+
+- ✅ `nodes_config.py`에 `script` 필드 설정 (예: `"script": "node-my-node.js"`)
+- ✅ `UI/src/js/components/node/node-my-node.js` 파일 생성
+- ❌ `index.html` 수정 **불필요** (자동으로 로드됨)
+
+### 동적 로드 확인
+
+브라우저 개발자 도구 콘솔에서 다음 메시지를 확인할 수 있습니다:
+
 ```
-
-> **참고**: 대부분의 노드는 예시 출력을 사용하며, `wait`, `start`, `end` 노드만 실제 실행 결과를 표시합니다.
-
-## 5. HTML에 스크립트 추가
-
-`UI/src/index.html`에 생성한 JavaScript 파일을 추가하세요:
-
-```html
-<!-- 노드 스크립트 -->
-<script src="/static/js/components/node/node-my-node.js"></script>
+[NodeRegistry] 서버에서 노드 설정 로드 완료: X개
+[NodeRegistry] 노드 스크립트 로드 완료: node-my-node.js
+[node-my-node] 노드 타입 등록 완료
 ```
 
 ## 참고 파일
 
 - `UI/src/js/components/node/node-example.js`: 노드 생성 템플릿
-- `UI/src/js/components/node/node-click.js`: 클릭 노드 구현 예시
-- `UI/src/pages/workflow/config/node-preview-outputs.js`: 노드 예시 출력 정의
+- `UI/src/js/components/node/node-process-focus.js`: 프로세스 포커스 노드 구현 예시
 
 ## 주의사항
 
 1. **노드 이름 일치**: 
-   - `nodes_config.py`의 노드 타입
-   - `registerNodeType`의 노드 타입
-   - `script` 필드의 파일명 (확장자 제외)
+   - `nodes_config.py`의 노드 타입 (예: `"my-node"`)
+   - `registerNodeType`의 노드 타입 (예: `'my-node'`)
+   - `script` 필드의 파일명 (예: `"node-my-node.js"`)
    - 이 세 가지가 모두 일치해야 합니다.
 
 2. **파일명 규칙**: 
    - JavaScript: `node-{이름}.js` (예: `node-my-node.js`)
+   - 파일은 `UI/src/js/components/node/` 디렉토리에 위치해야 합니다.
 
 3. **NodeManager 로드 대기**: 
    - `NodeManager`가 로드되기 전에 스크립트가 실행될 수 있으므로, 로드 대기 로직을 포함하세요.
+   - 자동 로드 시스템이 `NodeManager` 로드를 기다린 후 스크립트를 로드하므로, 일반적으로 문제가 없습니다.
 
-4. **서버 재시작**: 
+4. **스키마 정의**: 
+   - `input_schema`와 `output_schema`는 필수입니다. 노드 설정 모달의 미리보기에 사용됩니다.
+
+5. **서버 재시작**: 
    - 서버 측 설정을 변경한 경우 서버를 재시작해야 합니다.
+   - JavaScript 파일만 수정한 경우 브라우저 새로고침만으로 반영됩니다 (자동 로드 시스템이 다시 로드함).
+
+6. **자동 로드**: 
+   - `index.html`을 수정할 필요가 없습니다. `nodes_config.py`의 `script` 필드만 올바르게 설정하면 자동으로 로드됩니다.
 
 ## 실행 방식 선택 가이드
 
@@ -261,3 +309,4 @@ function generateMyNodeOutput(nodeData) {
 - 서버 부하를 줄이고 싶은 경우
 - 빠른 응답이 필요한 경우
 
+> **참고**: 대부분의 노드는 Python으로 구현되며, JavaScript 노드는 주로 렌더링만 담당합니다. 실제 실행은 서버에서 이루어집니다.

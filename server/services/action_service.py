@@ -2,29 +2,23 @@
 액션 처리 서비스
 """
 
+import inspect
 from typing import Any
 
 from log import log_manager
 
-# 노드 모듈 import
-from nodes.actionnodes import (
-    ActionNode,
-    ClickNode,
-    HttpApiRequestNode,
-    ProcessFocusNode,
-)
-from nodes.boundarynodes import StartNode
-from nodes.conditionnodes import ConditionNode
-from nodes.imagenodes import ImageTouchNode
-from nodes.waitnodes import WaitNode
+# 노드 모듈 import (자동으로 모든 노드가 import됨)
+import nodes
 from services.condition_service import ConditionService
 from services.node_execution_context import NodeExecutionContext
 
 # config 모듈은 직접 import (같은 레벨에 있으므로)
 try:
-    from config.action_node_types import get_action_node_config
+    from config.action_node_types import ACTION_NODE_TYPES, get_action_node_config
 except ImportError:
-    # config 모듈이 없으면 빈 함수로 대체
+    # config 모듈이 없으면 빈 딕셔너리와 함수로 대체
+    ACTION_NODE_TYPES = {}
+
     def get_action_node_config(node_type: str, action_node_type: str) -> dict[str, Any] | None:
         return None
 
@@ -36,23 +30,40 @@ class ActionService:
     """액션을 처리하는 서비스 클래스"""
 
     def __init__(self) -> None:
-        # 노드 타입별 핸들러 매핑
-        self.node_handlers = {
-            # 경계 노드들
-            "start": StartNode.execute,
-            # 액션 노드들
-            "click": ClickNode.execute,
-            "action": ActionNode.execute,
-            "image-touch": ImageTouchNode.execute,
-            "process-focus": ProcessFocusNode.execute,
-            # 조건 노드들
-            "condition": ConditionNode.execute,
-            # 대기 노드들
-            "wait": WaitNode.execute,
-        }
+        # 노드 타입별 핸들러 매핑 (자동으로 등록됨)
+        self.node_handlers: dict[str, Any] = {}
+        # 실제 노드 종류 핸들러 매핑 (action_node_type 사용, 자동으로 등록됨)
+        self.action_node_handlers: dict[str, Any] = {}
 
-        # 실제 노드 종류 핸들러 매핑 (action_node_type 사용)
-        self.action_node_handlers = {"http-api-request": HttpApiRequestNode.execute}
+        # 모든 노드 클래스를 자동으로 스캔하여 핸들러 등록
+        self._register_node_handlers()
+
+    def _register_node_handlers(self) -> None:
+        """
+        모든 노드 클래스를 자동으로 스캔하여 핸들러를 등록합니다.
+        """
+        # nodes 모듈에서 BaseNode를 상속받은 모든 클래스를 찾음
+        from nodes.base_node import BaseNode
+
+        # nodes 모듈의 모든 속성을 순회
+        for _name, obj in inspect.getmembers(nodes):
+            # 클래스이고 BaseNode를 상속받았으며, execute 메서드가 있는 경우
+            if inspect.isclass(obj) and issubclass(obj, BaseNode) and obj is not BaseNode and hasattr(obj, "execute"):
+                execute_method = obj.execute
+                # execute 메서드에 action_name 속성이 있는지 확인 (NodeExecutor 데코레이터가 추가함)
+                if hasattr(execute_method, "action_name"):
+                    action_name = execute_method.action_name
+                    # node_handlers에 등록
+                    self.node_handlers[action_name] = execute_method
+                    logger.debug(f"노드 핸들러 자동 등록: {action_name} -> {obj.__name__}.execute")
+
+        # action_node_types.py의 handler와 매칭하여 action_node_handlers에 등록
+        for _node_type, action_nodes in ACTION_NODE_TYPES.items():
+            for action_node_type, config in action_nodes.items():
+                handler_name = config.get("handler")
+                if handler_name and handler_name in self.node_handlers:
+                    self.action_node_handlers[action_node_type] = self.node_handlers[handler_name]
+                    logger.debug(f"액션 노드 핸들러 자동 등록: {action_node_type} -> {handler_name}")
 
     async def process_action(
         self, action_type: str, parameters: dict[str, Any], action_node_type: str | None = None

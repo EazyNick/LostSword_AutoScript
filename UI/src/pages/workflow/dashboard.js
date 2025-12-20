@@ -94,6 +94,42 @@ export class DashboardManager {
     }
 
     /**
+     * 스크립트 카드 찾기 (헬퍼 함수)
+     * @param {number} scriptId - 스크립트 ID
+     * @returns {HTMLElement|null} 찾은 카드 요소
+     */
+    findScriptCard(scriptId) {
+        // 1. data-script-id로 직접 찾기
+        let card = document.querySelector(`.script-card[data-script-id="${scriptId}"]`);
+        if (card) {
+            return card;
+        }
+
+        // 2. 버튼의 data-script-id로 찾기
+        const runBtn = document.querySelector(`.btn-run[data-script-id="${scriptId}"]`);
+        if (runBtn) {
+            card = runBtn.closest('.script-card');
+            if (card) {
+                // data-script-id 속성 설정 (다음 조회를 위해)
+                card.setAttribute('data-script-id', scriptId);
+                return card;
+            }
+        }
+
+        // 3. 모든 카드를 순회하며 버튼으로 찾기
+        const allCards = document.querySelectorAll('.script-card');
+        for (const c of allCards) {
+            const btn = c.querySelector(`.btn-run[data-script-id="${scriptId}"]`);
+            if (btn) {
+                c.setAttribute('data-script-id', scriptId);
+                return c;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * 스크립트 실행 중 상태 설정
      */
     setScriptRunning(scriptId, isRunning) {
@@ -102,29 +138,25 @@ export class DashboardManager {
 
         this.runningScriptId = isRunning ? scriptId : null;
 
-        // 스크립트 카드 찾기
-        const card = document.querySelector(`.script-card[data-script-id="${scriptId}"]`);
-        if (!card) {
-            // data-script-id가 없으면 버튼의 data-script-id로 찾기
-            const runBtn = document.querySelector(`.btn-run[data-script-id="${scriptId}"]`);
-            if (runBtn) {
-                const parentCard = runBtn.closest('.script-card');
-                if (parentCard) {
-                    this.updateScriptCardState(parentCard, isRunning);
-                }
-            }
-        } else {
+        const card = this.findScriptCard(scriptId);
+        if (card) {
             this.updateScriptCardState(card, isRunning);
         }
     }
 
     /**
-     * 스크립트 카드 상태 업데이트
+     * 스크립트 카드 상태 업데이트 (실행 중)
      */
     updateScriptCardState(card, isRunning) {
         if (isRunning) {
             card.classList.add('executing');
-            card.setAttribute('data-script-id', card.querySelector('.btn-run')?.dataset?.scriptId || '');
+            // data-script-id가 없으면 설정
+            if (!card.getAttribute('data-script-id')) {
+                const scriptId = card.querySelector('.btn-run')?.dataset?.scriptId;
+                if (scriptId) {
+                    card.setAttribute('data-script-id', scriptId);
+                }
+            }
         } else {
             card.classList.remove('executing');
         }
@@ -137,31 +169,7 @@ export class DashboardManager {
         const logger = getLogger();
         logger.log(`[Dashboard] setScriptStatus 호출: scriptId=${scriptId}, status=${status}`);
 
-        // 먼저 data-script-id로 카드 찾기
-        let card = document.querySelector(`.script-card[data-script-id="${scriptId}"]`);
-
-        // 없으면 버튼의 data-script-id로 찾기
-        if (!card) {
-            const runBtn = document.querySelector(`.btn-run[data-script-id="${scriptId}"]`);
-            if (runBtn) {
-                card = runBtn.closest('.script-card');
-            }
-        }
-
-        // 여전히 없으면 모든 스크립트 카드를 순회하며 찾기
-        if (!card) {
-            const allCards = document.querySelectorAll('.script-card');
-            for (const c of allCards) {
-                const btn = c.querySelector(`.btn-run[data-script-id="${scriptId}"]`);
-                if (btn) {
-                    card = c;
-                    // data-script-id 속성도 설정
-                    card.setAttribute('data-script-id', scriptId);
-                    break;
-                }
-            }
-        }
-
+        const card = this.findScriptCard(scriptId);
         if (card) {
             logger.log(`[Dashboard] 스크립트 카드 찾음: ${scriptId}`);
             this.updateScriptCardStatus(card, status);
@@ -306,9 +314,8 @@ export class DashboardManager {
      */
     calculateStats() {
         this.executionStats.totalScripts = this.scripts.length;
-        // 전체 실행 통계는 서버에서 관리하므로 로컬 계산 불필요
-        this.executionStats.allExecutions = 0;
-        this.executionStats.allFailed = 0;
+        // 전체 실행 통계는 서버에서 관리하므로 로컬에서 초기화하지 않음 (기존 값 유지)
+        // this.executionStats.allExecutions와 allFailed는 서버에서 로드한 값을 유지
         // 비활성 스크립트 개수 계산
         this.executionStats.inactiveScripts = this.scripts.filter((script) => !script.active).length;
     }
@@ -474,8 +481,10 @@ export class DashboardManager {
                     script.active = newActive;
                 }
 
-                // 대시보드 다시 렌더링
+                // 대시보드 다시 렌더링 (통계 초기화 없이)
                 this.calculateStats();
+                // 전체 실행 통계는 서버에서 다시 로드하여 유지
+                await this.loadDashboardStats();
                 this.renderDashboard();
             } else {
                 logger.warn('[Dashboard] ScriptAPI.toggleScriptActive를 사용할 수 없습니다.');
@@ -640,6 +649,75 @@ export class DashboardManager {
             return result;
         } catch (error) {
             logger.error('[Dashboard] ❌ 전체 실행 요약 정보 저장 실패:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * 전체 실행 횟수 증가 (각 스크립트 실행 후 호출)
+     * @param {boolean} success - 성공 여부
+     * @returns {Promise<Object>} 업데이트 결과
+     */
+    async incrementExecutionCount(success = true) {
+        const logger = getLogger();
+        logger.log('[Dashboard] incrementExecutionCount() 호출됨');
+        logger.log('[Dashboard] 성공 여부:', success);
+
+        try {
+            const result = await apiCall('/api/dashboard/increment-execution', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ success })
+            });
+
+            logger.log('[Dashboard] ✅ 전체 실행 횟수 증가 완료:', result);
+
+            // 통계 즉시 업데이트
+            if (result.data) {
+                this.executionStats.allExecutions = result.data.all_executions || 0;
+                this.executionStats.allFailed = result.data.all_failed_scripts || 0;
+                this.updateStats();
+            } else {
+                // 폴백: 서버에서 다시 로드
+                await this.loadDashboardStats();
+                this.updateStats();
+            }
+
+            return result;
+        } catch (error) {
+            logger.error('[Dashboard] ❌ 전체 실행 횟수 증가 실패:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * 전체 실행 통계 초기화 (전체 실행 시작 시 호출)
+     * @returns {Promise<Object>} 초기화 결과
+     */
+    async resetExecutionStats() {
+        const logger = getLogger();
+        logger.log('[Dashboard] resetExecutionStats() 호출됨');
+
+        try {
+            const result = await apiCall('/api/dashboard/reset-execution-stats', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            logger.log('[Dashboard] ✅ 전체 실행 통계 초기화 완료:', result);
+
+            // 통계 즉시 업데이트
+            this.executionStats.allExecutions = 0;
+            this.executionStats.allFailed = 0;
+            this.updateStats();
+
+            return result;
+        } catch (error) {
+            logger.error('[Dashboard] ❌ 전체 실행 통계 초기화 실패:', error);
             throw error;
         }
     }

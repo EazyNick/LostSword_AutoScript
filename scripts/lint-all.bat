@@ -128,7 +128,7 @@ if %ERRORLEVEL% NEQ 0 (
 
 REM Python linting and formatting (server)
 REM Run from project root (do not change to server folder)
-echo [1/4] Python linting check and auto-fix (server)...
+echo [1/5] Python linting check and auto-fix (server)...
 ruff check --fix server/
 set PYTHON_LINT_ERROR=%ERRORLEVEL%
 if !PYTHON_LINT_ERROR! NEQ 0 (
@@ -138,7 +138,7 @@ if !PYTHON_LINT_ERROR! NEQ 0 (
 )
 echo.
 
-echo [2/4] Python formatting (server)...
+echo [2/5] Python formatting (server)...
 ruff format server/
 set PYTHON_FORMAT_ERROR=%ERRORLEVEL%
 if !PYTHON_FORMAT_ERROR! NEQ 0 (
@@ -148,9 +148,28 @@ if !PYTHON_FORMAT_ERROR! NEQ 0 (
 )
 echo.
 
+REM Check if mypy command exists
+where mypy >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo [WARNING] mypy command not found. Skipping type checking.
+    echo Please install mypy: pip install mypy
+    echo.
+    goto :check_npm
+)
+
+echo [3/5] Mypy type checking (server)...
+mypy server/
+set MYPY_ERROR=%ERRORLEVEL%
+if !MYPY_ERROR! NEQ 0 (
+    echo [WARNING] Mypy type checking failed. (Error code: !MYPY_ERROR!)
+) else (
+    echo [SUCCESS] Mypy type checking completed.
+)
+echo.
+
 :check_npm
 REM JavaScript linting and formatting (UI)
-echo [3/4] JavaScript linting check and auto-fix (UI)...
+echo [4/5] JavaScript linting check and auto-fix (UI)...
 
 REM Check if npm command exists
 where npm >nul 2>&1
@@ -186,7 +205,7 @@ if !JS_LINT_ERROR! NEQ 0 (
 )
 echo.
 
-echo [4/4] JavaScript formatting (UI)...
+echo [5/5] JavaScript formatting (UI)...
 call npm run format
 set JS_FORMAT_ERROR=%ERRORLEVEL%
 if !JS_FORMAT_ERROR! NEQ 0 (

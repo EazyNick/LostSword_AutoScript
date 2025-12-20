@@ -214,4 +214,6 @@ class NodeExecutor:
 
                 return error_result
 
+        # 래핑된 함수에 action_name 속성 추가 (자동 핸들러 등록을 위해)
+        wrapper.action_name = self.action_name
         return wrapper

@@ -915,6 +915,17 @@ export class SidebarScriptManager {
             return null;
         };
 
+        // 전체 실행 시작 시 통계 초기화
+        try {
+            const dashboardManager = getDashboardManagerInstance();
+            if (dashboardManager && typeof dashboardManager.resetExecutionStats === 'function') {
+                await dashboardManager.resetExecutionStats();
+                log('[Scripts] 전체 실행 통계 초기화 완료');
+            }
+        } catch (resetError) {
+            logWarn(`[Scripts] 전체 실행 통계 초기화 실패 (무시): ${resetError.message}`);
+        }
+
         try {
             const modalManager = getModalManagerInstance();
 
@@ -968,7 +979,7 @@ export class SidebarScriptManager {
                     executionIds.push(workflowPage.executionService.lastExecutionId);
                 }
 
-                // 결과 처리
+                // 결과 처리 및 즉시 통계 업데이트
                 if (result.success) {
                     successCount++;
                     scriptResults.push({
@@ -976,6 +987,17 @@ export class SidebarScriptManager {
                         status: 'success',
                         message: result.message || '정상 실행 완료'
                     });
+
+                    // 성공 시 즉시 통계 업데이트
+                    try {
+                        const dashboardManager = getDashboardManagerInstance();
+                        if (dashboardManager && typeof dashboardManager.incrementExecutionCount === 'function') {
+                            await dashboardManager.incrementExecutionCount(true);
+                            log(`[Scripts] 전체 실행 횟수 증가 완료 (성공) - 스크립트: ${script.name}`);
+                        }
+                    } catch (incrementError) {
+                        logWarn(`[Scripts] 전체 실행 횟수 증가 실패 (무시): ${incrementError.message}`);
+                    }
                 } else {
                     failCount++;
                     scriptResults.push({
@@ -984,6 +1006,19 @@ export class SidebarScriptManager {
                         error: result.error,
                         message: result.message
                     });
+
+                    // 실패 시 즉시 통계 업데이트 (취소가 아닌 경우만)
+                    if (result.error !== 'CANCELLED') {
+                        try {
+                            const dashboardManager = getDashboardManagerInstance();
+                            if (dashboardManager && typeof dashboardManager.incrementExecutionCount === 'function') {
+                                await dashboardManager.incrementExecutionCount(false);
+                                log(`[Scripts] 전체 실행 횟수 증가 완료 (실패) - 스크립트: ${script.name}`);
+                            }
+                        } catch (incrementError) {
+                            logWarn(`[Scripts] 전체 실행 횟수 증가 실패 (무시): ${incrementError.message}`);
+                        }
+                    }
 
                     // 취소된 경우 루프 종료
                     if (result.error === 'CANCELLED') {
