@@ -14,6 +14,7 @@ from api import (
     dashboard_router,
     log_router,
     node_router,
+    screenshot_router,
     script_router,
     state_router,
 )
@@ -94,6 +95,27 @@ def initialize_database() -> None:
                     script_order_json = "[]"
                 db_manager.save_user_setting("script-order", script_order_json)
                 logger.info(f"✅ 기본 설정값 추가: script-order = {script_order_json}")
+
+            # 스크린샷 기본 설정값 확인 및 추가
+            auto_screenshot = db_manager.get_user_setting("screenshot.autoScreenshot")
+            if auto_screenshot is None:
+                db_manager.save_user_setting("screenshot.autoScreenshot", "true")
+                logger.info("✅ 기본 설정값 추가: screenshot.autoScreenshot")
+
+            screenshot_on_error = db_manager.get_user_setting("screenshot.screenshotOnError")
+            if screenshot_on_error is None:
+                db_manager.save_user_setting("screenshot.screenshotOnError", "true")
+                logger.info("✅ 기본 설정값 추가: screenshot.screenshotOnError")
+
+            screenshot_save_path = db_manager.get_user_setting("screenshot.savePath")
+            if screenshot_save_path is None:
+                db_manager.save_user_setting("screenshot.savePath", "./screenshots")
+                logger.info("✅ 기본 설정값 추가: screenshot.savePath")
+
+            screenshot_image_format = db_manager.get_user_setting("screenshot.imageFormat")
+            if screenshot_image_format is None:
+                db_manager.save_user_setting("screenshot.imageFormat", "PNG")
+                logger.info("✅ 기본 설정값 추가: screenshot.imageFormat")
     except Exception as e:
         logger.error(f"❌ 데이터베이스 초기화 실패: {e}")
         raise e
@@ -129,6 +151,7 @@ app.include_router(config_router)
 app.include_router(action_node_router)
 app.include_router(dashboard_router)
 app.include_router(log_router)
+app.include_router(screenshot_router)
 
 # 정적 파일 서빙 설정 (개발 환경)
 ui_path = os.path.join(os.path.dirname(__file__), "..", "UI", "src")

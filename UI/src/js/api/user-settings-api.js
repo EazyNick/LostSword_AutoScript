@@ -25,15 +25,12 @@ export const UserSettingsAPI = {
      * @returns {Promise<Object>} 설정 키-값 쌍 객체
      */
     async getAllSettings() {
-        const logger = getLogger();
-        logger.log('[UserSettingsAPI] getAllSettings() 호출됨');
-
         try {
             const result = await apiCall('/api/config/user-settings');
-            logger.log('[UserSettingsAPI] ✅ 모든 설정 조회 성공:', result);
             // 변경된 응답 형식: {success: true, message: "...", data: {...}}
             return result.data || result; // 하위 호환성 유지
         } catch (error) {
+            const logger = getLogger();
             logger.error('[UserSettingsAPI] ❌ 설정 조회 실패:', error);
             throw error;
         }
@@ -45,14 +42,10 @@ export const UserSettingsAPI = {
      * @returns {Promise<string|null>} 설정 값 (없으면 null)
      */
     async getSetting(key) {
-        const logger = getLogger();
-        logger.log(`[UserSettingsAPI] getSetting() 호출됨 - 키: ${key}`);
-
         try {
             const result = await apiCall(`/api/config/user-settings/${key}`);
             // 변경된 응답 형식: {success: true, message: "...", data: {key, value}}
             const settingData = result.data || result; // 하위 호환성 유지
-            logger.log(`[UserSettingsAPI] ✅ 설정 조회 성공 - 키: ${key}, 값: ${settingData.value}`);
             return settingData.value;
         } catch (error) {
             // 404 에러는 설정이 없는 것이므로 null 반환 (정상적인 경우)
@@ -69,12 +62,10 @@ export const UserSettingsAPI = {
                 errorString.includes('404') ||
                 errorString.includes('찾을 수 없습니다')
             ) {
-                logger.log(`[UserSettingsAPI] 설정을 찾을 수 없음 (정상, 처음 사용 시) - 키: ${key}`);
                 return null;
             }
 
             // 다른 에러도 폴백으로 null 반환 (로컬 스토리지 사용)
-            logger.log(`[UserSettingsAPI] 설정 조회 실패, null 반환 (폴백) - 키: ${key}, 에러: ${errorMessage}`);
             return null;
         }
     },
@@ -108,16 +99,13 @@ export const UserSettingsAPI = {
      * @returns {Promise<Object>} 삭제 결과
      */
     async deleteSetting(key) {
-        const logger = getLogger();
-        logger.log(`[UserSettingsAPI] deleteSetting() 호출됨 - 키: ${key}`);
-
         try {
             const result = await apiCall(`/api/config/user-settings/${key}`, {
                 method: 'DELETE'
             });
-            logger.log(`[UserSettingsAPI] ✅ 설정 삭제 성공 - 키: ${key}`);
             return result;
         } catch (error) {
+            const logger = getLogger();
             logger.error(`[UserSettingsAPI] ❌ 설정 삭제 실패 - 키: ${key}`, error);
             throw error;
         }

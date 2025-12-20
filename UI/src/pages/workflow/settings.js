@@ -91,6 +91,34 @@ export class SettingsManager {
                     this.settings.appearance.theme = themeManager.getCurrentTheme();
                 }
             }
+
+            // 서버에서 스크린샷 설정 로드 (서버 설정이 우선)
+            try {
+                const { UserSettingsAPI } = await import('../../js/api/user-settings-api.js');
+                if (UserSettingsAPI) {
+                    const autoScreenshot = await UserSettingsAPI.getSetting('screenshot.autoScreenshot');
+                    const screenshotOnError = await UserSettingsAPI.getSetting('screenshot.screenshotOnError');
+                    const savePath = await UserSettingsAPI.getSetting('screenshot.savePath');
+                    const imageFormat = await UserSettingsAPI.getSetting('screenshot.imageFormat');
+
+                    if (autoScreenshot !== null) {
+                        this.settings.screenshot.autoScreenshot = autoScreenshot === 'true' || autoScreenshot === true;
+                    }
+                    if (screenshotOnError !== null) {
+                        this.settings.screenshot.screenshotOnError =
+                            screenshotOnError === 'true' || screenshotOnError === true;
+                    }
+                    if (savePath !== null) {
+                        this.settings.screenshot.savePath = savePath;
+                    }
+                    if (imageFormat !== null) {
+                        this.settings.screenshot.imageFormat = imageFormat;
+                    }
+                    logger.log('[Settings] 서버에서 스크린샷 설정 로드 완료');
+                }
+            } catch (serverError) {
+                logger.warn('[Settings] 서버 설정 로드 실패 (로컬 설정 사용):', serverError);
+            }
         } catch (error) {
             logger.error('[Settings] 설정 데이터 로드 실패:', error);
             // 테마 관리자에서 현재 테마 가져오기
@@ -552,9 +580,30 @@ export class SettingsManager {
         logger.log('[Settings] 설정 저장 시작:', this.settings);
 
         try {
-            // TODO: 서버에 설정 저장
-            // 현재는 로컬 스토리지에 저장
+            // 로컬 스토리지에 저장 (즉시 반영)
             localStorage.setItem('app-settings', JSON.stringify(this.settings));
+
+            // 서버에도 스크린샷 설정 저장
+            try {
+                const { UserSettingsAPI } = await import('../../js/api/user-settings-api.js');
+                if (UserSettingsAPI) {
+                    // 스크린샷 설정을 서버에 저장
+                    await UserSettingsAPI.saveSetting(
+                        'screenshot.autoScreenshot',
+                        this.settings.screenshot.autoScreenshot.toString()
+                    );
+                    await UserSettingsAPI.saveSetting(
+                        'screenshot.screenshotOnError',
+                        this.settings.screenshot.screenshotOnError.toString()
+                    );
+                    await UserSettingsAPI.saveSetting('screenshot.savePath', this.settings.screenshot.savePath);
+                    await UserSettingsAPI.saveSetting('screenshot.imageFormat', this.settings.screenshot.imageFormat);
+                    logger.log('[Settings] 스크린샷 설정 서버에 저장 완료');
+                }
+            } catch (serverError) {
+                logger.warn('[Settings] 서버 저장 실패 (로컬 스토리지만 저장):', serverError);
+            }
+
             logger.log('[Settings] 설정 저장 완료');
 
             // 저장 완료 알림 (간단한 토스트 메시지)

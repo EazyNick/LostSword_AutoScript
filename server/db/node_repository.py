@@ -429,21 +429,12 @@ if __name__ == "__main__":
             "data": {"title": "액션 노드 2"},
             "parameters": {},
         },
-        {
-            "id": "end",
-            "type": "end",
-            "position": {"x": 1200.0, "y": 0.0},
-            "data": {"title": "종료"},
-            "parameters": {},
-        },
     ]
 
     test_connections = [
         {"from": "start", "to": "node1", "outputType": None},
         {"from": "node1", "to": "node2", "outputType": None},
         {"from": "node2", "to": "node3", "outputType": "true"},
-        {"from": "node2", "to": "end", "outputType": "false"},
-        {"from": "node3", "to": "end", "outputType": None},
     ]
 
     success = node_repo.save_nodes(script_id, test_nodes, test_connections)
@@ -535,22 +526,6 @@ if __name__ == "__main__":
             "data": {"title": "시작 2"},
             "parameters": {},
             "_db_id": 2,
-        },
-        {
-            "id": "end",
-            "type": "end",
-            "position": {"x": 1200.0, "y": 0.0},
-            "data": {"title": "종료 1"},
-            "parameters": {},
-            "_db_id": 3,
-        },
-        {
-            "id": "end",
-            "type": "end",
-            "position": {"x": 1300.0, "y": 100.0},
-            "data": {"title": "종료 2"},
-            "parameters": {},
-            "_db_id": 4,
         },
     ]
 

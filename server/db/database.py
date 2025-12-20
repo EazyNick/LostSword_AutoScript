@@ -657,6 +657,12 @@ class DatabaseManager:
             script_order = json.dumps([script1_id, script2_id, script3_id], ensure_ascii=False)
             self.user_settings.save_setting("script-order", script_order)  # 스크립트 순서
 
+            # 스크린샷 기본 설정값 추가
+            self.user_settings.save_setting("screenshot.autoScreenshot", "true")
+            self.user_settings.save_setting("screenshot.screenshotOnError", "true")
+            self.user_settings.save_setting("screenshot.savePath", "./screenshots")
+            self.user_settings.save_setting("screenshot.imageFormat", "PNG")
+
             log_func("사용자 설정 예시 데이터 추가 완료")
 
             total_nodes = len(script1_nodes) + len(script2_nodes) + len(script3_nodes)
@@ -793,18 +799,10 @@ if __name__ == "__main__":
             "parameters": {},
             "description": "테스트용 노드",
         },
-        {
-            "id": "end",
-            "type": "end",
-            "position": {"x": 600.0, "y": 0.0},
-            "data": {"title": "종료"},
-            "parameters": {},
-        },
     ]
 
     test_connections = [
         {"from": "start", "to": "test_node", "outputType": None},
-        {"from": "test_node", "to": "end", "outputType": None},
     ]
 
     db.save_script_data(new_script_id, test_nodes, test_connections)

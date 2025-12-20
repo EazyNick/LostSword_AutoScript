@@ -8,6 +8,7 @@ from .config_router import router as config_router
 from .dashboard_router import router as dashboard_router
 from .log_router import router as log_router
 from .node_router import router as node_router
+from .screenshot_router import router as screenshot_router
 from .script_router import router as script_router
 from .state_router import router as state_router
 
@@ -18,6 +19,7 @@ __all__ = [
     "dashboard_router",
     "log_router",
     "node_router",
+    "screenshot_router",
     "script_router",
     "state_router",
 ]

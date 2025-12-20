@@ -493,7 +493,9 @@ export class DashboardManager {
                     await window.sidebarManager.scriptManager.loadScriptsFromServer();
                     logger.log('[Dashboard] 사이드바 스크립트 목록 업데이트 완료');
                 } else {
-                    logger.warn('[Dashboard] 사이드바 매니저를 찾을 수 없습니다. 스크립트 페이지로 이동 시 상태가 업데이트됩니다.');
+                    logger.warn(
+                        '[Dashboard] 사이드바 매니저를 찾을 수 없습니다. 스크립트 페이지로 이동 시 상태가 업데이트됩니다.'
+                    );
                 }
             } else {
                 logger.warn('[Dashboard] ScriptAPI.toggleScriptActive를 사용할 수 없습니다.');

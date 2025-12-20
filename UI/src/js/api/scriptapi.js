@@ -25,30 +25,14 @@ export const ScriptAPI = {
      * @returns {Promise<Array>} 스크립트 목록
      */
     async getAllScripts() {
-        const logger = getLogger();
-        logger.log('[ScriptAPI] getAllScripts() 호출됨');
-        logger.log('[ScriptAPI] API 요청 시작: GET /api/scripts');
-
         try {
-            const startTime = performance.now();
             const result = await apiCall('/api/scripts');
-            const endTime = performance.now();
-
-            logger.log('[ScriptAPI] ✅ API 응답 받음:', result);
-            logger.log(`[ScriptAPI] 응답 시간: ${(endTime - startTime).toFixed(2)}ms`);
-
             // 변경된 응답 형식: {success: true, message: "...", data: [...], count: N}
             const scripts = result.data || result; // 하위 호환성 유지
-            logger.log(`[ScriptAPI] 받은 스크립트 개수: ${scripts.length}개`);
-
             return scripts;
         } catch (error) {
             const logger = getLogger();
             logger.error('[ScriptAPI] ❌ API 요청 실패:', error);
-            logger.error('[ScriptAPI] 에러 상세:', {
-                message: error.message,
-                stack: error.stack
-            });
             throw error;
         }
     },
@@ -59,59 +43,12 @@ export const ScriptAPI = {
      * @returns {Promise<Object>} 스크립트 정보 (노드 및 연결 정보 포함)
      */
     async getScript(scriptId) {
-        const logger = getLogger();
-        logger.log('[ScriptAPI] getScript() 호출됨');
-        logger.log('[ScriptAPI] 조회할 스크립트 ID:', scriptId);
-        logger.log('[ScriptAPI] API 요청 시작: GET /api/scripts/' + scriptId);
-
         try {
-            const startTime = performance.now();
             const result = await apiCall(`/api/scripts/${scriptId}`);
-            const endTime = performance.now();
-
-            logger.log('[ScriptAPI] ✅ API 응답 받음:', result);
-            logger.log(`[ScriptAPI] 응답 시간: ${(endTime - startTime).toFixed(2)}ms`);
-            logger.log(`[ScriptAPI] 스크립트 ID: ${result.id}, 이름: ${result.name}`);
-            logger.log(`[ScriptAPI] 노드 개수: ${result.nodes ? result.nodes.length : 0}개`);
-            logger.log(`[ScriptAPI] 연결 개수: ${result.connections ? result.connections.length : 0}개`);
-
-            if (result.nodes && result.nodes.length > 0) {
-                logger.log(
-                    '[ScriptAPI] 노드 목록:',
-                    result.nodes.map((n) => ({
-                        id: n.id,
-                        type: n.type,
-                        connected_to: n.connected_to,
-                        connected_from: n.connected_from
-                    }))
-                );
-
-                // 연결 정보가 있는 노드 확인
-                const nodesWithConnections = result.nodes.filter(
-                    (n) =>
-                        (n.connected_to && Array.isArray(n.connected_to) && n.connected_to.length > 0) ||
-                        (n.connected_from && Array.isArray(n.connected_from) && n.connected_from.length > 0)
-                );
-                logger.log(`[ScriptAPI] 연결 정보가 있는 노드 개수: ${nodesWithConnections.length}개`);
-                if (nodesWithConnections.length > 0) {
-                    logger.log(
-                        '[ScriptAPI] 연결 정보가 있는 노드:',
-                        nodesWithConnections.map((n) => ({
-                            id: n.id,
-                            connected_to: n.connected_to,
-                            connected_from: n.connected_from
-                        }))
-                    );
-                }
-            }
-
             return result;
         } catch (error) {
+            const logger = getLogger();
             logger.error('[ScriptAPI] ❌ API 요청 실패:', error);
-            logger.error('[ScriptAPI] 에러 상세:', {
-                message: error.message,
-                stack: error.stack
-            });
             throw error;
         }
     },
@@ -164,32 +101,16 @@ export const ScriptAPI = {
      * @returns {Promise<Object>} 삭제 결과
      */
     async deleteScript(scriptId) {
-        const logger = getLogger();
-        logger.log('[ScriptAPI] deleteScript() 호출됨');
-        logger.log('[ScriptAPI] 삭제할 스크립트 ID:', scriptId);
-        logger.log('[ScriptAPI] API 요청 시작: DELETE /api/scripts/' + scriptId);
-
         try {
-            const startTime = performance.now();
             const result = await apiCall(`/api/scripts/${scriptId}`, {
                 method: 'DELETE'
             });
-            const endTime = performance.now();
-
-            logger.log('[ScriptAPI] ✅ API 응답 받음:', result);
-            logger.log(`[ScriptAPI] 응답 시간: ${(endTime - startTime).toFixed(2)}ms`);
-
             // 변경된 응답 형식: {success: true, message: "...", data: {id}}
             const deleteData = result.data || result; // 하위 호환성 유지
-            logger.log(`[ScriptAPI] 삭제된 스크립트 ID: ${deleteData.id}`);
-
             return deleteData;
         } catch (error) {
+            const logger = getLogger();
             logger.error('[ScriptAPI] ❌ API 요청 실패:', error);
-            logger.error('[ScriptAPI] 에러 상세:', {
-                message: error.message,
-                stack: error.stack
-            });
             throw error;
         }
     },
@@ -201,14 +122,7 @@ export const ScriptAPI = {
      * @returns {Promise<Object>} 실행 결과
      */
     async executeScript(scriptId, nodes) {
-        const logger = getLogger();
-        logger.log('[ScriptAPI] executeScript() 호출됨');
-        logger.log('[ScriptAPI] 실행할 스크립트 ID:', scriptId);
-        logger.log('[ScriptAPI] 노드 개수:', nodes.length);
-        logger.log('[ScriptAPI] API 요청 시작: POST /api/scripts/' + scriptId + '/execute');
-
         try {
-            const startTime = performance.now();
             const result = await apiCall(`/api/scripts/${scriptId}/execute`, {
                 method: 'POST',
                 body: JSON.stringify({
@@ -216,15 +130,8 @@ export const ScriptAPI = {
                     execution_mode: 'sequential'
                 })
             });
-            const endTime = performance.now();
-
-            logger.log('[ScriptAPI] ✅ API 응답 받음:', result);
-            logger.log(`[ScriptAPI] 응답 시간: ${(endTime - startTime).toFixed(2)}ms`);
-            logger.log(`[ScriptAPI] 실행 성공: ${result.success}`);
-
             // 변경된 응답 형식: {success: true/false, message: "...", data: {results: [...]}}
             const results = result.data?.results || result.results || []; // 하위 호환성 유지
-            logger.log(`[ScriptAPI] 실행 결과 개수: ${results.length}개`);
 
             return {
                 success: result.success,
@@ -233,11 +140,8 @@ export const ScriptAPI = {
                 data: result.data // 전체 데이터도 포함
             };
         } catch (error) {
+            const logger = getLogger();
             logger.error('[ScriptAPI] ❌ API 요청 실패:', error);
-            logger.error('[ScriptAPI] 에러 상세:', {
-                message: error.message,
-                stack: error.stack
-            });
             throw error;
         }
     },
@@ -249,56 +153,30 @@ export const ScriptAPI = {
      * @returns {Promise<Object>} 업데이트 결과
      */
     async toggleScriptActive(scriptId, active) {
-        const logger = getLogger();
-        logger.log('[ScriptAPI] toggleScriptActive() 호출됨');
-        logger.log('[ScriptAPI] 스크립트 ID:', scriptId);
-        logger.log('[ScriptAPI] 활성 상태:', active);
-        logger.log('[ScriptAPI] API 요청 시작: PATCH /api/scripts/' + scriptId + '/active');
-
         try {
-            const startTime = performance.now();
             const result = await apiCall(`/api/scripts/${scriptId}/active`, {
                 method: 'PATCH',
                 body: JSON.stringify({ active: active })
             });
-            const endTime = performance.now();
-
-            logger.log('[ScriptAPI] ✅ API 응답 받음:', result);
-            logger.log(`[ScriptAPI] 응답 시간: ${(endTime - startTime).toFixed(2)}ms`);
-
             // 변경된 응답 형식: {success: true, message: "...", data: {active: true/false}}
             const activeData = result.data || result; // 하위 호환성 유지
-            logger.log(`[ScriptAPI] 업데이트된 활성 상태: ${activeData.active}`);
-
             return activeData;
         } catch (error) {
+            const logger = getLogger();
             logger.error('[ScriptAPI] ❌ API 요청 실패:', error);
-            logger.error('[ScriptAPI] 에러 상세:', {
-                message: error.message,
-                stack: error.stack
-            });
             throw error;
         }
     },
 
     async updateScriptOrder(scriptOrders) {
-        const logger = getLogger();
-        logger.log('[ScriptAPI] updateScriptOrder() 호출됨');
-        logger.log('[ScriptAPI] 스크립트 순서:', scriptOrders);
-        logger.log('[ScriptAPI] API 요청 시작: PATCH /api/scripts/order');
-
         try {
-            const startTime = performance.now();
             const result = await apiCall('/api/scripts/order', {
                 method: 'PATCH',
                 body: JSON.stringify(scriptOrders)
             });
-            const endTime = performance.now();
-
-            logger.log('[ScriptAPI] ✅ API 응답 받음:', result);
-            logger.log(`[ScriptAPI] 응답 시간: ${(endTime - startTime).toFixed(2)}ms`);
             return result;
         } catch (error) {
+            const logger = getLogger();
             logger.error('[ScriptAPI] ❌ API 요청 실패:', error);
             throw error;
         }

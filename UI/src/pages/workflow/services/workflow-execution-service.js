@@ -6,6 +6,7 @@
 import { getResultModalManagerInstance } from '../../../js/utils/result-modal.js';
 import { getNodeRegistry } from './node-registry.js';
 import { getDashboardManagerInstance } from '../dashboard.js';
+import { captureAndSaveScreenshot } from '../../../js/api/screenshot-api.js';
 
 export class WorkflowExecutionService {
     constructor(workflowPage) {
@@ -13,6 +14,8 @@ export class WorkflowExecutionService {
         this.isCancelled = false; // 실행 취소 플래그
         this.isRunningAllScripts = false; // 전체 스크립트 실행 중인지 여부
         this.executionStartTime = null; // 실행 시작 시간
+        this.allScriptsExecutionStartTime = null; // 전체 실행 시작 시간 (전체 실행 시 모든 스크립트가 공유)
+        this.scriptExecutionOrder = null; // 전체 실행 시 스크립트 실행 순서 (1부터 시작)
     }
 
     /**
@@ -78,7 +81,7 @@ export class WorkflowExecutionService {
         this.isCancelled = false; // 취소 플래그 초기화
         this.lastExecutionId = null; // 마지막 실행 ID 저장 (로그 확인용)
 
-        // 전체 노드 개수 계산 (start와 end 포함)
+        // 전체 노드 개수 계산 (start 포함)
         // prepareWorkflowData에서 start를 제외하므로, 실제 화면의 모든 노드 개수를 계산
         const allNodes = document.querySelectorAll('.workflow-node');
 
@@ -104,7 +107,7 @@ export class WorkflowExecutionService {
                 // 조건 노드에서 나가는 모든 연결 찾기
                 const branchConnections = connections.filter((c) => c.from === nodeId);
                 branchConnections.forEach((conn) => {
-                    // 실행 대상에 포함되지 않은 분기 경로 노드 (end 제외)
+                    // 실행 대상에 포함되지 않은 분기 경로 노드
                     if (!executedNodeIds.has(conn.to)) {
                         conditionBranchNodes.add(conn.to);
                     }
@@ -131,8 +134,11 @@ export class WorkflowExecutionService {
         let cancelledCount = 0;
         let currentNodeIndex = -1; // 현재 실행 중인 노드 인덱스 추적
 
-        // Start 노드는 항상 성공으로 카운팅 (실행은 안 하지만 성공으로 간주)
-        successCount = 1;
+        // Start 노드는 항상 성공으로 카운팅 (실행은 하지만 성공으로 간주)
+        // 시작 노드가 실행 목록에 포함되어 있으면 카운팅
+        if (workflowData.nodes.some((node) => node.id === 'start' || node.type === 'start')) {
+            successCount = 1;
+        }
 
         // 노드 실행 결과 수집 (실행 결과 모달 표시용)
         const nodeResults = [];
@@ -208,7 +214,7 @@ export class WorkflowExecutionService {
                         body: JSON.stringify({
                             nodes: [nodeData],
                             execution_mode: 'sequential',
-                            total_nodes: totalNodesCount, // 전체 노드 개수 (시작/종료 포함)
+                            total_nodes: totalNodesCount, // 전체 노드 개수 (시작 노드 포함)
                             current_node_index: i, // 현재 노드 순번 (0부터 시작)
                             previous_node_result: previousNodeResult // 이전 노드의 실행 결과
                         })
@@ -223,6 +229,38 @@ export class WorkflowExecutionService {
 
                     // 3. 실행 완료 UI 표시
                     const nodeResult = result.data?.results?.[0];
+
+                    // 노드 실행 완료 후 스크린샷 캡처 (비동기, 백그라운드 실행)
+                    // 모든 노드에 대해 스크린샷 캡처 (실패한 노드도 포함)
+                    // 스크립트 이름과 노드 이름 가져오기
+                    const currentScript = this.workflowPage?.getCurrentScript();
+                    const scriptName = currentScript?.name || 'Unknown';
+                    const nodeName = nodeData.data?.title || nodeData.type || nodeData.id;
+                    const isRunningAllScripts = this.isRunningAllScripts || false;
+                    // 실행 시작 시간을 ISO 형식으로 변환 (날짜+시간 폴더 생성용)
+                    // 전체 실행인 경우 전체 실행 시작 시간을 우선 사용, 없으면 현재 스크립트 실행 시작 시간 사용
+                    const executionStartTime =
+                        this.isRunningAllScripts && this.allScriptsExecutionStartTime
+                            ? this.allScriptsExecutionStartTime
+                            : this.executionStartTime
+                              ? new Date(this.executionStartTime).toISOString()
+                              : new Date().toISOString();
+                    // 전체 실행 시 스크립트 실행 순서 전달
+                    const scriptExecutionOrder = this.isRunningAllScripts ? this.scriptExecutionOrder : null;
+
+                    // 스크린샷 캡처는 비동기로 실행하여 노드 실행 흐름을 차단하지 않음
+                    captureAndSaveScreenshot(
+                        nodeData.id,
+                        nodeData.type,
+                        scriptName,
+                        nodeName,
+                        isRunningAllScripts,
+                        executionStartTime,
+                        scriptExecutionOrder
+                    ).catch((error) => {
+                        const logger = this.workflowPage.getLogger();
+                        logger.warn('[WorkflowExecutionService] 스크린샷 캡처 실패 (무시):', error);
+                    });
 
                     // 노드 실행 결과를 DOM에 저장 (새로운 표준 형식: {action, status, output: {...}})
                     if (nodeResult) {
@@ -341,6 +379,36 @@ export class WorkflowExecutionService {
                     logger.error(`[WorkflowExecutionService] 노드 실행 오류 (${nodeData.id}):`, error);
                     this.showNodeError(nodeElement);
 
+                    // 에러 발생 시에도 스크린샷 캡처 (에러 상황 기록용)
+                    const currentScript = this.workflowPage?.getCurrentScript();
+                    const scriptName = currentScript?.name || 'Unknown';
+                    const nodeName = nodeData.data?.title || nodeData.type || nodeData.id;
+                    const isRunningAllScripts = this.isRunningAllScripts || false;
+                    // 전체 실행인 경우 전체 실행 시작 시간을 우선 사용, 없으면 현재 스크립트 실행 시작 시간 사용
+                    const executionStartTime =
+                        this.isRunningAllScripts && this.allScriptsExecutionStartTime
+                            ? this.allScriptsExecutionStartTime
+                            : this.executionStartTime
+                              ? new Date(this.executionStartTime).toISOString()
+                              : new Date().toISOString();
+                    // 전체 실행 시 스크립트 실행 순서 전달
+                    const scriptExecutionOrder = this.isRunningAllScripts ? this.scriptExecutionOrder : null;
+
+                    captureAndSaveScreenshot(
+                        nodeData.id,
+                        nodeData.type,
+                        scriptName,
+                        nodeName,
+                        isRunningAllScripts,
+                        executionStartTime,
+                        scriptExecutionOrder
+                    ).catch((screenshotError) => {
+                        logger.warn(
+                            '[WorkflowExecutionService] 에러 발생 시 스크린샷 캡처 실패 (무시):',
+                            screenshotError
+                        );
+                    });
+
                     const nodeTitle = nodeData.data?.title || nodeData.type || nodeData.id;
                     const errorMessage = error.message || '알 수 없는 오류';
 
@@ -443,7 +511,6 @@ export class WorkflowExecutionService {
             console.error('워크플로우 실행 오류:', error);
             // 중단된 노드 개수 계산
             // 에러가 발생한 노드는 이미 failCount에 포함되어 있음
-            // 에러 발생 시 End 노드는 중단으로 카운팅 (성공으로 카운팅하지 않음)
             // 성공한 노드 + 실패한 노드 + 중단된 노드 = 총 노드 수
             // 따라서: 중단 노드 = 총 노드 수 - 성공 노드 - 실패 노드
             cancelledCount = totalNodeCount - successCount - failCount;
@@ -452,9 +519,9 @@ export class WorkflowExecutionService {
             const logger = this.workflowPage.getLogger();
             logger.log('[WorkflowExecutionService] 노드 카운팅 계산:', {
                 totalNodeCount: `전체 노드(Start 포함): ${totalNodeCount}`,
-                successCount: `Start(1) + 실행 성공(${successCount - 1}) = ${successCount}`,
+                successCount: successCount,
                 failCount,
-                cancelledCount: `실행 안 된 노드들(대기, 종료 등): ${cancelledCount}`,
+                cancelledCount: `실행 안 된 노드들: ${cancelledCount}`,
                 currentNodeIndex,
                 계산: `${totalNodeCount} - ${successCount} - ${failCount} = ${cancelledCount}`
             });
@@ -607,6 +674,13 @@ export class WorkflowExecutionService {
             const addedToOrdered = new Set(); // ordered에 추가된 노드 ID 추적 (중복 방지)
             const queue = ['start']; // BFS를 위한 큐
 
+            // 시작 노드를 ordered에 먼저 추가
+            if (byId.has('start')) {
+                const startElement = byId.get('start');
+                ordered.push(startElement);
+                addedToOrdered.add('start');
+            }
+
             while (queue.length > 0) {
                 const cur = queue.shift();
 
@@ -629,14 +703,11 @@ export class WorkflowExecutionService {
                         const nextElement = byId.get(nextNode.to);
                         const nextId = nextElement.id || nextElement.dataset.nodeId;
 
-                        // 종료 노드가 아니고, 아직 ordered에 추가되지 않은 노드만 추가
-                        if (nextId !== 'end' && !addedToOrdered.has(nextId)) {
+                        // 아직 ordered에 추가되지 않은 노드만 추가
+                        if (!addedToOrdered.has(nextId)) {
                             ordered.push(nextElement);
                             addedToOrdered.add(nextId); // 추가된 노드 ID 기록
                             queue.push(nextId);
-                        } else if (nextId === 'end') {
-                            // 종료 노드에 도달하면 종료
-                            break;
                         }
                     }
                 }
@@ -648,12 +719,8 @@ export class WorkflowExecutionService {
             ordered = nodeList.sort((a, b) => parseInt(a.style.left) - parseInt(b.style.left));
         }
 
-        // 시작/종료 노드는 실행 대상에서 제외
-        const executableNodes = ordered.filter((node) => {
-            const id = node.id || node.dataset.nodeId;
-            const title = node.querySelector('.node-title')?.textContent || '';
-            return id !== 'start' && id !== 'end' && !title.includes('시작') && !title.includes('종료');
-        });
+        // 모든 노드를 실행 대상에 포함 (시작 노드도 포함)
+        const executableNodes = ordered;
 
         // parameters 추출을 위한 설정 가져오기 (nodeManager는 이미 위에서 선언됨)
         const registry = getNodeRegistry();
@@ -768,7 +835,7 @@ export class WorkflowExecutionService {
      */
     _collectNodesToRemove(nodeId, connections, nodesToRemove, conditionNodeId) {
         // 이미 추가된 노드는 건너뛰기
-        if (nodesToRemove.has(nodeId) || nodeId === conditionNodeId || nodeId === 'end') {
+        if (nodesToRemove.has(nodeId) || nodeId === conditionNodeId) {
             return;
         }
 
@@ -777,8 +844,8 @@ export class WorkflowExecutionService {
         // 해당 노드에서 나가는 연결 찾기
         const outgoingConnections = connections.filter((c) => c.from === nodeId);
         outgoingConnections.forEach((conn) => {
-            // end 노드가 아니면 재귀적으로 수집
-            if (conn.to !== 'end' && !nodesToRemove.has(conn.to)) {
+            // 재귀적으로 수집
+            if (!nodesToRemove.has(conn.to)) {
                 this._collectNodesToRemove(conn.to, connections, nodesToRemove, conditionNodeId);
             }
         });
