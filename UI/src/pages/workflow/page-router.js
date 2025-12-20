@@ -7,6 +7,7 @@
 import { getDashboardManagerInstance } from './dashboard.js';
 import { getSettingsManagerInstance } from './settings.js';
 import { getHistoryManagerInstance } from './history.js';
+import { t } from '../../js/utils/i18n.js';
 
 /**
  * 로거 유틸리티 가져오기
@@ -26,24 +27,43 @@ const getLogger = () => {
 export class PageRouter {
     constructor() {
         this.currentPage = 'dashboard'; // 기본 페이지는 대시보드
+        this._initialized = false;
         // 초기화는 DOM 로드 후에 실행
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => {
-                setTimeout(() => this.init(), 0);
+            document.addEventListener('DOMContentLoaded', async () => {
+                setTimeout(async () => await this.init(), 0);
             });
         } else {
-            setTimeout(() => this.init(), 0);
+            setTimeout(async () => await this.init(), 0);
         }
     }
 
     /**
      * 초기화
      */
-    init() {
+    async init() {
         const logger = getLogger();
+
+        // 언어 설정 초기화
+        try {
+            const { setLanguage, getLanguage } = await import('../../js/utils/i18n.js');
+            const { UserSettingsAPI } = await import('../../js/api/user-settings-api.js');
+
+            // 서버에서 언어 설정 로드
+            const savedLanguage = await UserSettingsAPI.getSetting('language');
+            const language = savedLanguage || 'ko';
+
+            // 언어 적용 (초기 로드 시에는 silent=true로 설정하여 이벤트를 발생시키지 않음)
+            await setLanguage(language, true);
+            logger.log(`[PageRouter] 언어 설정 적용: ${language}`);
+        } catch (error) {
+            logger.warn('[PageRouter] 언어 설정 로드 실패:', error);
+        }
         logger.log('[PageRouter] 페이지 라우터 초기화');
 
         this.setupNavigation();
+        this.updateSidebarMenu(); // 초기 사이드바 메뉴 번역 적용
+        this.updateHeaderAndProfile(); // 초기 헤더 및 프로필 번역 적용
         this.showPage(this.currentPage);
     }
 
@@ -128,36 +148,119 @@ export class PageRouter {
 
         switch (pageName) {
             case 'dashboard':
-                titleEl.textContent = '대시보드';
-                descEl.textContent = '워크플로우 현황을 확인하세요';
+                titleEl.textContent = t('header.dashboard');
+                descEl.textContent = t('header.dashboardSubtitle');
                 break;
             case 'editor':
                 // 현재 선택된 스크립트 정보 표시
                 if (window.sidebarManager) {
                     const currentScript = window.sidebarManager.getCurrentScript();
                     if (currentScript) {
-                        titleEl.textContent = currentScript.name || '스크립트';
-                        descEl.textContent = currentScript.description || '워크플로우를 편집하세요';
+                        titleEl.textContent = currentScript.name || t('header.scripts');
+                        descEl.textContent = currentScript.description || t('header.scriptsSubtitle');
                     } else {
-                        titleEl.textContent = '스크립트';
-                        descEl.textContent = '워크플로우를 편집하세요';
+                        titleEl.textContent = t('header.scripts');
+                        descEl.textContent = t('header.scriptsSubtitle');
                     }
                 } else {
-                    titleEl.textContent = '스크립트';
-                    descEl.textContent = '워크플로우를 편집하세요';
+                    titleEl.textContent = t('header.scripts');
+                    descEl.textContent = t('header.scriptsSubtitle');
                 }
                 break;
             case 'history':
-                titleEl.textContent = '실행 기록';
-                descEl.textContent = '과거 실행 내역 및 노드 실행 로그를 확인하세요';
+                titleEl.textContent = t('header.history');
+                descEl.textContent = t('header.historySubtitle');
                 break;
             case 'settings':
-                titleEl.textContent = '설정';
-                descEl.textContent = '애플리케이션 설정을 관리하세요';
+                titleEl.textContent = t('header.settings');
+                descEl.textContent = t('header.settingsSubtitle');
                 break;
             default:
-                titleEl.textContent = '자동화 도구';
+                titleEl.textContent = t('header.appTitle');
                 descEl.textContent = '';
+        }
+    }
+
+    /**
+     * 사이드바 메뉴 업데이트
+     */
+    updateSidebarMenu() {
+        const navItems = document.querySelectorAll('.nav-item');
+        navItems.forEach((item) => {
+            const page = item.dataset.page;
+            const navText = item.querySelector('.nav-text');
+            if (navText) {
+                switch (page) {
+                    case 'dashboard':
+                        navText.textContent = t('sidebar.dashboard');
+                        break;
+                    case 'editor':
+                        navText.textContent = t('sidebar.scripts');
+                        break;
+                    case 'history':
+                        navText.textContent = t('sidebar.history');
+                        break;
+                    case 'settings':
+                        navText.textContent = t('sidebar.settings');
+                        break;
+                }
+            }
+        });
+
+        // 사이드바 스크립트 섹션 제목 업데이트
+        const scriptsTitle = document.querySelector('#sidebar-scripts-section .sidebar-header h2');
+        if (scriptsTitle) {
+            scriptsTitle.textContent = t('sidebar.scriptsTitle');
+        }
+
+        // 대시보드 페이지 제목 및 버튼 업데이트
+        const dashboardTitle = document.querySelector('.dashboard-title');
+        if (dashboardTitle) {
+            dashboardTitle.textContent = t('header.dashboard');
+        }
+        const dashboardSubtitle = document.querySelector('.dashboard-subtitle');
+        if (dashboardSubtitle) {
+            dashboardSubtitle.textContent = t('header.dashboardSubtitle');
+        }
+        const newWorkflowBtn = document.querySelector('.btn-new-workflow .btn-text');
+        if (newWorkflowBtn) {
+            newWorkflowBtn.textContent = t('sidebar.newWorkflow');
+        }
+    }
+
+    /**
+     * 헤더 및 프로필 텍스트 업데이트
+     */
+    updateHeaderAndProfile() {
+        // 좌측 상단 프로필 이름 업데이트
+        const profileName = document.querySelector('.top-profile-name');
+        if (profileName) {
+            profileName.textContent = t('common.user');
+        }
+
+        // 헤더 버튼 텍스트 업데이트
+        const runAllBtn = document.querySelector('.run-all-scripts-btn .btn-text');
+        if (runAllBtn) {
+            runAllBtn.textContent = t('common.runAll');
+        }
+        const runAllBtnTitle = document.querySelector('.run-all-scripts-btn');
+        if (runAllBtnTitle) {
+            runAllBtnTitle.title = t('common.runAllTitle');
+        }
+
+        const saveBtn = document.querySelector('.save-btn .btn-text');
+        if (saveBtn) {
+            saveBtn.textContent = t('common.save');
+        }
+
+        const addNodeBtn = document.querySelector('.add-node-btn .btn-text');
+        if (addNodeBtn) {
+            addNodeBtn.textContent = t('common.addNode');
+        }
+
+        const runBtn = document.querySelector('.run-btn .btn-text');
+        if (runBtn) {
+            runBtn.textContent = t('common.run');
         }
     }
 
@@ -321,3 +424,46 @@ if (document.readyState === 'loading') {
     // DOM이 이미 로드된 경우 즉시 초기화
     getPageRouterInstance();
 }
+
+// 언어 변경 이벤트 리스너
+document.addEventListener('languageChanged', async (event) => {
+    const logger = getLogger();
+    logger.log('[PageRouter] 언어 변경 이벤트 수신:', event.detail.language);
+
+    // HTML lang 속성 업데이트 (이미 setLanguage에서 처리되지만 중복 방지)
+    document.documentElement.lang = event.detail.language;
+
+    const router = getPageRouterInstance();
+
+    // 사이드바 메뉴 및 헤더 업데이트
+    if (router) {
+        router.updateSidebarMenu();
+        router.updateHeaderAndProfile();
+        // 현재 페이지 헤더도 업데이트
+        router.updateHeader(router.currentPage);
+    }
+
+    // 현재 페이지에 따라 다시 렌더링
+    if (router) {
+        if (router.currentPage === 'settings') {
+            // 설정 페이지: renderSettings()와 setupEventListeners()만 호출하여 무한 루프 방지
+            const { getSettingsManagerInstance } = await import('./settings.js');
+            const settingsManager = getSettingsManagerInstance();
+            settingsManager.renderSettings();
+            settingsManager.setupEventListeners();
+        } else if (router.currentPage === 'history') {
+            // 실행 기록 페이지: 정적 텍스트 업데이트 및 renderLogs() 호출
+            const { getHistoryManagerInstance } = await import('./history.js');
+            const historyManager = getHistoryManagerInstance();
+            historyManager.updateStaticTexts();
+            historyManager.renderLogs();
+        } else if (router.currentPage === 'dashboard') {
+            // 대시보드 페이지: 정적 텍스트 업데이트 및 renderDashboard() 호출
+            const { getDashboardManagerInstance } = await import('./dashboard.js');
+            const dashboardManager = getDashboardManagerInstance();
+            dashboardManager.updateStaticTexts();
+            dashboardManager.updateRunningTextCSS();
+            dashboardManager.renderDashboard();
+        }
+    }
+});

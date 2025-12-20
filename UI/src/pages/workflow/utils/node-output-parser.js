@@ -40,7 +40,7 @@ export function extractOutputVariables(nodeResult) {
         // 표준 형식: output 필드가 dict
         output = nodeResult.output;
     } else if (typeof nodeResult === 'object' && !nodeResult.action && !nodeResult.status) {
-        // 레거시 형식: 전체가 output인 경우
+        // 하위 호환성: 전체가 output인 경우
         output = nodeResult;
     }
 
@@ -90,12 +90,12 @@ export function getNodeResult(nodeData) {
         return null;
     }
 
-    // 우선순위: 1) result 필드, 2) output 필드 (레거시)
+    // 우선순위: 1) result 필드, 2) output 필드 (하위 호환성)
     if (nodeData.result && nodeData.result.output) {
         // 표준 형식
         return nodeData.result;
     } else if (nodeData.output) {
-        // 레거시 형식: output 필드가 직접 있는 경우
+        // 하위 호환성: output 필드가 직접 있는 경우
         return {
             action: nodeData.type || 'unknown',
             status: 'completed',

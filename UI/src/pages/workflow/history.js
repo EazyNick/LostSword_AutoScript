@@ -7,6 +7,7 @@ import { LogService } from '../../logs/services/log-service.js';
 import { ScriptAPI } from '../../js/api/scriptapi.js';
 import { LogAPI } from '../../js/api/logapi.js';
 import { getModalManagerInstance } from '../../js/utils/modal.js';
+import { t } from '../../js/utils/i18n.js';
 
 /**
  * 로거 유틸리티 가져오기
@@ -57,10 +58,89 @@ export class HistoryManager {
         const logger = getLogger();
         logger.log('[HistoryManager] 실행 기록 페이지 초기화 시작');
 
+        // 언어 설정 확인 및 적용
+        try {
+            const { getLanguage, setLanguage } = await import('../../js/utils/i18n.js');
+            const { UserSettingsAPI } = await import('../../js/api/user-settings-api.js');
+
+            // 서버에서 언어 설정 로드
+            const savedLanguage = await UserSettingsAPI.getSetting('language');
+            const currentLanguage = getLanguage();
+            const language = savedLanguage || 'ko';
+
+            // 언어가 다르면 적용 (초기 로드 시에는 silent=true로 설정)
+            if (currentLanguage !== language) {
+                await setLanguage(language, true);
+                logger.log(`[HistoryManager] 언어 설정 적용: ${language}`);
+            }
+        } catch (error) {
+            logger.warn('[HistoryManager] 언어 설정 로드 실패:', error);
+        }
+
+        // HTML의 하드코딩된 텍스트 업데이트
+        this.updateStaticTexts();
+
         await this.loadScripts();
         await this.loadLogs();
         this.renderLogs();
         this.setupEventListeners();
+    }
+
+    /**
+     * HTML의 정적 텍스트 업데이트
+     */
+    updateStaticTexts() {
+        // 페이지 제목 및 부제목
+        const pageTitle = document.querySelector('#page-history .page-title');
+        if (pageTitle) {
+            pageTitle.textContent = t('header.history');
+        }
+        const pageSubtitle = document.querySelector('#page-history .page-subtitle');
+        if (pageSubtitle) {
+            pageSubtitle.textContent = t('header.historySubtitle');
+        }
+
+        // 필터 레이블
+        const scriptLabel = document.querySelector('label[for="history-filter-script"]');
+        if (scriptLabel) {
+            scriptLabel.textContent = t('history.script');
+        }
+        const statusLabel = document.querySelector('label[for="history-filter-status"]');
+        if (statusLabel) {
+            statusLabel.textContent = t('history.status');
+        }
+
+        // 상태 필터 옵션
+        const statusFilter = document.getElementById('history-filter-status');
+        if (statusFilter) {
+            const options = statusFilter.querySelectorAll('option');
+            if (options.length >= 4) {
+                options[0].textContent = t('history.all');
+                options[1].textContent = t('history.statusCompleted');
+                options[2].textContent = t('history.statusFailed');
+                options[3].textContent = t('history.statusRunning');
+            }
+        }
+
+        // 버튼 텍스트
+        const refreshBtn = document.getElementById('history-refresh-btn');
+        if (refreshBtn) {
+            refreshBtn.textContent = `🔄 ${t('history.refresh')}`;
+        }
+        const deleteAllBtn = document.getElementById('history-delete-all-btn');
+        if (deleteAllBtn) {
+            deleteAllBtn.textContent = `🗑️ ${t('history.deleteAll')}`;
+            deleteAllBtn.title = t('history.deleteAllLogs');
+        }
+
+        // 통계 카드 레이블
+        const statLabels = document.querySelectorAll('.history-stat-label');
+        if (statLabels.length >= 4) {
+            statLabels[0].textContent = t('history.totalLogs');
+            statLabels[1].textContent = t('history.statusCompleted');
+            statLabels[2].textContent = t('history.statusFailed');
+            statLabels[3].textContent = t('history.averageExecutionTime');
+        }
     }
 
     /**
@@ -122,7 +202,7 @@ export class HistoryManager {
         if (this.logs.length === 0) {
             const emptyMessage = document.createElement('div');
             emptyMessage.className = 'history-empty-message';
-            emptyMessage.textContent = '실행 기록이 없습니다.';
+            emptyMessage.textContent = t('history.noLogs');
             historyList.appendChild(emptyMessage);
             return;
         }
@@ -157,8 +237,8 @@ export class HistoryManager {
 
         const firstLog = logs[0];
         const lastLog = logs[logs.length - 1];
-        const startTime = firstLog.started_at ? this.formatDateTime(firstLog.started_at) : '알 수 없음';
-        const endTime = lastLog.finished_at ? this.formatDateTime(lastLog.finished_at) : '진행 중';
+        const startTime = firstLog.started_at ? this.formatDateTime(firstLog.started_at) : t('history.unknown');
+        const endTime = lastLog.finished_at ? this.formatDateTime(lastLog.finished_at) : t('history.inProgress');
 
         const successCount = logs.filter((l) => l.status === 'completed').length;
         const failedCount = logs.filter((l) => l.status === 'failed').length;
@@ -185,16 +265,16 @@ export class HistoryManager {
             <div class="history-execution-info">
                 <div class="history-execution-id">${this.escapeHtml(displayId)}</div>
                 <div class="history-execution-meta">
-                    <span>시작: ${startTime}</span>
-                    <span>종료: ${endTime}</span>
-                    <span>노드: ${logs.length}개</span>
-                    <span>성공: ${successCount}개</span>
-                    <span>실패: ${failedCount}개</span>
-                    <span>총 시간: ${this.formatExecutionTime(totalTime)}</span>
+                    <span>${t('history.start')} ${startTime}</span>
+                    <span>${t('history.end')} ${endTime}</span>
+                    <span>${t('history.nodes')} ${logs.length}${t('history.nodesUnit')}</span>
+                    <span>${t('history.success')} ${successCount}${t('history.successUnit')}</span>
+                    <span>${t('history.failed')} ${failedCount}${t('history.failedUnit')}</span>
+                    <span>${t('history.totalTime')} ${this.formatExecutionTime(totalTime)}</span>
                 </div>
             </div>
             <div class="history-execution-actions">
-                <button class="history-delete-execution-btn" data-execution-id="${executionId}" title="이 실행 기록 삭제">
+                <button class="history-delete-execution-btn" data-execution-id="${executionId}" title="${t('history.deleteExecution')}">
                     🗑️
                 </button>
                 <div class="history-toggle-indicator">
@@ -250,7 +330,7 @@ export class HistoryManager {
 
         const statusIcon = this.getStatusIcon(log.status);
         const statusText = this.getStatusText(log.status);
-        const nodeName = log.node_name || log.node_id || '알 수 없음';
+        const nodeName = log.node_name || log.node_id || t('history.unknown');
         const nodeType = log.node_type || 'unknown';
         const executionTime = log.execution_time_ms ? this.formatExecutionTime(log.execution_time_ms) : '-';
         const startTime = log.started_at ? this.formatDateTime(log.started_at) : '-';
@@ -267,7 +347,7 @@ export class HistoryManager {
                     <span class="history-item-type">${this.escapeHtml(nodeType)}</span>
                     <span class="history-item-time">${executionTime}</span>
                 </div>
-                <button class="history-delete-item-btn" data-log-id="${log.id}" title="이 로그 삭제">
+                <button class="history-delete-item-btn" data-log-id="${log.id}" title="${t('history.deleteLog')}">
                     🗑️
                 </button>
             </div>
@@ -348,8 +428,8 @@ export class HistoryManager {
         const logger = getLogger();
 
         this.modalManager.showCenterConfirm(
-            '로그 삭제',
-            '이 로그를 삭제하시겠습니까?',
+            t('history.deleteLog'),
+            t('history.deleteLogConfirm'),
             async () => {
                 try {
                     const result = await LogAPI.deleteNodeExecutionLog(logId);
@@ -386,7 +466,7 @@ export class HistoryManager {
                     }
                 } catch (error) {
                     logger.error(`[HistoryManager] 로그 삭제 실패 - 로그 ID: ${logId}`, error);
-                    this.modalManager.showCenterAlert('오류', '로그 삭제에 실패했습니다.');
+                    this.modalManager.showCenterAlert(t('common.error'), t('history.deleteLogFailed'));
                 }
             },
             () => {
@@ -402,8 +482,8 @@ export class HistoryManager {
         const logger = getLogger();
 
         this.modalManager.showCenterConfirm(
-            '실행 기록 삭제',
-            '이 실행 기록의 모든 로그를 삭제하시겠습니까?',
+            t('history.deleteExecution'),
+            t('history.deleteExecutionConfirm'),
             async () => {
                 try {
                     const result = await LogAPI.deleteNodeExecutionLogsByExecutionId(executionId);
@@ -439,7 +519,7 @@ export class HistoryManager {
                     }
                 } catch (error) {
                     logger.error(`[HistoryManager] 실행 그룹 삭제 실패 - execution_id: ${executionId}`, error);
-                    this.modalManager.showCenterAlert('오류', '실행 기록 삭제에 실패했습니다.');
+                    this.modalManager.showCenterAlert(t('common.error'), t('history.deleteExecutionFailed'));
                 }
             },
             () => {
@@ -455,8 +535,8 @@ export class HistoryManager {
         const logger = getLogger();
 
         this.modalManager.showCenterConfirm(
-            '전체 로그 삭제',
-            '모든 로그를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.',
+            t('history.deleteAllLogs'),
+            t('history.deleteAllLogsConfirm'),
             async () => {
                 try {
                     const result = await LogAPI.deleteAllNodeExecutionLogs();
@@ -489,7 +569,7 @@ export class HistoryManager {
                     this.renderLogs();
                 } catch (error) {
                     logger.error('[HistoryManager] 전체 로그 삭제 실패', error);
-                    this.modalManager.showCenterAlert('오류', '전체 로그 삭제에 실패했습니다.');
+                    this.modalManager.showCenterAlert(t('common.error'), t('history.deleteAllLogsFailed'));
                 }
             },
             () => {
@@ -545,7 +625,7 @@ export class HistoryManager {
             return;
         }
 
-        filterSelect.innerHTML = '<option value="">전체 스크립트</option>';
+        filterSelect.innerHTML = `<option value="">${t('history.allScripts')}</option>`;
 
         this.scripts.forEach((script) => {
             const option = document.createElement('option');
@@ -710,13 +790,13 @@ export class HistoryManager {
     getStatusText(status) {
         switch (status) {
             case 'completed':
-                return '완료';
+                return t('history.statusCompleted');
             case 'failed':
-                return '실패';
+                return t('history.statusFailed');
             case 'running':
-                return '실행 중';
+                return t('history.statusRunning');
             default:
-                return '알 수 없음';
+                return t('history.statusUnknown');
         }
     }
 
@@ -725,17 +805,17 @@ export class HistoryManager {
      */
     formatExecutionTime(ms) {
         if (!ms || ms === 0) {
-            return '0ms';
+            return `0${t('history.ms')}`;
         }
         if (ms < 1000) {
-            return `${ms}ms`;
+            return `${ms}${t('history.ms')}`;
         }
         if (ms < 60000) {
-            return `${(ms / 1000).toFixed(2)}초`;
+            return `${(ms / 1000).toFixed(2)}${t('history.seconds')}`;
         }
         const minutes = Math.floor(ms / 60000);
         const seconds = ((ms % 60000) / 1000).toFixed(2);
-        return `${minutes}분 ${seconds}초`;
+        return `${minutes}${t('history.minutes')} ${seconds}${t('history.seconds')}`;
     }
 
     /**
@@ -747,7 +827,9 @@ export class HistoryManager {
         }
         try {
             const date = new Date(dateString);
-            return date.toLocaleString('ko-KR', {
+            const lang = document.documentElement.lang || 'ko';
+            const locale = lang === 'en' ? 'en-US' : 'ko-KR';
+            return date.toLocaleString(locale, {
                 year: 'numeric',
                 month: '2-digit',
                 day: '2-digit',

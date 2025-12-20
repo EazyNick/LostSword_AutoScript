@@ -647,7 +647,7 @@ class DatabaseManager:
 
             # 사용자 설정 예시 데이터 추가
             self.user_settings.save_setting("theme", "dark")
-            self.user_settings.save_setting("language", "ko")
+            self.user_settings.save_setting("language", "ko")  # 언어 설정 (기본값: 한국어)
             self.user_settings.save_setting("auto_save", "true")
 
             # 기본 UI 설정값 추가

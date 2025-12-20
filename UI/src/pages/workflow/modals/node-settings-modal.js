@@ -348,51 +348,6 @@ export class NodeSettingsModal {
         }
 
         console.log('[NodeSettingsModal] 파라미터 폼 없음, 빈 문자열 반환');
-
-        // 레거시 특수 설정 처리 (하위 호환성 유지)
-        // 파라미터로 처리되지 않은 경우에만 레거시 로직 사용
-        if (nodeType === NODE_TYPES.IMAGE_TOUCH && !config?.parameters?.folder_path) {
-            const folderPath = nodeData?.folder_path || '';
-            const imageCount = nodeData?.image_count || 0;
-            const imageCountText =
-                imageCount > 0
-                    ? ` <span class="node-settings-help-text" style="font-weight: normal;">(${imageCount}개 이미지)</span>`
-                    : '';
-            const legacyHtml = `
-                <div class="form-group node-settings-form-group">
-                    <label for="edit-node-folder-path" class="node-settings-label">이미지 폴더 경로${imageCountText}:</label>
-                    <div style="display: flex; gap: 8px;">
-                        <input type="text" id="edit-node-folder-path" value="${escapeHtml(folderPath)}" placeholder="예: C:\\images\\touch" class="node-settings-input" style="flex: 1;">
-                        <button type="button" id="edit-browse-folder-btn" class="btn btn-secondary">폴더 선택</button>
-                    </div>
-                    <small class="node-settings-help-text">이미지 파일 이름 순서대로 화면에서 찾아 터치합니다.</small>
-                </div>
-            `;
-            return parameterFormHtml + legacyHtml;
-        } else if (nodeType === 'process-focus' && !parameterFormHtml) {
-            const processName = nodeData?.process_name || '';
-            const windowTitle = nodeData?.window_title || '';
-            const processId = nodeData?.process_id || '';
-            const hwnd = nodeData?.hwnd || '';
-            const legacyHtml = `
-                <div class="form-group">
-                    <label for="edit-node-process-select">프로세스 선택:</label>
-                    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-                        <select id="edit-node-process-select" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                            <option value="">프로세스를 선택하세요</option>
-                        </select>
-                        <button type="button" id="edit-refresh-processes-btn" class="btn btn-secondary">새로고침</button>
-                    </div>
-                    <input type="hidden" id="edit-node-process-id" value="${processId}">
-                    <input type="hidden" id="edit-node-process-hwnd" value="${hwnd}">
-                    <input type="hidden" id="edit-node-process-name" value="${escapeHtml(processName)}">
-                    <input type="hidden" id="edit-node-window-title" value="${escapeHtml(windowTitle)}">
-                    <small style="color: #666; font-size: 12px;">화면에 보이는 프로세스만 표시됩니다. 선택한 프로세스가 실행 시 화면 최상단에 포커스됩니다.</small>
-                </div>
-            `;
-            return parameterFormHtml + legacyHtml;
-        }
-
         return parameterFormHtml;
     }
 
@@ -588,12 +543,6 @@ export class NodeSettingsModal {
             processSelect.addEventListener('change', updatePreviewDebounced);
         }
 
-        // 폴더 선택 버튼 (레거시)
-        const browseBtn = document.getElementById('edit-browse-folder-btn');
-        if (browseBtn) {
-            browseBtn.addEventListener('click', () => this.handleFolderSelection());
-        }
-
         // 파라미터 폼의 파일/폴더 선택 버튼 이벤트 리스너 설정
         // DOM이 업데이트된 후에 버튼을 찾아야 하므로 약간의 지연
         setTimeout(() => {
@@ -723,14 +672,6 @@ export class NodeSettingsModal {
         if (newSettings) {
             settingsContainer.insertAdjacentHTML('beforeend', newSettings);
 
-            // 폴더 선택 버튼 이벤트 재바인딩 (레거시)
-            const newBrowseBtn = document.getElementById('edit-browse-folder-btn');
-            if (newBrowseBtn) {
-                const newBtn = newBrowseBtn.cloneNode(true);
-                newBrowseBtn.parentNode.replaceChild(newBtn, newBrowseBtn);
-                newBtn.addEventListener('click', () => this.handleFolderSelection('edit-node-folder-path'));
-            }
-
             // 파라미터 폼의 파일/폴더 선택 버튼 이벤트 리스너 재설정
             setTimeout(() => {
                 const folderPathButtons = document.querySelectorAll('[id$="-folder_path-browse-btn"]');
@@ -771,12 +712,16 @@ export class NodeSettingsModal {
 
     /**
      * 폴더 선택 처리
-     * @param {string} fieldId - 폴더 경로 입력 필드 ID (기본값: 'edit-node-folder-path')
+     * @param {string} fieldId - 폴더 경로 입력 필드 ID
      */
-    async handleFolderSelection(fieldId = 'edit-node-folder-path') {
+    async handleFolderSelection(fieldId) {
+        if (!fieldId) {
+            console.warn('[NodeSettingsModal] fieldId가 제공되지 않았습니다.');
+            return;
+        }
         console.log('[NodeSettingsModal] handleFolderSelection 호출됨, fieldId:', fieldId);
-        const btnId = fieldId ? `${fieldId}-browse-btn` : 'edit-browse-folder-btn';
-        const btn = document.getElementById(btnId) || document.getElementById('edit-browse-folder-btn');
+        const btnId = `${fieldId}-browse-btn`;
+        const btn = document.getElementById(btnId);
         if (!btn) {
             console.warn(`[NodeSettingsModal] 폴더 선택 버튼을 찾을 수 없습니다: ${btnId}`);
             // 모든 버튼 ID 확인
@@ -861,12 +806,6 @@ export class NodeSettingsModal {
                     console.log('[NodeSettingsModal] 입력 필드 값 설정 완료:', inputField.value);
                 } else {
                     console.warn(`[NodeSettingsModal] 입력 필드를 찾을 수 없습니다: ${fieldId}`);
-                    // 모든 입력 필드 확인
-                    const allInputs = document.querySelectorAll('input[id*="folder_path"]');
-                    console.log(
-                        '[NodeSettingsModal] 찾은 모든 folder_path 입력 필드:',
-                        Array.from(allInputs).map((i) => i.id)
-                    );
                 }
                 // 성공 시 팝업 표시하지 않음
             } else if (!result.success) {
@@ -950,9 +889,11 @@ export class NodeSettingsModal {
             const result = await response.json();
 
             // 변경된 응답 형식: {success: true, message: "...", data: [...], count: N}
-            if (result.success) {
+            if (result.success && inputField) {
                 const count = result.count || result.data?.length || 0;
-                const label = document.querySelector('label[for="edit-node-folder-path"]');
+                // 입력 필드의 라벨 찾기
+                const fieldId = inputField.id;
+                const label = document.querySelector(`label[for="${fieldId}"]`);
                 if (label) {
                     const existingCount = label.querySelector('span');
                     if (existingCount) {
@@ -1169,7 +1110,7 @@ export class NodeSettingsModal {
                 previousOutput.metadata = metadata;
             }
         } else if (lastNodeData.output) {
-            // 레거시 형식: output 필드가 직접 있는 경우
+            // 하위 호환성: output 필드가 직접 있는 경우
             previousOutput = lastNodeData.output;
             hasKnownOutput = true;
         } else {
@@ -1660,11 +1601,6 @@ export class NodeSettingsModal {
             folderPath: prepared.folder_path
         });
 
-        // 레거시 하위 호환성 (파라미터로 처리되지 않은 경우)
-        // image-touch
-        if (nodeType === 'image-touch' && !prepared.folder_path && nodeData.folder_path) {
-            prepared.folder_path = nodeData.folder_path;
-        }
         // wait
         if (nodeType === 'wait' && !prepared.wait_time && nodeData.wait_time !== undefined) {
             prepared.wait_time = nodeData.wait_time;

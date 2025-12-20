@@ -64,4 +64,5 @@ API_PORT=8001
 - [시스템 아키텍처](architecture.md)
 - [환경 변수 설정](environment.md)
 - [코드 린팅 가이드](linting.md)
+- [다국어 지원 (i18n)](settings/i18n.md)
 

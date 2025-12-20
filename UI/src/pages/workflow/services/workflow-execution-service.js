@@ -7,6 +7,7 @@ import { getResultModalManagerInstance } from '../../../js/utils/result-modal.js
 import { getNodeRegistry } from './node-registry.js';
 import { getDashboardManagerInstance } from '../dashboard.js';
 import { captureAndSaveScreenshot } from '../../../js/api/screenshot-api.js';
+import { t } from '../../../js/utils/i18n.js';
 
 export class WorkflowExecutionService {
     constructor(workflowPage) {
@@ -172,21 +173,21 @@ export class WorkflowExecutionService {
                             nodeResults.push({
                                 name: remainingNodeTitle,
                                 status: 'cancelled',
-                                message: '실행 취소로 인해 실행되지 않음'
+                                message: t('common.cancelledDueToCancellation')
                             });
                         }
 
                         if (modalManager) {
                             const resultModalManager = getResultModalManagerInstance();
-                            resultModalManager.showExecutionResult('실행 취소', {
+                            resultModalManager.showExecutionResult(t('common.executionCancelled'), {
                                 successCount,
                                 failCount,
                                 cancelledCount,
                                 nodes: nodeResults,
-                                summaryLabel: '노드'
+                                summaryLabel: t('common.nodes')
                             });
                         } else if (toastManager) {
-                            toastManager.warning('실행이 취소되었습니다.');
+                            toastManager.warning(t('common.executionCancelledMessage'));
                         }
                     }
                     break;
@@ -369,7 +370,7 @@ export class WorkflowExecutionService {
                         nodeResults.push({
                             name: nodeTitle,
                             status: 'success',
-                            message: '정상 실행 완료'
+                            message: t('common.executionCompletedSuccessfully')
                         });
                     }
                 } catch (error) {
@@ -466,8 +467,8 @@ export class WorkflowExecutionService {
                 // 전체 스크립트 실행 중: 토스트만 표시 (노드 개수)
                 if (toastManager) {
                     const statusMessage = this.isCancelled
-                        ? `실행 취소 (성공 노드: ${successCount}개, 실패 노드: ${failCount}개, 중단 노드: ${cancelledCount}개)`
-                        : `실행 완료 (성공 노드: ${successCount}개, 실패 노드: ${failCount}개, 중단 노드: ${cancelledCount}개)`;
+                        ? `${t('common.executionCancelled')} (${t('common.successNodes')}: ${successCount}, ${t('common.failedNodes')}: ${failCount}, ${t('common.cancelledNodes')}: ${cancelledCount})`
+                        : `${t('common.executionCompleted')} (${t('common.successNodes')}: ${successCount}, ${t('common.failedNodes')}: ${failCount}, ${t('common.cancelledNodes')}: ${cancelledCount})`;
                     if (this.isCancelled) {
                         toastManager.warning(statusMessage);
                     } else if (failCount > 0) {
@@ -479,17 +480,19 @@ export class WorkflowExecutionService {
             } else {
                 // 단일 스크립트 실행: 실행 결과 모달 표시 (가운데 팝업)
                 if (modalManager) {
-                    const title = this.isCancelled ? '실행 취소' : '실행 완료';
+                    const title = this.isCancelled ? t('common.executionCancelled') : t('common.executionCompleted');
                     const resultModalManager = getResultModalManagerInstance();
                     resultModalManager.showExecutionResult(title, {
                         successCount,
                         failCount,
                         cancelledCount,
                         nodes: nodeResults,
-                        summaryLabel: '노드'
+                        summaryLabel: t('common.nodes')
                     });
                 } else if (toastManager) {
-                    toastManager.success(`워크플로우 실행 완료 (${workflowData.nodes.length}개 노드)`);
+                    toastManager.success(
+                        `${t('common.workflowExecutionCompleted')} (${workflowData.nodes.length} ${t('common.nodes')})`
+                    );
                 }
 
                 // 폴백 경로에서 실행 기록 페이지에 로그 업데이트 알림 (성공 시)
@@ -533,7 +536,7 @@ export class WorkflowExecutionService {
             if (this.isRunningAllScripts) {
                 if (toastManager) {
                     toastManager.error(
-                        `실행 중단 (성공 노드: ${successCount}개, 실패 노드: ${failCount}개, 중단 노드: ${cancelledCount}개) - ${error.message}`
+                        `${t('common.executionInterrupted')} (${t('common.successNodes')}: ${successCount}, ${t('common.failedNodes')}: ${failCount}, ${t('common.cancelledNodes')}: ${cancelledCount}) - ${error.message}`
                     );
                 }
                 // 전체 스크립트 실행 중이면 에러를 다시 throw하여 sidebar에서 실패로 처리
@@ -550,7 +553,7 @@ export class WorkflowExecutionService {
                         nodeResults.push({
                             name: remainingNodeTitle,
                             status: 'cancelled',
-                            message: '오류로 인해 실행되지 않음'
+                            message: t('common.cancelledDueToError')
                         });
                     }
                 }
@@ -571,15 +574,15 @@ export class WorkflowExecutionService {
 
                 if (modalManager) {
                     const resultModalManager = getResultModalManagerInstance();
-                    resultModalManager.showExecutionResult('실행 중단', {
+                    resultModalManager.showExecutionResult(t('common.executionInterrupted'), {
                         successCount,
                         failCount,
                         cancelledCount,
                         nodes: nodeResults,
-                        summaryLabel: '노드'
+                        summaryLabel: t('common.nodes')
                     });
                 } else if (toastManager) {
-                    toastManager.error(`워크플로우 실행 중 오류가 발생했습니다: ${error.message}`);
+                    toastManager.error(`${t('common.workflowExecutionError')}: ${error.message}`);
                 }
                 // 단일 스크립트 실행 중이면 에러를 다시 throw
                 throw error;

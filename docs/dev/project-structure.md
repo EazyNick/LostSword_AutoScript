@@ -36,8 +36,10 @@
   - `sidebar-scripts.js`: 스크립트 로드 및 실행 관리
 - **js/utils/**: 유틸리티
   - `theme-manager.js`: 테마 관리 (라이트/다크/시스템)
+  - `i18n.js`: 다국어 지원 (번역 시스템)
   - `toast.js`: 토스트 알림
   - `modal.js`: 모달 창
+  - `result-modal.js`: 실행 결과 모달
 - **pages/workflow/**: 워크플로우 편집기 및 페이지
   - `page-router.js`: SPA 페이지 라우팅
   - `dashboard.js`: 대시보드 페이지

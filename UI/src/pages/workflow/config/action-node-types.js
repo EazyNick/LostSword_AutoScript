@@ -68,28 +68,3 @@ export async function getAllDetailNodeTypes() {
 
     return result;
 }
-
-/**
- * @deprecated 이 함수는 하위 호환성을 위해 유지됩니다. getDetailNodeTypes를 사용하세요.
- * 특정 노드 타입의 상세 노드 타입 목록 가져오기 (동기 버전)
- *
- * @param {string} nodeType - 노드 타입 (예: "action")
- * @returns {Object} 상세 노드 타입 딕셔너리 (빈 객체 반환, 비동기 버전 사용 권장)
- */
-export function getActionNodeTypes(nodeType) {
-    console.warn('[action-node-types] getActionNodeTypes는 deprecated되었습니다. getDetailNodeTypes를 사용하세요.');
-    return {};
-}
-
-/**
- * @deprecated 이 함수는 하위 호환성을 위해 유지됩니다. getDetailNodeConfig를 사용하세요.
- * 특정 상세 노드 타입의 설정 가져오기 (동기 버전)
- *
- * @param {string} nodeType - 노드 타입 (예: "action")
- * @param {string} actionNodeType - 상세 노드 타입 (예: "http-api-request")
- * @returns {Object|null} 노드 설정 객체 또는 null (비동기 버전 사용 권장)
- */
-export function getActionNodeConfig(nodeType, actionNodeType) {
-    console.warn('[action-node-types] getActionNodeConfig는 deprecated되었습니다. getDetailNodeConfig를 사용하세요.');
-    return null;
-}

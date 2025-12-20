@@ -16,6 +16,7 @@ import { getModalManagerInstance } from '../../utils/modal.js';
 import { getLogger, formatDate } from './sidebar-utils.js';
 import { getDashboardManagerInstance } from '../../../pages/workflow/dashboard.js';
 import { LogAPI } from '../../api/logapi.js';
+import { t } from '../../utils/i18n.js';
 
 /**
  * 스크립트 관리 클래스
@@ -800,7 +801,7 @@ export class SidebarScriptManager {
             log(`[Scripts] ✅ 스크립트 "${script.name}" 실행 완료`);
             return {
                 success: true,
-                message: '정상 실행 완료'
+                message: t('common.executionCompletedSuccessfully')
             };
         } catch (execError) {
             logError(`[Scripts] ❌ 스크립트 "${script.name}" 실행 중 오류 발생:`, execError);
@@ -963,21 +964,21 @@ export class SidebarScriptManager {
                     for (let j = i + 1; j < activeScripts.length; j++) {
                         const remainingScript = activeScripts[j];
                         scriptResults.push({
-                            name: remainingScript.name || remainingScript.id || '알 수 없는 스크립트',
+                            name: remainingScript.name || remainingScript.id || t('common.unknownScript'),
                             status: 'cancelled',
-                            message: '실행 취소로 인해 실행되지 않음'
+                            message: t('common.cancelledDueToCancellation')
                         });
                     }
                     // modalManager 인스턴스가 있는경우 실행 취소 모달 표시
                     if (modalManager) {
                         const { getResultModalManagerInstance } = await import('../../utils/result-modal.js');
                         const resultModalManager = getResultModalManagerInstance();
-                        resultModalManager.showExecutionResult('실행 취소', {
+                        resultModalManager.showExecutionResult(t('common.executionCancelled'), {
                             successCount,
                             failCount,
                             cancelledCount: activeScripts.length - successCount - failCount,
                             scripts: scriptResults,
-                            summaryLabel: '스크립트'
+                            summaryLabel: t('sidebar.scripts')
                         });
                     }
                     break;
@@ -1012,9 +1013,9 @@ export class SidebarScriptManager {
                 if (result.success) {
                     successCount++;
                     scriptResults.push({
-                        name: script.name || script.id || '알 수 없는 스크립트',
+                        name: script.name || script.id || t('common.unknownScript'),
                         status: 'success',
-                        message: result.message || '정상 실행 완료'
+                        message: result.message || t('common.executionCompletedSuccessfully')
                     });
 
                     // 성공 시 즉시 통계 업데이트
@@ -1056,9 +1057,9 @@ export class SidebarScriptManager {
                         for (let j = i + 1; j < activeScripts.length; j++) {
                             const remainingScript = activeScripts[j];
                             scriptResults.push({
-                                name: remainingScript.name || remainingScript.id || '알 수 없는 스크립트',
+                                name: remainingScript.name || remainingScript.id || t('common.unknownScript'),
                                 status: 'cancelled',
-                                message: '실행 취소로 인해 실행되지 않음'
+                                message: t('common.cancelledDueToCancellation')
                             });
                         }
                         break;
@@ -1098,7 +1099,9 @@ export class SidebarScriptManager {
 
             // 실행 결과 모달 표시 (가운데 팝업)
             if (modalManager) {
-                const title = this.sidebarManager.isCancelled ? '실행 취소' : '실행 완료';
+                const title = this.sidebarManager.isCancelled
+                    ? t('common.executionCancelled')
+                    : t('common.executionCompleted');
                 const cancelledCount = activeScripts.length - successCount - failCount;
                 const { getResultModalManagerInstance } = await import('../../utils/result-modal.js');
                 const resultModalManager = getResultModalManagerInstance();
@@ -1107,7 +1110,7 @@ export class SidebarScriptManager {
                     failCount,
                     cancelledCount,
                     scripts: scriptResults,
-                    summaryLabel: '스크립트'
+                    summaryLabel: t('sidebar.scripts')
                 });
             }
         } catch (error) {
@@ -1307,7 +1310,7 @@ export class SidebarScriptManager {
                         <div class="loading-spinner"></div>
                     </div>
                     <div class="loading-text">
-                        로그 저장 중<span class="loading-dots">...</span>
+                        ${t('common.savingLogs')}<span class="loading-dots">...</span>
                     </div>
                 </div>
             `;

@@ -116,6 +116,17 @@ def initialize_database() -> None:
             if screenshot_image_format is None:
                 db_manager.save_user_setting("screenshot.imageFormat", "PNG")
                 logger.info("✅ 기본 설정값 추가: screenshot.imageFormat")
+
+            # 언어 설정 기본값 확인 및 추가
+            language = db_manager.get_user_setting("language")
+            if language is None:
+                db_manager.save_user_setting("language", "ko")
+                logger.info("✅ 기본 설정값 추가: language = ko")
+
+            # 중복 설정 정리 (같은 setting_key에 대해 최신 것만 남기고 나머지 삭제)
+            deleted_count = db_manager.user_settings.cleanup_duplicate_settings()
+            if deleted_count > 0:
+                logger.info(f"✅ 중복 설정 정리 완료: {deleted_count}개 행 삭제")
     except Exception as e:
         logger.error(f"❌ 데이터베이스 초기화 실패: {e}")
         raise e

@@ -4,6 +4,7 @@
  */
 
 import { getNodeRegistry } from './node-registry.js';
+import { t } from '../../../js/utils/i18n.js';
 
 export class WorkflowSaveService {
     constructor(workflowPage) {
@@ -21,7 +22,7 @@ export class WorkflowSaveService {
         const modalManager = this.workflowPage.getModalManager();
 
         if (!currentScript || !currentScript.id) {
-            this.showError('저장할 스크립트가 선택되지 않았습니다.', options.useToast);
+            this.showError(t('common.noScriptSelected'), options.useToast);
             return;
         }
 
@@ -48,14 +49,14 @@ export class WorkflowSaveService {
 
                 logger.log('[WorkflowPage] 저장 완료 응답:', response);
 
-                this.showSuccess('워크플로우가 성공적으로 저장되었습니다.', options.useToast);
+                this.showSuccess(t('common.workflowSaved'), options.useToast);
             } else {
                 // API를 사용할 수 없는 경우 로컬 스토리지에 저장 (fallback)
                 this.workflowPage.saveWorkflowToLocalStorage();
             }
         } catch (error) {
             console.error('워크플로우 저장 실패:', error);
-            this.showError(`저장 중 오류가 발생했습니다: ${error.message}`, options.useToast);
+            this.showError(`${t('common.saveError')}: ${error.message}`, options.useToast);
         }
     }
 
@@ -177,16 +178,15 @@ export class WorkflowSaveService {
     /**
      * 성공 메시지 표시
      */
-    showSuccess(message, useToast) {
-        if (useToast) {
+    async showSuccess(message, useToast) {
+        const modalManager = this.workflowPage.getModalManager();
+        if (modalManager) {
+            // 가운데 팝업 모달 사용
+            await modalManager.showCenterAlert(t('common.saveComplete'), message);
+        } else if (useToast) {
             const toastManager = this.workflowPage.getToastManager();
             if (toastManager) {
                 toastManager.success(message);
-            }
-        } else {
-            const modalManager = this.workflowPage.getModalManager();
-            if (modalManager) {
-                modalManager.showAlert('저장 완료', message);
             }
         }
     }
@@ -194,16 +194,15 @@ export class WorkflowSaveService {
     /**
      * 에러 메시지 표시
      */
-    showError(message, useToast) {
-        if (useToast) {
+    async showError(message, useToast) {
+        const modalManager = this.workflowPage.getModalManager();
+        if (modalManager) {
+            // 가운데 팝업 모달 사용
+            await modalManager.showCenterAlert(t('common.saveFailed'), message);
+        } else if (useToast) {
             const toastManager = this.workflowPage.getToastManager();
             if (toastManager) {
                 toastManager.error(message);
-            }
-        } else {
-            const modalManager = this.workflowPage.getModalManager();
-            if (modalManager) {
-                modalManager.showAlert('저장 실패', message);
             }
         }
     }

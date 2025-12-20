@@ -183,7 +183,7 @@ export async function collectPreviousNodeOutput(previousNodes, getNodeConfig) {
     if (outputSchema.output && outputSchema.output.properties) {
         return generatePreviewFromSchema(outputSchema.output.properties, lastNode.data || {});
     } else {
-        // 레거시 형식: output_schema가 직접 properties를 정의한 경우
+        // 하위 호환성: output_schema가 직접 properties를 정의한 경우
         return generatePreviewFromSchema(outputSchema, lastNode.data || {});
     }
 }
