@@ -486,6 +486,15 @@ export class DashboardManager {
                 // 전체 실행 통계는 서버에서 다시 로드하여 유지
                 await this.loadDashboardStats();
                 this.renderDashboard();
+
+                // 사이드바의 스크립트 목록도 업데이트하여 즉시 반영
+                if (window.sidebarManager && window.sidebarManager.scriptManager) {
+                    logger.log('[Dashboard] 사이드바 스크립트 목록 업데이트 중...');
+                    await window.sidebarManager.scriptManager.loadScriptsFromServer();
+                    logger.log('[Dashboard] 사이드바 스크립트 목록 업데이트 완료');
+                } else {
+                    logger.warn('[Dashboard] 사이드바 매니저를 찾을 수 없습니다. 스크립트 페이지로 이동 시 상태가 업데이트됩니다.');
+                }
             } else {
                 logger.warn('[Dashboard] ScriptAPI.toggleScriptActive를 사용할 수 없습니다.');
             }
