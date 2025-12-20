@@ -34,14 +34,33 @@ pip install -r requirements.txt
 
 ### 4. 서버 실행
 
+서버를 실행하는 방법은 두 가지가 있습니다:
+
+#### 방법 1: 배치 파일 사용 (권장) ⚡
+
+프로젝트 루트에서 `start-server.bat` 파일을 더블클릭하거나 명령어로 실행합니다:
+
+```bash
+start-server.bat
+```
+
+**배치 파일 기능:**
+- 가상환경 자동 활성화 (`.venv` 또는 `venv` 자동 감지)
+- Python 설치 여부 자동 확인
+- 서버 자동 실행 (호스트: 127.0.0.1, 포트: 8001)
+
+#### 방법 2: 수동 실행
+
 ```bash
 cd server
-python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
+python -m uvicorn main:app --reload --host 127.0.0.1 --port 8001
 ```
+
+> **참고**: 기본 포트는 8001입니다. 포트를 변경하려면 `start-server.bat` 파일을 수정하거나 수동 실행 시 `--port` 옵션을 변경하세요.
 
 ### 5. 웹 브라우저에서 접속
 
-브라우저에서 `http://localhost:8000` 접속
+브라우저에서 `http://localhost:8001` 접속
 
 ## 문제 해결
 

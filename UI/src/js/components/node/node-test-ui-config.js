@@ -1,5 +1,5 @@
-// node-test.js
-// 테스트 노드 정의
+// node-test-ui-config.js
+// UI 테스트 노드 정의
 
 (function () {
     // NodeManager가 로드될 때까지 대기
@@ -17,9 +17,9 @@
 
     // 노드 타입 등록
     function registerNode() {
-        window.NodeManager.registerNodeType('test', {
+        window.NodeManager.registerNodeType('testUIconfig', {
             /**
-             * 테스트 노드 내용 생성
+             * UI 테스트 노드 내용 생성
              * @param {Object} nodeData - 노드 데이터
              */
             renderContent(nodeData) {
@@ -36,7 +36,7 @@
                             <div class="node-icon">🧪</div>
                         </div>
                         <div class="node-text-area">
-                            <div class="node-title">${this.escapeHtml(nodeData.title || '테스트')}</div>
+                            <div class="node-title">${this.escapeHtml(nodeData.title || 'UI 테스트')}</div>
                             <div class="node-description">${this.escapeHtml(description)}</div>
                         </div>
                     </div>
@@ -46,7 +46,7 @@
             }
         });
 
-        console.log('[node-test] 테스트 노드 타입 등록 완료');
+        console.log('[node-test-ui-config] UI 테스트 노드 타입 등록 완료');
     }
 
     // 즉시 등록 시도

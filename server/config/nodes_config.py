@@ -381,12 +381,12 @@ NODES_CONFIG: dict[str, dict[str, Any]] = {
             },
         },
     },
-    # === 테스트 노드 (Test Node) ===
-    "test": {
-        "label": "테스트 노드",
-        "title": "테스트",
-        "description": "nodes_config.py에만 정의된 테스트 노드입니다.",
-        "script": "node-test.js",
+    # === UI 테스트 노드 (UI Test Node) ===
+    "testUIconfig": {
+        "label": "UI 테스트 노드",
+        "title": "UI 테스트",
+        "description": "UI만 테스트하는 테스트 노드 설정입니다.",
+        "script": "node-test-ui-config.js",
         "is_boundary": False,
         "category": "action",
         "input_schema": {
