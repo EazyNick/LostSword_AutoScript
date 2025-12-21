@@ -81,30 +81,40 @@ export class NodeUpdateService {
      * 폼에서 데이터 추출
      */
     async extractFormData(nodeElement, nodeId, nodeManager) {
+        // 폼에서 제목 가져오기
         const newTitle = document.getElementById('edit-node-title').value;
+        // currentType: 현재 노드 타입 (nodeData에서 가져오거나 dataset에서 가져옴)
         const currentType =
             nodeManager.nodeData && nodeManager.nodeData[nodeId]
                 ? nodeManager.nodeData[nodeId].type || nodeElement.dataset.nodeType
                 : nodeElement.dataset.nodeType;
+        // isStart: 시작 노드 여부 (시작 노드는 타입 변경 불가)
         const isStart = currentType === 'start';
+        // newType: 새로운 노드 타입 (시작 노드가 아니면 폼에서 가져옴, 시작 노드면 현재 타입 유지)
         let newType = isStart ? currentType : document.getElementById('edit-node-type')?.value || currentType;
 
         // 노드 타입 변경 시 검증 (시작 노드로 변경하려는 경우)
+        // 시작 노드가 아니고 타입이 변경된 경우만 검증
         if (!isStart && newType !== currentType) {
+            // validation: 타입 변경 검증 결과 (canChange, message 포함)
             const validation = NodeValidationUtils.validateNodeTypeChange(newType, nodeId, nodeManager);
+            // 타입 변경이 불가능하면 에러 표시하고 원래 타입으로 되돌림
             if (!validation.canChange) {
                 const modalManager = this.workflowPage.getModalManager();
+                // modalManager가 있으면 모달로 알림 표시
                 if (modalManager) {
                     modalManager.showAlert('타입 변경 불가', validation.message);
                 } else {
+                    // modalManager가 없으면 기본 alert 사용
                     alert(validation.message);
                 }
-                // 원래 타입으로 되돌리기
+                // 원래 타입으로 되돌리기 (폼의 select 요소 값도 되돌림)
                 const nodeTypeSelect = document.getElementById('edit-node-type');
                 if (nodeTypeSelect) {
                     nodeTypeSelect.value = currentType;
                 }
-                newType = currentType; // 원래 타입 유지
+                // newType을 원래 타입으로 설정 (타입 변경 취소)
+                newType = currentType;
             }
         }
 
@@ -177,14 +187,20 @@ export class NodeUpdateService {
         const config = await registry.getConfig(newType);
 
         // 상세 노드 타입이 선택된 경우, 상세 노드 타입의 파라미터 우선 사용
+        // newDetailNodeType: 선택된 상세 노드 타입 (예: "http-api-request")
         if (newDetailNodeType && config?.detailTypes?.[newDetailNodeType]?.parameters) {
+            // detailConfig: 상세 노드 타입 설정 (파라미터 정의 포함)
             const detailConfig = config.detailTypes[newDetailNodeType];
+            // paramValues: 폼에서 추출한 파라미터 값들
             const paramValues = extractParameterValues(detailConfig.parameters, 'edit-node-');
             console.log('[NodeUpdateService] 상세 노드 타입 파라미터 추출:', paramValues);
+            // updatedNodeData에 파라미터 값들 병합
             Object.assign(updatedNodeData, paramValues);
         } else if (config?.parameters) {
             // 상세 노드 타입에 파라미터가 없으면 노드 레벨 파라미터 사용
+            // paramValues: 폼에서 추출한 파라미터 값들
             const paramValues = extractParameterValues(config.parameters, 'edit-node-');
+            // updatedNodeData에 파라미터 값들 병합
             Object.assign(updatedNodeData, paramValues);
         }
 

@@ -18,12 +18,49 @@ export class ConnectionEventHandler {
      * 이벤트 바인딩
      */
     bindEvents() {
-        // 캔버스 클릭 이벤트(연결 취소용)
-        this.connectionManager.canvas.addEventListener('click', (e) => {
-            if (e.target === this.connectionManager.canvas && this.connectionManager.isConnecting) {
+        const logger = getLogger();
+
+        // ESC 키 이벤트(연결 취소용)
+        this._escKeyHandler = (e) => {
+            if (e.key === 'Escape' && this.connectionManager.isConnecting) {
+                logger.log('[ConnectionManager] ESC 키로 연결 취소');
                 this.connectionManager.cancelConnection();
             }
-        });
+        };
+        window.addEventListener('keydown', this._escKeyHandler);
+
+        // 캔버스 클릭 이벤트(연결 취소용)
+        // 연결점이 아닌 곳 클릭 시 취소
+        this._canvasClickHandler = (e) => {
+            if (!this.connectionManager.isConnecting) {
+                return;
+            }
+
+            // 클릭된 요소가 연결점인지 확인
+            const clickedElement = e.target;
+            const isConnector =
+                clickedElement.classList.contains('node-input') ||
+                clickedElement.classList.contains('node-output') ||
+                clickedElement.classList.contains('true-output') ||
+                clickedElement.classList.contains('false-output') ||
+                clickedElement.classList.contains('node-bottom-output') ||
+                clickedElement.classList.contains('bottom-output-dot') ||
+                clickedElement.classList.contains('output-dot') ||
+                clickedElement.closest('.node-input') ||
+                clickedElement.closest('.node-output') ||
+                clickedElement.closest('.true-output') ||
+                clickedElement.closest('.false-output') ||
+                clickedElement.closest('.node-bottom-output') ||
+                clickedElement.closest('.bottom-output-dot') ||
+                clickedElement.closest('.output-dot');
+
+            // 연결점이 아닌 곳 클릭 시 취소
+            if (!isConnector) {
+                logger.log('[ConnectionManager] 연결점이 아닌 곳 클릭으로 연결 취소');
+                this.connectionManager.cancelConnection();
+            }
+        };
+        this.connectionManager.canvas.addEventListener('click', this._canvasClickHandler);
 
         // 윈도우 리사이즈 이벤트
         window.addEventListener('resize', () => {

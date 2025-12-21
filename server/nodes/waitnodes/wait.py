@@ -31,14 +31,19 @@ class WaitNode(BaseNode):
             실행 결과 딕셔너리
         """
         # wait_time 추출 및 검증
+        # wait_time_raw: 원본 대기 시간 값 (다양한 타입 가능)
         wait_time_raw = get_parameter(parameters, "wait_time", default=1)
+        # wait_time_raw가 None이면 기본값 1 사용
         if wait_time_raw is None:
             wait_time_raw = 1
         try:
+            # wait_time_raw를 float로 변환
             wait_time = float(wait_time_raw)
+            # wait_time이 음수이면 0으로 설정 (음수 대기는 불가능)
             if wait_time < 0:
                 wait_time = 0
         except (ValueError, TypeError):
+            # 변환 실패 시 기본값 1 사용
             wait_time = 1
 
         # 대기 시작 로그

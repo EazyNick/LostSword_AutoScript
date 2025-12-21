@@ -124,19 +124,24 @@ export class ConnectionManager {
             connectionsCount: this.connections.size
         });
 
+        // 연결 모드가 아닐 때: 연결 시작
         if (!this.isConnecting) {
-            // 연결 모드가 아닐 때: 연결 시작
             // 출력 타입 감지 (조건 노드, 반복 노드의 경우)
+            // detectedOutputType: 감지된 출력 타입 (true, false, bottom, 또는 null)
             let detectedOutputType = outputType || null;
+            // connectorType이 'output'이고 출력 타입이 아직 감지되지 않았으면 감지 시도
             if (connectorType === 'output' && connectorElement && !detectedOutputType) {
+                // 조건 노드의 true 출력인지 확인
                 if (connectorElement.classList.contains('true-output') || connectorElement.closest('.true-output')) {
                     detectedOutputType = 'true';
                 } else if (
+                    // 조건 노드의 false 출력인지 확인
                     connectorElement.classList.contains('false-output') ||
                     connectorElement.closest('.false-output')
                 ) {
                     detectedOutputType = 'false';
                 } else if (
+                    // 반복 노드의 아래 출력(bottom)인지 확인
                     connectorElement.classList.contains('node-bottom-output') ||
                     connectorElement.closest('.node-bottom-output')
                 ) {
@@ -186,6 +191,7 @@ export class ConnectionManager {
         } else {
             // 연결 모드 중일 때
             // 같은 커넥터를 다시 클릭하면 연결 취소
+            // startNode, startConnectorType, startConnector가 모두 같으면 같은 커넥터로 판단
             if (
                 this.startNode === nodeElement &&
                 this.startConnectorType === connectorType &&
@@ -197,6 +203,7 @@ export class ConnectionManager {
             }
 
             // 다른 타입의 커넥터 + 다른 노드일 때: 연결 완료
+            // startConnectorType과 connectorType이 다르고, startNode와 nodeElement가 다르면 연결 완료 가능
             if (this.startConnectorType !== connectorType && this.startNode !== nodeElement) {
                 this.completeConnection(nodeElement, connectorElement);
             } else {
@@ -757,6 +764,12 @@ export class ConnectionManager {
         if (this.tempLine) {
             this.tempLine.remove();
             this.tempLine = null;
+        }
+
+        // 임시 연결선 제거 (롱터치용)
+        if (this.tempConnection) {
+            this.tempConnection.remove();
+            this.tempConnection = null;
         }
 
         // 마우스 이동 이벤트 제거

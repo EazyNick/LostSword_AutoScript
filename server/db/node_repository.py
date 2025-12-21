@@ -125,20 +125,25 @@ class NodeRepository:
         JSON 필드 파싱
 
         Args:
-            raw_value: 원시 값
-            default_value: 기본값
+            raw_value: 원시 값 (JSON 문자열, dict, list, 또는 None)
+            default_value: 기본값 (파싱 실패 시 반환할 값)
 
         Returns:
-            파싱된 값
+            파싱된 값 (dict, list, 또는 default_value)
         """
+        # raw_value가 없으면 기본값 반환
         if not raw_value:
             return default_value
 
         try:
+            # raw_value가 문자열이면 JSON 파싱 시도
             if isinstance(raw_value, str):
+                # 빈 문자열이 아니면 JSON 파싱, 빈 문자열이면 기본값 반환
                 return json.loads(raw_value) if raw_value.strip() else default_value
+            # raw_value가 이미 dict나 list이면 그대로 반환, 아니면 기본값 반환
             return raw_value if isinstance(raw_value, (list, dict)) else default_value
         except (json.JSONDecodeError, ValueError) as e:
+            # JSON 파싱 실패 시 경고 출력하고 기본값 반환
             print(f"Warning: JSON 파싱 실패: {e}")
             return default_value
 
@@ -183,26 +188,38 @@ class NodeRepository:
         Raises:
             ValueError: 검증 실패 시
         """
+        # node_output_count: 각 노드의 출력 연결 개수를 저장하는 딕셔너리
+        # key: 노드 ID, value: 출력 연결 개수
         node_output_count = {}
+        # node_type_map: 노드 ID를 키로 하는 노드 타입 맵 (빠른 조회를 위함)
         node_type_map = {node["id"]: node.get("type") for node in nodes}
 
+        # 각 연결을 순회하며 출력 연결 개수 확인
         for connection in connections:
+            # from_node_id: 연결 출발 노드 ID
             from_node_id = connection.get("from")
+            # from_node_id가 있으면 처리
             if from_node_id:
+                # node_type: 출발 노드의 타입
                 node_type = node_type_map.get(from_node_id)
+                # output_type: 출력 타입 (조건 노드의 경우 "true"/"false", 반복 노드의 경우 "bottom" 등)
                 output_type = connection.get("outputType")
 
                 # 반복 노드의 아래 연결점(bottom)은 출력으로 카운트하지 않음
+                # 반복 노드의 bottom 연결은 반복 종료를 의미하므로 출력으로 카운트하지 않음
                 if node_type == "repeat" and output_type == "bottom":
-                    continue
+                    continue  # 다음 연결로 넘어감
 
-                # 조건 노드가 아닌 경우
+                # 조건 노드가 아닌 경우 출력 연결 개수 확인
+                # 조건 노드는 여러 출력을 가질 수 있으므로 제외
                 if node_type and node_type != "condition":
+                    # node_output_count에 없으면 0으로 초기화
                     if from_node_id not in node_output_count:
                         node_output_count[from_node_id] = 0
+                    # 출력 연결 개수 증가
                     node_output_count[from_node_id] += 1
 
-                    # 출력 연결이 2개 이상이면 에러
+                    # 출력 연결이 2개 이상이면 에러 (조건 노드가 아닌 노드는 최대 1개만 연결 가능)
                     if node_output_count[from_node_id] > 1:
                         raise ValueError(
                             f"노드 '{from_node_id}' (타입: {node_type})의 출력이 {node_output_count[from_node_id]}개 연결되어 있습니다. "
@@ -330,16 +347,24 @@ class NodeRepository:
         start_nodes = [n for n in nodes if n.get("type") == "start" or n.get("id") == "start"]
 
         # start 노드 정리
+        # start 노드가 2개 이상이면 1개만 남기고 나머지 삭제
         if len(start_nodes) > 1:
+            # _db_id 기준으로 정렬 (오래된 것부터 삭제)
             start_nodes.sort(key=lambda n: n.get("_db_id", 0))
+            # nodes_to_delete: 삭제할 노드 목록 (첫 번째 노드 제외)
             nodes_to_delete = start_nodes[1:]
 
+            # 삭제할 노드들을 DB에서 삭제
             for node in nodes_to_delete:
+                # db_id: DB의 노드 ID (DB에서 삭제하기 위해 필요)
                 db_id = node.get("_db_id")
+                # db_id가 있으면 DB에서 삭제
                 if db_id:
                     cursor.execute("DELETE FROM nodes WHERE id = ?", (db_id,))
+                    # nodes 리스트에서도 제거 (in-place 수정)
                     nodes[:] = [n for n in nodes if n.get("_db_id") != db_id]
 
+            # 변경사항 커밋
             conn.commit()
             print(f"[DB 정리] start 노드 중복 제거: {len(nodes_to_delete)}개 삭제, 1개 유지")
 

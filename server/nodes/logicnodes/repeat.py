@@ -32,13 +32,17 @@ class RepeatNode(BaseNode):
             - repeat_count: 설정된 반복 횟수
             - completed: 반복 완료 여부 (항상 True, 실제 반복은 엔진에서 처리)
         """
+        # 파라미터 추출
+        # repeat_count: 반복 횟수 (기본값: 1)
         repeat_count = get_parameter(parameters, "repeat_count", default=1)
 
         # 반복 횟수 검증
+        # repeat_count가 숫자가 아니거나 1보다 작으면 기본값 1 사용
         if not isinstance(repeat_count, (int, float)) or repeat_count < 1:
             logger.warning(f"[RepeatNode] 잘못된 반복 횟수: {repeat_count}, 기본값 1 사용")
             repeat_count = 1
 
+        # repeat_count를 정수로 변환 (소수점 제거)
         repeat_count = int(repeat_count)
 
         logger.info(f"[RepeatNode] 반복 노드 실행 - 반복 횟수: {repeat_count}")

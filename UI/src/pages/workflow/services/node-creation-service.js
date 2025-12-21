@@ -81,11 +81,17 @@ export class NodeCreationService {
         }
 
         // 이미 start/end 노드가 있는지 확인
+        // nodeElements: 모든 노드 요소 배열 (노드 요소만 추출)
         const nodeElements = nodeManager.nodes ? nodeManager.nodes.map((n) => n.element) : [];
+        // nodeData: 노드 데이터 딕셔너리 (노드 타입 확인용)
         const nodeData = nodeManager.nodeData || {};
 
+        // hasStartNode: 시작 노드가 이미 존재하는지 여부
+        // 여러 방법으로 시작 노드 확인 (id, type, 제목)
         const hasStartNode = nodeElements.some((nodeElement) => {
+            // nodeId: 노드 ID (id 속성 또는 dataset.nodeId에서 가져옴)
             const nodeId = nodeElement.id || nodeElement.dataset?.nodeId;
+            // 시작 노드 확인 (id가 'start'이거나, 타입이 'start'이거나, 제목에 '시작'이 포함된 경우)
             return (
                 nodeId === 'start' ||
                 nodeData[nodeId]?.type === 'start' ||
@@ -97,22 +103,26 @@ export class NodeCreationService {
         const log = logger.log;
         log(`[NodeCreationService] 기본 시작 노드 생성 시도 - start 존재: ${hasStartNode}`);
 
+        // baseX, baseY: 기본 노드 위치 (좌표)
         const baseX = 0;
         const baseY = 0;
 
+        // boundaryNodes: 생성할 경계 노드 목록 (start/end 노드)
         const boundaryNodes = [];
 
         // start 노드가 없을 때만 추가
+        // hasStartNode가 false이면 시작 노드 생성
         if (!hasStartNode) {
             boundaryNodes.push({
                 id: 'start',
                 type: 'start',
                 title: '시작',
-                x: baseX - 200,
+                x: baseX - 200, // 시작 노드는 왼쪽에 배치
                 y: baseY
             });
         }
 
+        // boundaryNodes가 비어있으면 생성할 노드가 없으므로 종료
         if (boundaryNodes.length === 0) {
             log('[NodeCreationService] 이미 시작 노드가 존재하여 기본 시작 노드를 생성하지 않습니다.');
             return;

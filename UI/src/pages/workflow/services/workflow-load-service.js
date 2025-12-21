@@ -47,12 +47,14 @@ export class WorkflowLoadService {
         const logError = logger.error;
 
         // 중복 로드 방지
+        // isLoading: 현재 로딩 중인지 여부 (중복 로드 방지용)
         if (this.isLoading) {
             log('[WorkflowLoadService] ⚠️ 이미 로딩 중입니다. 중복 로드 방지');
             return;
         }
 
         // 같은 스크립트를 다시 로드하려는 경우 방지 (단, 최초 로드는 허용)
+        // _lastLoadedScriptId: 마지막으로 로드한 스크립트 ID (중복 로드 방지용)
         if (script && script.id && this._lastLoadedScriptId === script.id) {
             log('[WorkflowLoadService] 같은 스크립트가 이미 로드되었습니다. 중복 로드 방지:', script.id);
             return;
@@ -82,13 +84,17 @@ export class WorkflowLoadService {
 
         // 2. 기존 노드들 제거 (스크립트 전환 시)
         // 같은 스크립트를 다시 로드하는 경우가 아니면 기존 노드 제거
+        // previousScriptId: 이전에 로드한 스크립트 ID (스크립트 변경 여부 확인용)
         const previousScriptId = this._lastLoadedScriptId;
+        // 이전 스크립트가 있고 다른 스크립트로 변경하는 경우
         if (previousScriptId && previousScriptId !== script.id) {
             log('[WorkflowLoadService] 기존 노드 제거 시작 (스크립트 변경)');
             this.clearExistingNodes(nodeManager);
         } else if (!previousScriptId) {
+            // 첫 로드인 경우 (이전 스크립트가 없음)
             log('[WorkflowLoadService] 첫 로드이므로 기존 노드 제거 건너뜀');
         } else {
+            // 같은 스크립트를 다시 로드하는 경우 (중복 로드 방지로 이미 return되었지만 안전장치)
             log('[WorkflowLoadService] 같은 스크립트이므로 기존 노드 제거 건너뜀');
         }
 
@@ -113,12 +119,15 @@ export class WorkflowLoadService {
                 log(`[WorkflowPage] 연결 개수: ${connections.length}개`);
                 log('[WorkflowPage] 연결 정보:', connections);
 
+                // 노드가 있으면 화면에 렌더링
                 if (nodes.length > 0) {
                     // 서버에서 불러온 노드에 start가 포함되어 있는지 확인
+                    // hasStartNode: 시작 노드가 포함되어 있는지 여부
                     const hasStartNode = nodes.some((n) => n.id === 'start' || n.type === 'start');
 
                     log(`[WorkflowPage] 서버 노드 확인 - start: ${hasStartNode}`);
 
+                    // 노드들을 화면에 렌더링
                     await this.renderNodes(nodes, connections, nodeManager);
                 } else {
                     // 노드가 없을 때만 기본 시작 노드 생성
@@ -361,17 +370,22 @@ export class WorkflowLoadService {
         }
 
         // 연결 정보도 필터링 (정의되지 않은 노드로 연결된 연결선 제거)
+        // validNodeIds: 유효한 노드 ID 집합 (빠른 조회를 위해 Set 사용)
         const validNodeIds = new Set(filteredNodes.map((n) => n.id));
+        // filteredConnections: 필터링된 연결 목록 (유효한 노드로만 연결된 연결선만 포함)
         const filteredConnections = connections.filter((conn) => {
+            // fromValid: 출발 노드가 유효한지 여부
             const fromValid = validNodeIds.has(conn.from);
+            // toValid: 대상 노드가 유효한지 여부
             const toValid = validNodeIds.has(conn.to);
+            // 출발 노드나 대상 노드가 유효하지 않으면 제외
             if (!fromValid || !toValid) {
                 log(
                     `[WorkflowPage] 경고: 정의되지 않은 노드로 연결된 연결선을 건너뜁니다. (${conn.from} -> ${conn.to})`
                 );
-                return false;
+                return false; // 필터링에서 제외
             }
-            return true;
+            return true; // 필터링에서 포함
         });
 
         if (filteredConnections.length < connections.length) {

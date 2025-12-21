@@ -136,20 +136,43 @@ interface FieldSchema {
 
 ## 예시 데이터 생성 규칙
 
-### 기본값 생성
+### 필드명 기반 예시 값 생성
 
-스키마 타입에 따라 다음과 같이 기본값을 생성합니다:
+필드명과 타입을 분석하여 의미있는 예시 값을 자동 생성합니다:
 
-- `string`: `"예시 문자열"` 또는 `description` 값
+- **경로 관련** (`path`, `file`, `folder`): `"C:\\example\\path\\file.ext"`
+- **URL**: `"https://example.com/api/endpoint"`
+- **ID 관련** (`id`, `execution`): 
+  - `string`: `"20250101-120000-abc123"`
+  - `number`: `12345`
+- **개수/총계** (`count`, `total`, `number`): `10`
+- **시간 관련** (`time`, `wait`, `elapsed`): `5`
+- **성공/상태** (`success`, `found`, `touched`, `focused`, `completed`, `written`): `true`
+- **이름/프로세스** (`name`, `process`): `"example_process.exe"`
+- **내용/텍스트** (`content`, `text`, `message`, `result`): `"예시 내용"`
+- **위치/좌표** (`position`, `coord`): `[100, 200]`
+- **모드/인코딩** (`mode`, `encoding`, `type`): `"default"`
+- **크기** (`bytes`, `size`): `1024`
+- **조건** (`condition`): `'output.value == "test"'`
+
+### 타입 기반 기본값 생성
+
+필드명 패턴이 매칭되지 않으면 타입에 따라 기본값을 생성합니다:
+
+- `string`: 필드명 기반 (`"예시_필드명"`) 또는 특수 필드 (`action` → `"node-type"`, `status` → `"completed"`)
 - `number`: `0`
-- `boolean`: `true`
-- `array`: 빈 배열 `[]` 또는 스키마에 정의된 아이템 예시
-- `object`: 빈 객체 `{}` 또는 스키마에 정의된 속성들
-- `any`: `"예시 값"`
+- `boolean`: `false`
+- `array`: 스키마에 정의된 아이템 예시 또는 빈 배열 `[]`
+- `object`: 스키마에 정의된 속성들 또는 빈 객체 `{}`
+- `any`: `null`
 
 ### 실제 값 우선
 
 `nodeData`에 실제 값이 있으면 스키마 기반 예시 값 대신 실제 값을 사용합니다.
+
+### 자동 업데이트
+
+노드 설정 모달에서 파라미터를 변경하면 출력 미리보기가 자동으로 업데이트됩니다 (300ms debounce 적용).
 
 ## 노드 추가 시 스키마 정의
 

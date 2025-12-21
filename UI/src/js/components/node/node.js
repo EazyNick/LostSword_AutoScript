@@ -93,17 +93,22 @@ export class NodeManager {
             'NodeConnectionHandler'
         ];
 
+        // allLoaded: 모든 필수 컨트롤러가 로드되었는지 여부
         const allLoaded = requiredControllers.every((name) => typeof window[name] === 'function');
 
+        // 모든 컨트롤러가 로드되었거나 최대 시도 횟수에 도달했으면 초기화
         if (allLoaded || attempt >= maxAttempts) {
+            // 모든 컨트롤러가 로드되었으면 초기화 시작
             if (allLoaded) {
                 log('모든 컨트롤러 스크립트 로드 완료, 초기화 시작');
             } else {
+                // 일부 컨트롤러를 찾을 수 없으면 경고 출력 (기본 동작으로 진행)
                 logWarn('일부 컨트롤러를 찾을 수 없습니다. 기본 동작으로 진행합니다.');
             }
+            // 컨트롤러 초기화 실행
             this.initializeControllers();
         } else {
-            // 50ms 후 재시도
+            // 아직 로드되지 않았으면 50ms 후 재시도
             setTimeout(() => {
                 this.waitForControllersAndInitialize(maxAttempts, attempt + 1);
             }, 50);
@@ -172,10 +177,12 @@ export class NodeManager {
 
     // === 상태 조회용 getter (connection.js 등에서 사용) ===
     get isDragging() {
+        // dragController가 있으면 드래그 상태 반환, 없으면 false
         return this.dragController ? this.dragController.isDragging : false;
     }
 
     get isPanning() {
+        // canvasController가 있으면 패닝 상태 반환, 없으면 false
         return this.canvasController ? this.canvasController.isPanning : false;
     }
 
@@ -185,14 +192,17 @@ export class NodeManager {
      */
     initializeExternalManagers() {
         // 연결 관리자 초기화
+        // ConnectionManager가 있고 아직 초기화되지 않았으면 초기화
         if (window.ConnectionManager && !this.connectionManager) {
+            // connectionManager: 연결 관리자 인스턴스 (연결선 관리용)
             this.connectionManager = new window.ConnectionManager(this.canvas);
-            // 전역 변수로도 노출
+            // 전역 변수로도 노출 (다른 모듈에서 접근 가능하도록)
             if (window.setConnectionManager) {
                 window.setConnectionManager(this.connectionManager);
             }
             log('연결 관리자 초기화 완료');
         } else if (!window.ConnectionManager) {
+            // ConnectionManager 클래스를 찾을 수 없으면 경고 출력
             logWarn('ConnectionManager 클래스를 찾을 수 없습니다.');
         }
     }

@@ -21,7 +21,13 @@ NODES_CONFIG: dict[str, dict[str, Any]] = {
         "output_schema": {
             "action": {"type": "string", "description": "노드 타입"},
             "status": {"type": "string", "description": "실행 상태"},
-            "output": {"type": "any", "description": "출력 데이터"},
+            "output": {
+                "type": "object",
+                "description": "출력 데이터",
+                "properties": {
+                    "message": {"type": "string", "description": "시작 메시지"},
+                },
+            },
         },
     },
     # === 액션 노드 (Action Nodes) ===
@@ -229,6 +235,28 @@ NODES_CONFIG: dict[str, dict[str, Any]] = {
         "script": "node-loop.js",
         "is_boundary": False,
         "category": "logic",
+        "input_schema": {
+            "action": {"type": "string", "description": "이전 노드 타입"},
+            "status": {"type": "string", "description": "이전 노드 실행 상태"},
+            "output": {"type": "any", "description": "이전 노드 출력 데이터"},
+        },
+        "output_schema": {
+            "action": {"type": "string", "description": "노드 타입"},
+            "status": {"type": "string", "description": "실행 상태"},
+            "output": {
+                "type": "object",
+                "description": "출력 데이터",
+                "properties": {
+                    "loop_count": {"type": "number", "description": "실행된 반복 횟수"},
+                    "completed": {"type": "boolean", "description": "반복 완료 여부"},
+                    "iterations": {
+                        "type": "array",
+                        "description": "각 반복의 실행 결과",
+                        "items": {"type": "object"},
+                    },
+                },
+            },
+        },
         # 상세 노드 타입 정의
         "detail_types": {
             "loop-start": {

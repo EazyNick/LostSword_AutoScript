@@ -48,6 +48,7 @@ class ExcelOpenNode(BaseNode):
             실행 결과 딕셔너리
         """
         # win32com이 설치되어 있지 않은 경우
+        # win32com이 None이면 Windows 환경이 아니거나 pywin32가 설치되지 않은 경우
         if win32com is None:
             return create_failed_result(
                 action="excel-open",
@@ -56,15 +57,19 @@ class ExcelOpenNode(BaseNode):
                 output={"file_path": None, "visible": None, "success": False},
             )
 
+        # 파라미터 추출
+        # file_path: 엑셀 파일 경로 (필수)
         file_path = get_parameter(parameters, "file_path", default="")
+        # visible: 엑셀 창 표시 여부 (기본값: True)
         visible = get_parameter(parameters, "visible", default=True)
 
-        # visible 파라미터 디버깅 로그
+        # visible 파라미터 디버깅 로그 (타입 확인용)
         logger.info(
             f"[ExcelOpenNode] 파라미터 수신 - file_path: {file_path}, visible: {visible} (type: {type(visible)})"
         )
 
         # 파일 경로 검증
+        # file_path가 없으면 에러 반환
         if not file_path:
             return create_failed_result(
                 action="excel-open",
@@ -86,6 +91,7 @@ class ExcelOpenNode(BaseNode):
             )
 
         # 파일 확장자 확인
+        # 지원하는 엑셀 파일 확장자: .xlsx, .xls, .xlsm
         if not file_path.lower().endswith((".xlsx", ".xls", ".xlsm")):
             return create_failed_result(
                 action="excel-open",
@@ -99,7 +105,9 @@ class ExcelOpenNode(BaseNode):
             import time
 
             # execution_id 가져오기 (메타데이터에서) - 대기 로직 전에 먼저 확인
+            # execution_id: 워크플로우 실행 ID (엑셀 객체를 저장하기 위해 필요)
             execution_id = parameters.get("_execution_id")
+            # execution_id가 없으면 에러 반환 (엑셀 객체를 저장할 수 없음)
             if not execution_id:
                 return create_failed_result(
                     action="excel-open",
@@ -109,34 +117,45 @@ class ExcelOpenNode(BaseNode):
                 )
 
             # Excel 애플리케이션 객체 생성
+            # win32com.client.Dispatch로 Excel COM 객체 생성
             excel_app = win32com.client.Dispatch("Excel.Application")
 
             # 엑셀 창 표시 여부 설정
+            # visible 파라미터를 bool로 변환하여 설정
             excel_app.Visible = bool(visible)
 
             # 엑셀 파일 열기
+            # Workbooks.Open으로 엑셀 파일 열기
             workbook = excel_app.Workbooks.Open(file_path)
 
             # Excel이 완전히 준비될 때까지 대기
             # workbook.Open()이 반환되어도 Excel이 완전히 로드되기 전에 다음 노드가 실행될 수 있음
-            max_wait_time = 30  # 최대 30초 대기
-            check_interval = 0.1  # 0.1초마다 확인
+            # max_wait_time: 최대 대기 시간 (30초)
+            max_wait_time = 30
+            # check_interval: 확인 간격 (0.1초마다 확인)
+            check_interval = 0.1
+            # start_time: 대기 시작 시간
             start_time = time.time()
+            # excel_ready: Excel 준비 완료 여부 플래그
             excel_ready = False
 
+            # 최대 대기 시간 동안 Excel 준비 상태 확인
             while (time.time() - start_time) < max_wait_time:
                 try:
                     # Excel이 준비되었는지 확인
-                    # Ready 속성 확인 및 간단한 속성 접근 시도
+                    # Ready 속성 확인 및 간단한 속성 접근 시도 (workbook.Name)
+                    # Ready가 True이고 workbook.Name에 접근 가능하면 준비 완료
                     if excel_app.Ready and workbook.Name:
                         excel_ready = True
-                        break
+                        break  # 준비 완료되면 루프 종료
                 except Exception:
-                    # 아직 준비되지 않았으면 계속 대기
+                    # 아직 준비되지 않았으면 계속 대기 (예외 무시)
                     pass
 
+                # check_interval만큼 대기 후 다시 확인
                 await asyncio.sleep(check_interval)
 
+            # Excel이 준비되지 않았으면 경고 출력 (하지만 계속 진행)
             if not excel_ready:
                 logger.warning(
                     f"[ExcelOpenNode] Excel 준비 확인 타임아웃 - execution_id: {execution_id}, 하지만 계속 진행합니다."

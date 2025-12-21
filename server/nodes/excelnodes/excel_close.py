@@ -55,15 +55,22 @@ class ExcelCloseNode(BaseNode):
                 output={"success": False},
             )
 
+        # 파라미터 추출
+        # save_changes: 변경사항 저장 여부 (기본값: False)
         save_changes = get_parameter(parameters, "save_changes", default=False)
 
         # execution_id 가져오기 (우선순위: 사용자 입력 > 이전 노드 출력 > 메타데이터)
+        # execution_id: 워크플로우 실행 ID (열려있는 엑셀 객체를 찾기 위해 필요)
+        # 1순위: 사용자가 직접 입력한 execution_id
+        # 2순위: 이전 노드 출력에서 가져온 execution_id (_execution_id_from_prev)
+        # 3순위: 메타데이터의 execution_id (_execution_id)
         execution_id = (
             get_parameter(parameters, "execution_id", default="")
             or parameters.get("_execution_id_from_prev")
             or parameters.get("_execution_id")
         )
 
+        # execution_id가 없으면 에러 반환 (열려있는 엑셀 객체를 찾을 수 없음)
         if not execution_id:
             return create_failed_result(
                 action="excel-close",
@@ -77,7 +84,9 @@ class ExcelCloseNode(BaseNode):
         )
 
         # 저장된 엑셀 객체 확인
+        # excel_data: 저장된 엑셀 객체 정보 (excel_app, workbook 등)
         excel_data = get_excel_objects(execution_id)
+        # 엑셀 객체가 없으면 에러 반환 (엑셀 열기 노드가 먼저 실행되어야 함)
         if not excel_data:
             return create_failed_result(
                 action="excel-close",
@@ -88,8 +97,10 @@ class ExcelCloseNode(BaseNode):
 
         try:
             # 엑셀 객체 닫기
+            # success: 닫기 성공 여부
             success = close_excel_objects(execution_id, save_changes=bool(save_changes))
 
+            # 닫기 성공 시 성공 결과 반환
             if success:
                 return {
                     "action": "excel-close",
