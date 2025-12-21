@@ -148,6 +148,10 @@ CREATE TABLE user_settings (
 - `sidebar-width`: 사이드바 너비
 - `theme`: 테마 설정 (dark/light)
 - `language`: 언어 설정
+- `screenshot.autoScreenshot`: 자동 스크린샷 활성화 여부 (true/false)
+- `screenshot.screenshotOnError`: 오류 발생 시 스크린샷 저장 여부 (true/false)
+- `screenshot.savePath`: 스크린샷 저장 경로
+- `screenshot.imageFormat`: 스크린샷 이미지 형식 (PNG/JPEG)
 
 ### 4. `node_execution_logs` 테이블
 

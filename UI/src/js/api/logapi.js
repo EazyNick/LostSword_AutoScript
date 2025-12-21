@@ -26,23 +26,14 @@ export const LogAPI = {
      * @returns {Promise<Object>} 생성된 로그 정보
      */
     async createNodeExecutionLog(logData) {
-        const logger = getLogger();
-        logger.log('[LogAPI] createNodeExecutionLog() 호출됨');
-        logger.log('[LogAPI] 로그 데이터:', logData);
-
         try {
-            const startTime = performance.now();
             const result = await apiCall('/api/logs/node-execution', {
                 method: 'POST',
                 body: JSON.stringify(logData)
             });
-            const endTime = performance.now();
-
-            logger.log('[LogAPI] ✅ 로그 생성 성공:', result);
-            logger.log(`[LogAPI] 응답 시간: ${(endTime - startTime).toFixed(2)}ms`);
-
             return result;
         } catch (error) {
+            const logger = getLogger();
             logger.error('[LogAPI] ❌ 로그 생성 실패:', error);
             throw error;
         }
@@ -54,10 +45,6 @@ export const LogAPI = {
      * @returns {Promise<Array>} 로그 목록
      */
     async getNodeExecutionLogs(filters = {}) {
-        const logger = getLogger();
-        logger.log('[LogAPI] getNodeExecutionLogs() 호출됨');
-        logger.log('[LogAPI] 필터 옵션:', filters);
-
         try {
             // 쿼리 파라미터 생성
             const params = new URLSearchParams();
@@ -80,19 +67,12 @@ export const LogAPI = {
             const queryString = params.toString();
             const endpoint = `/api/logs/node-execution${queryString ? `?${queryString}` : ''}`;
 
-            const startTime = performance.now();
             const result = await apiCall(endpoint);
-            const endTime = performance.now();
-
-            logger.log('[LogAPI] ✅ 로그 조회 성공:', result);
-            logger.log(`[LogAPI] 응답 시간: ${(endTime - startTime).toFixed(2)}ms`);
-
             // 응답 형식: {success: true, message: "...", data: [...], count: N}
             const logs = result.data || result; // 하위 호환성 유지
-            logger.log(`[LogAPI] 받은 로그 개수: ${logs.length}개`);
-
             return logs;
         } catch (error) {
+            const logger = getLogger();
             logger.error('[LogAPI] ❌ 로그 조회 실패:', error);
             throw error;
         }
@@ -138,10 +118,6 @@ export const LogAPI = {
      * @returns {Promise<Array>} 실패한 로그 목록
      */
     async getFailedNodeExecutionLogs(filters = {}) {
-        const logger = getLogger();
-        logger.log('[LogAPI] getFailedNodeExecutionLogs() 호출됨');
-        logger.log('[LogAPI] 필터 옵션:', filters);
-
         try {
             // 쿼리 파라미터 생성
             const params = new URLSearchParams();
@@ -155,19 +131,12 @@ export const LogAPI = {
             const queryString = params.toString();
             const endpoint = `/api/logs/node-execution/failed${queryString ? `?${queryString}` : ''}`;
 
-            const startTime = performance.now();
             const result = await apiCall(endpoint);
-            const endTime = performance.now();
-
-            logger.log('[LogAPI] ✅ 실패한 로그 조회 성공:', result);
-            logger.log(`[LogAPI] 응답 시간: ${(endTime - startTime).toFixed(2)}ms`);
-
             // 응답 형식: {success: true, message: "...", data: [...], count: N}
             const logs = result.data || result; // 하위 호환성 유지
-            logger.log(`[LogAPI] 받은 실패 로그 개수: ${logs.length}개`);
-
             return logs;
         } catch (error) {
+            const logger = getLogger();
             logger.error('[LogAPI] ❌ 실패한 로그 조회 실패:', error);
             throw error;
         }
@@ -202,18 +171,13 @@ export const LogAPI = {
      * @returns {Promise<Object>} 삭제 결과
      */
     async deleteNodeExecutionLogsByExecutionId(executionId) {
-        const logger = getLogger();
-        logger.log('[LogAPI] deleteNodeExecutionLogsByExecutionId() 호출됨');
-        logger.log('[LogAPI] 실행 ID:', executionId);
-
         try {
             const result = await apiCall(`/api/logs/node-execution/execution/${executionId}`, {
                 method: 'DELETE'
             });
-
-            logger.log('[LogAPI] ✅ 실행 ID별 로그 삭제 성공:', result);
             return result;
         } catch (error) {
+            const logger = getLogger();
             logger.error('[LogAPI] ❌ 실행 ID별 로그 삭제 실패:', error);
             throw error;
         }
@@ -224,17 +188,13 @@ export const LogAPI = {
      * @returns {Promise<Object>} 삭제 결과
      */
     async deleteAllNodeExecutionLogs() {
-        const logger = getLogger();
-        logger.log('[LogAPI] deleteAllNodeExecutionLogs() 호출됨');
-
         try {
             const result = await apiCall('/api/logs/node-execution', {
                 method: 'DELETE'
             });
-
-            logger.log('[LogAPI] ✅ 전체 로그 삭제 성공:', result);
             return result;
         } catch (error) {
+            const logger = getLogger();
             logger.error('[LogAPI] ❌ 전체 로그 삭제 실패:', error);
             throw error;
         }

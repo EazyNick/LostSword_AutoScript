@@ -169,7 +169,7 @@ body.theme-light .script-card.executing .btn-run .btn-run-icon {
 }
 
 body.theme-light .script-card.executing .btn-run .btn-run-text::after {
-    content: ' 실행 중...';
+    content: var(--running-text, ' 실행 중...');
     font-size: 12px;
     opacity: 0.8;
 }

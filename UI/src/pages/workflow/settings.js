@@ -4,6 +4,8 @@
  */
 
 import { getThemeManagerInstance } from '../../js/utils/theme-manager.js';
+import { t, setLanguage, getLanguage } from '../../js/utils/i18n.js';
+import { getToastManagerInstance } from '../../js/utils/toast.js';
 
 /**
  * 로거 유틸리티 가져오기
@@ -30,13 +32,12 @@ export class SettingsManager {
             // 외관 설정
             appearance: {
                 theme: currentTheme, // 'light', 'dark', 'system'
-                language: 'ko' // 'ko', 'en'
+                language: 'en' // 'en', 'ko'
             },
             // 실행 설정
             execution: {
                 defaultTimeout: 30, // 초
-                retryCount: 3, // 회
-                parallelExecution: false // 병렬 실행 여부
+                retryCount: 3 // 회
             },
             // 스크린샷 설정
             screenshot: {
@@ -62,8 +63,26 @@ export class SettingsManager {
         logger.log('[Settings] 설정 페이지 초기화 시작');
 
         await this.loadSettings();
+        // 정적 텍스트 업데이트 (페이지 제목 및 부제목)
+        this.updateStaticTexts();
+        // 언어 로드 후 설정 페이지를 다시 렌더링하여 번역 적용
         this.renderSettings();
         this.setupEventListeners();
+    }
+
+    /**
+     * HTML의 정적 텍스트 업데이트
+     */
+    updateStaticTexts() {
+        // 페이지 제목 및 부제목
+        const pageTitle = document.querySelector('#page-settings .page-title');
+        if (pageTitle) {
+            pageTitle.textContent = t('header.settings');
+        }
+        const pageSubtitle = document.querySelector('#page-settings .page-subtitle');
+        if (pageSubtitle) {
+            pageSubtitle.textContent = t('header.settingsSubtitle');
+        }
     }
 
     /**
@@ -83,6 +102,10 @@ export class SettingsManager {
                 if (themeManager && parsed.appearance) {
                     parsed.appearance.theme = themeManager.getCurrentTheme();
                 }
+                // language 키가 있으면 appearance.language로 설정
+                if (parsed.language && parsed.appearance) {
+                    parsed.appearance.language = parsed.language;
+                }
                 this.settings = { ...this.settings, ...parsed };
             } else {
                 // 테마 관리자에서 현재 테마 가져오기
@@ -90,6 +113,43 @@ export class SettingsManager {
                 if (themeManager) {
                     this.settings.appearance.theme = themeManager.getCurrentTheme();
                 }
+            }
+
+            // 서버에서 설정 로드 (서버 설정이 우선)
+            try {
+                const { UserSettingsAPI } = await import('../../js/api/user-settings-api.js');
+                if (UserSettingsAPI) {
+                    // 언어 설정 로드
+                    const language = await UserSettingsAPI.getSetting('language');
+                    const currentLang = language !== null ? language : 'en';
+                    this.settings.appearance.language = currentLang;
+                    // i18n 언어 설정 (silent 모드로 호출하여 이벤트 발생 방지)
+                    // 로컬 스토리지와 HTML lang 속성만 업데이트 (서버 저장 및 이벤트 발생 안 함)
+                    await setLanguage(currentLang, true);
+
+                    // 스크린샷 설정 로드
+                    const autoScreenshot = await UserSettingsAPI.getSetting('screenshot.autoScreenshot');
+                    const screenshotOnError = await UserSettingsAPI.getSetting('screenshot.screenshotOnError');
+                    const savePath = await UserSettingsAPI.getSetting('screenshot.savePath');
+                    const imageFormat = await UserSettingsAPI.getSetting('screenshot.imageFormat');
+
+                    if (autoScreenshot !== null) {
+                        this.settings.screenshot.autoScreenshot = autoScreenshot === 'true' || autoScreenshot === true;
+                    }
+                    if (screenshotOnError !== null) {
+                        this.settings.screenshot.screenshotOnError =
+                            screenshotOnError === 'true' || screenshotOnError === true;
+                    }
+                    if (savePath !== null) {
+                        this.settings.screenshot.savePath = savePath;
+                    }
+                    if (imageFormat !== null) {
+                        this.settings.screenshot.imageFormat = imageFormat;
+                    }
+                    logger.log('[Settings] 서버에서 설정 로드 완료');
+                }
+            } catch (serverError) {
+                logger.warn('[Settings] 서버 설정 로드 실패 (로컬 설정 사용):', serverError);
             }
         } catch (error) {
             logger.error('[Settings] 설정 데이터 로드 실패:', error);
@@ -110,12 +170,13 @@ export class SettingsManager {
             return;
         }
 
+        const lang = getLanguage();
         settingsContent.innerHTML = `
             <!-- 외관 설정 -->
             <div class="settings-section">
                 <div class="settings-section-header">
-                    <h2 class="settings-section-title">외관</h2>
-                    <p class="settings-section-subtitle">테마와 디스플레이 설정을 변경합니다</p>
+                    <h2 class="settings-section-title">${t('settings.appearance')}</h2>
+                    <p class="settings-section-subtitle">${t('settings.appearanceSubtitle')}</p>
                 </div>
                 <div class="settings-section-content">
                     <!-- 테마 설정 -->
@@ -123,15 +184,15 @@ export class SettingsManager {
                         <div class="settings-item-info">
                             <div class="settings-item-icon">🖥️</div>
                             <div class="settings-item-text">
-                                <div class="settings-item-label">테마</div>
-                                <div class="settings-item-description">앱의 전체 테마를 선택합니다</div>
+                                <div class="settings-item-label">${t('settings.theme')}</div>
+                                <div class="settings-item-description">${t('settings.themeDescription')}</div>
                             </div>
                         </div>
                         <div class="settings-item-control">
                             <div class="theme-buttons">
-                                <button class="theme-btn ${this.settings.appearance.theme === 'light' ? 'active' : ''}" data-theme="light">라이트</button>
-                                <button class="theme-btn ${this.settings.appearance.theme === 'dark' ? 'active' : ''}" data-theme="dark">다크</button>
-                                <button class="theme-btn ${this.settings.appearance.theme === 'system' ? 'active' : ''}" data-theme="system">시스템</button>
+                                <button class="theme-btn ${this.settings.appearance.theme === 'light' ? 'active' : ''}" data-theme="light">${t('settings.light')}</button>
+                                <button class="theme-btn ${this.settings.appearance.theme === 'dark' ? 'active' : ''}" data-theme="dark">${t('settings.dark')}</button>
+                                <button class="theme-btn ${this.settings.appearance.theme === 'system' ? 'active' : ''}" data-theme="system">${t('settings.system')}</button>
                             </div>
                         </div>
                     </div>
@@ -141,14 +202,14 @@ export class SettingsManager {
                         <div class="settings-item-info">
                             <div class="settings-item-icon">🌐</div>
                             <div class="settings-item-text">
-                                <div class="settings-item-label">언어</div>
-                                <div class="settings-item-description">인터페이스 언어를 선택합니다</div>
+                                <div class="settings-item-label">${t('settings.language')}</div>
+                                <div class="settings-item-description">${t('settings.languageDescription')}</div>
                             </div>
                         </div>
                         <div class="settings-item-control">
                             <select class="settings-select" id="setting-language">
-                                <option value="ko" ${this.settings.appearance.language === 'ko' ? 'selected' : ''}>한국어</option>
                                 <option value="en" ${this.settings.appearance.language === 'en' ? 'selected' : ''}>English</option>
+                                <option value="ko" ${this.settings.appearance.language === 'ko' ? 'selected' : ''}>한국어</option>
                             </select>
                         </div>
                     </div>
@@ -158,8 +219,8 @@ export class SettingsManager {
             <!-- 실행 설정 -->
             <div class="settings-section">
                 <div class="settings-section-header">
-                    <h2 class="settings-section-title">실행 설정</h2>
-                    <p class="settings-section-subtitle">테스트 실행 관련 설정을 변경합니다</p>
+                    <h2 class="settings-section-title">${t('settings.execution')}</h2>
+                    <p class="settings-section-subtitle">${t('settings.executionSubtitle')}</p>
                 </div>
                 <div class="settings-section-content">
                     <!-- 기본 타임아웃 -->
@@ -167,14 +228,14 @@ export class SettingsManager {
                         <div class="settings-item-info">
                             <div class="settings-item-icon">⏱️</div>
                             <div class="settings-item-text">
-                                <div class="settings-item-label">기본 타임아웃</div>
-                                <div class="settings-item-description">각 노드의 기본 대기 시간 (초)</div>
+                                <div class="settings-item-label">${t('settings.defaultTimeout')}</div>
+                                <div class="settings-item-description">${t('settings.defaultTimeoutDescription')}</div>
                             </div>
                         </div>
                         <div class="settings-item-control">
                             <div class="slider-container">
                                 <input type="range" class="settings-slider" id="setting-timeout" min="5" max="120" value="${this.settings.execution.defaultTimeout}" />
-                                <span class="slider-value" id="timeout-value">${this.settings.execution.defaultTimeout}초</span>
+                                <span class="slider-value" id="timeout-value">${this.settings.execution.defaultTimeout}${t('settings.seconds')}</span>
                             </div>
                         </div>
                     </div>
@@ -184,35 +245,18 @@ export class SettingsManager {
                         <div class="settings-item-info">
                             <div class="settings-item-icon">🔄</div>
                             <div class="settings-item-text">
-                                <div class="settings-item-label">재시도 횟수</div>
-                                <div class="settings-item-description">실패 시 자동 재시도 횟수</div>
+                                <div class="settings-item-label">${t('settings.retryCount')}</div>
+                                <div class="settings-item-description">${t('settings.retryCountDescription')}</div>
                             </div>
                         </div>
                         <div class="settings-item-control">
                             <select class="settings-select" id="setting-retry-count">
-                                <option value="0" ${this.settings.execution.retryCount === 0 ? 'selected' : ''}>0회</option>
-                                <option value="1" ${this.settings.execution.retryCount === 1 ? 'selected' : ''}>1회</option>
-                                <option value="2" ${this.settings.execution.retryCount === 2 ? 'selected' : ''}>2회</option>
-                                <option value="3" ${this.settings.execution.retryCount === 3 ? 'selected' : ''}>3회</option>
-                                <option value="5" ${this.settings.execution.retryCount === 5 ? 'selected' : ''}>5회</option>
+                                <option value="0" ${this.settings.execution.retryCount === 0 ? 'selected' : ''}>0${t('settings.times')}</option>
+                                <option value="1" ${this.settings.execution.retryCount === 1 ? 'selected' : ''}>1${t('settings.times')}</option>
+                                <option value="2" ${this.settings.execution.retryCount === 2 ? 'selected' : ''}>2${t('settings.times')}</option>
+                                <option value="3" ${this.settings.execution.retryCount === 3 ? 'selected' : ''}>3${t('settings.times')}</option>
+                                <option value="5" ${this.settings.execution.retryCount === 5 ? 'selected' : ''}>5${t('settings.times')}</option>
                             </select>
-                        </div>
-                    </div>
-
-                    <!-- 병렬 실행 -->
-                    <div class="settings-item">
-                        <div class="settings-item-info">
-                            <div class="settings-item-icon">⚡</div>
-                            <div class="settings-item-text">
-                                <div class="settings-item-label">병렬 실행</div>
-                                <div class="settings-item-description">여러 워크플로우를 동시에 실행합니다</div>
-                            </div>
-                        </div>
-                        <div class="settings-item-control">
-                            <label class="toggle-switch">
-                                <input type="checkbox" id="setting-parallel" ${this.settings.execution.parallelExecution ? 'checked' : ''} />
-                                <span class="toggle-slider"></span>
-                            </label>
                         </div>
                     </div>
                 </div>
@@ -221,8 +265,8 @@ export class SettingsManager {
             <!-- 스크린샷 설정 -->
             <div class="settings-section">
                 <div class="settings-section-header">
-                    <h2 class="settings-section-title">스크린샷</h2>
-                    <p class="settings-section-subtitle">스크린샷 캡처 설정을 변경합니다</p>
+                    <h2 class="settings-section-title">${t('settings.screenshot')}</h2>
+                    <p class="settings-section-subtitle">${t('settings.screenshotSubtitle')}</p>
                 </div>
                 <div class="settings-section-content">
                     <!-- 자동 스크린샷 -->
@@ -230,8 +274,8 @@ export class SettingsManager {
                         <div class="settings-item-info">
                             <div class="settings-item-icon">📷</div>
                             <div class="settings-item-text">
-                                <div class="settings-item-label">자동 스크린샷</div>
-                                <div class="settings-item-description">각 스텝 실행 후 자동으로 스크린샷을 저장합니다</div>
+                                <div class="settings-item-label">${t('settings.autoScreenshot')}</div>
+                                <div class="settings-item-description">${t('settings.autoScreenshotDescription')}</div>
                             </div>
                         </div>
                         <div class="settings-item-control">
@@ -247,8 +291,8 @@ export class SettingsManager {
                         <div class="settings-item-info">
                             <div class="settings-item-icon">📷</div>
                             <div class="settings-item-text">
-                                <div class="settings-item-label">오류 발생 시 스크린샷</div>
-                                <div class="settings-item-description">테스트 실패 시 스크린샷을 저장합니다</div>
+                                <div class="settings-item-label">${t('settings.screenshotOnError')}</div>
+                                <div class="settings-item-description">${t('settings.screenshotOnErrorDescription')}</div>
                             </div>
                         </div>
                         <div class="settings-item-control">
@@ -264,8 +308,8 @@ export class SettingsManager {
                         <div class="settings-item-info">
                             <div class="settings-item-icon">📁</div>
                             <div class="settings-item-text">
-                                <div class="settings-item-label">저장 경로</div>
-                                <div class="settings-item-description">스크린샷이 저장될 폴더</div>
+                                <div class="settings-item-label">${t('settings.savePath')}</div>
+                                <div class="settings-item-description">${t('settings.savePathDescription')}</div>
                             </div>
                         </div>
                         <div class="settings-item-control">
@@ -278,8 +322,8 @@ export class SettingsManager {
                         <div class="settings-item-info">
                             <div class="settings-item-icon">🖼️</div>
                             <div class="settings-item-text">
-                                <div class="settings-item-label">이미지 형식</div>
-                                <div class="settings-item-description">스크린샷 파일 형식</div>
+                                <div class="settings-item-label">${t('settings.imageFormat')}</div>
+                                <div class="settings-item-description">${t('settings.imageFormatDescription')}</div>
                             </div>
                         </div>
                         <div class="settings-item-control">
@@ -295,8 +339,8 @@ export class SettingsManager {
             <!-- 알림 설정 -->
             <div class="settings-section">
                 <div class="settings-section-header">
-                    <h2 class="settings-section-title">알림</h2>
-                    <p class="settings-section-subtitle">알림 및 소리 설정을 변경합니다</p>
+                    <h2 class="settings-section-title">${t('settings.notifications')}</h2>
+                    <p class="settings-section-subtitle">${t('settings.notificationsSubtitle')}</p>
                 </div>
                 <div class="settings-section-content">
                     <!-- 완료 알림 -->
@@ -304,8 +348,8 @@ export class SettingsManager {
                         <div class="settings-item-info">
                             <div class="settings-item-icon">🔔</div>
                             <div class="settings-item-text">
-                                <div class="settings-item-label">완료 알림</div>
-                                <div class="settings-item-description">테스트 완료 시 알림을 받습니다</div>
+                                <div class="settings-item-label">${t('settings.completionNotification')}</div>
+                                <div class="settings-item-description">${t('settings.completionNotificationDescription')}</div>
                             </div>
                         </div>
                         <div class="settings-item-control">
@@ -321,8 +365,8 @@ export class SettingsManager {
                         <div class="settings-item-info">
                             <div class="settings-item-icon">🔔</div>
                             <div class="settings-item-text">
-                                <div class="settings-item-label">오류 알림</div>
-                                <div class="settings-item-description">테스트 실패 시 알림을 받습니다</div>
+                                <div class="settings-item-label">${t('settings.errorNotification')}</div>
+                                <div class="settings-item-description">${t('settings.errorNotificationDescription')}</div>
                             </div>
                         </div>
                         <div class="settings-item-control">
@@ -338,8 +382,8 @@ export class SettingsManager {
                         <div class="settings-item-info">
                             <div class="settings-item-icon">🔊</div>
                             <div class="settings-item-text">
-                                <div class="settings-item-label">알림 소리</div>
-                                <div class="settings-item-description">알림 발생 시 소리를 재생합니다</div>
+                                <div class="settings-item-label">${t('settings.notificationSound')}</div>
+                                <div class="settings-item-description">${t('settings.notificationSoundDescription')}</div>
                             </div>
                         </div>
                         <div class="settings-item-control">
@@ -355,33 +399,33 @@ export class SettingsManager {
             <!-- 키보드 단축키 -->
             <div class="settings-section">
                 <div class="settings-section-header">
-                    <h2 class="settings-section-title">키보드 단축키</h2>
-                    <p class="settings-section-subtitle">자주 사용하는 기능의 단축키입니다</p>
+                    <h2 class="settings-section-title">${t('settings.shortcuts')}</h2>
+                    <p class="settings-section-subtitle">${t('settings.shortcutsSubtitle')}</p>
                 </div>
                 <div class="settings-section-content">
                     <div class="shortcuts-list">
                         <div class="shortcut-item">
-                            <span class="shortcut-label">저장</span>
+                            <span class="shortcut-label">${t('settings.save')}</span>
                             <span class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>S</kbd></span>
                         </div>
                         <div class="shortcut-item">
-                            <span class="shortcut-label">실행 취소</span>
+                            <span class="shortcut-label">${t('settings.undo')}</span>
                             <span class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>Z</kbd></span>
                         </div>
                         <div class="shortcut-item">
-                            <span class="shortcut-label">다시 실행</span>
+                            <span class="shortcut-label">${t('settings.redo')}</span>
                             <span class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>Y</kbd></span>
                         </div>
                         <div class="shortcut-item">
-                            <span class="shortcut-label">노드 삭제</span>
+                            <span class="shortcut-label">${t('settings.deleteNode')}</span>
                             <span class="shortcut-keys"><kbd>Delete</kbd></span>
                         </div>
                         <div class="shortcut-item">
-                            <span class="shortcut-label">워크플로우 실행</span>
+                            <span class="shortcut-label">${t('settings.runWorkflow')}</span>
                             <span class="shortcut-keys"><kbd>F5</kbd></span>
                         </div>
                         <div class="shortcut-item">
-                            <span class="shortcut-label">실행 중지</span>
+                            <span class="shortcut-label">${t('settings.stopExecution')}</span>
                             <span class="shortcut-keys"><kbd>Esc</kbd></span>
                         </div>
                     </div>
@@ -391,7 +435,7 @@ export class SettingsManager {
             <!-- 설정 저장 버튼 -->
             <div class="settings-footer">
                 <button class="btn-save-settings" id="btn-save-settings">
-                    설정 저장
+                    ${t('settings.saveSettings')}
                 </button>
             </div>
         `;
@@ -401,11 +445,17 @@ export class SettingsManager {
      * 이벤트 리스너 설정
      */
     setupEventListeners() {
+        // 기존 이벤트 리스너 제거를 위해 클론하여 재등록
+        // (테마 버튼은 매번 새로 생성되므로 중복 방지 불필요)
+
         // 테마 버튼 클릭
         const themeButtons = document.querySelectorAll('.theme-btn');
         themeButtons.forEach((btn) => {
-            btn.addEventListener('click', () => {
-                const theme = btn.dataset.theme;
+            // 기존 리스너 제거 후 새로 등록
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+            newBtn.addEventListener('click', () => {
+                const theme = newBtn.dataset.theme;
                 this.setTheme(theme);
             });
         });
@@ -414,9 +464,12 @@ export class SettingsManager {
         const timeoutSlider = document.getElementById('setting-timeout');
         const timeoutValue = document.getElementById('timeout-value');
         if (timeoutSlider && timeoutValue) {
-            timeoutSlider.addEventListener('input', (e) => {
+            // 기존 리스너 제거를 위해 새 요소로 교체
+            const newSlider = timeoutSlider.cloneNode(true);
+            timeoutSlider.parentNode.replaceChild(newSlider, timeoutSlider);
+            newSlider.addEventListener('input', (e) => {
                 const value = parseInt(e.target.value);
-                timeoutValue.textContent = `${value}초`;
+                timeoutValue.textContent = `${value}${t('settings.seconds')}`;
                 this.settings.execution.defaultTimeout = value;
             });
         }
@@ -424,7 +477,10 @@ export class SettingsManager {
         // 설정 저장 버튼
         const saveBtn = document.getElementById('btn-save-settings');
         if (saveBtn) {
-            saveBtn.addEventListener('click', () => {
+            // 기존 리스너 제거를 위해 새 요소로 교체
+            const newSaveBtn = saveBtn.cloneNode(true);
+            saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+            newSaveBtn.addEventListener('click', () => {
                 this.saveSettings();
             });
         }
@@ -437,34 +493,42 @@ export class SettingsManager {
      * 설정 값 수집
      */
     collectSettings() {
-        // 언어
+        // 언어 - 기존 리스너 제거 후 새로 등록
         const language = document.getElementById('setting-language');
         if (language) {
-            language.addEventListener('change', (e) => {
-                this.settings.appearance.language = e.target.value;
+            // 기존 리스너 제거를 위해 새 요소로 교체
+            const newLanguage = language.cloneNode(true);
+            language.parentNode.replaceChild(newLanguage, language);
+            newLanguage.value = this.settings.appearance.language; // 현재 값 유지
+            newLanguage.addEventListener('change', async (e) => {
+                const newLang = e.target.value;
+                this.settings.appearance.language = newLang;
+                // 언어 변경 및 UI 업데이트 (이벤트 발생, 서버에 즉시 저장)
+                await setLanguage(newLang, false);
+                // 설정 페이지 다시 렌더링하여 번역 적용
+                this.renderSettings();
+                this.setupEventListeners();
             });
         }
 
         // 재시도 횟수
         const retryCount = document.getElementById('setting-retry-count');
         if (retryCount) {
-            retryCount.addEventListener('change', (e) => {
+            const newRetryCount = retryCount.cloneNode(true);
+            retryCount.parentNode.replaceChild(newRetryCount, retryCount);
+            newRetryCount.value = this.settings.execution.retryCount;
+            newRetryCount.addEventListener('change', (e) => {
                 this.settings.execution.retryCount = parseInt(e.target.value);
-            });
-        }
-
-        // 병렬 실행
-        const parallel = document.getElementById('setting-parallel');
-        if (parallel) {
-            parallel.addEventListener('change', (e) => {
-                this.settings.execution.parallelExecution = e.target.checked;
             });
         }
 
         // 자동 스크린샷
         const autoScreenshot = document.getElementById('setting-auto-screenshot');
         if (autoScreenshot) {
-            autoScreenshot.addEventListener('change', (e) => {
+            const newAutoScreenshot = autoScreenshot.cloneNode(true);
+            autoScreenshot.parentNode.replaceChild(newAutoScreenshot, autoScreenshot);
+            newAutoScreenshot.checked = this.settings.screenshot.autoScreenshot;
+            newAutoScreenshot.addEventListener('change', (e) => {
                 this.settings.screenshot.autoScreenshot = e.target.checked;
             });
         }
@@ -472,7 +536,10 @@ export class SettingsManager {
         // 오류 시 스크린샷
         const screenshotOnError = document.getElementById('setting-screenshot-on-error');
         if (screenshotOnError) {
-            screenshotOnError.addEventListener('change', (e) => {
+            const newScreenshotOnError = screenshotOnError.cloneNode(true);
+            screenshotOnError.parentNode.replaceChild(newScreenshotOnError, screenshotOnError);
+            newScreenshotOnError.checked = this.settings.screenshot.screenshotOnError;
+            newScreenshotOnError.addEventListener('change', (e) => {
                 this.settings.screenshot.screenshotOnError = e.target.checked;
             });
         }
@@ -480,7 +547,10 @@ export class SettingsManager {
         // 저장 경로
         const screenshotPath = document.getElementById('setting-screenshot-path');
         if (screenshotPath) {
-            screenshotPath.addEventListener('change', (e) => {
+            const newScreenshotPath = screenshotPath.cloneNode(true);
+            screenshotPath.parentNode.replaceChild(newScreenshotPath, screenshotPath);
+            newScreenshotPath.value = this.settings.screenshot.savePath;
+            newScreenshotPath.addEventListener('change', (e) => {
                 this.settings.screenshot.savePath = e.target.value;
             });
         }
@@ -488,7 +558,10 @@ export class SettingsManager {
         // 이미지 형식
         const imageFormat = document.getElementById('setting-image-format');
         if (imageFormat) {
-            imageFormat.addEventListener('change', (e) => {
+            const newImageFormat = imageFormat.cloneNode(true);
+            imageFormat.parentNode.replaceChild(newImageFormat, imageFormat);
+            newImageFormat.value = this.settings.screenshot.imageFormat;
+            newImageFormat.addEventListener('change', (e) => {
                 this.settings.screenshot.imageFormat = e.target.value;
             });
         }
@@ -496,7 +569,10 @@ export class SettingsManager {
         // 완료 알림
         const completionNotification = document.getElementById('setting-completion-notification');
         if (completionNotification) {
-            completionNotification.addEventListener('change', (e) => {
+            const newCompletionNotification = completionNotification.cloneNode(true);
+            completionNotification.parentNode.replaceChild(newCompletionNotification, completionNotification);
+            newCompletionNotification.checked = this.settings.notifications.completionNotification;
+            newCompletionNotification.addEventListener('change', (e) => {
                 this.settings.notifications.completionNotification = e.target.checked;
             });
         }
@@ -504,7 +580,10 @@ export class SettingsManager {
         // 오류 알림
         const errorNotification = document.getElementById('setting-error-notification');
         if (errorNotification) {
-            errorNotification.addEventListener('change', (e) => {
+            const newErrorNotification = errorNotification.cloneNode(true);
+            errorNotification.parentNode.replaceChild(newErrorNotification, errorNotification);
+            newErrorNotification.checked = this.settings.notifications.errorNotification;
+            newErrorNotification.addEventListener('change', (e) => {
                 this.settings.notifications.errorNotification = e.target.checked;
             });
         }
@@ -512,7 +591,10 @@ export class SettingsManager {
         // 알림 소리
         const notificationSound = document.getElementById('setting-notification-sound');
         if (notificationSound) {
-            notificationSound.addEventListener('change', (e) => {
+            const newNotificationSound = notificationSound.cloneNode(true);
+            notificationSound.parentNode.replaceChild(newNotificationSound, notificationSound);
+            newNotificationSound.checked = this.settings.notifications.notificationSound;
+            newNotificationSound.addEventListener('change', (e) => {
                 this.settings.notifications.notificationSound = e.target.checked;
             });
         }
@@ -552,9 +634,38 @@ export class SettingsManager {
         logger.log('[Settings] 설정 저장 시작:', this.settings);
 
         try {
-            // TODO: 서버에 설정 저장
-            // 현재는 로컬 스토리지에 저장
-            localStorage.setItem('app-settings', JSON.stringify(this.settings));
+            // 로컬 스토리지에 저장 (즉시 반영)
+            const settingsToSave = { ...this.settings };
+            // language를 최상위 레벨에도 저장
+            if (settingsToSave.appearance && settingsToSave.appearance.language) {
+                settingsToSave.language = settingsToSave.appearance.language;
+            }
+            localStorage.setItem('app-settings', JSON.stringify(settingsToSave));
+
+            // 서버에도 설정 저장
+            try {
+                const { UserSettingsAPI } = await import('../../js/api/user-settings-api.js');
+                if (UserSettingsAPI) {
+                    // 언어 설정 저장
+                    await UserSettingsAPI.saveSetting('language', this.settings.appearance.language);
+
+                    // 스크린샷 설정을 서버에 저장
+                    await UserSettingsAPI.saveSetting(
+                        'screenshot.autoScreenshot',
+                        this.settings.screenshot.autoScreenshot.toString()
+                    );
+                    await UserSettingsAPI.saveSetting(
+                        'screenshot.screenshotOnError',
+                        this.settings.screenshot.screenshotOnError.toString()
+                    );
+                    await UserSettingsAPI.saveSetting('screenshot.savePath', this.settings.screenshot.savePath);
+                    await UserSettingsAPI.saveSetting('screenshot.imageFormat', this.settings.screenshot.imageFormat);
+                    logger.log('[Settings] 설정 서버에 저장 완료');
+                }
+            } catch (serverError) {
+                logger.warn('[Settings] 서버 저장 실패 (로컬 스토리지만 저장):', serverError);
+            }
+
             logger.log('[Settings] 설정 저장 완료');
 
             // 저장 완료 알림 (간단한 토스트 메시지)
@@ -568,22 +679,11 @@ export class SettingsManager {
      * 저장 완료 알림 표시
      */
     showSaveNotification() {
-        // 간단한 알림 메시지 표시
-        const notification = document.createElement('div');
-        notification.className = 'settings-notification';
-        notification.textContent = '설정이 저장되었습니다';
-        document.body.appendChild(notification);
-
-        setTimeout(() => {
-            notification.classList.add('show');
-        }, 10);
-
-        setTimeout(() => {
-            notification.classList.remove('show');
-            setTimeout(() => {
-                document.body.removeChild(notification);
-            }, 300);
-        }, 2000);
+        // ToastManager 사용 (Ctrl+S와 동일한 방식, 사이드바 고려)
+        const toastManager = getToastManagerInstance();
+        if (toastManager) {
+            toastManager.success(t('settings.settingsSaved'), 2000);
+        }
     }
 }
 

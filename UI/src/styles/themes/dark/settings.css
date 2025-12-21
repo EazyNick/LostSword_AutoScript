@@ -157,9 +157,3 @@ body.theme-dark .btn-save-settings {
 body.theme-dark .btn-save-settings:hover {
     background-color: #0d9488;
 }
-
-/* 설정 알림 */
-body.theme-dark .settings-notification {
-    background-color: #14b8a6;
-    color: #ffffff;
-}

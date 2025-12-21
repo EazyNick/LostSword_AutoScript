@@ -9,8 +9,8 @@
 
 ## 선택 가이드
 
-- **Python 구현 노드가 필요한 경우**: [Python 노드 생성 가이드](creating-nodes-python.md) 참고
-- **JavaScript 구현 노드가 필요한 경우**: [JavaScript 노드 생성 가이드](creating-nodes-javascript.md) 참고
+- **Python 구현 노드가 필요한 경우**: [Python 노드 생성 가이드](./creating-nodes-python.md) 참고
+- **JavaScript 구현 노드가 필요한 경우**: [JavaScript 노드 생성 가이드](./creating-nodes-javascript.md) 참고
 
 ## 공통 사항
 
@@ -48,5 +48,5 @@
 
 ## 다음 단계
 
-- Python 노드를 만들고 싶다면 → [Python 노드 생성 가이드](creating-nodes-python.md)
-- JavaScript 노드를 만들고 싶다면 → [JavaScript 노드 생성 가이드](creating-nodes-javascript.md)
+- Python 노드를 만들고 싶다면 → [Python 노드 생성 가이드](./creating-nodes-python.md)
+- JavaScript 노드를 만들고 싶다면 → [JavaScript 노드 생성 가이드](./creating-nodes-javascript.md)

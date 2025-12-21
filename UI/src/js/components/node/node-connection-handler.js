@@ -45,6 +45,12 @@ class NodeConnectionHandler {
         outputConnectors.forEach((outputConnector) => {
             this.setupOutputConnectorEvents(outputConnector, nodeElement);
         });
+
+        // 아래 연결점 이벤트 (반복 노드 등)
+        const bottomOutputConnector = nodeElement.querySelector('.node-bottom-output');
+        if (bottomOutputConnector) {
+            this.setupBottomOutputConnectorEvents(bottomOutputConnector, nodeElement);
+        }
     }
 
     /**
@@ -115,6 +121,45 @@ class NodeConnectionHandler {
     }
 
     /**
+     * 아래 연결점 이벤트 설정 (반복 노드 등)
+     */
+    setupBottomOutputConnectorEvents(bottomOutputConnector, nodeElement) {
+        // 아래 연결점의 도트를 클릭 가능하게 설정
+        const bottomDot = bottomOutputConnector.querySelector('.bottom-output-dot');
+        const clickableElement = bottomDot || bottomOutputConnector;
+
+        clickableElement.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (this.isClickConnecting) {
+                const nodeId = nodeElement.dataset.nodeId;
+                this.completeClickConnection(nodeId, 'bottom');
+            } else {
+                this.startClickConnection(bottomOutputConnector, nodeElement, 'bottom');
+            }
+        });
+
+        clickableElement.addEventListener('dblclick', (e) => {
+            e.stopPropagation();
+            this.handleConnectorDoubleClick(bottomOutputConnector, nodeElement, 'bottom');
+        });
+
+        const bottomConnections = this.nodeManager.findConnectionsByNode(nodeElement.dataset.nodeId, 'bottom');
+        this.nodeManager.updateConnectorVisualState(clickableElement, bottomConnections.length > 0);
+
+        clickableElement.addEventListener('mouseenter', () => {
+            const label = bottomOutputConnector.querySelector('.bottom-output-label');
+            const baseText = label ? label.textContent : '반복 연결점';
+            const tooltipText =
+                bottomConnections.length > 0 ? `${baseText} (${bottomConnections.length}개 연결됨)` : baseText;
+            this.nodeManager.showConnectorTooltip(clickableElement, tooltipText);
+        });
+
+        clickableElement.addEventListener('mouseleave', () => {
+            this.nodeManager.hideConnectorTooltip();
+        });
+    }
+
+    /**
      * 입력 연결점 클릭 처리
      */
     handleInputConnectorClick(inputConnector, nodeElement) {
@@ -130,7 +175,7 @@ class NodeConnectionHandler {
     /**
      * 클릭 연결 시작 (출력 연결점에서)
      */
-    startClickConnection(outputConnector, nodeElement) {
+    startClickConnection(outputConnector, nodeElement, outputType = null) {
         // ConnectionManager를 필수로 사용
         const connectionManager = this.nodeManager.connectionManager || window.connectionManager;
         if (!connectionManager) {
@@ -138,8 +183,19 @@ class NodeConnectionHandler {
             return;
         }
 
+        // 출력 타입 결정 (아래 연결점인 경우)
+        if (!outputType) {
+            if (outputConnector.classList.contains('true-output')) {
+                outputType = 'true';
+            } else if (outputConnector.classList.contains('false-output')) {
+                outputType = 'false';
+            } else if (outputConnector.classList.contains('node-bottom-output')) {
+                outputType = 'bottom';
+            }
+        }
+
         // ConnectionManager를 사용하여 연결 시작
-        connectionManager.handleConnectorClick(nodeElement, 'output', outputConnector);
+        connectionManager.handleConnectorClick(nodeElement, 'output', outputConnector, outputType);
     }
 
     /**
@@ -551,17 +607,29 @@ class NodeConnectionHandler {
         const nodeId = nodeElement.dataset.nodeId;
 
         try {
-            // 출력 타입 감지 (조건 노드의 경우)
+            // 출력 타입 감지 (조건 노드, 반복 노드의 경우)
             let outputType = null;
             if (connectorType === 'output' && connector) {
                 if (connector.classList.contains('true-output') || connector.closest('.true-output')) {
                     outputType = 'true';
                 } else if (connector.classList.contains('false-output') || connector.closest('.false-output')) {
                     outputType = 'false';
+                } else if (
+                    connector.classList.contains('node-bottom-output') ||
+                    connector.closest('.node-bottom-output') ||
+                    connector.classList.contains('bottom-output-dot') ||
+                    connector.closest('.bottom-output-dot')
+                ) {
+                    // 반복 노드의 아래 연결점인 경우
+                    outputType = 'bottom';
                 }
+                // 일반 출력 연결점인 경우 outputType은 null로 유지
+            } else if (connectorType === 'bottom' && connector) {
+                // 아래 연결점 타입인 경우
+                outputType = 'bottom';
             }
 
-            // 연결 목록 조회 (조건 노드의 경우 outputType 고려)
+            // 연결 목록 조회 (조건 노드, 반복 노드의 경우 outputType 고려)
             const connections = this.nodeManager.findConnectionsByNode(nodeId, connectorType, outputType);
 
             if (connections.length === 0) {

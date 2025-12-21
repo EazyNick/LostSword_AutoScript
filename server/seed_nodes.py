@@ -86,12 +86,6 @@ def seed_database(db_path: str | None = None) -> None:
                 "position": {"x": 50200, "y": 49900},
                 "data": {"title": "로그인 성공 확인", "condition": "check_login_success"},
             },
-            {
-                "id": "end",
-                "type": "end",
-                "position": {"x": 50800, "y": 49900},
-                "data": {"title": "종료"},
-            },
         ]
 
         # 노드 삽입
@@ -116,7 +110,6 @@ def seed_database(db_path: str | None = None) -> None:
         connections_data = [
             {"from": "start", "to": "node1"},
             {"from": "node1", "to": "node2"},
-            {"from": "node2", "to": "end"},
         ]
 
         # 연결 삽입
@@ -157,12 +150,6 @@ def seed_database(db_path: str | None = None) -> None:
                 "position": {"x": 50200, "y": 49900},
                 "data": {"title": "결제 성공 확인", "condition": "check_payment_success"},
             },
-            {
-                "id": "end",
-                "type": "end",
-                "position": {"x": 50800, "y": 49900},
-                "data": {"title": "종료"},
-            },
         ]
 
         # 노드 삽입
@@ -187,7 +174,6 @@ def seed_database(db_path: str | None = None) -> None:
         connections_data_2 = [
             {"from": "start", "to": "node1"},
             {"from": "node1", "to": "node2"},
-            {"from": "node2", "to": "end"},
         ]
 
         # 연결 삽입

@@ -182,7 +182,33 @@ export class AddNodeModal {
 
                 let parameterFormResult = { html: '', buttons: [] };
                 if (parametersToUse) {
-                    parameterFormResult = generateParameterForm(parametersToUse, 'node-', {});
+                    // excel-close 노드의 execution_id 기본값 설정
+                    const defaultValues = {};
+                    if (selectedType === 'excel-close' && parametersToUse.execution_id) {
+                        // 이전 노드가 있는지 확인하고 기본값 설정
+                        const nodeManager = this.workflowPage.getNodeManager();
+                        if (nodeManager) {
+                            const allNodes = nodeManager.getAllNodes();
+                            // 마지막 노드가 엑셀 열기 노드인지 확인
+                            if (allNodes.length > 0) {
+                                const lastNode = allNodes[allNodes.length - 1];
+                                const lastNodeData = nodeManager.nodeData?.[lastNode.id];
+                                if (lastNodeData?.type === 'excel-open') {
+                                    defaultValues.execution_id = 'output.data.execution_id';
+                                } else {
+                                    // 이전 노드가 없거나 엑셀 열기 노드가 아니어도 기본값 설정
+                                    defaultValues.execution_id = 'output.data.execution_id';
+                                }
+                            } else {
+                                // 노드가 없어도 기본값 설정
+                                defaultValues.execution_id = 'output.data.execution_id';
+                            }
+                        } else {
+                            // nodeManager가 없어도 기본값 설정
+                            defaultValues.execution_id = 'output.data.execution_id';
+                        }
+                    }
+                    parameterFormResult = generateParameterForm(parametersToUse, 'node-', defaultValues, {});
                     parameterFormHtml = parameterFormResult.html;
                     console.log('[AddNodeModal] 파라미터 폼 생성:', {
                         nodeType: selectedType,
@@ -299,26 +325,6 @@ export class AddNodeModal {
                             }
                         });
                     }
-                } else if (config && config.requiresFolderPath) {
-                    // 레거시: requiresFolderPath가 있지만 파라미터가 없는 경우
-                    const folderPathHtml = `
-                        <label for="node-folder-path">이미지 폴더 경로:</label>
-                        <div style="display: flex; gap: 8px;">
-                            <input type="text" id="node-folder-path" placeholder="예: C:\\images\\touch" style="flex: 1;">
-                            <button type="button" id="browse-folder-btn" class="btn btn-secondary">폴더 선택</button>
-                        </div>
-                        <small style="color: #666; font-size: 12px;">이미지 파일 이름 순서대로 화면에서 찾아 터치합니다.</small>
-                    `;
-                    customSettings.innerHTML = detailNodeTypeSettings + folderPathHtml;
-                    customSettings.style.display = 'block';
-
-                    // 폴더 선택 버튼 이벤트 리스너 설정
-                    setTimeout(() => {
-                        const browseBtn = document.getElementById('browse-folder-btn');
-                        if (browseBtn) {
-                            browseBtn.addEventListener('click', () => this.handleFolderSelection());
-                        }
-                    }, 0);
                 } else {
                     // 파라미터 폼도 없고 특수 노드도 아닌 경우
                     if (detailNodeTypeSettings) {
@@ -440,10 +446,14 @@ export class AddNodeModal {
 
     /**
      * 폴더 선택 처리
-     * @param {string} fieldId - 폴더 경로 입력 필드 ID (기본값: 'node-folder-path')
+     * @param {string} fieldId - 폴더 경로 입력 필드 ID
      */
-    async handleFolderSelection(fieldId = 'node-folder-path') {
-        const btn = document.getElementById(`${fieldId}-browse-btn`) || document.getElementById('browse-folder-btn');
+    async handleFolderSelection(fieldId) {
+        if (!fieldId) {
+            console.warn('[AddNodeModal] fieldId가 제공되지 않았습니다.');
+            return;
+        }
+        const btn = document.getElementById(`${fieldId}-browse-btn`);
         if (!btn) {
             console.warn(`폴더 선택 버튼을 찾을 수 없습니다: ${fieldId}-browse-btn`);
             return;
@@ -609,85 +619,12 @@ export class AddNodeModal {
                 const paramValues = extractParameterValues(detailConfig.parameters, 'node-');
                 Object.assign(nodeData, paramValues);
             }
-
-            // 레거시 특수 설정 처리 (하위 호환성 유지)
-            if (detailNodeType === 'http-api-request') {
-                // 파라미터로 처리되지 않은 경우에만 레거시 로직 사용
-                if (!detailConfig?.parameters) {
-                    const httpUrl = document.getElementById('node-http-url')?.value.trim();
-                    const httpMethod = document.getElementById('node-http-method')?.value || 'GET';
-                    const httpHeaders = document.getElementById('node-http-headers')?.value.trim();
-                    const httpBody = document.getElementById('node-http-body')?.value.trim();
-
-                    if (!httpUrl) {
-                        alert('API URL을 입력해주세요.');
-                        return;
-                    }
-
-                    nodeData.http_url = httpUrl;
-                    nodeData.http_method = httpMethod;
-
-                    if (httpHeaders) {
-                        try {
-                            nodeData.http_headers = JSON.parse(httpHeaders);
-                        } catch (e) {
-                            alert('Headers가 유효한 JSON 형식이 아닙니다.');
-                            return;
-                        }
-                    }
-
-                    if (httpBody) {
-                        try {
-                            nodeData.http_body = JSON.parse(httpBody);
-                        } catch (e) {
-                            alert('Body가 유효한 JSON 형식이 아닙니다.');
-                            return;
-                        }
-                    }
-                }
-            }
         }
 
         // 노드 레벨 파라미터 추출 (상세 노드 타입이 없거나 상세 노드 타입에 파라미터가 없는 경우)
         if (config?.parameters && (!detailNodeType || !config?.detailTypes?.[detailNodeType]?.parameters)) {
             const paramValues = extractParameterValues(config.parameters, 'node-');
             Object.assign(nodeData, paramValues);
-        }
-
-        // 레거시 특수 설정 처리 (하위 호환성 유지)
-        // 파라미터로 처리되지 않은 경우에만 레거시 로직 사용
-        if (config && config.requiresFolderPath && !config.parameters?.folder_path) {
-            const folderPathInput = document.getElementById('node-folder-path');
-            if (folderPathInput) {
-                const folderPath = folderPathInput.value;
-                if (!folderPath) {
-                    alert('이미지 폴더 경로를 입력해주세요.');
-                    return;
-                }
-                nodeData.folder_path = folderPath;
-            }
-        } else if (nodeType === 'process-focus' && !config?.parameters) {
-            // 프로세스 포커스 노드: 프로세스 정보 추가
-            const processId = document.getElementById('node-process-id')?.value;
-            const hwnd = document.getElementById('node-process-hwnd')?.value;
-            const processName = document.getElementById('node-process-name')?.value;
-            const windowTitle = document.getElementById('node-window-title')?.value;
-
-            if (!processId) {
-                alert('프로세스를 선택해주세요.');
-                return;
-            }
-
-            nodeData.process_id = parseInt(processId);
-            if (hwnd) {
-                nodeData.hwnd = parseInt(hwnd);
-            }
-            if (processName) {
-                nodeData.process_name = processName;
-            }
-            if (windowTitle) {
-                nodeData.window_title = windowTitle;
-            }
         }
 
         // WorkflowPage의 createNodeFromData 메서드 호출
@@ -766,7 +703,7 @@ export class AddNodeModal {
                     previousNodeData || {}
                 );
             } else {
-                // 레거시 형식: output_schema가 직접 properties를 정의한 경우
+                // 하위 호환성: output_schema가 직접 properties를 정의한 경우
                 previousOutput = generatePreviewFromSchema(previousNodeConfig.output_schema, previousNodeData || {});
             }
 
@@ -910,35 +847,10 @@ export class AddNodeModal {
             return '';
         }
 
-        // 파라미터가 정의되어 있으면 레거시 처리를 건너뛰고 빈 문자열 반환
+        // 파라미터가 정의되어 있으면 빈 문자열 반환
         // (파라미터 기반 폼이 자동으로 생성되므로)
         if (config.parameters) {
             return '';
-        }
-
-        // HTTP API 요청 노드의 경우 특수 설정 HTML 생성 (레거시, 파라미터가 없는 경우에만)
-        if (detailNodeType === 'http-api-request') {
-            const html = `
-                <div style="margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #ddd;">
-                    <label for="node-http-url" style="display: block; margin-bottom: 4px; font-weight: 500;">API URL:</label>
-                    <input type="text" id="node-http-url" placeholder="https://api.example.com/endpoint" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 8px;">
-                    <label for="node-http-method" style="display: block; margin-bottom: 4px; font-weight: 500;">HTTP Method:</label>
-                    <select id="node-http-method" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 8px;">
-                        <option value="GET">GET</option>
-                        <option value="POST">POST</option>
-                        <option value="PUT">PUT</option>
-                        <option value="DELETE">DELETE</option>
-                        <option value="PATCH">PATCH</option>
-                    </select>
-                    <label for="node-http-headers" style="display: block; margin-bottom: 4px; font-weight: 500;">Headers (JSON):</label>
-                    <textarea id="node-http-headers" rows="3" placeholder='{"Content-Type": "application/json"}' style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 8px; font-family: monospace; resize: vertical;"></textarea>
-                    <label for="node-http-body" style="display: block; margin-bottom: 4px; font-weight: 500;">Body (JSON):</label>
-                    <textarea id="node-http-body" rows="4" placeholder='{"key": "value"}' style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; resize: vertical;"></textarea>
-                </div>
-            `;
-            // customSettings가 있으면 설정 (기존 내용과 병합하기 위해 innerHTML에 추가하지 않음)
-            // 대신 HTML 문자열을 반환하여 호출자가 병합할 수 있도록 함
-            return html;
         }
 
         // 다른 상세 노드 타입의 경우 빈 문자열 반환

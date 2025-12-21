@@ -37,7 +37,10 @@ class NodeExecutionRequest(BaseModel):
     """노드 실행 요청 모델"""
 
     nodes: list[dict[str, Any]]
-    execution_mode: str = "sequential"  # sequential, parallel
+    execution_mode: str = "sequential"  # sequential only
     total_nodes: int | None = None  # 전체 노드 개수 (로깅용)
     current_node_index: int | None = None  # 현재 노드 순번 (0부터 시작, 로깅용)
     previous_node_result: dict[str, Any] | None = None  # 이전 노드의 실행 결과 (데이터 전달용)
+    repeat_info: dict[str, Any] | None = None  # 반복 노드 정보 (반복 횟수, 현재 반복 번호 등)
+    execution_id: str | None = None  # 실행 ID (반복 노드 실행 시 같은 execution_id 사용)
+    script_id: int | None = None  # 스크립트 ID (반복 노드 실행 시 같은 script_id 사용)

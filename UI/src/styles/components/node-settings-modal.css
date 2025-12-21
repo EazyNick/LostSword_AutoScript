@@ -110,6 +110,97 @@
     font-weight: bold; /* 굵은 글씨 */
 }
 
+/* Boolean 타입 체크박스 그룹: 레이블과 체크박스를 한 줄에 배치 */
+.node-settings-boolean-group {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+/* Boolean 타입 레이블 래퍼: 레이블과 설명을 묶는 컨테이너 */
+.node-settings-boolean-label-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+/* Boolean 타입 레이블: 체크박스 왼쪽에 표시되는 레이블 */
+.node-settings-boolean-label {
+    display: block;
+    font-weight: bold;
+    font-size: 14px;
+    line-height: 1.4;
+    word-break: keep-all;
+}
+
+/* Boolean 타입 도움말 텍스트: 레이블 아래에 표시되는 설명 */
+.node-settings-boolean-help {
+    margin-top: 0;
+    margin-bottom: 0;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--text-secondary, #666);
+}
+
+/* 체크박스 래퍼: 토글 스위치 스타일의 체크박스 컨테이너 */
+.node-settings-checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+/* 체크박스 입력 필드: 기본 체크박스 숨김 */
+.node-settings-checkbox-wrapper .node-settings-checkbox {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+/* 체크박스 슬라이더: 토글 스위치 스타일의 시각적 요소 */
+.node-settings-checkbox-slider {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+    background-color: var(--bg-tertiary, #ccc);
+    border-radius: 12px;
+    transition: background-color 0.3s ease;
+    flex-shrink: 0;
+}
+
+/* 체크박스 슬라이더 내부 원형 버튼 */
+.node-settings-checkbox-slider::before {
+    content: '';
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    left: 3px;
+    top: 3px;
+    background-color: white;
+    border-radius: 50%;
+    transition: transform 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* 체크박스가 체크된 상태일 때 슬라이더 배경색 변경 */
+.node-settings-checkbox:checked + .node-settings-checkbox-slider {
+    background-color: var(--primary-color, #2673ea);
+}
+
+/* 체크박스가 체크된 상태일 때 슬라이더 내부 버튼 위치 변경 */
+.node-settings-checkbox:checked + .node-settings-checkbox-slider::before {
+    transform: translateX(20px);
+}
+
+/* 체크박스 호버 효과 */
+.node-settings-checkbox-wrapper:hover .node-settings-checkbox-slider {
+    box-shadow: 0 0 0 3px rgba(38, 115, 234, 0.1);
+}
+
 /* 미리보기 라벨: 미리보기 영역 위에 표시되는 라벨 텍스트 */
 .node-settings-preview-label {
     font-weight: bold; /* 굵은 글씨 */

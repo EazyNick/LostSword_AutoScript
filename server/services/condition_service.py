@@ -27,17 +27,22 @@ class ConditionService:
         Returns:
             준비된 노드 데이터 딕셔너리
         """
+        # 컨텍스트가 없으면 이전 노드 출력을 가져올 수 없으므로 그대로 반환
         if not context:
             logger.debug("[ConditionService] 컨텍스트가 없어 이전 노드 출력을 가져올 수 없습니다.")
             return node_data
 
         # 이전 노드의 출력을 파라미터에 추가
+        # previous_result: 이전 노드의 실행 결과 (표준 형식: {action, status, output})
         previous_result = context.get_previous_node_result()
+        # 이전 노드 결과가 있으면 처리
         if previous_result:
             # 이전 노드의 output 필드를 previous_output으로 추가
+            # output 필드가 있으면 그것을 사용, 없으면 전체 결과를 사용
             node_data["previous_output"] = previous_result.get("output", previous_result)
             logger.debug(f"[ConditionService] 조건 노드에 이전 노드 출력 주입: {node_data.get('previous_output')}")
         else:
+            # 이전 노드 결과가 없으면 경고 출력 (조건 평가 시 False 반환됨)
             logger.warning("[ConditionService] 이전 노드의 결과를 찾을 수 없습니다.")
 
         return node_data

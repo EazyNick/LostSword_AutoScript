@@ -7,6 +7,16 @@
  * ES6 모듈 방식으로 작성됨
  */
 
+// 번역 함수 동적 import (비동기)
+let t = null;
+async function getTranslationFunction() {
+    if (!t) {
+        const i18n = await import('./i18n.js');
+        t = i18n.t;
+    }
+    return t;
+}
+
 /**
  * ModalManager 클래스
  * 모달 창을 관리하는 유틸리티 클래스입니다.
@@ -406,7 +416,8 @@ export class ModalManager {
      * @param {string} message - 모달 메시지
      * @param {Function} onOk - 확인 버튼 클릭 시 실행할 함수 (선택적)
      */
-    showCenterAlert(title, message, onOk = null) {
+    async showCenterAlert(title, message, onOk = null) {
+        const t = await getTranslationFunction();
         const resultModal = document.getElementById('result-modal');
         const resultModalContent = resultModal.querySelector('.result-modal-content');
 
@@ -429,7 +440,7 @@ export class ModalManager {
                 <p>${escapeHtml(message)}</p>
             </div>
             <div class="result-modal-footer">
-                <button id="center-ok-btn" class="btn btn-primary">확인</button>
+                <button id="center-ok-btn" class="btn btn-primary">${escapeHtml(t('common.ok'))}</button>
             </div>
         `;
 

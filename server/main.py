@@ -14,6 +14,7 @@ from api import (
     dashboard_router,
     log_router,
     node_router,
+    screenshot_router,
     script_router,
     state_router,
 )
@@ -94,6 +95,51 @@ def initialize_database() -> None:
                     script_order_json = "[]"
                 db_manager.save_user_setting("script-order", script_order_json)
                 logger.info(f"✅ 기본 설정값 추가: script-order = {script_order_json}")
+
+            # 스크린샷 기본 설정값 확인 및 추가
+            auto_screenshot = db_manager.get_user_setting("screenshot.autoScreenshot")
+            if auto_screenshot is None:
+                db_manager.save_user_setting("screenshot.autoScreenshot", "true")
+                logger.info("✅ 기본 설정값 추가: screenshot.autoScreenshot")
+
+            screenshot_on_error = db_manager.get_user_setting("screenshot.screenshotOnError")
+            if screenshot_on_error is None:
+                db_manager.save_user_setting("screenshot.screenshotOnError", "true")
+                logger.info("✅ 기본 설정값 추가: screenshot.screenshotOnError")
+
+            screenshot_save_path = db_manager.get_user_setting("screenshot.savePath")
+            if screenshot_save_path is None:
+                db_manager.save_user_setting("screenshot.savePath", "./screenshots")
+                logger.info("✅ 기본 설정값 추가: screenshot.savePath")
+
+            screenshot_image_format = db_manager.get_user_setting("screenshot.imageFormat")
+            if screenshot_image_format is None:
+                db_manager.save_user_setting("screenshot.imageFormat", "PNG")
+                logger.info("✅ 기본 설정값 추가: screenshot.imageFormat")
+
+            # 언어 설정 기본값 확인 및 추가
+            language = db_manager.get_user_setting("language")
+            if language is None:
+                db_manager.save_user_setting("language", "en")
+                logger.info("✅ 기본 설정값 추가: language = en")
+
+            # 포커스된 스크립트 ID 기본값 확인 및 추가
+            focused_script_id = db_manager.get_user_setting("focused-script-id")
+            if focused_script_id is None:
+                if len(scripts) > 0:
+                    # 첫 번째 스크립트 ID를 기본값으로 설정
+                    first_script_id = scripts[0]["id"]
+                    db_manager.save_user_setting("focused-script-id", str(first_script_id))
+                    logger.info(f"✅ 기본 설정값 추가: focused-script-id = {first_script_id}")
+                else:
+                    # 스크립트가 없으면 빈 문자열로 설정 (나중에 스크립트가 생성되면 업데이트됨)
+                    db_manager.save_user_setting("focused-script-id", "")
+                    logger.info("✅ 기본 설정값 추가: focused-script-id = '' (스크립트 없음)")
+
+            # 중복 설정 정리 (같은 setting_key에 대해 최신 것만 남기고 나머지 삭제)
+            deleted_count = db_manager.user_settings.cleanup_duplicate_settings()
+            if deleted_count > 0:
+                logger.info(f"✅ 중복 설정 정리 완료: {deleted_count}개 행 삭제")
     except Exception as e:
         logger.error(f"❌ 데이터베이스 초기화 실패: {e}")
         raise e
@@ -129,6 +175,7 @@ app.include_router(config_router)
 app.include_router(action_node_router)
 app.include_router(dashboard_router)
 app.include_router(log_router)
+app.include_router(screenshot_router)
 
 # 정적 파일 서빙 설정 (개발 환경)
 ui_path = os.path.join(os.path.dirname(__file__), "..", "UI", "src")

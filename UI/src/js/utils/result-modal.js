@@ -4,6 +4,8 @@
  * ES6 모듈 방식으로 작성됨
  */
 
+import { t } from './i18n.js';
+
 /**
  * ResultModalManager 클래스
  * 실행 결과 모달을 관리하는 유틸리티 클래스입니다.
@@ -57,11 +59,19 @@ export class ResultModalManager {
 
         const nodeItems = nodes
             .map((node) => {
-                const nodeName = this.escapeHtml(node.name || node.title || node.id || '알 수 없는 노드');
+                const nodeName = this.escapeHtml(node.name || node.title || node.id || t('common.unknownNode'));
                 const status = node.status || (node.error ? 'failed' : 'success');
-                const statusText = status === 'success' ? '성공' : status === 'failed' ? '실패' : '중단';
+                const statusText =
+                    status === 'success'
+                        ? t('common.successLabel')
+                        : status === 'failed'
+                          ? t('common.failedLabel')
+                          : t('common.cancelledLabel');
                 const statusClass = status === 'success' ? 'success' : status === 'failed' ? 'failed' : 'cancelled';
-                const message = node.error || node.message || (status === 'success' ? '정상 실행 완료' : '');
+                const message =
+                    node.error ||
+                    node.message ||
+                    (status === 'success' ? t('common.executionCompletedSuccessfully') : '');
 
                 return `
                 <div class="result-node-item">
@@ -95,11 +105,21 @@ export class ResultModalManager {
 
         const scriptItems = scripts
             .map((script) => {
-                const scriptName = this.escapeHtml(script.name || script.title || script.id || '알 수 없는 스크립트');
+                const scriptName = this.escapeHtml(
+                    script.name || script.title || script.id || t('common.unknownScript')
+                );
                 const status = script.status || (script.error ? 'failed' : 'success');
-                const statusText = status === 'success' ? '성공' : status === 'failed' ? '실패' : '중단';
+                const statusText =
+                    status === 'success'
+                        ? t('common.successLabel')
+                        : status === 'failed'
+                          ? t('common.failedLabel')
+                          : t('common.cancelledLabel');
                 const statusClass = status === 'success' ? 'success' : status === 'failed' ? 'failed' : 'cancelled';
-                const message = script.error || script.message || (status === 'success' ? '정상 실행 완료' : '');
+                const message =
+                    script.error ||
+                    script.message ||
+                    (status === 'success' ? t('common.executionCompletedSuccessfully') : '');
 
                 return `
                 <div class="result-node-item">
@@ -115,7 +135,7 @@ export class ResultModalManager {
 
         return `
             <div class="result-nodes-list">
-                <div class="result-nodes-title">스크립트 실행 결과</div>
+                <div class="result-nodes-title">${this.escapeHtml(t('common.scriptExecutionResults'))}</div>
                 ${scriptItems}
             </div>
         `;
@@ -151,6 +171,60 @@ export class ResultModalManager {
             itemsListHtml = this.generateNodesListHtml(nodes);
         }
 
+        // 번역된 텍스트 준비
+        let executionSummary = t('common.executionSummary');
+        let successLabel = t('common.successLabel');
+        let failedLabel = t('common.failedLabel');
+        let cancelledLabel = t('common.cancelledLabel');
+        let unitText = t('common.unit');
+        let okText = t('common.ok');
+
+        // 번역 키가 그대로 반환된 경우 기본값 사용
+        if (executionSummary === 'common.executionSummary') {
+            executionSummary = '실행 요약';
+        }
+        if (successLabel === 'common.successLabel') {
+            successLabel = '성공';
+        }
+        if (failedLabel === 'common.failedLabel') {
+            failedLabel = '실패';
+        }
+        if (cancelledLabel === 'common.cancelledLabel') {
+            cancelledLabel = '중단';
+        }
+        if (unitText === 'common.unit') {
+            unitText = '';
+        }
+        if (okText === 'common.ok') {
+            okText = '확인';
+        }
+
+        // summaryLabel 처리 (이미 번역된 텍스트일 수도 있고, 번역 키일 수도 있음)
+        let translatedSummaryLabel = summaryLabel;
+        // 번역 키로 보이는 경우 번역 시도
+        if (summaryLabel && (summaryLabel.startsWith('common.') || summaryLabel.startsWith('sidebar.'))) {
+            const translated = t(summaryLabel);
+            translatedSummaryLabel = translated !== summaryLabel ? translated : summaryLabel;
+        } else if (summaryLabel === '노드' || summaryLabel === 'Nodes') {
+            translatedSummaryLabel = t('common.nodes');
+            if (translatedSummaryLabel === 'common.nodes') {
+                translatedSummaryLabel = '노드';
+            }
+        } else if (summaryLabel === '스크립트' || summaryLabel === 'Scripts') {
+            translatedSummaryLabel = t('sidebar.scripts');
+            if (translatedSummaryLabel === 'sidebar.scripts') {
+                translatedSummaryLabel = '스크립트';
+            }
+        }
+
+        // 사용자 친화적인 메시지 형식으로 변환
+        const formatValue = (count, unit) => {
+            if (unit && unit.trim() !== '' && unit !== 'common.unit') {
+                return `${count}${unit}`;
+            }
+            return count.toString();
+        };
+
         // 실행 결과 모달 HTML 생성
         const content = `
             <div class="result-modal-header">
@@ -159,24 +233,24 @@ export class ResultModalManager {
             </div>
             <div class="result-modal-body">
                 <div class="result-summary">
-                    <div class="result-summary-title">실행 요약</div>
+                    <div class="result-summary-title">${this.escapeHtml(executionSummary)}</div>
                     <div class="result-summary-item">
-                        <span class="result-summary-label">성공 ${summaryLabel}</span>
-                        <span class="result-summary-value">${successCount}개</span>
+                        <span class="result-summary-label">${this.escapeHtml(successLabel)} ${this.escapeHtml(translatedSummaryLabel)}</span>
+                        <span class="result-summary-value">${formatValue(successCount, unitText)}</span>
                     </div>
                     <div class="result-summary-item">
-                        <span class="result-summary-label">실패 ${summaryLabel}</span>
-                        <span class="result-summary-value">${failCount}개</span>
+                        <span class="result-summary-label">${this.escapeHtml(failedLabel)} ${this.escapeHtml(translatedSummaryLabel)}</span>
+                        <span class="result-summary-value">${formatValue(failCount, unitText)}</span>
                     </div>
                     <div class="result-summary-item">
-                        <span class="result-summary-label">중단 ${summaryLabel}</span>
-                        <span class="result-summary-value">${cancelledCount}개</span>
+                        <span class="result-summary-label">${this.escapeHtml(cancelledLabel)} ${this.escapeHtml(translatedSummaryLabel)}</span>
+                        <span class="result-summary-value">${formatValue(cancelledCount, unitText)}</span>
                     </div>
                 </div>
                 ${itemsListHtml}
             </div>
             <div class="result-modal-footer">
-                <button id="result-ok-btn" class="btn btn-primary">확인</button>
+                <button id="result-ok-btn" class="btn btn-primary">${this.escapeHtml(okText)}</button>
             </div>
         `;
 

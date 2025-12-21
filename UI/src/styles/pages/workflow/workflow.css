@@ -362,6 +362,17 @@
     -webkit-box-orient: vertical; /* 세로 방향 */
 }
 
+/* 노드 파라미터 표시 (반복 횟수 등) */
+.node-parameter-display {
+    font-size: 10px; /* 파라미터 크기 */
+    font-weight: 500; /* 중간 굵기 */
+    color: rgba(255, 255, 255, 0.8); /* 반투명 흰색 텍스트 */
+    text-align: left; /* 왼쪽 정렬 */
+    margin-top: 4px; /* 설명과 간격 */
+    line-height: 1.3; /* 줄 간격 */
+    width: 100%; /* 전체 너비 사용 */
+}
+
 /* 노드가 5줄을 넘을 때 가로 확장 (텍스트 길이에 따른 동적 크기 조정) */
 .workflow-node.text-overflow {
     max-height: none !important; /* 높이 제한 제거 */
@@ -492,6 +503,69 @@
 .false-dot {
     background-color: #ef4444; /* 빨간색 */
     border-color: #dc2626; /* 진한 빨간색 테두리 */
+}
+
+/* ========================================== */
+/* 반복 노드의 아래 연결점 */
+/* ========================================== */
+
+/* 아래 연결점 컨테이너 */
+.node-bottom-output {
+    position: absolute; /* 절대 위치 (JavaScript에서 동적으로 위치 설정) */
+    display: flex; /* 플렉스박스 레이아웃 */
+    flex-direction: column; /* 세로 방향 배치 */
+    align-items: center; /* 가로 중앙 정렬 */
+    gap: 4px; /* 점과 라벨 사이 간격 */
+    z-index: 10; /* 다른 요소 위에 표시 */
+    cursor: pointer; /* 클릭 가능한 커서 */
+    pointer-events: auto; /* 클릭 이벤트 활성화 */
+    /* 위치는 JavaScript에서 노드 크기에 따라 동적으로 설정됨 */
+}
+
+/* 아래 연결점 도트 */
+.bottom-output-dot {
+    width: 20px; /* 도트 크기 */
+    height: 20px; /* 도트 크기 */
+    border-radius: 50%; /* 원형 */
+    border: 2px solid #ffffff; /* 흰색 테두리 */
+    background-color: #3b82f6; /* 파란색 */
+    border-color: #2563eb; /* 진한 파란색 테두리 */
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); /* 부드럽고 탄성 있는 전환 효과 */
+    display: flex; /* 플렉스박스 */
+    align-items: center; /* 세로 중앙 정렬 */
+    justify-content: center; /* 가로 중앙 정렬 */
+    flex-shrink: 0; /* 크기 고정 */
+    cursor: pointer; /* 클릭 가능한 커서 */
+}
+
+/* 아래 연결점 도트 호버 효과 */
+.bottom-output-dot:hover {
+    transform: scale(1.6); /* 크기 확대 */
+    border-width: 3px; /* 테두리 두께 증가 */
+    box-shadow:
+        0 0 16px rgba(59, 130, 246, 0.9),
+        0 0 24px rgba(59, 130, 246, 0.5); /* 강한 발광 효과 */
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); /* 부드럽고 탄성 있는 전환 효과 */
+}
+
+/* 연결 중인 아래 연결점 도트 */
+.bottom-output-dot.connecting {
+    transform: scale(1.25); /* 더 크게 확대 */
+    box-shadow: 0 0 15px rgba(255, 107, 53, 0.9); /* 강한 발광 효과 */
+}
+
+/* 아래 연결점 라벨 */
+.bottom-output-label {
+    font-size: 10px; /* 라벨 크기 */
+    color: #9ca3af; /* 회색 텍스트 */
+    font-weight: 500; /* 중간 굵기 */
+    white-space: nowrap; /* 줄바꿈 방지 */
+    user-select: none; /* 텍스트 선택 방지 */
+}
+
+/* 아래 연결점 호버 시 라벨 색상 변경 */
+.node-bottom-output:hover .bottom-output-label {
+    color: #3b82f6; /* 파란색으로 변경 */
 }
 
 /* 출력점 내부 심볼 (T/F) */

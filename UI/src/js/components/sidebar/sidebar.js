@@ -342,7 +342,7 @@ export class SidebarManager {
     /**
      * 스크립트 변경 이벤트 발생
      */
-    dispatchScriptChangeEvent() {
+    dispatchScriptChangeEvent(forceReload = false) {
         const logger = getLogger();
         const log = logger.log;
 
@@ -352,12 +352,14 @@ export class SidebarManager {
         log('[Sidebar] dispatchScriptChangeEvent() 호출됨');
         log('[Sidebar] 현재 스크립트:', currentScript);
         log('[Sidebar] 이전 스크립트:', previousScript);
+        log('[Sidebar] 강제 재로드:', forceReload);
 
         const event = new CustomEvent('scriptChanged', {
             detail: {
                 script: currentScript,
                 previousScript: previousScript,
-                index: this.currentScriptIndex
+                index: this.currentScriptIndex,
+                forceReload: forceReload
             }
         });
 

@@ -79,12 +79,18 @@ export class NodeSettingsModal {
         // 이전 노드 출력 변수 목록 표시
         this.updatePreviousNodeVariables(nodeId);
 
-        // field_path 필드 설정 (조건 노드 등에서 사용)
+        // field_path 또는 execution_id 필드 설정 (조건 노드, 엑셀 닫기 노드 등에서 사용)
         // 약간의 지연을 두어 DOM이 완전히 렌더링된 후 설정
         setTimeout(() => {
             const fieldPathInput = document.getElementById('edit-node-field_path');
+            const executionIdInput = document.getElementById('edit-node-execution_id');
+
             if (fieldPathInput) {
                 this.setupFieldPathInput(nodeId, fieldPathInput);
+            }
+
+            if (executionIdInput) {
+                this.setupFieldPathInput(nodeId, executionIdInput);
             }
         }, 100);
     }
@@ -250,18 +256,24 @@ export class NodeSettingsModal {
                 const bodyTextarea = document.getElementById('edit-http-body');
                 const timeoutInput = document.getElementById('edit-http-timeout');
 
+                // 각 입력 필드에 debounce된 미리보기 업데이트 이벤트 리스너 추가
+                // urlInput: HTTP 요청 URL 입력 필드
                 if (urlInput) {
                     urlInput.addEventListener('input', updatePreviewDebounced);
                 }
+                // methodSelect: HTTP 메서드 선택 드롭다운 (GET, POST, PUT, DELETE, PATCH)
                 if (methodSelect) {
                     methodSelect.addEventListener('change', updatePreviewDebounced);
                 }
+                // headersTextarea: HTTP 헤더 JSON 입력 필드
                 if (headersTextarea) {
                     headersTextarea.addEventListener('input', updatePreviewDebounced);
                 }
+                // bodyTextarea: HTTP 요청 본문 입력 필드
                 if (bodyTextarea) {
                     bodyTextarea.addEventListener('input', updatePreviewDebounced);
                 }
+                // timeoutInput: 타임아웃 시간(초) 입력 필드
                 if (timeoutInput) {
                     timeoutInput.addEventListener('input', updatePreviewDebounced);
                 }
@@ -288,17 +300,23 @@ export class NodeSettingsModal {
         });
 
         // 파라미터 기반 폼 생성
+        // parameterFormHtml: 생성된 파라미터 폼 HTML 문자열
         let parameterFormHtml = '';
 
         // 상세 노드 타입이 선택된 경우, 상세 노드 타입의 파라미터 우선 사용
+        // parametersToUse: 사용할 파라미터 정의 (상세 타입 우선, 없으면 기본 타입 파라미터)
         let parametersToUse = null;
+        // currentValues: 현재 노드 데이터에서 추출한 파라미터 값들
         let currentValues = {};
 
+        // 상세 노드 타입이 있고 해당 타입의 설정이 존재하는 경우
         if (currentDetailNodeType && config?.detailTypes?.[currentDetailNodeType]) {
+            // 상세 노드 타입의 설정 가져오기
             const detailConfig = config.detailTypes[currentDetailNodeType];
+            // 상세 타입에 파라미터 정의가 있으면 사용
             if (detailConfig.parameters) {
                 parametersToUse = detailConfig.parameters;
-                // 현재 값 추출
+                // 현재 값 추출: 상세 타입 파라미터 키 목록을 순회하며 nodeData에서 값 추출
                 currentValues = Object.keys(detailConfig.parameters).reduce((acc, key) => {
                     acc[key] = nodeData?.[key];
                     return acc;
@@ -308,12 +326,40 @@ export class NodeSettingsModal {
 
         // 상세 노드 타입에 파라미터가 없으면 노드 레벨 파라미터 사용
         if (!parametersToUse && config?.parameters) {
+            // 기본 타입 파라미터 사용
             parametersToUse = config.parameters;
-            // 현재 값 추출
+            // 현재 값 추출: 기본 타입 파라미터 키 목록을 순회하며 nodeData에서 값 추출
             currentValues = Object.keys(config.parameters).reduce((acc, key) => {
                 acc[key] = nodeData?.[key];
                 return acc;
             }, {});
+        }
+
+        // excel-close 노드의 execution_id 기본값 설정 (값이 없을 때만)
+        if (nodeType === 'excel-close' && parametersToUse?.execution_id) {
+            if (!currentValues.execution_id || currentValues.execution_id === '') {
+                // 이전 노드 확인
+                const nodeManager = this.workflowPage.getNodeManager();
+                if (nodeManager) {
+                    const previousNodes = this.getPreviousNodeChain(nodeData.id);
+                    if (previousNodes.length > 0) {
+                        const lastNode = previousNodes[previousNodes.length - 1];
+                        const lastNodeData = lastNode.data || {};
+                        if (lastNodeData.type === 'excel-open') {
+                            currentValues.execution_id = 'output.data.execution_id';
+                        } else {
+                            // 이전 노드가 없거나 엑셀 열기 노드가 아니어도 기본값 설정
+                            currentValues.execution_id = 'output.data.execution_id';
+                        }
+                    } else {
+                        // 이전 노드가 없어도 기본값 설정
+                        currentValues.execution_id = 'output.data.execution_id';
+                    }
+                } else {
+                    // nodeManager가 없어도 기본값 설정
+                    currentValues.execution_id = 'output.data.execution_id';
+                }
+            }
         }
 
         let parameterFormResult = { html: '', buttons: [] };
@@ -348,51 +394,6 @@ export class NodeSettingsModal {
         }
 
         console.log('[NodeSettingsModal] 파라미터 폼 없음, 빈 문자열 반환');
-
-        // 레거시 특수 설정 처리 (하위 호환성 유지)
-        // 파라미터로 처리되지 않은 경우에만 레거시 로직 사용
-        if (nodeType === NODE_TYPES.IMAGE_TOUCH && !config?.parameters?.folder_path) {
-            const folderPath = nodeData?.folder_path || '';
-            const imageCount = nodeData?.image_count || 0;
-            const imageCountText =
-                imageCount > 0
-                    ? ` <span class="node-settings-help-text" style="font-weight: normal;">(${imageCount}개 이미지)</span>`
-                    : '';
-            const legacyHtml = `
-                <div class="form-group node-settings-form-group">
-                    <label for="edit-node-folder-path" class="node-settings-label">이미지 폴더 경로${imageCountText}:</label>
-                    <div style="display: flex; gap: 8px;">
-                        <input type="text" id="edit-node-folder-path" value="${escapeHtml(folderPath)}" placeholder="예: C:\\images\\touch" class="node-settings-input" style="flex: 1;">
-                        <button type="button" id="edit-browse-folder-btn" class="btn btn-secondary">폴더 선택</button>
-                    </div>
-                    <small class="node-settings-help-text">이미지 파일 이름 순서대로 화면에서 찾아 터치합니다.</small>
-                </div>
-            `;
-            return parameterFormHtml + legacyHtml;
-        } else if (nodeType === 'process-focus' && !parameterFormHtml) {
-            const processName = nodeData?.process_name || '';
-            const windowTitle = nodeData?.window_title || '';
-            const processId = nodeData?.process_id || '';
-            const hwnd = nodeData?.hwnd || '';
-            const legacyHtml = `
-                <div class="form-group">
-                    <label for="edit-node-process-select">프로세스 선택:</label>
-                    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-                        <select id="edit-node-process-select" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                            <option value="">프로세스를 선택하세요</option>
-                        </select>
-                        <button type="button" id="edit-refresh-processes-btn" class="btn btn-secondary">새로고침</button>
-                    </div>
-                    <input type="hidden" id="edit-node-process-id" value="${processId}">
-                    <input type="hidden" id="edit-node-process-hwnd" value="${hwnd}">
-                    <input type="hidden" id="edit-node-process-name" value="${escapeHtml(processName)}">
-                    <input type="hidden" id="edit-node-window-title" value="${escapeHtml(windowTitle)}">
-                    <small style="color: #666; font-size: 12px;">화면에 보이는 프로세스만 표시됩니다. 선택한 프로세스가 실행 시 화면 최상단에 포커스됩니다.</small>
-                </div>
-            `;
-            return parameterFormHtml + legacyHtml;
-        }
-
         return parameterFormHtml;
     }
 
@@ -559,40 +560,10 @@ export class NodeSettingsModal {
             });
         }
 
-        // 설정 변경 시 미리보기 업데이트 (debounce)
-        let previewUpdateTimer = null;
-        const updatePreviewDebounced = () => {
-            clearTimeout(previewUpdateTimer);
-            previewUpdateTimer = setTimeout(async () => {
-                const updatedNodeData = getNodeData(nodeElement);
-                const updatedNodeType = updatedNodeData?.type || getNodeType(nodeElement);
-                await this.updateOutputPreview(updatedNodeType, updatedNodeData, nodeElement);
-            }, 500);
-        };
-
-        // 폴더 경로 변경 시
-        const folderPathInput = document.getElementById('edit-node-folder-path');
-        if (folderPathInput) {
-            folderPathInput.addEventListener('input', updatePreviewDebounced);
-        }
-
-        // 대기 시간 변경 시
-        const waitTimeInput = document.getElementById('edit-node-wait-time');
-        if (waitTimeInput) {
-            waitTimeInput.addEventListener('input', updatePreviewDebounced);
-        }
-
-        // 프로세스 선택 변경 시
-        const processSelect = document.getElementById('edit-node-process-select');
-        if (processSelect) {
-            processSelect.addEventListener('change', updatePreviewDebounced);
-        }
-
-        // 폴더 선택 버튼 (레거시)
-        const browseBtn = document.getElementById('edit-browse-folder-btn');
-        if (browseBtn) {
-            browseBtn.addEventListener('click', () => this.handleFolderSelection());
-        }
+        // 파라미터 폼의 모든 입력 필드에 이벤트 리스너 설정
+        setTimeout(() => {
+            this.setupParameterFormEventListeners(nodeElement);
+        }, 100);
 
         // 파라미터 폼의 파일/폴더 선택 버튼 이벤트 리스너 설정
         // DOM이 업데이트된 후에 버튼을 찾아야 하므로 약간의 지연
@@ -634,13 +605,20 @@ export class NodeSettingsModal {
                 });
             });
 
-            // field_path 필드에 이전 노드 출력 변수 목록 추가
+            // field_path 또는 execution_id 필드에 이전 노드 출력 변수 목록 추가
             const fieldPathInput = document.getElementById('edit-node-field_path');
+            const executionIdInput = document.getElementById('edit-node-execution_id');
+
             if (fieldPathInput) {
                 console.log('[setupEventListeners] field_path 필드 찾음, setupFieldPathInput 호출');
                 this.setupFieldPathInput(nodeId, fieldPathInput);
             } else {
                 console.log('[setupEventListeners] field_path 필드를 찾을 수 없음');
+            }
+
+            if (executionIdInput) {
+                console.log('[setupEventListeners] execution_id 필드 찾음, setupFieldPathInput 호출');
+                this.setupFieldPathInput(nodeId, executionIdInput);
             }
         }, 100); // 지연 시간 증가
 
@@ -723,14 +701,6 @@ export class NodeSettingsModal {
         if (newSettings) {
             settingsContainer.insertAdjacentHTML('beforeend', newSettings);
 
-            // 폴더 선택 버튼 이벤트 재바인딩 (레거시)
-            const newBrowseBtn = document.getElementById('edit-browse-folder-btn');
-            if (newBrowseBtn) {
-                const newBtn = newBrowseBtn.cloneNode(true);
-                newBrowseBtn.parentNode.replaceChild(newBtn, newBrowseBtn);
-                newBtn.addEventListener('click', () => this.handleFolderSelection('edit-node-folder-path'));
-            }
-
             // 파라미터 폼의 파일/폴더 선택 버튼 이벤트 리스너 재설정
             setTimeout(() => {
                 const folderPathButtons = document.querySelectorAll('[id$="-folder_path-browse-btn"]');
@@ -766,17 +736,30 @@ export class NodeSettingsModal {
             if (selectedType === 'process-focus') {
                 this.setupProcessSelection(nodeData);
             }
+
+            // 파라미터 폼의 모든 입력 필드에 이벤트 리스너 설정
+            const nodeElement =
+                document.querySelector('.workflow-node.selected') || document.querySelector('[data-node-id]');
+            if (nodeElement) {
+                setTimeout(() => {
+                    this.setupParameterFormEventListeners(nodeElement);
+                }, 100);
+            }
         }
     }
 
     /**
      * 폴더 선택 처리
-     * @param {string} fieldId - 폴더 경로 입력 필드 ID (기본값: 'edit-node-folder-path')
+     * @param {string} fieldId - 폴더 경로 입력 필드 ID
      */
-    async handleFolderSelection(fieldId = 'edit-node-folder-path') {
+    async handleFolderSelection(fieldId) {
+        if (!fieldId) {
+            console.warn('[NodeSettingsModal] fieldId가 제공되지 않았습니다.');
+            return;
+        }
         console.log('[NodeSettingsModal] handleFolderSelection 호출됨, fieldId:', fieldId);
-        const btnId = fieldId ? `${fieldId}-browse-btn` : 'edit-browse-folder-btn';
-        const btn = document.getElementById(btnId) || document.getElementById('edit-browse-folder-btn');
+        const btnId = `${fieldId}-browse-btn`;
+        const btn = document.getElementById(btnId);
         if (!btn) {
             console.warn(`[NodeSettingsModal] 폴더 선택 버튼을 찾을 수 없습니다: ${btnId}`);
             // 모든 버튼 ID 확인
@@ -829,27 +812,34 @@ export class NodeSettingsModal {
 
             // 변경된 응답 형식: {success: true/false, message: "...", data: {folder_path: "..."}}
             // data가 없거나 folder_path가 없는 경우도 처리
+            // folderPath: 서버에서 받은 폴더 경로 (여러 응답 형식 지원)
             let folderPath = null;
+            // API 호출이 성공한 경우
             if (result.success) {
+                // 우선순위 1: result.data.folder_path (표준 응답 형식)
                 if (result.data?.folder_path) {
                     folderPath = result.data.folder_path;
                 } else if (result.folder_path) {
-                    // data 필드가 없고 직접 folder_path가 있는 경우
+                    // 우선순위 2: result.folder_path (레거시 응답 형식)
                     folderPath = result.folder_path;
                 } else if (result.data && typeof result.data === 'string') {
-                    // data가 문자열인 경우
+                    // 우선순위 3: result.data가 문자열인 경우 (간단한 응답 형식)
                     folderPath = result.data;
                 }
             }
 
+            // 폴더 경로를 성공적으로 받은 경우
             if (folderPath) {
                 console.log('[NodeSettingsModal] 폴더 경로 받음:', folderPath);
+                // 입력 필드 요소 가져오기
                 const inputField = document.getElementById(fieldId);
+                // 입력 필드가 존재하는 경우에만 값 설정
                 if (inputField) {
                     console.log('[NodeSettingsModal] 입력 필드 찾음, 값 설정:', fieldId, folderPath);
+                    // 입력 필드에 폴더 경로 설정
                     inputField.value = folderPath;
 
-                    // 입력 이벤트 트리거하여 값 변경 알림
+                    // 입력 이벤트 트리거하여 값 변경 알림 (다른 리스너들이 값 변경을 감지할 수 있도록)
                     inputField.dispatchEvent(new Event('input', { bubbles: true }));
                     inputField.dispatchEvent(new Event('change', { bubbles: true }));
 
@@ -860,17 +850,12 @@ export class NodeSettingsModal {
 
                     console.log('[NodeSettingsModal] 입력 필드 값 설정 완료:', inputField.value);
                 } else {
+                    // 입력 필드를 찾을 수 없는 경우 경고 로그
                     console.warn(`[NodeSettingsModal] 입력 필드를 찾을 수 없습니다: ${fieldId}`);
-                    // 모든 입력 필드 확인
-                    const allInputs = document.querySelectorAll('input[id*="folder_path"]');
-                    console.log(
-                        '[NodeSettingsModal] 찾은 모든 folder_path 입력 필드:',
-                        Array.from(allInputs).map((i) => i.id)
-                    );
                 }
-                // 성공 시 팝업 표시하지 않음
+                // 성공 시 팝업 표시하지 않음 (값이 자동으로 설정되었으므로)
             } else if (!result.success) {
-                // 실패 시에만 팝업 표시
+                // API 호출이 실패한 경우에만 에러 팝업 표시
                 const errorMsg = result.message || '폴더 선택에 실패했습니다.';
                 alert(errorMsg);
             }
@@ -950,9 +935,11 @@ export class NodeSettingsModal {
             const result = await response.json();
 
             // 변경된 응답 형식: {success: true, message: "...", data: [...], count: N}
-            if (result.success) {
+            if (result.success && inputField) {
                 const count = result.count || result.data?.length || 0;
-                const label = document.querySelector('label[for="edit-node-folder-path"]');
+                // 입력 필드의 라벨 찾기
+                const fieldId = inputField.id;
+                const label = document.querySelector(`label[for="${fieldId}"]`);
                 if (label) {
                     const existingCount = label.querySelector('span');
                     if (existingCount) {
@@ -1028,55 +1015,74 @@ export class NodeSettingsModal {
 
     /**
      * 입력 미리보기 업데이트 (편집 가능, n8n 스타일)
+     * 노드의 입력 데이터를 표시합니다. 저장된 입력 데이터가 있으면 우선 사용하고,
+     * 없으면 이전 노드의 출력 스키마를 기반으로 예시 데이터를 생성합니다.
+     * @param {string} nodeId - 노드 ID (이전 노드 체인 조회용)
+     * @param {HTMLElement} nodeElement - 노드 DOM 요소 (노드 데이터 추출용)
      */
     async updateInputPreview(nodeId, nodeElement) {
+        // 입력 미리보기 textarea 요소 찾기
         const inputPreview = document.getElementById('node-input-preview');
+        // 요소가 없으면 함수 종료
         if (!inputPreview) {
             return;
         }
 
         try {
-            // 저장된 입력 데이터가 있으면 사용
+            // 저장된 입력 데이터가 있으면 사용 (사용자가 직접 설정한 입력 데이터)
             const nodeData = getNodeData(nodeElement);
             if (nodeData?.input_data) {
                 // 저장된 입력 데이터가 있으면 표시
                 try {
+                    // 입력 데이터가 문자열인 경우 JSON 파싱, 아니면 그대로 사용
                     const inputData =
                         typeof nodeData.input_data === 'string' ? JSON.parse(nodeData.input_data) : nodeData.input_data;
+                    // 파싱된 데이터를 JSON 문자열로 직렬화하여 textarea에 표시 (들여쓰기 2칸)
                     inputPreview.value = JSON.stringify(inputData, null, 2);
                 } catch (e) {
                     // JSON 파싱 실패 시 문자열로 표시
                     inputPreview.value =
                         typeof nodeData.input_data === 'string'
-                            ? nodeData.input_data
-                            : JSON.stringify(nodeData.input_data, null, 2);
+                            ? nodeData.input_data // 이미 문자열이면 그대로 사용
+                            : JSON.stringify(nodeData.input_data, null, 2); // 객체면 직렬화
                 }
-                return;
+                return; // 저장된 데이터가 있으면 여기서 종료
             }
 
             // 이전 노드의 실제 실행 결과 또는 스키마 기반 예시 생성
+            // 이전 노드 체인 조회 (워크플로우에서 현재 노드 앞에 있는 노드들)
             const previousNodes = this.getPreviousNodeChain(nodeId);
+            // 이전 노드가 있는 경우
             if (previousNodes.length > 0) {
+                // 노드 레지스트리 가져오기 (노드 설정 조회용)
                 const registry = getNodeRegistry();
+                // 마지막 이전 노드 (체인의 마지막 노드가 최종 출력을 결정)
                 const lastNode = previousNodes[previousNodes.length - 1];
+                // 마지막 노드의 타입 추출 (type 또는 nodeType 필드 사용, 하위 호환성 고려)
                 const lastNodeType = lastNode.type || lastNode.nodeType;
+                // 마지막 노드의 데이터 추출 (없으면 빈 객체)
                 const lastNodeData = lastNode.data || {};
+                // 마지막 노드의 이름 추출 (title > type > id 순서로 우선순위)
                 const lastNodeName = lastNodeData.title || lastNode.type || lastNode.id;
 
-                // 이전 노드 이름 표시
+                // 이전 노드 이름 표시 (UI에 "← 노드명 노드에서 가져옴" 표시)
                 this.updatePreviousNodeInfoDisplay(lastNodeName);
 
                 // loadInputFromPreviousNode와 동일한 로직 사용
+                // 이전 노드의 출력 스키마를 기반으로 입력 데이터 생성
                 const result = await this.buildPreviousNodeOutput(lastNode, lastNodeType, lastNodeData, registry);
 
-                // 표준 형식으로 표시
+                // 표준 형식으로 표시 (JSON 문자열로 직렬화, 들여쓰기 2칸)
                 inputPreview.value = JSON.stringify(result, null, 2);
             } else {
-                // 이전 노드가 없으면 빈 입력
+                // 이전 노드가 없으면 빈 입력 표시
+                // 이전 노드 정보 숨기기
                 this.hidePreviousNodeInfoDisplay();
+                // 빈 객체 JSON 표시
                 inputPreview.value = JSON.stringify({}, null, 2);
             }
         } catch (error) {
+            // 에러 발생 시 에러 메시지를 JSON 형식으로 표시
             console.error('입력 미리보기 생성 오류:', error);
             inputPreview.value = JSON.stringify({ error: error.message }, null, 2);
         }
@@ -1169,7 +1175,7 @@ export class NodeSettingsModal {
                 previousOutput.metadata = metadata;
             }
         } else if (lastNodeData.output) {
-            // 레거시 형식: output 필드가 직접 있는 경우
+            // 하위 호환성: output 필드가 직접 있는 경우
             previousOutput = lastNodeData.output;
             hasKnownOutput = true;
         } else {
@@ -1283,14 +1289,22 @@ export class NodeSettingsModal {
 
     /**
      * 출력 미리보기 업데이트 (스키마 기반, 즉시 표시)
+     * 노드의 output_schema를 기반으로 출력 미리보기를 생성하고 표시합니다.
+     * 파라미터 변경 시 자동으로 호출되어 실시간으로 미리보기를 업데이트합니다.
+     * @param {string} nodeType - 노드 타입 (예: "excel-open", "wait")
+     * @param {Object} nodeData - 노드 데이터 (파라미터 값 포함)
+     * @param {HTMLElement} nodeElement - 노드 DOM 요소 (현재는 사용되지 않지만 향후 확장 가능)
      */
     async updateOutputPreview(nodeType, nodeData, nodeElement) {
+        // 출력 미리보기 컨테이너 요소 찾기
         const outputPreview = document.getElementById('node-output-preview');
+        // 컨테이너가 없으면 함수 종료
         if (!outputPreview) {
             return;
         }
 
         // 이미 textarea가 있고 사용자가 수정 중이면 업데이트하지 않음 (포커스가 있으면)
+        // 사용자가 직접 수정 중인 내용을 덮어쓰지 않기 위함
         const existingTextarea = document.getElementById('edit-node-output-value');
         if (existingTextarea && document.activeElement === existingTextarea) {
             return; // 사용자가 수정 중이면 업데이트하지 않음
@@ -1298,55 +1312,73 @@ export class NodeSettingsModal {
 
         try {
             // 현재 폼에서 파라미터 값 추출 (nodes_config.py에서 정의한 파라미터)
+            // 노드 레지스트리에서 노드 설정 가져오기
             const registry = getNodeRegistry();
             const config = await registry.getConfig(nodeType);
+            // 상세 노드 타입 추출 (예: "loop-start", "loop-end")
             const detailNodeType = nodeData?.action_node_type;
 
-            // 현재 폼의 파라미터 값으로 nodeData 업데이트
+            // 현재 폼의 파라미터 값으로 nodeData 업데이트 (스프레드 연산자로 복사)
             const updatedNodeData = { ...nodeData };
 
+            // 노드 설정이 있는 경우 파라미터 값 추출
             if (config) {
+                // 추출할 파라미터 정의 (null로 초기화)
                 let parametersToExtract = null;
 
                 // 상세 노드 타입이 있으면 상세 노드 타입의 파라미터 우선 사용
                 if (detailNodeType && config.detailTypes?.[detailNodeType]?.parameters) {
+                    // 상세 노드 타입의 파라미터 사용 (예: loop-start의 loop_count)
                     parametersToExtract = config.detailTypes[detailNodeType].parameters;
-                } else if (config.parameters) {
+                }
+                // 상세 노드 타입에 파라미터가 없으면 노드 레벨 파라미터 사용
+                else if (config.parameters) {
+                    // 노드 레벨 파라미터 사용 (모든 상세 타입에 공통)
                     parametersToExtract = config.parameters;
                 }
 
-                // 폼에서 파라미터 값 추출
+                // 폼에서 파라미터 값 추출 (파라미터 정의가 있는 경우)
                 if (parametersToExtract) {
+                    // extractParameterValues 함수로 폼의 실제 값 추출 ('edit-node-' 접두사 사용)
                     const paramValues = extractParameterValues(parametersToExtract, 'edit-node-');
+                    // 추출한 값을 updatedNodeData에 병합 (실제 파라미터 값으로 업데이트)
                     Object.assign(updatedNodeData, paramValues);
                     console.log('[NodeSettingsModal] 폼에서 추출한 파라미터 값:', paramValues);
                 }
             }
 
-            // 저장된 출력 오버라이드 값이 있으면 사용
+            // 저장된 출력 오버라이드 값이 있으면 사용 (사용자가 직접 수정한 출력 값)
             const outputOverride = updatedNodeData?.output_override;
+            // 표시할 값 변수 (오버라이드 또는 스키마 기반 미리보기)
             let displayValue;
 
+            // 출력 오버라이드가 있는 경우 (사용자가 직접 수정한 값)
             if (outputOverride !== undefined && outputOverride !== null) {
                 // 오버라이드된 값이 있으면 그것을 사용
                 if (typeof outputOverride === 'object') {
+                    // 객체인 경우 JSON 문자열로 직렬화 (들여쓰기 2칸)
                     displayValue = JSON.stringify(outputOverride, null, 2);
                 } else {
+                    // 객체가 아닌 경우 문자열로 변환
                     displayValue = String(outputOverride);
                 }
             } else {
                 // 스키마 기반 출력 미리보기 생성 (즉시 표시)
+                // generateOutputPreview 함수로 output_schema 기반 미리보기 생성
                 displayValue = generateOutputPreview(nodeType, config || {}, updatedNodeData);
             }
 
-            // 출력 표시 (항상 편집 가능)
+            // 출력 표시 (항상 편집 가능한 textarea로 표시)
             if (displayValue !== null && displayValue !== undefined) {
+                // displayValue가 있으면 textarea에 표시 (HTML 이스케이프 처리)
                 outputPreview.innerHTML = `<textarea id="edit-node-output-value" class="node-settings-textarea node-preview-textarea" rows="8">${escapeHtml(displayValue)}</textarea>`;
             } else {
+                // displayValue가 없으면 빈 textarea 표시
                 outputPreview.innerHTML =
                     '<textarea id="edit-node-output-value" class="node-settings-textarea node-preview-textarea" rows="8"></textarea>';
             }
         } catch (error) {
+            // 에러 발생 시 에러 메시지 표시
             console.error('출력 미리보기 생성 오류:', error);
             outputPreview.innerHTML = `<span style="color: #d32f2f;">미리보기 생성 오류: ${error.message}</span>`;
         }
@@ -1660,11 +1692,6 @@ export class NodeSettingsModal {
             folderPath: prepared.folder_path
         });
 
-        // 레거시 하위 호환성 (파라미터로 처리되지 않은 경우)
-        // image-touch
-        if (nodeType === 'image-touch' && !prepared.folder_path && nodeData.folder_path) {
-            prepared.folder_path = nodeData.folder_path;
-        }
         // wait
         if (nodeType === 'wait' && !prepared.wait_time && nodeData.wait_time !== undefined) {
             prepared.wait_time = nodeData.wait_time;
@@ -1844,20 +1871,46 @@ export class NodeSettingsModal {
                     <span class="node-output-variable-value">${escapeHtml(valuePreview)}</span>
                 `;
 
-                // 변수 클릭 시 입력 필드에 변수 키만 삽입
+                // 변수 클릭 시 입력 필드에 변수 값 삽입
                 tag.addEventListener('click', () => {
+                    // 1. execution_id 필드가 있으면 그곳에 삽입
+                    const executionIdInput = document.getElementById('edit-node-execution_id');
+                    if (executionIdInput) {
+                        // execution_id 변수인 경우 값 삽입, 아니면 키 삽입
+                        if (variable.key === 'execution_id') {
+                            executionIdInput.value =
+                                typeof variable.value === 'string' ? variable.value : String(variable.value);
+                            executionIdInput.dispatchEvent(new Event('input', { bubbles: true }));
+                        } else {
+                            // 다른 변수인 경우 경로 형태로 삽입
+                            executionIdInput.value = `output.${variable.key}`;
+                            executionIdInput.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
+                        return;
+                    }
+
+                    // 2. field_path 필드가 있으면 그곳에 삽입
+                    const fieldPathInput = document.getElementById('edit-node-field_path');
+                    if (fieldPathInput) {
+                        const cursorPos = fieldPathInput.selectionStart;
+                        const textBefore = fieldPathInput.value.substring(0, cursorPos);
+                        const textAfter = fieldPathInput.value.substring(fieldPathInput.selectionEnd);
+                        const variableKey = variable.key;
+                        fieldPathInput.value = textBefore + variableKey + textAfter;
+                        const newCursorPos = cursorPos + variableKey.length;
+                        fieldPathInput.setSelectionRange(newCursorPos, newCursorPos);
+                        fieldPathInput.focus();
+                        return;
+                    }
+
+                    // 3. 입력 미리보기 필드에 삽입 (기본 동작)
                     const inputPreview = document.getElementById('node-input-preview');
                     if (inputPreview) {
-                        // 현재 커서 위치에 변수 키 삽입
                         const cursorPos = inputPreview.selectionStart;
                         const textBefore = inputPreview.value.substring(0, cursorPos);
                         const textAfter = inputPreview.value.substring(inputPreview.selectionEnd);
-
-                        // 변수 키만 삽입
                         const variableKey = variable.key;
                         inputPreview.value = textBefore + variableKey + textAfter;
-
-                        // 커서 위치 조정
                         const newCursorPos = cursorPos + variableKey.length;
                         inputPreview.setSelectionRange(newCursorPos, newCursorPos);
                         inputPreview.focus();
@@ -2399,5 +2452,64 @@ export class NodeSettingsModal {
         } else {
             console.warn('[setupFieldPathInput] 펼치기 버튼을 찾을 수 없습니다:', `${fieldPathInput.id}-expand-btn`);
         }
+    }
+
+    /**
+     * 파라미터 폼의 모든 입력 필드에 이벤트 리스너 설정
+     * 파라미터 변경 시 입력/출력 미리보기를 자동으로 업데이트합니다.
+     * @param {HTMLElement} nodeElement - 노드 DOM 요소 (노드 데이터 추출용)
+     */
+    setupParameterFormEventListeners(nodeElement) {
+        // debounce 타이머 변수 (연속된 입력을 방지하기 위한 타이머 ID 저장)
+        let previewUpdateTimer = null;
+
+        // debounce된 미리보기 업데이트 함수 (연속 호출 시 마지막 호출만 실행)
+        const updatePreviewDebounced = () => {
+            // 기존 타이머가 있으면 취소 (이전 호출 무시)
+            clearTimeout(previewUpdateTimer);
+            // 새로운 타이머 설정 (300ms 후 실행)
+            previewUpdateTimer = setTimeout(async () => {
+                // 노드 요소에서 최신 노드 데이터 추출
+                const updatedNodeData = getNodeData(nodeElement);
+                // 노드 타입 추출 (nodeData의 type 또는 nodeElement의 dataset에서)
+                const updatedNodeType = updatedNodeData?.type || getNodeType(nodeElement);
+                // 출력 미리보기 업데이트 (비동기)
+                await this.updateOutputPreview(updatedNodeType, updatedNodeData, nodeElement);
+            }, 300); // 300ms debounce (사용자 입력이 멈춘 후 300ms 후 실행)
+        };
+
+        // edit-node- 접두사를 가진 모든 입력 필드 찾기 (파라미터 폼의 모든 필드)
+        const allInputs = document.querySelectorAll('[id^="edit-node-"]');
+
+        // 각 입력 필드에 이벤트 리스너 추가
+        allInputs.forEach((input) => {
+            // 이미 이벤트 리스너가 설정된 필드는 제외 (중복 방지)
+            // dataset.previewListenerAdded 플래그로 확인
+            if (input.dataset.previewListenerAdded === 'true') {
+                return; // 다음 필드로 넘어감
+            }
+
+            // 입력 필드 타입에 따라 적절한 이벤트 리스너 추가
+            if (input.tagName === 'SELECT') {
+                // SELECT 요소: change 이벤트 사용 (선택 변경 시)
+                input.addEventListener('change', updatePreviewDebounced);
+            } else if (input.type === 'checkbox') {
+                // 체크박스: change 이벤트 사용 (체크 상태 변경 시)
+                input.addEventListener('change', updatePreviewDebounced);
+            } else {
+                // text, number, textarea 등: input 이벤트 사용 (입력 중 실시간 업데이트)
+                input.addEventListener('input', updatePreviewDebounced);
+            }
+
+            // 이벤트 리스너 추가 완료 표시 (중복 방지용 플래그 설정)
+            input.dataset.previewListenerAdded = 'true';
+        });
+
+        // 디버그 로그: 설정된 필드 개수 출력
+        console.log(
+            '[setupParameterFormEventListeners] 파라미터 폼 이벤트 리스너 설정 완료:',
+            allInputs.length,
+            '개 필드'
+        );
     }
 }

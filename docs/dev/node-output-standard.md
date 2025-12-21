@@ -289,8 +289,84 @@ class RssFeedNode(BaseNode):
 2. `output` 필드가 None인 경우: 빈 dict `{}`로 변환됨 (자동)
 3. 수동 수정이 필요한 경우: `output`을 명시적으로 dict로 구성
 
+## 출력 스키마 정의 (`output_schema`)
+
+노드 설정 파일(`server/config/nodes_config.py`)에 각 노드의 출력 스키마를 정의하여 출력 미리보기를 자동 생성할 수 있습니다.
+
+### 스키마 구조
+
+```python
+"output_schema": {
+    "action": {"type": "string", "description": "노드 타입"},
+    "status": {"type": "string", "description": "실행 상태 (completed/failed)"},
+    "output": {
+        "type": "object",
+        "description": "출력 데이터",
+        "properties": {
+            "field1": {"type": "string", "description": "필드 설명"},
+            "field2": {"type": "number", "description": "필드 설명"},
+            "field3": {"type": "boolean", "description": "필드 설명"}
+        }
+    }
+}
+```
+
+### 스키마 기반 미리보기
+
+프론트엔드에서 `output_schema`를 기반으로 출력 미리보기를 자동 생성합니다:
+
+1. **필드명 기반 예시 값**: 필드명과 타입을 분석하여 의미있는 예시 값 생성
+   - `file_path` → `"C:\\example\\path\\file.ext"`
+   - `success` → `true`
+   - `execution_id` → `"20250101-120000-abc123"`
+   - `count` → `10`
+
+2. **실제 파라미터 값 우선**: `nodeData`에 실제 값이 있으면 스키마 기반 예시 값 대신 실제 값을 사용
+
+3. **자동 업데이트**: 노드 설정 모달에서 파라미터를 변경하면 출력 미리보기가 자동으로 업데이트됩니다 (300ms debounce)
+
+### 예시: 엑셀 열기 노드
+
+```python
+"excel-open": {
+    # ... 기타 설정 ...
+    "output_schema": {
+        "action": {"type": "string", "description": "노드 타입"},
+        "status": {"type": "string", "description": "실행 상태 (completed/failed)"},
+        "output": {
+            "type": "object",
+            "description": "출력 데이터",
+            "properties": {
+                "file_path": {"type": "string", "description": "열린 엑셀 파일 경로"},
+                "visible": {"type": "boolean", "description": "엑셀 창 표시 여부"},
+                "success": {"type": "boolean", "description": "성공 여부"},
+                "execution_id": {"type": "string", "description": "스크립트 실행 ID (다음 노드에서 사용)"}
+            }
+        }
+    }
+}
+```
+
+이 스키마를 기반으로 출력 미리보기가 다음과 같이 생성됩니다:
+
+```json
+{
+  "action": "excel-open",
+  "status": "completed",
+  "output": {
+    "file_path": "C:\\example\\path\\file.ext",
+    "visible": true,
+    "success": true,
+    "execution_id": "20250101-120000-abc123"
+  }
+}
+```
+
 ## 참고
 
 - `server/utils/result_formatter.py`: 표준화 함수 구현
 - `server/nodes/node_executor_wrapper.py`: 자동 정규화 로직
-- `docs/dev/input-output-ux.md`: 전체 UX 가이드
+- `server/config/nodes_config.py`: 노드 스키마 정의
+- `UI/src/pages/workflow/config/node-preview-generator.js`: 스키마 기반 미리보기 생성 로직
+- `docs/dev/ui-ux/input-output-ux.md`: 전체 UX 가이드
+- `docs/dev/ui-ux/input-output-preview.md`: 입출력 미리보기 시스템 상세 설명

@@ -37,13 +37,16 @@ def ensure_output_is_dict(output: Any) -> dict[str, Any]:
         >>> ensure_output_is_dict(None)
         {}
     """
+    # output이 None이면 빈 dict 반환 (None 대신 빈 dict 사용)
     if output is None:
         return {}
 
+    # output이 이미 dict이면 그대로 반환
     if isinstance(output, dict):
         return output
 
-    # dict가 아니면 value 키로 래핑
+    # dict가 아니면 value 키로 래핑 (표준 형식으로 변환)
+    # 예: "hello" -> {"value": "hello"}
     return {"value": output}
 
 
@@ -70,10 +73,13 @@ def create_success_result(
         }
     """
     # ensure_output_is_dict를 사용하여 output을 dict로 보장
+    # output이 None이거나 dict가 아니면 dict로 변환
     output = ensure_output_is_dict(output)
 
+    # 표준 형식의 성공 결과 생성
     result = {"action": action, "status": "completed", "output": output}
 
+    # message가 있으면 결과에 추가 (선택적 필드)
     if message:
         result["message"] = message
 
@@ -159,45 +165,59 @@ def normalize_result(result: Any, action: str, default_output: Any = None) -> di
        - 출력: {"action": action, "status": "completed", "output": {"value": "string_value"}}
     4. result가 dict가 아니면: {"action": action, "status": "completed", "output": {"value": result}}
     """
+    # result가 None이면 빈 output dict 반환 (표준 형식으로 변환)
     if result is None:
         # None이면 빈 output dict 반환
         return create_success_result(action, {})
 
+    # result가 dict인 경우 처리
     if isinstance(result, dict):
         # 표준 형식인지 확인 (action, status, output 필드가 모두 있고, output이 dict인지)
+        # has_action: action 필드 존재 여부
         has_action = "action" in result
+        # has_status: status 필드 존재 여부
         has_status = "status" in result
+        # has_output: output 필드 존재 여부
         has_output = "output" in result
+        # is_standard_format: 표준 형식인지 확인 (모든 필드가 있고 output이 dict)
         is_standard_format = has_action and has_status and has_output and isinstance(result.get("output"), dict)
 
+        # 이미 표준 형식이면 그대로 반환 (action이 없으면 추가)
         if is_standard_format:
-            # 이미 표준 형식이면 그대로 반환 (action이 없으면 추가)
+            # action이 없으면 추가 (하위 호환성)
             if not has_action:
                 result["action"] = action
             return result
 
         # 표준 형식이 아니면 output 필드로 래핑
+        # output_data: 최종적으로 output 필드에 들어갈 데이터
         output_data = None
 
+        # output 필드가 없으면 result의 모든 내용을 output으로 사용
         if not has_output:
             # output 필드가 없으면 result의 모든 내용을 output으로 사용
             # 단, 표준 필드(action, status, error, message, meta)는 제외
+            # standard_fields: 표준 필드 목록 (output에 포함하지 않을 필드들)
             standard_fields = {"action", "status", "output", "error", "message", "meta"}
+            # 표준 필드를 제외한 나머지 필드들을 output_data로 사용
             output_data = {k: v for k, v in result.items() if k not in standard_fields}
 
             # 실제 데이터가 없으면 default_output을 dict로 변환
+            # output_data가 비어있으면 default_output을 사용
             if not output_data:
                 output_data = ensure_output_is_dict(default_output)
         else:
             # output 필드가 있으면 ensure_output_is_dict로 dict 형식 보장
+            # output 필드가 있지만 dict가 아닐 수 있으므로 변환
             output_data = ensure_output_is_dict(result.get("output"))
 
-        # 표준 형식으로 변환
+        # 표준 형식으로 변환 (action, status, output 필드 포함)
         return {
-            "action": result.get("action", action),
-            "status": result.get("status", "completed"),
-            "output": output_data,
+            "action": result.get("action", action),  # action이 없으면 파라미터로 받은 action 사용
+            "status": result.get("status", "completed"),  # status가 없으면 "completed" 사용
+            "output": output_data,  # 변환된 output 데이터
         }
 
     # dict가 아닌 경우 output으로 래핑 (ensure_output_is_dict 사용)
+    # result가 dict가 아니면 (예: 문자열, 숫자 등) value 키로 래핑하여 표준 형식으로 변환
     return create_success_result(action, ensure_output_is_dict(result))

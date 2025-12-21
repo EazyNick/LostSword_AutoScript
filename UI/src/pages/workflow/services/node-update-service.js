@@ -50,8 +50,11 @@ export class NodeUpdateService {
             const saveService = this.workflowPage.getSaveService();
             if (saveService) {
                 log('[WorkflowPage] 서버에 노드 변경사항 저장 시작');
-                await saveService.save({ useToast: false }); // Toast 알림은 사용하지 않음 (모달 닫기 전이므로)
+                await saveService.save({ useToast: false, showAlert: false }); // Toast 알림과 팝업 알림 모두 사용하지 않음
                 log('[WorkflowPage] 서버에 노드 변경사항 저장 완료');
+
+                // 저장 완료 알림 표시 (가운데 메시지)
+                this.showSaveNotification();
             } else {
                 logError('[WorkflowPage] SaveService를 찾을 수 없습니다.');
             }
@@ -78,30 +81,40 @@ export class NodeUpdateService {
      * 폼에서 데이터 추출
      */
     async extractFormData(nodeElement, nodeId, nodeManager) {
+        // 폼에서 제목 가져오기
         const newTitle = document.getElementById('edit-node-title').value;
+        // currentType: 현재 노드 타입 (nodeData에서 가져오거나 dataset에서 가져옴)
         const currentType =
             nodeManager.nodeData && nodeManager.nodeData[nodeId]
                 ? nodeManager.nodeData[nodeId].type || nodeElement.dataset.nodeType
                 : nodeElement.dataset.nodeType;
+        // isStart: 시작 노드 여부 (시작 노드는 타입 변경 불가)
         const isStart = currentType === 'start';
+        // newType: 새로운 노드 타입 (시작 노드가 아니면 폼에서 가져옴, 시작 노드면 현재 타입 유지)
         let newType = isStart ? currentType : document.getElementById('edit-node-type')?.value || currentType;
 
         // 노드 타입 변경 시 검증 (시작 노드로 변경하려는 경우)
+        // 시작 노드가 아니고 타입이 변경된 경우만 검증
         if (!isStart && newType !== currentType) {
+            // validation: 타입 변경 검증 결과 (canChange, message 포함)
             const validation = NodeValidationUtils.validateNodeTypeChange(newType, nodeId, nodeManager);
+            // 타입 변경이 불가능하면 에러 표시하고 원래 타입으로 되돌림
             if (!validation.canChange) {
                 const modalManager = this.workflowPage.getModalManager();
+                // modalManager가 있으면 모달로 알림 표시
                 if (modalManager) {
                     modalManager.showAlert('타입 변경 불가', validation.message);
                 } else {
+                    // modalManager가 없으면 기본 alert 사용
                     alert(validation.message);
                 }
-                // 원래 타입으로 되돌리기
+                // 원래 타입으로 되돌리기 (폼의 select 요소 값도 되돌림)
                 const nodeTypeSelect = document.getElementById('edit-node-type');
                 if (nodeTypeSelect) {
                     nodeTypeSelect.value = currentType;
                 }
-                newType = currentType; // 원래 타입 유지
+                // newType을 원래 타입으로 설정 (타입 변경 취소)
+                newType = currentType;
             }
         }
 
@@ -174,19 +187,22 @@ export class NodeUpdateService {
         const config = await registry.getConfig(newType);
 
         // 상세 노드 타입이 선택된 경우, 상세 노드 타입의 파라미터 우선 사용
+        // newDetailNodeType: 선택된 상세 노드 타입 (예: "http-api-request")
         if (newDetailNodeType && config?.detailTypes?.[newDetailNodeType]?.parameters) {
+            // detailConfig: 상세 노드 타입 설정 (파라미터 정의 포함)
             const detailConfig = config.detailTypes[newDetailNodeType];
+            // paramValues: 폼에서 추출한 파라미터 값들
             const paramValues = extractParameterValues(detailConfig.parameters, 'edit-node-');
             console.log('[NodeUpdateService] 상세 노드 타입 파라미터 추출:', paramValues);
+            // updatedNodeData에 파라미터 값들 병합
             Object.assign(updatedNodeData, paramValues);
         } else if (config?.parameters) {
             // 상세 노드 타입에 파라미터가 없으면 노드 레벨 파라미터 사용
+            // paramValues: 폼에서 추출한 파라미터 값들
             const paramValues = extractParameterValues(config.parameters, 'edit-node-');
-            console.log('[NodeUpdateService] 노드 레벨 파라미터 추출:', paramValues);
+            // updatedNodeData에 파라미터 값들 병합
             Object.assign(updatedNodeData, paramValues);
         }
-
-        console.log('[NodeUpdateService] 최종 업데이트된 노드 데이터:', updatedNodeData);
 
         return updatedNodeData;
     }
@@ -242,7 +258,6 @@ export class NodeUpdateService {
             nodeElement.innerHTML = nodeContent;
         } else {
             // 부분적으로만 포함된 경우 기존 요소와 병합
-            console.log('[updateNodeDOM] nodeContent가 부분 구조만 포함, 기존 요소와 병합');
 
             const existingInput = nodeElement.querySelector('.node-input');
             const existingOutput = nodeElement.querySelector('.node-output:not(.true-output):not(.false-output)');
@@ -274,6 +289,14 @@ export class NodeUpdateService {
 
         // 이벤트 리스너 다시 설정
         nodeManager.setupNodeEventListeners(nodeElement);
+
+        // 노드 크기 조정 및 아래 연결점 위치 업데이트
+        if (nodeManager.adjustNodeSize) {
+            nodeManager.adjustNodeSize(nodeElement);
+        }
+        if (nodeManager.adjustBottomOutputPosition) {
+            nodeManager.adjustBottomOutputPosition(nodeElement);
+        }
         if (nodeManager.connectionHandler) {
             nodeManager.connectionHandler.setupConnectionEvents(nodeElement);
         }
@@ -329,5 +352,17 @@ export class NodeUpdateService {
             .catch((e) => {
                 console.warn('이미지 개수 조회 실패:', e);
             });
+    }
+
+    /**
+     * 저장 완료 알림 표시 (가운데 메시지)
+     */
+    showSaveNotification() {
+        // ToastManager 사용 (Ctrl+S와 동일한 방식, 사이드바 고려)
+        const toastManager = this.workflowPage.getToastManager();
+        if (toastManager) {
+            const { t } = window.i18n || { t: (key) => key };
+            toastManager.success(t('settings.settingsSaved') || '설정이 저장되었습니다.', 2000);
+        }
     }
 }

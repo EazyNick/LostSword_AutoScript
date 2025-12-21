@@ -4,6 +4,7 @@
  */
 
 import { getNodeRegistry } from './node-registry.js';
+import { t } from '../../../js/utils/i18n.js';
 
 export class WorkflowSaveService {
     constructor(workflowPage) {
@@ -14,20 +15,25 @@ export class WorkflowSaveService {
      * 워크플로우 저장
      * @param {Object} options - 저장 옵션
      * @param {boolean} options.useToast - Toast 알림 사용 여부
+     * @param {boolean} options.showAlert - 팝업 알림 표시 여부 (기본값: true)
      */
     async save(options = {}) {
         const sidebarManager = this.workflowPage.getSidebarManager();
         const currentScript = sidebarManager ? sidebarManager.getCurrentScript() : null;
         const modalManager = this.workflowPage.getModalManager();
 
+        // currentScript가 없거나 id가 없으면 에러 표시
         if (!currentScript || !currentScript.id) {
-            this.showError('저장할 스크립트가 선택되지 않았습니다.', options.useToast);
+            this.showError(t('common.noScriptSelected'), options.useToast);
             return;
         }
 
         try {
+            // nodeManager: 노드 관리자 인스턴스 (노드 및 연결 정보 가져오기용)
             const nodeManager = this.workflowPage.getNodeManager();
+            // nodes: 모든 노드 목록 (NodeManager 형식)
             const nodes = nodeManager ? nodeManager.getAllNodes() : [];
+            // connections: 모든 연결 정보 (NodeManager 형식)
             const connections = nodeManager ? nodeManager.getAllConnections() : [];
 
             // NodeManager 형식을 API 형식으로 변환
@@ -48,14 +54,14 @@ export class WorkflowSaveService {
 
                 logger.log('[WorkflowPage] 저장 완료 응답:', response);
 
-                this.showSuccess('워크플로우가 성공적으로 저장되었습니다.', options.useToast);
+                this.showSuccess(t('common.workflowSaved'), options.useToast, options.showAlert);
             } else {
                 // API를 사용할 수 없는 경우 로컬 스토리지에 저장 (fallback)
                 this.workflowPage.saveWorkflowToLocalStorage();
             }
         } catch (error) {
             console.error('워크플로우 저장 실패:', error);
-            this.showError(`저장 중 오류가 발생했습니다: ${error.message}`, options.useToast);
+            this.showError(`${t('common.saveError')}: ${error.message}`, options.useToast, options.showAlert);
         }
     }
 
@@ -77,43 +83,61 @@ export class WorkflowSaveService {
                 // nodes_config.py에서 정의한 파라미터 추출
                 if (config) {
                     // 상세 노드 타입이 있으면 상세 노드 타입의 파라미터 우선 사용
+                    // detailNodeType: 상세 노드 타입 (예: "http-api-request", "process-focus")
                     const detailNodeType = nodeData.action_node_type;
+                    // parametersToExtract: 추출할 파라미터 정의 (상세 노드 타입 우선, 없으면 노드 레벨 파라미터)
                     let parametersToExtract = null;
 
+                    // 상세 노드 타입의 파라미터가 있으면 우선 사용
                     if (detailNodeType && config.detailTypes?.[detailNodeType]?.parameters) {
                         parametersToExtract = config.detailTypes[detailNodeType].parameters;
                     } else if (config.parameters) {
+                        // 상세 노드 타입 파라미터가 없으면 노드 레벨 파라미터 사용
                         parametersToExtract = config.parameters;
                     }
 
                     // 파라미터 정의에 따라 nodeData에서 값 추출
                     if (parametersToExtract) {
                         for (const [paramKey, paramConfig] of Object.entries(parametersToExtract)) {
-                            // nodeData에 값이 있으면 사용
-                            if (
-                                nodeData[paramKey] !== undefined &&
-                                nodeData[paramKey] !== null &&
-                                nodeData[paramKey] !== ''
-                            ) {
-                                parameters[paramKey] = nodeData[paramKey];
-                            }
-                            // 값이 없고 기본값이 있으면 기본값 사용
-                            else if (paramConfig.default !== undefined && paramConfig.default !== null) {
-                                parameters[paramKey] = paramConfig.default;
+                            // boolean 타입은 false도 유효한 값이므로 별도 처리
+                            if (paramConfig.type === 'boolean') {
+                                // boolean은 undefined, null이 아닌 경우 모두 저장 (false도 유효)
+                                if (nodeData[paramKey] !== undefined && nodeData[paramKey] !== null) {
+                                    parameters[paramKey] = Boolean(nodeData[paramKey]);
+                                } else if (paramConfig.default !== undefined) {
+                                    parameters[paramKey] = Boolean(paramConfig.default);
+                                }
+                            } else {
+                                // 다른 타입은 기존 로직 사용
+                                if (
+                                    nodeData[paramKey] !== undefined &&
+                                    nodeData[paramKey] !== null &&
+                                    nodeData[paramKey] !== ''
+                                ) {
+                                    parameters[paramKey] = nodeData[paramKey];
+                                }
+                                // 값이 없고 기본값이 있으면 기본값 사용
+                                else if (paramConfig.default !== undefined && paramConfig.default !== null) {
+                                    parameters[paramKey] = paramConfig.default;
+                                }
                             }
                         }
                     }
 
                     // 필수 파라미터 검증 (기본값 적용 후)
+                    // parametersToExtract가 있으면 필수 파라미터 검증 수행
                     if (parametersToExtract) {
+                        // missingRequiredParams: 누락된 필수 파라미터 목록
                         const missingRequiredParams = [];
+                        // 각 파라미터 정의를 순회하며 필수 파라미터 확인
                         for (const [paramKey, paramConfig] of Object.entries(parametersToExtract)) {
+                            // required가 true인 경우만 검증
                             if (paramConfig.required === true) {
-                                // 기본값이 있으면 필수 파라미터 검증 통과
+                                // 기본값이 있으면 필수 파라미터 검증 통과 (기본값이 있으면 필수 조건 충족)
                                 if (paramConfig.default !== undefined && paramConfig.default !== null) {
-                                    continue;
+                                    continue; // 다음 파라미터로 넘어감
                                 }
-                                // 기본값이 없고 값도 없으면 에러
+                                // 기본값이 없고 값도 없으면 에러 (필수 파라미터 누락)
                                 if (
                                     parameters[paramKey] === undefined ||
                                     parameters[paramKey] === null ||
@@ -123,6 +147,7 @@ export class WorkflowSaveService {
                                 }
                             }
                         }
+                        // 누락된 필수 파라미터가 있으면 에러 발생
                         if (missingRequiredParams.length > 0) {
                             throw new Error(
                                 `노드 '${node.id}' (${nodeType})에 필수 파라미터가 없습니다: ${missingRequiredParams.join(', ')}`
@@ -131,8 +156,6 @@ export class WorkflowSaveService {
                     }
                 }
             }
-
-            console.log(`[WorkflowSaveService] 노드 ${node.id} 파라미터:`, parameters);
 
             // description 추출
             let description = null;
@@ -177,16 +200,18 @@ export class WorkflowSaveService {
     /**
      * 성공 메시지 표시
      */
-    showSuccess(message, useToast) {
+    async showSuccess(message, useToast, showAlert = true) {
         if (useToast) {
+            // 토스트 메시지 사용 (Ctrl+S, 자동 저장 등)
             const toastManager = this.workflowPage.getToastManager();
             if (toastManager) {
                 toastManager.success(message);
             }
-        } else {
+        } else if (showAlert) {
+            // 모달 팝업 사용 (저장 버튼 클릭 시, showAlert가 true인 경우만)
             const modalManager = this.workflowPage.getModalManager();
             if (modalManager) {
-                modalManager.showAlert('저장 완료', message);
+                await modalManager.showCenterAlert(t('common.saveComplete'), message);
             }
         }
     }
@@ -194,16 +219,22 @@ export class WorkflowSaveService {
     /**
      * 에러 메시지 표시
      */
-    showError(message, useToast) {
+    async showError(message, useToast, showAlert = true) {
+        // useToast: 토스트 메시지 사용 여부 (Ctrl+S, 자동 저장 등)
         if (useToast) {
+            // 토스트 메시지 사용 (Ctrl+S, 자동 저장 등)
             const toastManager = this.workflowPage.getToastManager();
+            // toastManager가 있으면 에러 메시지 표시
             if (toastManager) {
                 toastManager.error(message);
             }
-        } else {
+        } else if (showAlert) {
+            // 모달 팝업 사용 (저장 버튼 클릭 시, showAlert가 true인 경우만)
+            // showAlert: 팝업 알림 표시 여부 (기본값: true)
             const modalManager = this.workflowPage.getModalManager();
+            // modalManager가 있으면 중앙 알림 표시
             if (modalManager) {
-                modalManager.showAlert('저장 실패', message);
+                await modalManager.showCenterAlert(t('common.saveFailed'), message);
             }
         }
     }

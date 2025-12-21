@@ -43,8 +43,13 @@ class UserSettingsRepository:
         try:
             if user_id is None:
                 # 기존 방식: user_id가 NULL인 설정 조회 (기존 코드 호환성)
+                # 여러 행이 있을 수 있으므로 최신 것만 가져오기 (ORDER BY updated_at DESC LIMIT 1)
                 cursor.execute(
-                    "SELECT setting_value FROM user_settings WHERE setting_key = ? AND (user_id IS NULL OR user_id = '')",
+                    """
+                    SELECT setting_value FROM user_settings
+                    WHERE setting_key = ? AND (user_id IS NULL OR user_id = '')
+                    ORDER BY updated_at DESC LIMIT 1
+                    """,
                     (setting_key,),
                 )
             else:
@@ -85,13 +90,17 @@ class UserSettingsRepository:
         """설정 저장 구현"""
         if user_id is None:
             # 기존 방식: user_id를 NULL로 저장 (기존 코드 호환성)
+            # SQLite에서 NULL은 NULL과 같지 않다고 간주되므로,
+            # UNIQUE 제약조건이 제대로 작동하지 않을 수 있음
+            # 따라서 기존 행을 먼저 삭제한 후 INSERT
+            cursor.execute(
+                "DELETE FROM user_settings WHERE setting_key = ? AND (user_id IS NULL OR user_id = '')",
+                (setting_key,),
+            )
             cursor.execute(
                 """
                 INSERT INTO user_settings (user_id, setting_key, setting_value, updated_at)
                 VALUES (NULL, ?, ?, CURRENT_TIMESTAMP)
-                ON CONFLICT(user_id, setting_key) DO UPDATE SET
-                    setting_value = excluded.setting_value,
-                    updated_at = CURRENT_TIMESTAMP
             """,
                 (setting_key, setting_value),
             )
@@ -125,8 +134,17 @@ class UserSettingsRepository:
         try:
             if user_id is None:
                 # 기존 방식: user_id가 NULL인 설정만 조회 (기존 코드 호환성)
+                # 같은 setting_key가 여러 개 있을 수 있으므로, 최신 것만 가져오기
+                # (ROW_NUMBER()를 사용하여 각 setting_key별로 최신 행만 선택)
                 cursor.execute(
-                    "SELECT setting_key, setting_value FROM user_settings WHERE user_id IS NULL OR user_id = ''"
+                    """
+                    SELECT setting_key, setting_value FROM (
+                        SELECT setting_key, setting_value,
+                               ROW_NUMBER() OVER (PARTITION BY setting_key ORDER BY updated_at DESC) as rn
+                        FROM user_settings
+                        WHERE user_id IS NULL OR user_id = ''
+                    ) WHERE rn = 1
+                    """
                 )
             else:
                 # 새로운 방식: 특정 사용자의 설정만 조회
@@ -163,6 +181,57 @@ class UserSettingsRepository:
             # 새로운 방식: 특정 사용자의 설정 삭제
             cursor.execute("DELETE FROM user_settings WHERE setting_key = ? AND user_id = ?", (setting_key, user_id))
         return cursor.rowcount > 0
+
+    def cleanup_duplicate_settings(self, user_id: str | None = None) -> int:
+        """
+        중복된 설정 정리 (같은 setting_key에 대해 최신 것만 남기고 나머지 삭제)
+
+        Args:
+            user_id: 사용자 ID (None이면 user_id가 NULL인 설정만 정리)
+
+        Returns:
+            삭제된 행의 개수
+        """
+        result: int = self.connection.execute_with_connection(
+            lambda _conn, cursor: self._cleanup_duplicate_settings_impl(cursor, user_id)
+        )
+        return result
+
+    def _cleanup_duplicate_settings_impl(self, cursor: sqlite3.Cursor, user_id: str | None = None) -> int:
+        """중복 설정 정리 구현"""
+        if user_id is None:
+            # user_id가 NULL인 설정 중복 정리
+            # 각 setting_key별로 최신 행만 남기고 나머지 삭제
+            cursor.execute(
+                """
+                DELETE FROM user_settings
+                WHERE (user_id IS NULL OR user_id = '')
+                AND id NOT IN (
+                    SELECT id FROM (
+                        SELECT id, ROW_NUMBER() OVER (PARTITION BY setting_key ORDER BY updated_at DESC) as rn
+                        FROM user_settings
+                        WHERE user_id IS NULL OR user_id = ''
+                    ) WHERE rn = 1
+                )
+                """
+            )
+        else:
+            # 특정 사용자의 설정 중복 정리
+            cursor.execute(
+                """
+                DELETE FROM user_settings
+                WHERE user_id = ?
+                AND id NOT IN (
+                    SELECT id FROM (
+                        SELECT id, ROW_NUMBER() OVER (PARTITION BY setting_key ORDER BY updated_at DESC) as rn
+                        FROM user_settings
+                        WHERE user_id = ?
+                    ) WHERE rn = 1
+                )
+                """,
+                (user_id, user_id),
+            )
+        return cursor.rowcount
 
 
 # ============================================================================

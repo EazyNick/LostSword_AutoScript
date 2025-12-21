@@ -16,6 +16,7 @@ import { getModalManagerInstance } from '../../utils/modal.js';
 import { getLogger, formatDate } from './sidebar-utils.js';
 import { getDashboardManagerInstance } from '../../../pages/workflow/dashboard.js';
 import { LogAPI } from '../../api/logapi.js';
+import { t } from '../../utils/i18n.js';
 
 /**
  * 스크립트 관리 클래스
@@ -351,8 +352,10 @@ export class SidebarScriptManager {
 
     /**
      * 스크립트 선택
+     * @param {number} index - 선택할 스크립트 인덱스
+     * @param {boolean} forceReload - 강제로 다시 로드할지 여부 (기본값: false)
      */
-    async selectScript(index) {
+    async selectScript(index, forceReload = false) {
         // 이전 스크립트 정보 저장 (스크립트 변경 전에)
         const previousScript = this.sidebarManager.getCurrentScript();
         this.sidebarManager.previousScript = previousScript;
@@ -384,11 +387,11 @@ export class SidebarScriptManager {
         // 헤더 업데이트
         this.sidebarManager.uiManager.updateHeader();
 
-        // 이벤트 발생
-        this.sidebarManager.dispatchScriptChangeEvent();
+        // 이벤트 발생 (강제 재로드 플래그 전달)
+        this.sidebarManager.dispatchScriptChangeEvent(forceReload);
 
         const logger = getLogger();
-        logger.log('스크립트 선택됨:', this.sidebarManager.scripts[index].name);
+        logger.log('스크립트 선택됨:', this.sidebarManager.scripts[index].name, forceReload ? '(강제 재로드)' : '');
     }
 
     /**
@@ -659,7 +662,11 @@ export class SidebarScriptManager {
         const logError = logger.error;
         const logWarn = logger.warn;
 
-        const { isRunningAllScripts = false } = options;
+        const {
+            isRunningAllScripts = false,
+            allScriptsExecutionStartTime = null,
+            scriptExecutionOrder = null
+        } = options;
 
         // getWorkflowPage 함수 정의 (메서드 전체에서 사용 가능하도록 상단에 정의)
         const getWorkflowPage = () => {
@@ -733,6 +740,22 @@ export class SidebarScriptManager {
             workflowPage.executionService.isCancelled = this.sidebarManager.isCancelled;
             workflowPage.executionService.isRunningAllScripts = isRunningAllScripts;
 
+            // 전체 실행 시작 시간 설정 (전체 실행인 경우)
+            if (isRunningAllScripts && allScriptsExecutionStartTime) {
+                workflowPage.executionService.allScriptsExecutionStartTime = allScriptsExecutionStartTime;
+            } else if (!isRunningAllScripts) {
+                // 단일 실행인 경우 전체 실행 시작 시간 초기화
+                workflowPage.executionService.allScriptsExecutionStartTime = null;
+            }
+
+            // 전체 실행 시 스크립트 실행 순서 설정
+            if (isRunningAllScripts && scriptExecutionOrder !== null) {
+                workflowPage.executionService.scriptExecutionOrder = scriptExecutionOrder;
+            } else if (!isRunningAllScripts) {
+                // 단일 실행인 경우 실행 순서 초기화
+                workflowPage.executionService.scriptExecutionOrder = null;
+            }
+
             // 7. 워크플로우 실행
             await workflowPage.executionService.execute();
 
@@ -780,7 +803,7 @@ export class SidebarScriptManager {
             log(`[Scripts] ✅ 스크립트 "${script.name}" 실행 완료`);
             return {
                 success: true,
-                message: '정상 실행 완료'
+                message: t('common.executionCompletedSuccessfully')
             };
         } catch (execError) {
             logError(`[Scripts] ❌ 스크립트 "${script.name}" 실행 중 오류 발생:`, execError);
@@ -902,6 +925,9 @@ export class SidebarScriptManager {
         // 모든 스크립트의 execution_id 수집 (로그 저장 완료 확인용)
         const executionIds = [];
 
+        // 전체 실행 시작 시간 저장 (모든 스크립트가 같은 날짜+시간 폴더 사용)
+        const allScriptsExecutionStartTime = new Date().toISOString();
+
         // WorkflowPage 인스턴스 가져오기 (finally 블록에서도 접근 가능하도록 밖에서 정의)
         const getWorkflowPage = () => {
             // window에서 직접 접근 시도
@@ -940,21 +966,21 @@ export class SidebarScriptManager {
                     for (let j = i + 1; j < activeScripts.length; j++) {
                         const remainingScript = activeScripts[j];
                         scriptResults.push({
-                            name: remainingScript.name || remainingScript.id || '알 수 없는 스크립트',
+                            name: remainingScript.name || remainingScript.id || t('common.unknownScript'),
                             status: 'cancelled',
-                            message: '실행 취소로 인해 실행되지 않음'
+                            message: t('common.cancelledDueToCancellation')
                         });
                     }
                     // modalManager 인스턴스가 있는경우 실행 취소 모달 표시
                     if (modalManager) {
                         const { getResultModalManagerInstance } = await import('../../utils/result-modal.js');
                         const resultModalManager = getResultModalManagerInstance();
-                        resultModalManager.showExecutionResult('실행 취소', {
+                        resultModalManager.showExecutionResult(t('common.executionCancelled'), {
                             successCount,
                             failCount,
                             cancelledCount: activeScripts.length - successCount - failCount,
                             scripts: scriptResults,
-                            summaryLabel: '스크립트'
+                            summaryLabel: t('sidebar.scripts')
                         });
                     }
                     break;
@@ -971,7 +997,13 @@ export class SidebarScriptManager {
                 );
 
                 // executeSingleScript를 사용하여 스크립트 실행 (전체 실행 모드)
-                const result = await this.executeSingleScript(script, { isRunningAllScripts: true });
+                // 전체 실행 시작 시간을 전달하여 모든 스크립트가 같은 날짜+시간 폴더 사용
+                // 실행 순서도 전달하여 폴더명에 포함
+                const result = await this.executeSingleScript(script, {
+                    isRunningAllScripts: true,
+                    allScriptsExecutionStartTime: allScriptsExecutionStartTime,
+                    scriptExecutionOrder: i + 1 // 1부터 시작하는 실행 순서
+                });
 
                 // execution_id 수집 (로그 저장 완료 확인용)
                 const workflowPage = getWorkflowPage();
@@ -983,9 +1015,9 @@ export class SidebarScriptManager {
                 if (result.success) {
                     successCount++;
                     scriptResults.push({
-                        name: script.name || script.id || '알 수 없는 스크립트',
+                        name: script.name || script.id || t('common.unknownScript'),
                         status: 'success',
-                        message: result.message || '정상 실행 완료'
+                        message: result.message || t('common.executionCompletedSuccessfully')
                     });
 
                     // 성공 시 즉시 통계 업데이트
@@ -1027,9 +1059,9 @@ export class SidebarScriptManager {
                         for (let j = i + 1; j < activeScripts.length; j++) {
                             const remainingScript = activeScripts[j];
                             scriptResults.push({
-                                name: remainingScript.name || remainingScript.id || '알 수 없는 스크립트',
+                                name: remainingScript.name || remainingScript.id || t('common.unknownScript'),
                                 status: 'cancelled',
-                                message: '실행 취소로 인해 실행되지 않음'
+                                message: t('common.cancelledDueToCancellation')
                             });
                         }
                         break;
@@ -1069,7 +1101,9 @@ export class SidebarScriptManager {
 
             // 실행 결과 모달 표시 (가운데 팝업)
             if (modalManager) {
-                const title = this.sidebarManager.isCancelled ? '실행 취소' : '실행 완료';
+                const title = this.sidebarManager.isCancelled
+                    ? t('common.executionCancelled')
+                    : t('common.executionCompleted');
                 const cancelledCount = activeScripts.length - successCount - failCount;
                 const { getResultModalManagerInstance } = await import('../../utils/result-modal.js');
                 const resultModalManager = getResultModalManagerInstance();
@@ -1078,7 +1112,7 @@ export class SidebarScriptManager {
                     failCount,
                     cancelledCount,
                     scripts: scriptResults,
-                    summaryLabel: '스크립트'
+                    summaryLabel: t('sidebar.scripts')
                 });
             }
         } catch (error) {
@@ -1278,7 +1312,7 @@ export class SidebarScriptManager {
                         <div class="loading-spinner"></div>
                     </div>
                     <div class="loading-text">
-                        로그 저장 중<span class="loading-dots">...</span>
+                        ${t('common.savingLogs')}<span class="loading-dots">...</span>
                     </div>
                 </div>
             `;

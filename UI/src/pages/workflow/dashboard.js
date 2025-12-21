@@ -6,6 +6,7 @@
 import { ScriptAPI } from '../../js/api/scriptapi.js';
 import { apiCall } from '../../js/api/api.js';
 import { getSidebarInstance } from '../../js/components/sidebar/sidebar.js';
+import { t } from '../../js/utils/i18n.js';
 
 const getSidebarManager = () => getSidebarInstance();
 
@@ -43,6 +44,31 @@ export class DashboardManager {
     async init() {
         const logger = getLogger();
         logger.log('[Dashboard] 대시보드 초기화 시작');
+
+        // 언어 설정 확인 및 적용
+        try {
+            const { getLanguage, setLanguage } = await import('../../js/utils/i18n.js');
+            const { UserSettingsAPI } = await import('../../js/api/user-settings-api.js');
+
+            // 서버에서 언어 설정 로드
+            const savedLanguage = await UserSettingsAPI.getSetting('language');
+            const currentLanguage = getLanguage();
+            const language = savedLanguage || 'en';
+
+            // 언어가 다르면 적용 (초기 로드 시에는 silent=true로 설정)
+            if (currentLanguage !== language) {
+                await setLanguage(language, true);
+                logger.log(`[Dashboard] 언어 설정 적용: ${language}`);
+            }
+        } catch (error) {
+            logger.warn('[Dashboard] 언어 설정 로드 실패:', error);
+        }
+
+        // HTML의 정적 텍스트 업데이트
+        this.updateStaticTexts();
+
+        // CSS 변수 업데이트 (실행 중 텍스트 번역)
+        this.updateRunningTextCSS();
 
         await this.loadDashboardData();
         this.renderDashboard();
@@ -246,6 +272,50 @@ export class DashboardManager {
     }
 
     /**
+     * HTML의 정적 텍스트 업데이트
+     */
+    updateStaticTexts() {
+        // 페이지 제목 및 부제목
+        const dashboardTitle = document.querySelector('.dashboard-title');
+        if (dashboardTitle) {
+            dashboardTitle.textContent = t('header.dashboard');
+        }
+        const dashboardSubtitle = document.querySelector('.dashboard-subtitle');
+        if (dashboardSubtitle) {
+            dashboardSubtitle.textContent = t('header.dashboardSubtitle');
+        }
+
+        // 새 워크플로우 버튼
+        const newWorkflowBtn = document.querySelector('.btn-new-workflow .btn-text');
+        if (newWorkflowBtn) {
+            newWorkflowBtn.textContent = t('sidebar.newWorkflow');
+        }
+
+        // 통계 카드 레이블
+        const statLabels = document.querySelectorAll('.stat-label');
+        if (statLabels.length >= 4) {
+            statLabels[0].textContent = t('dashboard.totalWorkflows');
+            statLabels[1].textContent = t('dashboard.totalExecutions');
+            statLabels[2].textContent = t('dashboard.failedScripts');
+            statLabels[3].textContent = t('dashboard.inactiveScripts');
+        }
+
+        // 섹션 제목
+        const sectionTitle = document.querySelector('.dashboard-scripts .section-title');
+        if (sectionTitle) {
+            sectionTitle.textContent = t('dashboard.scripts');
+        }
+    }
+
+    /**
+     * CSS 변수 업데이트 (실행 중 텍스트 번역)
+     */
+    updateRunningTextCSS() {
+        const runningText = ` ${t('common.running')}...`;
+        document.documentElement.style.setProperty('--running-text', `'${runningText}'`);
+    }
+
+    /**
      * 대시보드 데이터 로드
      */
     async loadDashboardData() {
@@ -385,7 +455,7 @@ export class DashboardManager {
         if (this.scripts.length === 0) {
             const emptyMessage = document.createElement('div');
             emptyMessage.className = 'empty-message';
-            emptyMessage.textContent = '스크립트가 없습니다. 새 워크플로우를 생성하세요.';
+            emptyMessage.textContent = t('dashboard.noScripts');
             scriptsGrid.appendChild(emptyMessage);
             return;
         }
@@ -407,7 +477,7 @@ export class DashboardManager {
         // active 필드가 있으면 사용, 없으면 기본값 true
         const isActive = script.active !== undefined ? script.active : true;
         const status = isActive ? 'active' : 'inactive';
-        const statusText = isActive ? '활성' : '비활성';
+        const statusText = isActive ? t('dashboard.active') : t('dashboard.inactive');
 
         // 마지막 실행 시간 포맷팅 (last_executed_at 필드 사용)
         const lastRun = script.last_executed_at ? this.formatLastRun(script.last_executed_at) : null;
@@ -428,10 +498,10 @@ export class DashboardManager {
             </div>
             <div class="script-card-footer">
                 <div class="script-card-actions">
-                    <button class="btn-edit" data-script-id="${script.id}">편집</button>
+                    <button class="btn-edit" data-script-id="${script.id}">${t('dashboard.edit')}</button>
                     <button class="btn-run" data-script-id="${script.id}">
                         <span class="btn-run-icon">▶</span>
-                        <span class="btn-run-text">실행</span>
+                        <span class="btn-run-text">${t('dashboard.run')}</span>
                     </button>
                 </div>
             </div>
@@ -486,6 +556,17 @@ export class DashboardManager {
                 // 전체 실행 통계는 서버에서 다시 로드하여 유지
                 await this.loadDashboardStats();
                 this.renderDashboard();
+
+                // 사이드바의 스크립트 목록도 업데이트하여 즉시 반영
+                if (window.sidebarManager && window.sidebarManager.scriptManager) {
+                    logger.log('[Dashboard] 사이드바 스크립트 목록 업데이트 중...');
+                    await window.sidebarManager.scriptManager.loadScriptsFromServer();
+                    logger.log('[Dashboard] 사이드바 스크립트 목록 업데이트 완료');
+                } else {
+                    logger.warn(
+                        '[Dashboard] 사이드바 매니저를 찾을 수 없습니다. 스크립트 페이지로 이동 시 상태가 업데이트됩니다.'
+                    );
+                }
             } else {
                 logger.warn('[Dashboard] ScriptAPI.toggleScriptActive를 사용할 수 없습니다.');
             }
@@ -499,6 +580,13 @@ export class DashboardManager {
      * 스크립트 페이지로 전환
      */
     switchToEditor(scriptId) {
+        const logger = getLogger();
+
+        // 현재 포커스된 스크립트 확인
+        const sidebarManager = window.sidebarManager;
+        const currentScript = sidebarManager ? sidebarManager.getCurrentScript() : null;
+        const isCurrentScript = currentScript && currentScript.id === scriptId;
+
         // 페이지 라우터로 전환
         if (window.pageRouter) {
             window.pageRouter.showPage('editor');
@@ -510,13 +598,21 @@ export class DashboardManager {
             }
         }
 
-        // 스크립트 선택
-        if (window.sidebarManager) {
-            const scripts = window.sidebarManager.getAllScripts();
+        // 스크립트 선택 (현재 포커스된 스크립트인 경우 강제 재로드)
+        if (sidebarManager) {
+            const scripts = sidebarManager.getAllScripts();
             const scriptIndex = scripts.findIndex((s) => s.id === scriptId);
             if (scriptIndex >= 0) {
                 setTimeout(() => {
-                    window.sidebarManager.selectScript(scriptIndex);
+                    // 현재 포커스된 스크립트를 다시 클릭한 경우 강제로 다시 로드
+                    const forceReload = isCurrentScript;
+                    if (forceReload) {
+                        logger.log(
+                            '[Dashboard] 현재 포커스된 스크립트를 다시 클릭하여 강제로 다시 로드합니다:',
+                            scriptId
+                        );
+                    }
+                    sidebarManager.scriptManager.selectScript(scriptIndex, forceReload);
                 }, 100);
             }
         }
@@ -563,15 +659,17 @@ export class DashboardManager {
         const diffDays = Math.floor(diffMs / 86400000);
 
         if (diffMins < 1) {
-            return '방금 전';
+            return t('dashboard.justNow');
         } else if (diffMins < 60) {
-            return `${diffMins}분 전`;
+            return t('dashboard.minutesAgo', { minutes: diffMins });
         } else if (diffHours < 24) {
-            return `${diffHours}시간 전`;
+            return t('dashboard.hoursAgo', { hours: diffHours });
         } else if (diffDays < 7) {
-            return `${diffDays}일 전`;
+            return t('dashboard.daysAgo', { days: diffDays });
         } else {
-            return lastRun.toLocaleDateString('ko-KR');
+            const lang = document.documentElement.lang || 'en';
+            const locale = lang === 'en' ? 'en-US' : 'ko-KR';
+            return lastRun.toLocaleDateString(locale);
         }
     }
 

@@ -21,7 +21,6 @@ class ExecutionMode(Enum):
     """실행 모드 열거형"""
 
     SEQUENTIAL = "sequential"
-    PARALLEL = "parallel"
     CONDITIONAL = "conditional"
 
 
@@ -66,15 +65,23 @@ class WorkflowEngine:
     """워크플로우 실행 엔진"""
 
     def __init__(self) -> None:
+        # nodes: 워크플로우에 포함된 모든 노드 리스트
         self.nodes: list[WorkflowNode] = []
+        # execution_mode: 실행 모드 (순차 실행 또는 조건부 실행)
         self.execution_mode = ExecutionMode.SEQUENTIAL
+        # current_node_index: 현재 실행 중인 노드의 인덱스
         self.current_node_index = 0
+        # is_running: 워크플로우 실행 중 여부 플래그
         self.is_running = False
+        # start_time: 워크플로우 실행 시작 시간 (타임스탬프)
         self.start_time: float | None = None
+        # end_time: 워크플로우 실행 종료 시간 (타임스탬프)
         self.end_time: float | None = None
+        # results: 각 노드의 실행 결과 리스트
         self.results: list[dict[str, Any]] = []
 
-        # 노드 핸들러 등록
+        # 노드 핸들러 등록: 노드 타입별 실행 함수 매핑
+        # node_handlers: 노드 타입을 키로 하고 해당 노드 타입의 실행 함수를 값으로 하는 딕셔너리
         self.node_handlers: dict[NodeType, Callable] = {
             NodeType.CLICK: self._handle_click_node,
             NodeType.WAIT: self._handle_wait_node,
@@ -89,12 +96,18 @@ class WorkflowEngine:
 
     def add_nodes_from_dict(self, nodes_data: list[dict[str, Any]]) -> None:
         """딕셔너리 리스트에서 노드들을 추가합니다."""
+        # 각 노드 데이터를 순회하며 WorkflowNode 객체 생성 및 추가
         for node_data in nodes_data:
+            # WorkflowNode 객체 생성
+            # node_id: 노드 ID (없으면 자동 생성: "node_0", "node_1", ...)
+            # node_type: 노드 타입 (없으면 기본값 "click")
+            # data: 노드 데이터 (없으면 빈 딕셔너리)
             node = WorkflowNode(
                 node_id=node_data.get("id", f"node_{len(self.nodes)}"),
                 node_type=NodeType(node_data.get("type", "click")),
                 data=node_data.get("data", {}),
             )
+            # 생성된 노드를 워크플로우에 추가
             self.add_node(node)
 
     def set_execution_mode(self, mode: ExecutionMode) -> None:
@@ -111,8 +124,6 @@ class WorkflowEngine:
         try:
             if self.execution_mode == ExecutionMode.SEQUENTIAL:
                 await self._execute_sequential()
-            elif self.execution_mode == ExecutionMode.PARALLEL:
-                await self._execute_parallel()
             elif self.execution_mode == ExecutionMode.CONDITIONAL:
                 await self._execute_conditional()
 
@@ -132,31 +143,20 @@ class WorkflowEngine:
 
     async def _execute_sequential(self) -> None:
         """순차 실행"""
+        # 모든 노드를 순차적으로 실행
         for i, node in enumerate(self.nodes):
+            # current_node_index: 현재 실행 중인 노드 인덱스 업데이트
             self.current_node_index = i
+            # 현재 노드 실행
             result = await self._execute_node(node)
+            # 실행 결과를 results 리스트에 추가
             self.results.append(result)
 
             # 실패한 경우 중단 여부 확인
+            # 노드 상태가 FAILED이고 stop_on_failure가 True인 경우 실행 중단
             if node.status == NodeStatus.FAILED and node.data.get("stop_on_failure", True):
+                # 루프 종료 (남은 노드들은 실행하지 않음)
                 break
-
-    async def _execute_parallel(self) -> None:
-        """병렬 실행"""
-        tasks = []
-        for node in self.nodes:
-            task = asyncio.create_task(self._execute_node(node))
-            tasks.append(task)
-
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-
-        for i, result in enumerate(results):
-            if isinstance(result, Exception):
-                self.nodes[i].status = NodeStatus.FAILED
-                self.nodes[i].error_message = str(result)
-                self.results.append(self.nodes[i].to_dict())
-            elif isinstance(result, dict):
-                self.results.append(result)
 
     async def _execute_conditional(self) -> None:
         """조건부 실행"""
@@ -176,26 +176,38 @@ class WorkflowEngine:
 
     async def _execute_node(self, node: WorkflowNode) -> dict[str, Any]:
         """개별 노드를 실행합니다."""
+        # 노드 상태를 RUNNING으로 설정
         node.status = NodeStatus.RUNNING
+        # 노드 실행 시작 시간 기록
         node.start_time = time.time()
 
         try:
+            # 노드 타입에 해당하는 핸들러 함수 가져오기
             handler = self.node_handlers.get(node.type)
+            # 핸들러가 없는 경우 (지원하지 않는 노드 타입) 에러 발생
             if not handler:
                 raise ValueError(f"지원하지 않는 노드 타입: {node.type}")
 
+            # 핸들러 함수 실행 (노드 타입별 실행 로직)
             result = await handler(node)
+            # 실행 성공 시 노드 상태를 COMPLETED로 설정
             node.status = NodeStatus.COMPLETED
+            # 실행 결과를 노드에 저장
             node.result = result
 
         except Exception as e:
+            # 예외 발생 시 노드 상태를 FAILED로 설정
             node.status = NodeStatus.FAILED
+            # 에러 메시지 저장
             node.error_message = str(e)
+            # 에러 정보를 포함한 결과 생성
             result = {"error": str(e)}
 
         finally:
+            # 성공/실패 관계없이 노드 실행 종료 시간 기록
             node.end_time = time.time()
 
+        # 노드 정보를 딕셔너리로 변환하여 반환
         return node.to_dict()
 
     async def _handle_click_node(self, node: WorkflowNode) -> dict[str, Any]:
@@ -212,10 +224,13 @@ class WorkflowEngine:
 
     async def _handle_wait_node(self, node: WorkflowNode) -> dict[str, Any]:
         """대기 노드 처리"""
+        # duration: 대기 시간(초) (기본값: 1.0초)
         duration = node.data.get("duration", 1.0)
 
+        # 지정된 시간만큼 대기
         await asyncio.sleep(duration)
 
+        # 대기 완료 결과 반환
         return {"action": "wait", "duration": duration, "success": True}
 
     async def _handle_condition_node(self, node: WorkflowNode) -> dict[str, Any]:
@@ -229,30 +244,40 @@ class WorkflowEngine:
 
     async def _handle_loop_node(self, node: WorkflowNode) -> dict[str, Any]:
         """루프 노드 처리"""
+        # loop_count: 반복 횟수 (기본값: 1)
         loop_count = node.data.get("loop_count", 1)
+        # loop_nodes: 루프 내부에서 실행할 노드 데이터 리스트
         loop_nodes = node.data.get("nodes", [])
 
+        # results: 모든 반복의 실행 결과를 저장할 리스트
         results = []
+        # 지정된 횟수만큼 반복 실행
         for i in range(loop_count):
             # 루프 내부 노드들 실행
             for loop_node_data in loop_nodes:
+                # 각 반복마다 새로운 WorkflowNode 객체 생성 (고유한 ID 부여)
                 loop_node = WorkflowNode(
                     node_id=f"{node.id}_loop_{i}_{loop_node_data.get('id', 'unknown')}",
                     node_type=NodeType(loop_node_data.get("type", "click")),
                     data=loop_node_data.get("data", {}),
                 )
+                # 루프 내부 노드 실행
                 result = await self._execute_node(loop_node)
+                # 실행 결과를 results 리스트에 추가
                 results.append(result)
 
+        # 루프 실행 완료 결과 반환
         return {"action": "loop", "loop_count": loop_count, "results": results, "success": True}
 
     async def _handle_custom_node(self, node: WorkflowNode) -> dict[str, Any]:
         """커스텀 노드 처리"""
+        # custom_action: 커스텀 액션 이름 (기본값: "unknown")
         custom_action = node.data.get("custom_action", "unknown")
 
         # 커스텀 액션 로직 구현
-        await asyncio.sleep(0.5)  # 시뮬레이션
+        await asyncio.sleep(0.5)  # 시뮬레이션 (실제 구현에서는 커스텀 액션 수행)
 
+        # 커스텀 노드 실행 결과 반환
         return {"action": "custom", "custom_action": custom_action, "success": True}
 
     async def _evaluate_condition(self, node: WorkflowNode) -> bool:
@@ -272,21 +297,36 @@ class WorkflowEngine:
 
     def _get_execution_summary(self) -> dict[str, Any]:
         """실행 요약을 반환합니다."""
+        # total_nodes: 전체 노드 개수
         total_nodes = len(self.nodes)
+        # completed_nodes: 완료된 노드 개수 (COMPLETED 상태인 노드들)
         completed_nodes = len([n for n in self.nodes if n.status == NodeStatus.COMPLETED])
+        # failed_nodes: 실패한 노드 개수 (FAILED 상태인 노드들)
         failed_nodes = len([n for n in self.nodes if n.status == NodeStatus.FAILED])
+        # skipped_nodes: 스킵된 노드 개수 (SKIPPED 상태인 노드들)
         skipped_nodes = len([n for n in self.nodes if n.status == NodeStatus.SKIPPED])
 
+        # execution_time: 실행 시간 계산 (종료 시간 - 시작 시간)
+        # end_time과 start_time이 모두 존재하는 경우에만 계산, 없으면 0
         execution_time = self.end_time - self.start_time if self.end_time and self.start_time else 0
 
+        # 실행 요약 정보 반환
         return {
+            # success: 실패한 노드가 없으면 True (모든 노드가 성공적으로 완료)
             "success": failed_nodes == 0,
+            # execution_time: 총 실행 시간(초)
             "execution_time": execution_time,
+            # total_nodes: 전체 노드 개수
             "total_nodes": total_nodes,
+            # completed_nodes: 완료된 노드 개수
             "completed_nodes": completed_nodes,
+            # failed_nodes: 실패한 노드 개수
             "failed_nodes": failed_nodes,
+            # skipped_nodes: 스킵된 노드 개수
             "skipped_nodes": skipped_nodes,
+            # success_rate: 성공률 (완료된 노드 / 전체 노드 * 100), 전체 노드가 0이면 0
             "success_rate": (completed_nodes / total_nodes * 100) if total_nodes > 0 else 0,
+            # results: 각 노드의 실행 결과 리스트
             "results": self.results,
         }
 

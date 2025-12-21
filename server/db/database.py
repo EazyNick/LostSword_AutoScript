@@ -569,50 +569,11 @@ class DatabaseManager:
             self.scripts.update_script_timestamp(script1_id)
             log_func(f"스크립트 1에 {len(script1_nodes)}개의 노드 추가 완료")
 
-            # 스크립트 2: 결제 프로세스 테스트
-            script2_id = self.scripts.create_script("결제 프로세스 테스트", "온라인 결제 과정 검증")
+            # 스크립트 2: 이미지 터치 테스트
+            script2_id = self.scripts.create_script("이미지 터치 테스트", "이미지 터치 노드를 사용한 자동화 테스트")
             log_func(f"스크립트 2 생성: ID={script2_id}")
 
             script2_nodes = [
-                {
-                    "id": "start",
-                    "type": "start",
-                    "position": {"x": 0.0, "y": 0.0},
-                    "data": {"title": "시작"},
-                    "parameters": {},
-                },
-                {
-                    "id": "node1",
-                    "type": "wait",
-                    "position": {"x": 300.0, "y": 0.0},
-                    "data": {"title": "결제 처리 대기"},
-                    "parameters": {"wait_time": 3.0},
-                    "description": "결제 처리 대기",
-                },
-                {
-                    "id": "node2",
-                    "type": "condition",
-                    "position": {"x": 600.0, "y": 0.0},
-                    "data": {"title": "결제 성공 확인"},
-                    "parameters": {"condition": "check_payment_success"},
-                    "description": "결제 성공 여부 확인",
-                },
-            ]
-
-            script2_connections = [
-                {"from": "start", "to": "node1", "outputType": None},
-                {"from": "node1", "to": "node2", "outputType": None},
-            ]
-
-            self.nodes.save_nodes(script2_id, script2_nodes, script2_connections)
-            self.scripts.update_script_timestamp(script2_id)
-            log_func(f"스크립트 2에 {len(script2_nodes)}개의 노드 추가 완료")
-
-            # 스크립트 3: 이미지 터치 테스트
-            script3_id = self.scripts.create_script("이미지 터치 테스트", "이미지 터치 노드를 사용한 자동화 테스트")
-            log_func(f"스크립트 3 생성: ID={script3_id}")
-
-            script3_nodes = [
                 {
                     "id": "start",
                     "type": "start",
@@ -636,34 +597,178 @@ class DatabaseManager:
                 },
             ]
 
+            script2_connections = [
+                {"from": "start", "to": "node1", "outputType": None},
+                {"from": "node1", "to": "node2", "outputType": None},
+            ]
+
+            self.nodes.save_nodes(script2_id, script2_nodes, script2_connections)
+            self.scripts.update_script_timestamp(script2_id)
+            log_func(f"스크립트 2에 {len(script2_nodes)}개의 노드 추가 완료")
+
+            # 스크립트 3: 엑셀 테스트
+            # 엑셀 관련 노드들을 테스트하기 위한 스크립트입니다.
+            # 새로운 엑셀 노드를 추가할 때마다 이 스크립트에 노드를 추가하세요.
+            script3_id = self.scripts.create_script("엑셀 테스트", "엑셀 노드를 사용한 자동화 테스트")
+            log_func(f"스크립트 3 생성: ID={script3_id}")
+
+            script3_nodes = [
+                {
+                    "id": "start",
+                    "type": "start",
+                    "position": {"x": 0.0, "y": 0.0},
+                    "data": {"title": "시작"},
+                    "parameters": {},
+                },
+                {
+                    "id": "node1",
+                    "type": "excel-open",
+                    "position": {"x": 300.0, "y": 0.0},
+                    "data": {"title": "엑셀 열기"},
+                    "parameters": {
+                        "file_path": "C:\\Users\\User\\Desktop\\test.xlsx",
+                        "visible": True,
+                    },
+                    "description": "엑셀 파일 열기",
+                },
+                {
+                    "id": "node2",
+                    "type": "excel-close",
+                    "position": {"x": 600.0, "y": 0.0},
+                    "data": {"title": "엑셀 닫기"},
+                    "parameters": {
+                        "execution_id": "",  # 실행 시 이전 노드 출력에서 자동으로 가져옴
+                        "save_changes": True,
+                    },
+                    "description": "엑셀 파일 닫기",
+                },
+                # TODO: 새로운 엑셀 노드를 추가할 때 여기에 노드를 추가하세요.
+                # 예시:
+                # {
+                #     "id": "node3",
+                #     "type": "excel-read-cell",  # 새로운 엑셀 노드 타입
+                #     "position": {"x": 900.0, "y": 0.0},
+                #     "data": {"title": "셀 읽기"},
+                #     "parameters": {
+                #         "sheet": "Sheet1",
+                #         "cell": "A1",
+                #     },
+                #     "description": "엑셀 셀 읽기",
+                # },
+            ]
+
             script3_connections = [
                 {"from": "start", "to": "node1", "outputType": None},
                 {"from": "node1", "to": "node2", "outputType": None},
+                # TODO: 새로운 엑셀 노드를 추가할 때 연결도 추가하세요.
+                # 예시:
+                # {"from": "node2", "to": "node3", "outputType": None},
             ]
 
             self.nodes.save_nodes(script3_id, script3_nodes, script3_connections)
             self.scripts.update_script_timestamp(script3_id)
             log_func(f"스크립트 3에 {len(script3_nodes)}개의 노드 추가 완료")
 
-            # 사용자 설정 예시 데이터 추가
-            self.user_settings.save_setting("theme", "dark")
-            self.user_settings.save_setting("language", "ko")
-            self.user_settings.save_setting("auto_save", "true")
+            # 스크립트 4: 반복 노드 테스트
+            # 반복 노드를 사용한 자동화 테스트입니다.
+            # 반복 노드의 아래 연결점에 연결된 노드들을 지정한 횟수만큼 반복 실행합니다.
+            script4_id = self.scripts.create_script("반복 노드 테스트", "반복 노드를 사용한 자동화 테스트")
+            log_func(f"스크립트 4 생성: ID={script4_id}")
 
-            # 기본 UI 설정값 추가
+            script4_nodes = [
+                {
+                    "id": "start",
+                    "type": "start",
+                    "position": {"x": 0.0, "y": 0.0},
+                    "data": {"title": "시작"},
+                    "parameters": {},
+                    "description": None,
+                },
+                {
+                    "id": "node1",
+                    "type": "repeat",
+                    "position": {"x": 300.0, "y": 0.0},
+                    "data": {"title": "반복"},
+                    "parameters": {
+                        "repeat_count": 3,  # 3번 반복
+                    },
+                    "description": "아래 연결된 노드를 3번 반복 실행",
+                },
+                {
+                    "id": "node2",
+                    "type": "wait",
+                    "position": {"x": 300.0, "y": 200.0},  # 반복 노드 아래에 배치
+                    "data": {"title": "대기 (반복)"},
+                    "parameters": {
+                        "wait_time": 1.0,  # 1초 대기
+                    },
+                    "description": "반복 실행될 노드",
+                },
+                {
+                    "id": "node3",
+                    "type": "wait",
+                    "position": {"x": 600.0, "y": 0.0},  # 반복 노드 오른쪽에 배치
+                    "data": {"title": "완료 후 실행"},
+                    "parameters": {
+                        "wait_time": 0.5,  # 0.5초 대기
+                    },
+                    "description": "반복 완료 후 실행될 노드",
+                },
+            ]
+
+            script4_connections = [
+                {"from": "start", "to": "node1", "outputType": None},  # 시작 -> 반복 노드
+                {"from": "node1", "to": "node2", "outputType": "bottom"},  # 반복 노드(아래 연결점) -> 대기 노드
+                {"from": "node1", "to": "node3", "outputType": None},  # 반복 노드(오른쪽 출력) -> 완료 후 실행 노드
+            ]
+
+            self.nodes.save_nodes(script4_id, script4_nodes, script4_connections)
+            self.scripts.update_script_timestamp(script4_id)
+            log_func(f"스크립트 4에 {len(script4_nodes)}개의 노드 추가 완료")
+
+            # 사용자 설정 예시 데이터 추가
+            user_settings_to_save = [
+                ("theme", "dark"),
+                ("language", "en"),  # 언어 설정 (기본값: 영어)
+                ("auto_save", "true"),
+                ("sidebar-width", "300"),  # 기본 사이드바 너비
+            ]
+
             import json
 
-            self.user_settings.save_setting("sidebar-width", "300")  # 기본 사이드바 너비
-            script_order = json.dumps([script1_id, script2_id, script3_id], ensure_ascii=False)
-            self.user_settings.save_setting("script-order", script_order)  # 스크립트 순서
+            script_order = json.dumps([script1_id, script2_id, script3_id, script4_id], ensure_ascii=False)
+            user_settings_to_save.append(("script-order", script_order))  # 스크립트 순서
+
+            # 첫 번째 스크립트 ID를 포커스된 스크립트로 설정
+            user_settings_to_save.append(("focused-script-id", str(script1_id)))
+
+            # 스크린샷 기본 설정값 추가
+            screenshot_settings = [
+                ("screenshot.autoScreenshot", "true"),
+                ("screenshot.screenshotOnError", "true"),
+                ("screenshot.savePath", "./screenshots"),
+                ("screenshot.imageFormat", "PNG"),
+            ]
+            user_settings_to_save.extend(screenshot_settings)
+
+            # 사용자 설정 저장
+            for setting_key, setting_value in user_settings_to_save:
+                self.user_settings.save_setting(setting_key, setting_value)
 
             log_func("사용자 설정 예시 데이터 추가 완료")
 
-            total_nodes = len(script1_nodes) + len(script2_nodes) + len(script3_nodes)
+            # 생성된 스크립트 및 노드 개수 계산
+            created_scripts = [script1_id, script2_id, script3_id, script4_id]
+            total_scripts = len(created_scripts)
+            total_nodes = len(script1_nodes) + len(script2_nodes) + len(script3_nodes) + len(script4_nodes)
+
+            # 사용자 설정 개수 계산 (실제 저장된 설정 개수)
+            user_settings_count = len(user_settings_to_save)
+
             log_func("✅ 예시 데이터 생성 완료!")
-            log_func("   - 스크립트: 3개")
+            log_func(f"   - 스크립트: {total_scripts}개")
             log_func(f"   - 노드: {total_nodes}개")
-            log_func("   - 사용자 설정: 3개")
+            log_func(f"   - 사용자 설정: {user_settings_count}개")
             log_func(f"   - 데이터베이스 경로: {self.connection.db_path}")
 
         except Exception as e:
@@ -689,7 +794,7 @@ db_manager = DatabaseManager()
 # 테스트 항목:
 # 1. DatabaseManager 초기화 (모든 리포지토리 통합)
 # 2. 테이블 생성 확인 (scripts, nodes, user_settings)
-# 3. 예시 데이터 생성 (3개 스크립트, 17개 노드, 3개 사용자 설정)
+# 3. 예시 데이터 생성 (스크립트, 노드, 사용자 설정 자동 생성)
 # 4. 데이터 검증 (스크립트, 노드, 연결 정보 확인)
 # 5. 사용자 설정 CRUD 테스트
 # 6. 스크립트 CRUD 테스트
@@ -793,18 +898,10 @@ if __name__ == "__main__":
             "parameters": {},
             "description": "테스트용 노드",
         },
-        {
-            "id": "end",
-            "type": "end",
-            "position": {"x": 600.0, "y": 0.0},
-            "data": {"title": "종료"},
-            "parameters": {},
-        },
     ]
 
     test_connections = [
         {"from": "start", "to": "test_node", "outputType": None},
-        {"from": "test_node", "to": "end", "outputType": None},
     ]
 
     db.save_script_data(new_script_id, test_nodes, test_connections)

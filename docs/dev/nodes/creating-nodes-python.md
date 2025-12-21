@@ -1,4 +1,6 @@
-**최신 수정일자: 2025.12.20**
+**최신 수정일자: 2025.12.21**
+
+> **참고**: 반복 노드(Repeat Node)는 특수한 연결점과 실행 로직을 가진 노드의 예시입니다. 특수 기능이 필요한 노드를 만들 때는 "6. 특수 기능 노드 구현" 섹션을 참고하세요.
 
 # Python 노드 생성 가이드
 
@@ -148,6 +150,9 @@ NODES_CONFIG: dict[str, dict[str, Any]] = {
 
 - **`input_schema`**: 노드의 입력 형식을 정의합니다. 노드 설정 모달의 입력 미리보기에 사용됩니다.
 - **`output_schema`**: 노드의 출력 형식을 정의합니다. 노드 설정 모달의 출력 미리보기에 사용됩니다.
+  - 표준 형식: `{action, status, output: {type: "object", properties: {...}}}`
+  - 스키마 기반으로 출력 미리보기가 자동 생성되며, 필드명과 타입에 맞는 의미있는 예시 값이 생성됩니다
+  - 파라미터 변경 시 출력 미리보기가 자동으로 업데이트됩니다
 
 ### 파라미터 타입
 
@@ -194,7 +199,92 @@ NODES_CONFIG: dict[str, dict[str, Any]] = {
 
 - **`requires_folder_path`**: `True`로 설정하면 폴더 경로가 필수임을 표시합니다 (예: `image-touch` 노드)
 
-## 2. 노드 클래스 생성
+## 2. 필요한 라이브러리 설치
+
+노드에서 외부 라이브러리를 사용하는 경우, 다음 단계를 따라야 합니다:
+
+### 2.1 requirements.txt에 라이브러리 추가
+
+노드에서 사용하는 모든 외부 라이브러리를 `server/requirements.txt` 파일에 추가하세요:
+
+```txt
+# 예시: win32 관련 라이브러리
+pywin32>=306
+```
+
+### 2.2 라이브러리 설치
+
+`requirements.txt`에 추가한 후 다음 명령어로 설치하세요:
+
+```bash
+pip install -r server/requirements.txt
+```
+
+또는 특정 라이브러리만 설치하려면:
+
+```bash
+pip install pywin32
+```
+
+### 2.3 노드 코드에서 라이브러리 import
+
+노드 코드에서 라이브러리를 import할 때는 에러 처리를 포함하세요:
+
+```python
+try:
+    import win32com.client
+except ImportError:
+    win32com = None
+
+# 노드 실행 시 라이브러리 확인
+if win32com is None:
+    return create_failed_result(
+        action="my-node",
+        reason="library_not_installed",
+        message="필요한 라이브러리가 설치되어 있지 않습니다. pip install pywin32를 실행하세요.",
+        output={"success": False}
+    )
+```
+
+### 실제 예시: 엑셀 열기 노드
+
+엑셀 파일을 열기 위해 `pywin32` 라이브러리를 사용하는 노드 예시:
+
+**1. requirements.txt에 추가** (이미 추가되어 있음):
+```txt
+pywin32>=306
+```
+
+**2. 노드 코드에서 사용** (`server/nodes/actionnodes/excel_open.py`):
+```python
+try:
+    import win32com.client
+except ImportError:
+    win32com = None
+
+@NodeExecutor("excel-open")
+async def execute(parameters: dict[str, Any]) -> dict[str, Any]:
+    if win32com is None:
+        return create_failed_result(
+            action="excel-open",
+            reason="win32com_not_installed",
+            message="pywin32가 설치되어 있지 않습니다. pip install pywin32를 실행하세요.",
+            output={"success": False}
+        )
+    
+    # 엑셀 파일 열기 로직
+    excel_app = win32com.client.Dispatch("Excel.Application")
+    # ...
+```
+
+### 주의사항
+
+- **Windows 전용 라이브러리**: `pywin32`와 같은 Windows 전용 라이브러리는 Windows 환경에서만 동작합니다.
+- **의존성 관리**: 노드를 배포하거나 다른 개발자와 공유할 때는 `requirements.txt`에 모든 의존성을 명시해야 합니다.
+- **버전 고정**: 특정 버전이 필요한 경우 버전을 명시하세요 (예: `pywin32>=306`).
+- **에러 처리**: 라이브러리가 설치되지 않은 경우를 대비해 항상 try-except로 감싸고 적절한 에러 메시지를 반환하세요.
+
+## 3. 노드 클래스 생성
 
 노드 타입에 따라 적절한 디렉토리에 Python 파일을 생성하세요:
 
@@ -307,7 +397,7 @@ if not some_condition:
 return {"action": "click", "status": "completed", "output": {"x": x, "y": y}}
 ```
 
-## 3. JavaScript 렌더링 파일 생성
+## 4. JavaScript 렌더링 파일 생성
 
 Python 노드도 클라이언트에서 렌더링하기 위해 JavaScript 파일이 필요합니다.
 
@@ -349,7 +439,7 @@ Python 노드도 클라이언트에서 렌더링하기 위해 JavaScript 파일�
 })();
 ```
 
-## 4. 자동 스크립트 로드 (Import)
+## 5. 자동 스크립트 로드 (Import)
 
 **중요**: JavaScript 파일은 **자동으로 로드**됩니다. `index.html`을 수정할 필요가 없습니다.
 
@@ -378,7 +468,99 @@ Python 노드도 클라이언트에서 렌더링하기 위해 JavaScript 파일�
 [node-my-node] 노드 타입 등록 완료
 ```
 
-## 5. 노드 등록
+## 6. 특수 기능 노드 구현
+
+일부 노드는 특수한 연결점이나 실행 로직을 가질 수 있습니다. 반복 노드(Repeat Node)를 예시로 설명합니다.
+
+### 6.1 아래 연결점 (Bottom Output) 구현
+
+반복 노드처럼 노드 하단에 특별한 연결점이 필요한 경우:
+
+**1. `nodes_config.py`에 플래그 추가**:
+```python
+"repeat": {
+    "has_bottom_output": True,  # 아래 연결점이 있음을 표시
+    # ... 기타 설정
+}
+```
+
+**2. JavaScript 렌더링에 아래 연결점 추가** (`node-repeat.js`):
+```javascript
+renderContent(nodeData) {
+    return `
+        <div class="node-input"></div>
+        <div class="node-content">
+            <!-- 노드 내용 -->
+        </div>
+        <div class="node-output" title="출력"></div>
+        <div class="node-bottom-output" title="반복할 노드들을 연결">
+            <div class="bottom-output-dot">
+                <span class="output-symbol">↓</span>
+            </div>
+            <span class="bottom-output-label">반복</span>
+        </div>
+        <div class="node-settings">⚙</div>
+    `;
+}
+```
+
+**3. 연결 관리**: `ConnectionManager`가 `has_bottom_output` 플래그를 확인하여 아래 연결점을 자동으로 처리합니다.
+
+### 6.2 특수 실행 로직 구현
+
+반복 노드처럼 특수한 실행 로직이 필요한 경우:
+
+**1. 서버 측**: 노드 클래스는 기본 실행만 수행하고, 실제 반복 로직은 워크플로우 실행 엔진에서 처리합니다.
+```python
+@NodeExecutor("repeat")
+async def execute(parameters: dict[str, Any]) -> dict[str, Any]:
+    # 기본 검증만 수행
+    repeat_count = get_parameter(parameters, "repeat_count", default=1)
+    return {
+        "action": "repeat",
+        "status": "completed",
+        "output": {
+            "repeat_count": repeat_count,
+            "completed": True,
+            "iterations": [],  # 실제 반복 결과는 엔진에서 채움
+        },
+    }
+```
+
+**2. 프론트엔드**: `workflow-execution-service.js`에서 노드 타입을 확인하여 특수 로직을 처리합니다.
+```javascript
+if (nodeData.type === 'repeat') {
+    // 반복 노드 특수 처리 로직
+    // - 반복 블록 정의
+    // - 각 반복마다 개별 API 요청
+    // - 실시간 UI 업데이트
+}
+```
+
+**3. 서버 API**: `action_router.py`에서 `repeat_info`를 확인하여 반복 실행을 처리합니다.
+```python
+if repeat_info and repeat_info.get("repeat_count"):
+    current_iteration = repeat_info.get("current_iteration")
+    total_iterations = repeat_info.get("total_iterations")
+    # 단일 반복 실행
+```
+
+### 6.3 메타데이터 전달
+
+반복 블록 내 노드에 메타데이터를 추가하여 서버에서 활용할 수 있습니다:
+```javascript
+nodeCopy.repeat_info = {
+    repeat_count: repeatCount,
+    is_repeat_start: index === 0,
+    is_repeat_end: index === nodesToRepeat.length - 1,
+    current_iteration: iteration + 1,
+    total_iterations: repeatCount
+};
+```
+
+서버에서는 이 메타데이터를 사용하여 로깅이나 특수 처리를 수행할 수 있습니다.
+
+## 7. 노드 등록
 
 노드는 **완전 자동으로 등록**됩니다. 별도의 등록 코드는 필요하지 않습니다.
 
