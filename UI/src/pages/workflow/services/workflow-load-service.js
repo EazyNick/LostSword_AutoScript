@@ -585,6 +585,14 @@ export class WorkflowLoadService {
                             if (nodeManager.dragController) {
                                 nodeManager.dragController.attachNode(nodeElement);
                             }
+
+                            // 노드 크기 조정 및 아래 연결점 위치 업데이트
+                            if (nodeManager.adjustNodeSize) {
+                                nodeManager.adjustNodeSize(nodeElement);
+                            }
+                            if (nodeManager.adjustBottomOutputPosition) {
+                                nodeManager.adjustBottomOutputPosition(nodeElement);
+                            }
                         }
                     }, 100);
                 }

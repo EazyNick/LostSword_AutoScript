@@ -174,6 +174,7 @@ class NodeRepository:
     def validate_connections(self, nodes: list[dict[str, Any]], connections: list[dict[str, Any]]) -> None:
         """
         연결 정보 검증 (조건 노드가 아닌 노드는 출력을 최대 1개만 연결 가능)
+        반복 노드의 경우 아래 연결점(bottom)은 출력으로 카운트하지 않음
 
         Args:
             nodes: 노드 목록
@@ -189,6 +190,12 @@ class NodeRepository:
             from_node_id = connection.get("from")
             if from_node_id:
                 node_type = node_type_map.get(from_node_id)
+                output_type = connection.get("outputType")
+
+                # 반복 노드의 아래 연결점(bottom)은 출력으로 카운트하지 않음
+                if node_type == "repeat" and output_type == "bottom":
+                    continue
+
                 # 조건 노드가 아닌 경우
                 if node_type and node_type != "condition":
                     if from_node_id not in node_output_count:

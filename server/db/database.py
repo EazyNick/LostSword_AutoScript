@@ -669,6 +669,63 @@ class DatabaseManager:
             self.scripts.update_script_timestamp(script3_id)
             log_func(f"스크립트 3에 {len(script3_nodes)}개의 노드 추가 완료")
 
+            # 스크립트 4: 반복 노드 테스트
+            # 반복 노드를 사용한 자동화 테스트입니다.
+            # 반복 노드의 아래 연결점에 연결된 노드들을 지정한 횟수만큼 반복 실행합니다.
+            script4_id = self.scripts.create_script("반복 노드 테스트", "반복 노드를 사용한 자동화 테스트")
+            log_func(f"스크립트 4 생성: ID={script4_id}")
+
+            script4_nodes = [
+                {
+                    "id": "start",
+                    "type": "start",
+                    "position": {"x": 0.0, "y": 0.0},
+                    "data": {"title": "시작"},
+                    "parameters": {},
+                    "description": None,
+                },
+                {
+                    "id": "node1",
+                    "type": "repeat",
+                    "position": {"x": 300.0, "y": 0.0},
+                    "data": {"title": "반복"},
+                    "parameters": {
+                        "repeat_count": 3,  # 3번 반복
+                    },
+                    "description": "아래 연결된 노드를 3번 반복 실행",
+                },
+                {
+                    "id": "node2",
+                    "type": "wait",
+                    "position": {"x": 300.0, "y": 200.0},  # 반복 노드 아래에 배치
+                    "data": {"title": "대기 (반복)"},
+                    "parameters": {
+                        "wait_time": 1.0,  # 1초 대기
+                    },
+                    "description": "반복 실행될 노드",
+                },
+                {
+                    "id": "node3",
+                    "type": "wait",
+                    "position": {"x": 600.0, "y": 0.0},  # 반복 노드 오른쪽에 배치
+                    "data": {"title": "완료 후 실행"},
+                    "parameters": {
+                        "wait_time": 0.5,  # 0.5초 대기
+                    },
+                    "description": "반복 완료 후 실행될 노드",
+                },
+            ]
+
+            script4_connections = [
+                {"from": "start", "to": "node1", "outputType": None},  # 시작 -> 반복 노드
+                {"from": "node1", "to": "node2", "outputType": "bottom"},  # 반복 노드(아래 연결점) -> 대기 노드
+                {"from": "node1", "to": "node3", "outputType": None},  # 반복 노드(오른쪽 출력) -> 완료 후 실행 노드
+            ]
+
+            self.nodes.save_nodes(script4_id, script4_nodes, script4_connections)
+            self.scripts.update_script_timestamp(script4_id)
+            log_func(f"스크립트 4에 {len(script4_nodes)}개의 노드 추가 완료")
+
             # 사용자 설정 예시 데이터 추가
             user_settings_to_save = [
                 ("theme", "dark"),
@@ -679,7 +736,7 @@ class DatabaseManager:
 
             import json
 
-            script_order = json.dumps([script1_id, script2_id, script3_id], ensure_ascii=False)
+            script_order = json.dumps([script1_id, script2_id, script3_id, script4_id], ensure_ascii=False)
             user_settings_to_save.append(("script-order", script_order))  # 스크립트 순서
 
             # 첫 번째 스크립트 ID를 포커스된 스크립트로 설정
@@ -701,9 +758,9 @@ class DatabaseManager:
             log_func("사용자 설정 예시 데이터 추가 완료")
 
             # 생성된 스크립트 및 노드 개수 계산
-            created_scripts = [script1_id, script2_id, script3_id]
+            created_scripts = [script1_id, script2_id, script3_id, script4_id]
             total_scripts = len(created_scripts)
-            total_nodes = len(script1_nodes) + len(script2_nodes) + len(script3_nodes)
+            total_nodes = len(script1_nodes) + len(script2_nodes) + len(script3_nodes) + len(script4_nodes)
 
             # 사용자 설정 개수 계산 (실제 저장된 설정 개수)
             user_settings_count = len(user_settings_to_save)

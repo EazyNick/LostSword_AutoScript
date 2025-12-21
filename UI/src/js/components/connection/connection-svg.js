@@ -136,6 +136,11 @@ export class ConnectionSVGManager {
             // 조건 노드의 False 출력: .output-dot을 찾거나, 없으면 .false-output 자체 사용
             fromConnector =
                 fromNode.querySelector('.false-output .output-dot') || fromNode.querySelector('.false-output');
+        } else if (outputType === 'bottom') {
+            // 반복 노드의 아래 연결점: .bottom-output-dot을 찾거나, 없으면 .node-bottom-output 자체 사용
+            fromConnector =
+                fromNode.querySelector('.node-bottom-output .bottom-output-dot') ||
+                fromNode.querySelector('.node-bottom-output');
         } else {
             // 일반 노드 또는 출력 타입이 없는 경우
             fromConnector = fromNode.querySelector('.node-output:not(.true-output):not(.false-output)');
@@ -272,6 +277,11 @@ export class ConnectionSVGManager {
                         fromConnector =
                             fromNode.querySelector('.false-output .output-dot') ||
                             fromNode.querySelector('.false-output');
+                    } else if (connection.outputType === 'bottom') {
+                        // 반복 노드의 아래 연결점
+                        fromConnector =
+                            fromNode.querySelector('.node-bottom-output .bottom-output-dot') ||
+                            fromNode.querySelector('.node-bottom-output');
                     } else {
                         // 일반 노드 또는 출력 타입이 없는 경우
                         fromConnector = fromNode.querySelector('.node-output:not(.true-output):not(.false-output)');

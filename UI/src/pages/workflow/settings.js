@@ -5,6 +5,7 @@
 
 import { getThemeManagerInstance } from '../../js/utils/theme-manager.js';
 import { t, setLanguage, getLanguage } from '../../js/utils/i18n.js';
+import { getToastManagerInstance } from '../../js/utils/toast.js';
 
 /**
  * 로거 유틸리티 가져오기
@@ -36,8 +37,7 @@ export class SettingsManager {
             // 실행 설정
             execution: {
                 defaultTimeout: 30, // 초
-                retryCount: 3, // 회
-                parallelExecution: false // 병렬 실행 여부
+                retryCount: 3 // 회
             },
             // 스크린샷 설정
             screenshot: {
@@ -257,23 +257,6 @@ export class SettingsManager {
                                 <option value="3" ${this.settings.execution.retryCount === 3 ? 'selected' : ''}>3${t('settings.times')}</option>
                                 <option value="5" ${this.settings.execution.retryCount === 5 ? 'selected' : ''}>5${t('settings.times')}</option>
                             </select>
-                        </div>
-                    </div>
-
-                    <!-- 병렬 실행 -->
-                    <div class="settings-item">
-                        <div class="settings-item-info">
-                            <div class="settings-item-icon">⚡</div>
-                            <div class="settings-item-text">
-                                <div class="settings-item-label">${t('settings.parallelExecution')}</div>
-                                <div class="settings-item-description">${t('settings.parallelExecutionDescription')}</div>
-                            </div>
-                        </div>
-                        <div class="settings-item-control">
-                            <label class="toggle-switch">
-                                <input type="checkbox" id="setting-parallel" ${this.settings.execution.parallelExecution ? 'checked' : ''} />
-                                <span class="toggle-slider"></span>
-                            </label>
                         </div>
                     </div>
                 </div>
@@ -539,17 +522,6 @@ export class SettingsManager {
             });
         }
 
-        // 병렬 실행
-        const parallel = document.getElementById('setting-parallel');
-        if (parallel) {
-            const newParallel = parallel.cloneNode(true);
-            parallel.parentNode.replaceChild(newParallel, parallel);
-            newParallel.checked = this.settings.execution.parallelExecution;
-            newParallel.addEventListener('change', (e) => {
-                this.settings.execution.parallelExecution = e.target.checked;
-            });
-        }
-
         // 자동 스크린샷
         const autoScreenshot = document.getElementById('setting-auto-screenshot');
         if (autoScreenshot) {
@@ -707,22 +679,11 @@ export class SettingsManager {
      * 저장 완료 알림 표시
      */
     showSaveNotification() {
-        // 간단한 알림 메시지 표시
-        const notification = document.createElement('div');
-        notification.className = 'settings-notification';
-        notification.textContent = t('settings.settingsSaved');
-        document.body.appendChild(notification);
-
-        setTimeout(() => {
-            notification.classList.add('show');
-        }, 10);
-
-        setTimeout(() => {
-            notification.classList.remove('show');
-            setTimeout(() => {
-                document.body.removeChild(notification);
-            }, 300);
-        }, 2000);
+        // ToastManager 사용 (Ctrl+S와 동일한 방식, 사이드바 고려)
+        const toastManager = getToastManagerInstance();
+        if (toastManager) {
+            toastManager.success(t('settings.settingsSaved'), 2000);
+        }
     }
 }
 

@@ -322,6 +322,455 @@ export class WorkflowExecutionService {
                             }
                         }
 
+                        // repeat 노드인 경우 아래 연결된 노드들을 서버로 전송하여 반복 실행
+                        if (
+                            nodeData.type === 'repeat' &&
+                            nodeResult.output &&
+                            typeof nodeResult.output.repeat_count === 'number'
+                        ) {
+                            const repeatCount = nodeResult.output.repeat_count;
+                            const logger = this.workflowPage.getLogger();
+                            logger.log(`[WorkflowExecutionService] Repeat 노드 실행 - 반복 횟수: ${repeatCount}`);
+
+                            // 반복 노드의 연결 정보 가져오기
+                            const connectionManager = nodeManager?.connectionManager;
+                            if (connectionManager) {
+                                const connections = connectionManager.getConnections();
+
+                                // 아래 연결점(bottom-output)에 연결된 노드들 찾기
+                                const bottomConnections = connections.filter(
+                                    (c) => c.from === nodeData.id && c.outputType === 'bottom'
+                                );
+
+                                if (bottomConnections.length > 0) {
+                                    // 아래 연결된 첫 번째 노드 찾기 (반복 연결점에는 노드 하나만 연결됨)
+                                    const bottomNodeId = bottomConnections[0].to;
+
+                                    // 반복 연결점에 연결된 노드부터 시작해서 출력 연결을 따라가며 체인 구성
+                                    // 끝 노드의 출력이 아무것도 연결되지 않으면 거기서 반복 블록 종료
+                                    const nodesToRepeat = [];
+                                    const visited = new Set(); // 순환 방지
+                                    let currentNodeId = bottomNodeId;
+
+                                    while (currentNodeId && !visited.has(currentNodeId)) {
+                                        visited.add(currentNodeId);
+
+                                        // 현재 노드를 workflowData에서 찾기
+                                        const currentNode = workflowData.nodes.find((n) => n.id === currentNodeId);
+                                        if (!currentNode) {
+                                            break;
+                                        }
+
+                                        nodesToRepeat.push(currentNode);
+
+                                        // 현재 노드의 출력 연결 찾기 (일반 출력만, 조건 노드의 true/false는 제외)
+                                        // 반복 노드로 돌아가는 연결은 제외 (순환 방지)
+                                        const nextConnections = connections.filter(
+                                            (c) =>
+                                                c.from === currentNodeId &&
+                                                (!c.outputType || c.outputType === 'output') &&
+                                                c.to !== nodeData.id // 반복 노드로 돌아가는 연결 제외
+                                        );
+
+                                        if (nextConnections.length > 0) {
+                                            // 첫 번째 출력 연결을 따라감
+                                            currentNodeId = nextConnections[0].to;
+                                        } else {
+                                            // 더 이상 출력 연결이 없으면 반복 블록의 끝
+                                            break;
+                                        }
+                                    }
+
+                                    if (nodesToRepeat.length > 0) {
+                                        logger.log(
+                                            `[WorkflowExecutionService] 반복할 노드 체인: ${nodesToRepeat.map((n) => n.id).join(' → ')}`
+                                        );
+
+                                        // 반복 노드 실행 UI 표시
+                                        const repeatNodeElement =
+                                            document.getElementById(nodeData.id) ||
+                                            document.querySelector(`[data-node-id="${nodeData.id}"]`);
+
+                                        // 각 반복마다 서버로 요청을 보내서 실시간 UI 업데이트
+                                        const apiBaseUrl = window.API_BASE_URL || 'http://localhost:8001';
+                                        const allIterationResults = [];
+
+                                        try {
+                                            // 반복 연결점에 연결된 노드들에 반복 정보 메타데이터 추가
+                                            const nodesWithRepeatInfo = nodesToRepeat.map((node, index) => {
+                                                const nodeCopy = { ...node };
+                                                // 반복 정보 메타데이터 추가
+                                                nodeCopy.repeat_info = {
+                                                    repeat_count: repeatCount,
+                                                    is_repeat_start: index === 0,
+                                                    is_repeat_end: index === nodesToRepeat.length - 1,
+                                                    node_index_in_repeat: index,
+                                                    total_nodes_in_repeat: nodesToRepeat.length
+                                                };
+                                                return nodeCopy;
+                                            });
+
+                                            // 각 반복마다 실행
+                                            for (let iteration = 0; iteration < repeatCount; iteration++) {
+                                                // 취소 체크
+                                                if (this.isCancelled) {
+                                                    break;
+                                                }
+
+                                                logger.log(
+                                                    `[WorkflowExecutionService] 반복 실행 ${iteration + 1}/${repeatCount} 시작`
+                                                );
+
+                                                // 1. 각 반복 시작 시 반복 노드를 실행 중 상태로 표시
+                                                if (repeatNodeElement) {
+                                                    this.showNodeExecuting(repeatNodeElement);
+                                                }
+
+                                                // 2. 반복 연결점에 연결된 노드들을 기본 상태로 리셋 (이전 반복의 상태 제거)
+                                                nodesToRepeat.forEach((node) => {
+                                                    const nodeElement =
+                                                        document.getElementById(node.id) ||
+                                                        document.querySelector(`[data-node-id="${node.id}"]`);
+                                                    if (nodeElement) {
+                                                        // 이전 상태 제거
+                                                        nodeElement.classList.remove('executing', 'completed', 'error');
+                                                    }
+                                                });
+
+                                                // 3. 각 노드를 순차적으로 개별 실행하여 실시간 UI 업데이트
+                                                const iterationResults = [];
+                                                let currentPreviousResult = previousNodeResult;
+
+                                                for (let nodeIndex = 0; nodeIndex < nodesToRepeat.length; nodeIndex++) {
+                                                    // 취소 체크
+                                                    if (this.isCancelled) {
+                                                        break;
+                                                    }
+
+                                                    const node = nodesToRepeat[nodeIndex];
+                                                    const nodeWithRepeatInfo = nodesWithRepeatInfo[nodeIndex];
+
+                                                    // 4. 각 노드 실행 전에 실행 중 상태로 표시
+                                                    const nodeElement =
+                                                        document.getElementById(node.id) ||
+                                                        document.querySelector(`[data-node-id="${node.id}"]`);
+                                                    if (nodeElement) {
+                                                        this.showNodeExecuting(nodeElement);
+                                                    }
+
+                                                    // 5. 각 노드를 개별적으로 서버로 요청
+                                                    try {
+                                                        const nodeResponse = await fetch(
+                                                            `${apiBaseUrl}/api/execute-nodes`,
+                                                            {
+                                                                method: 'POST',
+                                                                headers: {
+                                                                    'Content-Type': 'application/json'
+                                                                },
+                                                                body: JSON.stringify({
+                                                                    nodes: [nodeWithRepeatInfo],
+                                                                    execution_mode: 'sequential',
+                                                                    total_nodes: totalNodesCount,
+                                                                    current_node_index: i + nodeIndex,
+                                                                    previous_node_result: currentPreviousResult,
+                                                                    repeat_info: {
+                                                                        repeat_count: 1,
+                                                                        current_iteration: iteration + 1,
+                                                                        total_iterations: repeatCount,
+                                                                        repeat_node_id: nodeData.id
+                                                                    },
+                                                                    execution_id: this.lastExecutionId,
+                                                                    script_id: this.workflowPage.getCurrentScriptId?.()
+                                                                })
+                                                            }
+                                                        );
+
+                                                        const nodeResult = await nodeResponse.json();
+
+                                                        if (
+                                                            nodeResult.success &&
+                                                            nodeResult.data?.results &&
+                                                            nodeResult.data.results.length > 0
+                                                        ) {
+                                                            const result = nodeResult.data.results[0];
+                                                            iterationResults.push(result);
+
+                                                            // 6. 노드 실행 완료 후 UI 업데이트
+                                                            if (nodeElement) {
+                                                                if (result.status === 'failed' || result.error) {
+                                                                    this.showNodeFailed(nodeElement);
+                                                                } else {
+                                                                    this.showNodeCompleted(nodeElement, result);
+                                                                }
+                                                            }
+
+                                                            // 다음 노드를 위한 이전 노드 결과 업데이트
+                                                            currentPreviousResult = {
+                                                                ...result,
+                                                                node_id: node.id,
+                                                                node_name: node.data?.title || node.type || node.id
+                                                            };
+                                                        } else {
+                                                            // 노드 실행 실패
+                                                            const errorResult = {
+                                                                status: 'failed',
+                                                                error: nodeResult.error || '노드 실행 실패',
+                                                                node_id: node.id
+                                                            };
+                                                            iterationResults.push(errorResult);
+
+                                                            if (nodeElement) {
+                                                                this.showNodeFailed(nodeElement);
+                                                            }
+                                                        }
+                                                    } catch (nodeError) {
+                                                        logger.error(
+                                                            `[WorkflowExecutionService] 반복 ${iteration + 1}/${repeatCount} - 노드 ${nodeIndex + 1} 실행 중 오류:`,
+                                                            nodeError
+                                                        );
+                                                        const errorResult = {
+                                                            status: 'failed',
+                                                            error: String(nodeError),
+                                                            node_id: node.id
+                                                        };
+                                                        iterationResults.push(errorResult);
+
+                                                        if (nodeElement) {
+                                                            this.showNodeFailed(nodeElement);
+                                                        }
+                                                    }
+                                                }
+
+                                                // 7. 각 반복의 결과 저장
+                                                allIterationResults.push(...iterationResults);
+
+                                                // 8. 각 반복 완료 시 반복 노드를 완료 상태로 표시 (마지막 반복이 아닌 경우)
+                                                if (iteration < repeatCount - 1) {
+                                                    // 마지막 반복이 아니면 잠시 완료 상태로 표시 후 다음 반복 시작
+                                                    logger.log(
+                                                        `[WorkflowExecutionService] 반복 실행 ${iteration + 1}/${repeatCount} 종료`
+                                                    );
+                                                    if (repeatNodeElement) {
+                                                        this.showNodeCompleted(repeatNodeElement);
+                                                        // 다음 반복 시작 전에 잠시 대기
+                                                        await new Promise((resolve) => setTimeout(resolve, 300));
+                                                    }
+                                                } else {
+                                                    // 마지막 반복 종료
+                                                    logger.log(
+                                                        `[WorkflowExecutionService] 반복 실행 ${iteration + 1}/${repeatCount} 종료 (마지막 반복)`
+                                                    );
+                                                }
+
+                                                // 마지막 노드 결과를 이전 노드 결과로 업데이트 (다음 반복을 위해)
+                                                if (iterationResults.length > 0) {
+                                                    const lastResult = iterationResults[iterationResults.length - 1];
+                                                    previousNodeResult = {
+                                                        ...lastResult,
+                                                        node_id: nodesToRepeat[nodesToRepeat.length - 1]?.id,
+                                                        node_name:
+                                                            nodesToRepeat[nodesToRepeat.length - 1]?.data?.title ||
+                                                            nodesToRepeat[nodesToRepeat.length - 1]?.type ||
+                                                            nodesToRepeat[nodesToRepeat.length - 1]?.id
+                                                    };
+                                                }
+                                            }
+
+                                            // 모든 반복 결과를 노드 결과에 저장
+                                            nodeResult.output.iterations = allIterationResults;
+                                            logger.log(
+                                                `[WorkflowExecutionService] 반복 노드 실행 완료 - 총 ${allIterationResults.length}개 노드 실행 (${repeatCount}회 반복 × ${nodesToRepeat.length}개 노드)`
+                                            );
+
+                                            // 실행 완료 UI 표시
+                                            if (repeatNodeElement) {
+                                                this.showNodeCompleted(repeatNodeElement, nodeResult);
+                                            }
+
+                                            // 반복 노드의 오른쪽 출력 연결점(output)에 연결된 노드 찾기 (제거 전에 먼저 찾기)
+                                            const repeatNodeId = nodeData.id; // 반복 노드의 ID 저장
+                                            const outputConnections = connections.filter(
+                                                (c) =>
+                                                    c.from === repeatNodeId &&
+                                                    (!c.outputType || c.outputType === 'output')
+                                            );
+
+                                            logger.log(
+                                                `[WorkflowExecutionService] 반복 노드의 출력 연결점 연결 정보: ${JSON.stringify(outputConnections.map((c) => ({ from: c.from, to: c.to, outputType: c.outputType })))}`
+                                            );
+                                            logger.log(
+                                                `[WorkflowExecutionService] 현재 workflowData.nodes의 노드 ID 목록: ${workflowData.nodes.map((n) => n.id).join(', ')}`
+                                            );
+
+                                            let outputNodeId = null;
+                                            let outputNodeIndex = -1;
+
+                                            if (outputConnections.length > 0) {
+                                                // 출력 연결점에 연결된 첫 번째 노드 찾기
+                                                outputNodeId = outputConnections[0].to;
+
+                                                logger.log(
+                                                    `[WorkflowExecutionService] 출력 연결점에 연결된 노드 ID: ${outputNodeId}`
+                                                );
+
+                                                // 출력 연결점에 연결된 노드가 반복 연결점에 연결된 노드 체인에 포함되어 있는지 확인
+                                                const isOutputNodeInRepeatChain = nodesToRepeat.some(
+                                                    (n) => n.id === outputNodeId
+                                                );
+
+                                                logger.log(
+                                                    `[WorkflowExecutionService] 출력 연결점 노드가 반복 연결점 체인에 포함되어 있는지: ${isOutputNodeInRepeatChain}`
+                                                );
+
+                                                if (isOutputNodeInRepeatChain) {
+                                                    logger.warn(
+                                                        `[WorkflowExecutionService] 반복 노드의 출력 연결점에 연결된 노드가 반복 연결점에 연결된 노드 체인에 포함되어 있습니다: ${outputNodeId}`
+                                                    );
+                                                    outputNodeId = null; // 출력 노드를 null로 설정하여 스킵
+                                                } else {
+                                                    // 출력 연결점에 연결된 노드의 인덱스 찾기 (제거 전)
+                                                    outputNodeIndex = workflowData.nodes.findIndex(
+                                                        (n) => n.id === outputNodeId
+                                                    );
+
+                                                    if (outputNodeIndex === -1) {
+                                                        // workflowData.nodes에 없으면 DOM에서 직접 찾아서 추가
+                                                        const outputNodeElement =
+                                                            document.getElementById(outputNodeId) ||
+                                                            document.querySelector(`[data-node-id="${outputNodeId}"]`);
+
+                                                        if (outputNodeElement) {
+                                                            logger.log(
+                                                                `[WorkflowExecutionService] 출력 연결점 노드를 DOM에서 찾아 workflowData.nodes에 추가: ${outputNodeId}`
+                                                            );
+
+                                                            // 노드 데이터 준비
+                                                            const nodeManager = this.workflowPage.getNodeManager();
+                                                            const outputNodeData =
+                                                                this.workflowPage.getNodeData(outputNodeElement);
+                                                            const outputNodeType =
+                                                                this.workflowPage.getNodeType(outputNodeElement);
+
+                                                            // workflowData.nodes에 추가 (반복 노드 다음에 추가)
+                                                            const repeatNodeIndexInWorkflow =
+                                                                workflowData.nodes.findIndex(
+                                                                    (n) => n.id === repeatNodeId
+                                                                );
+
+                                                            const newNodeData = {
+                                                                id: outputNodeId,
+                                                                type: outputNodeType,
+                                                                data: outputNodeData,
+                                                                ...outputNodeData
+                                                            };
+
+                                                            // 반복 노드 다음에 삽입
+                                                            if (repeatNodeIndexInWorkflow !== -1) {
+                                                                workflowData.nodes.splice(
+                                                                    repeatNodeIndexInWorkflow + 1,
+                                                                    0,
+                                                                    newNodeData
+                                                                );
+                                                                outputNodeIndex = repeatNodeIndexInWorkflow + 1;
+                                                            } else {
+                                                                // 반복 노드를 찾을 수 없으면 현재 반복 노드 위치 다음에 추가
+                                                                const currentRepeatNodeIndex = i; // 현재 반복 노드의 인덱스
+                                                                if (
+                                                                    currentRepeatNodeIndex !== -1 &&
+                                                                    currentRepeatNodeIndex < workflowData.nodes.length
+                                                                ) {
+                                                                    workflowData.nodes.splice(
+                                                                        currentRepeatNodeIndex + 1,
+                                                                        0,
+                                                                        newNodeData
+                                                                    );
+                                                                    outputNodeIndex = currentRepeatNodeIndex + 1;
+                                                                } else {
+                                                                    // 반복 노드를 찾을 수 없으면 맨 끝에 추가
+                                                                    workflowData.nodes.push(newNodeData);
+                                                                    outputNodeIndex = workflowData.nodes.length - 1;
+                                                                }
+                                                            }
+
+                                                            logger.log(
+                                                                `[WorkflowExecutionService] 출력 연결점 노드 추가 완료: ${outputNodeId} (인덱스: ${outputNodeIndex})`
+                                                            );
+                                                        } else {
+                                                            logger.warn(
+                                                                `[WorkflowExecutionService] 반복 노드의 출력 연결점에 연결된 노드를 DOM에서도 찾을 수 없습니다: ${outputNodeId}`
+                                                            );
+                                                            outputNodeId = null; // 출력 노드를 null로 설정하여 스킵
+                                                        }
+                                                    } else {
+                                                        logger.log(
+                                                            `[WorkflowExecutionService] 반복 노드의 출력 연결점에 연결된 노드 찾음: ${outputNodeId} (인덱스: ${outputNodeIndex})`
+                                                        );
+                                                    }
+                                                }
+                                            } else {
+                                                logger.log(
+                                                    '[WorkflowExecutionService] 반복 노드의 출력 연결점에 연결된 노드가 없습니다. 반복 노드 실행 완료.'
+                                                );
+                                            }
+
+                                            // 반복 연결점에 연결된 노드들을 workflowData.nodes에서 제거하여 다시 실행되지 않도록 함
+                                            const nodesToRepeatIds = new Set(nodesToRepeat.map((n) => n.id));
+                                            const originalNodesLength = workflowData.nodes.length;
+
+                                            // 출력 연결점에 연결된 노드가 있으면 제거 대상에서 제외
+                                            if (outputNodeId) {
+                                                nodesToRepeatIds.delete(outputNodeId);
+                                            }
+
+                                            workflowData.nodes = workflowData.nodes.filter(
+                                                (n) => !nodesToRepeatIds.has(n.id)
+                                            );
+                                            logger.log(
+                                                `[WorkflowExecutionService] 반복 연결점에 연결된 노드들을 workflowData.nodes에서 제거: ${nodesToRepeatIds.size}개 노드 제거 (${originalNodesLength} → ${workflowData.nodes.length})`
+                                            );
+
+                                            // 출력 연결점에 연결된 노드로 진행
+                                            if (outputNodeId && outputNodeIndex !== -1) {
+                                                // 제거 후 인덱스 재계산 (제거된 노드들 때문에 인덱스가 변경될 수 있음)
+                                                const newOutputNodeIndex = workflowData.nodes.findIndex(
+                                                    (n) => n.id === outputNodeId
+                                                );
+
+                                                if (newOutputNodeIndex !== -1) {
+                                                    logger.log(
+                                                        `[WorkflowExecutionService] 반복 노드 실행 완료 후 출력 연결점에 연결된 노드로 진행: ${outputNodeId} (인덱스: ${newOutputNodeIndex})`
+                                                    );
+
+                                                    // 다음 노드 인덱스를 현재 인덱스로 설정하여 출력 연결점에 연결된 노드가 실행되도록 함
+                                                    // i를 newOutputNodeIndex - 1로 설정하면 다음 루프에서 newOutputNodeIndex가 실행됨
+                                                    i = newOutputNodeIndex - 1;
+
+                                                    // 반복 노드 실행 후 다음 노드로 진행하므로, 반복 노드 실행 루프를 종료
+                                                    // 다음 노드는 메인 루프에서 실행됨
+                                                } else {
+                                                    logger.error(
+                                                        `[WorkflowExecutionService] 반복 노드의 출력 연결점에 연결된 노드를 제거 후 workflowData에서 찾을 수 없습니다: ${outputNodeId}`
+                                                    );
+                                                }
+                                            }
+                                        } catch (error) {
+                                            logger.error('[WorkflowExecutionService] 반복 노드 실행 중 오류:', error);
+                                            const repeatNodeElement =
+                                                document.getElementById(nodeData.id) ||
+                                                document.querySelector(`[data-node-id="${nodeData.id}"]`);
+                                            if (repeatNodeElement) {
+                                                this.showNodeFailed(repeatNodeElement);
+                                            }
+                                        }
+                                    } else {
+                                        logger.warn(
+                                            '[WorkflowExecutionService] 반복 연결점에 연결된 노드 체인을 찾을 수 없습니다.'
+                                        );
+                                    }
+                                }
+                            }
+                        }
+
                         // 이전 노드 결과 업데이트 (다음 노드 실행 시 전달)
                         previousNodeResult = {
                             ...nodeResult,
@@ -698,19 +1147,45 @@ export class WorkflowExecutionService {
                 if (nextMap.has(cur)) {
                     const nextNodes = nextMap.get(cur);
 
+                    // 현재 노드의 타입 확인
+                    const currentNodeElement = byId.get(cur);
+                    const currentNodeType = currentNodeElement?.dataset?.nodeType || nodeManager?.nodeData?.[cur]?.type;
+                    const isRepeatNode = currentNodeType === 'repeat';
+
+                    // 반복 노드인 경우: bottom 연결점과 output 연결점 모두 처리
                     // 조건 노드가 아닌 경우: 첫 번째 연결만 따라감
                     // 조건 노드인 경우: 향후 조건 평가 결과에 따라 분기 (현재는 첫 번째 연결만)
-                    const nextNode = nextNodes[0]; // 현재는 첫 번째 연결만 사용
+                    if (isRepeatNode) {
+                        // 반복 노드의 경우 모든 연결점 처리
+                        // bottom 연결점에 연결된 노드들 (반복할 노드들)
+                        // output 연결점에 연결된 노드 (반복 완료 후 실행할 노드)
+                        nextNodes.forEach((nextNode) => {
+                            if (nextNode && byId.has(nextNode.to)) {
+                                const nextElement = byId.get(nextNode.to);
+                                const nextId = nextElement.id || nextElement.dataset.nodeId;
 
-                    if (nextNode && byId.has(nextNode.to)) {
-                        const nextElement = byId.get(nextNode.to);
-                        const nextId = nextElement.id || nextElement.dataset.nodeId;
+                                // 아직 ordered에 추가되지 않은 노드만 추가
+                                if (!addedToOrdered.has(nextId)) {
+                                    ordered.push(nextElement);
+                                    addedToOrdered.add(nextId); // 추가된 노드 ID 기록
+                                    queue.push(nextId);
+                                }
+                            }
+                        });
+                    } else {
+                        // 일반 노드의 경우 첫 번째 연결만 따라감
+                        const nextNode = nextNodes[0]; // 현재는 첫 번째 연결만 사용
 
-                        // 아직 ordered에 추가되지 않은 노드만 추가
-                        if (!addedToOrdered.has(nextId)) {
-                            ordered.push(nextElement);
-                            addedToOrdered.add(nextId); // 추가된 노드 ID 기록
-                            queue.push(nextId);
+                        if (nextNode && byId.has(nextNode.to)) {
+                            const nextElement = byId.get(nextNode.to);
+                            const nextId = nextElement.id || nextElement.dataset.nodeId;
+
+                            // 아직 ordered에 추가되지 않은 노드만 추가
+                            if (!addedToOrdered.has(nextId)) {
+                                ordered.push(nextElement);
+                                addedToOrdered.add(nextId); // 추가된 노드 ID 기록
+                                queue.push(nextId);
+                            }
                         }
                     }
                 }

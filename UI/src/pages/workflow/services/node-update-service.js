@@ -50,8 +50,11 @@ export class NodeUpdateService {
             const saveService = this.workflowPage.getSaveService();
             if (saveService) {
                 log('[WorkflowPage] 서버에 노드 변경사항 저장 시작');
-                await saveService.save({ useToast: false }); // Toast 알림은 사용하지 않음 (모달 닫기 전이므로)
+                await saveService.save({ useToast: false, showAlert: false }); // Toast 알림과 팝업 알림 모두 사용하지 않음
                 log('[WorkflowPage] 서버에 노드 변경사항 저장 완료');
+
+                // 저장 완료 알림 표시 (가운데 메시지)
+                this.showSaveNotification();
             } else {
                 logError('[WorkflowPage] SaveService를 찾을 수 없습니다.');
             }
@@ -182,11 +185,8 @@ export class NodeUpdateService {
         } else if (config?.parameters) {
             // 상세 노드 타입에 파라미터가 없으면 노드 레벨 파라미터 사용
             const paramValues = extractParameterValues(config.parameters, 'edit-node-');
-            console.log('[NodeUpdateService] 노드 레벨 파라미터 추출:', paramValues);
             Object.assign(updatedNodeData, paramValues);
         }
-
-        console.log('[NodeUpdateService] 최종 업데이트된 노드 데이터:', updatedNodeData);
 
         return updatedNodeData;
     }
@@ -242,7 +242,6 @@ export class NodeUpdateService {
             nodeElement.innerHTML = nodeContent;
         } else {
             // 부분적으로만 포함된 경우 기존 요소와 병합
-            console.log('[updateNodeDOM] nodeContent가 부분 구조만 포함, 기존 요소와 병합');
 
             const existingInput = nodeElement.querySelector('.node-input');
             const existingOutput = nodeElement.querySelector('.node-output:not(.true-output):not(.false-output)');
@@ -274,6 +273,14 @@ export class NodeUpdateService {
 
         // 이벤트 리스너 다시 설정
         nodeManager.setupNodeEventListeners(nodeElement);
+
+        // 노드 크기 조정 및 아래 연결점 위치 업데이트
+        if (nodeManager.adjustNodeSize) {
+            nodeManager.adjustNodeSize(nodeElement);
+        }
+        if (nodeManager.adjustBottomOutputPosition) {
+            nodeManager.adjustBottomOutputPosition(nodeElement);
+        }
         if (nodeManager.connectionHandler) {
             nodeManager.connectionHandler.setupConnectionEvents(nodeElement);
         }
@@ -329,5 +336,17 @@ export class NodeUpdateService {
             .catch((e) => {
                 console.warn('이미지 개수 조회 실패:', e);
             });
+    }
+
+    /**
+     * 저장 완료 알림 표시 (가운데 메시지)
+     */
+    showSaveNotification() {
+        // ToastManager 사용 (Ctrl+S와 동일한 방식, 사이드바 고려)
+        const toastManager = this.workflowPage.getToastManager();
+        if (toastManager) {
+            const { t } = window.i18n || { t: (key) => key };
+            toastManager.success(t('settings.settingsSaved') || '설정이 저장되었습니다.', 2000);
+        }
     }
 }

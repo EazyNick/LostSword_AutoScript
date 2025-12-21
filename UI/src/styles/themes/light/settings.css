@@ -158,9 +158,3 @@ body.theme-light .btn-save-settings {
 body.theme-light .btn-save-settings:hover {
     background-color: #2c5282;
 }
-
-/* 설정 알림 - 라이트 모드용 */
-body.theme-light .settings-notification {
-    background-color: #3182ce;
-    color: #ffffff;
-}

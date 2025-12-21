@@ -57,11 +57,11 @@ async def execute_nodes(request: NodeExecutionRequest) -> ActionResponse:
     logger.debug(f"[API] 요청 데이터: {request}")
 
     # 실행 ID 생성 (같은 실행의 노드들을 그룹화)
-    # 날짜시간 기반의 읽기 쉬운 형식: YYYYMMDD-HHMMSS-{랜덤문자열}
-    execution_id = generate_execution_id()
+    # 반복 노드 실행 시 클라이언트에서 전달된 execution_id 사용, 없으면 새로 생성
+    execution_id = request.execution_id if request.execution_id else generate_execution_id()
 
     # 스크립트 ID 추출 (요청에서 가져오거나 None)
-    script_id = getattr(request, "script_id", None)
+    script_id = request.script_id if request.script_id is not None else getattr(request, "script_id", None)
 
     # 실행 시작 시간 기록
     execution_start_time = time.time()
@@ -101,75 +101,296 @@ async def execute_nodes(request: NodeExecutionRequest) -> ActionResponse:
         total_nodes = request.total_nodes if request.total_nodes is not None else len(request.nodes)
         start_index = request.current_node_index if request.current_node_index is not None else 0
 
-        for i, node in enumerate(request.nodes):
-            node_id = node.get("id", f"node_{i}")
-            node_type = node.get("type", "unknown")
-            node_name = node.get("data", {}).get("title") or node.get("data", {}).get("name") or node_id
-            # 현재 노드 순번 계산 (클라이언트에서 전달된 순번 + 루프 인덱스)
-            current_node_number = start_index + i + 1
-            logger.info(
-                f"[API] 노드 {current_node_number}/{total_nodes} 실행 시작 - ID: {node_id}, 타입: {node_type}, 이름: {node_name}"
-            )
-            try:
-                # 실행 컨텍스트와 함께 노드 실행 (execution_id와 메타데이터 전달)
-                result = await action_service.process_node(
-                    node, context, execution_id=execution_id, script_id=script_id
+        # 반복 정보 확인 및 처리
+        repeat_info = request.repeat_info
+        if repeat_info and repeat_info.get("repeat_count"):
+            # 반복 노드의 반복 연결점에 연결된 노드들을 반복 실행
+            # current_iteration이 있으면 해당 반복만 실행 (프론트엔드에서 각 반복마다 요청)
+            current_iteration = repeat_info.get("current_iteration")
+            total_iterations = repeat_info.get("total_iterations")
+            repeat_count = repeat_info.get("repeat_count", 1)
+            repeat_node_id = repeat_info.get("repeat_node_id")
+
+            # current_iteration이 있으면 해당 반복만 실행, 없으면 모든 반복 실행
+            if current_iteration and total_iterations:
+                # 프론트엔드에서 각 반복마다 요청을 보내는 경우
+                logger.info(
+                    f"[API] 반복 노드 실행 - 반복 {current_iteration}/{total_iterations}, 반복 노드 ID: {repeat_node_id}"
                 )
+                # 단일 반복 실행
+                iteration_results = []
+                for i, node in enumerate(request.nodes):
+                    node_id = node.get("id", f"node_{i}")
+                    node_type = node.get("type", "unknown")
+                    node_name = node.get("data", {}).get("title") or node.get("data", {}).get("name") or node_id
 
-                # 결과가 None이면 기본값으로 변환
-                if result is None:
-                    result = {"action": node.get("type", "unknown"), "status": "completed", "output": None}
+                    # 노드의 repeat_info 확인
+                    node_repeat_info = node.get("repeat_info", {})
+                    is_repeat_start = node_repeat_info.get("is_repeat_start", False)
+                    is_repeat_end = node_repeat_info.get("is_repeat_end", False)
 
-                # 결과가 dict가 아니면 dict로 변환
-                if not isinstance(result, dict):
-                    result = {"action": node.get("type", "unknown"), "status": "completed", "output": result}
+                    # 현재 노드 순번 계산
+                    current_node_number = start_index + i + 1
+                    logger.info(
+                        f"[API] 반복 {current_iteration}/{total_iterations} - 노드 {current_node_number}/{total_nodes} 실행 시작 - "
+                        f"ID: {node_id}, 타입: {node_type}, 이름: {node_name}, "
+                        f"반복 시작: {is_repeat_start}, 반복 종료: {is_repeat_end}"
+                    )
 
-                # 결과의 status가 "failed"인지 확인 (NodeExecutor가 에러를 catch해서 dict로 반환하는 경우)
-                if result.get("status") == "failed" or result.get("error"):
+                    try:
+                        # 반복 정보를 노드 데이터에 추가 (서버에서 사용할 수 있도록)
+                        node_with_repeat = {**node}
+                        if not node_with_repeat.get("repeat_info"):
+                            node_with_repeat["repeat_info"] = {}
+                        node_with_repeat["repeat_info"]["current_iteration"] = current_iteration
+                        node_with_repeat["repeat_info"]["total_iterations"] = total_iterations
+
+                        # 실행 컨텍스트와 함께 노드 실행 (execution_id와 메타데이터 전달)
+                        result = await action_service.process_node(
+                            node_with_repeat, context, execution_id=execution_id, script_id=script_id
+                        )
+
+                        # 결과가 None이면 기본값으로 변환
+                        if result is None:
+                            result = {"action": node.get("type", "unknown"), "status": "completed", "output": None}
+
+                        # 결과가 dict가 아니면 dict로 변환
+                        if not isinstance(result, dict):
+                            result = {"action": node.get("type", "unknown"), "status": "completed", "output": result}
+
+                        # 결과의 status가 "failed"인지 확인 (NodeExecutor가 에러를 catch해서 dict로 반환하는 경우)
+                        if result.get("status") == "failed" or result.get("error"):
+                            # 에러 발생 플래그 설정
+                            has_error = True
+                            error_msg = result.get("error") or result.get("message") or "노드 실행 실패"
+                            if not error_message:
+                                error_message = error_msg
+                            logger.error(
+                                f"[API] 반복 {current_iteration}/{total_iterations} - 노드 {current_node_number}/{total_nodes} 실행 실패 (status: failed) - ID: {node_id}, 타입: {node_type}, 이름: {node_name}, 에러: {error_msg}"
+                            )
+                        else:
+                            logger.info(
+                                f"[API] 반복 {current_iteration}/{total_iterations} - 노드 {current_node_number}/{total_nodes} 실행 성공 - ID: {node_id}, 타입: {node_type}, 이름: {node_name}, 상태: {result.get('status', 'completed')}"
+                            )
+
+                        iteration_results.append(result)
+                        logger.debug(
+                            f"[API] 반복 {current_iteration}/{total_iterations} - 노드 {i + 1} 실행 결과: {result}"
+                        )
+
+                        # 에러 결과도 컨텍스트에 저장 (다음 노드에서 참조 가능)
+                        context.add_node_result(node_id, node_name, result)
+
+                    except Exception as node_error:
+                        logger.error(
+                            f"[API] 반복 {current_iteration}/{total_iterations} - 노드 {current_node_number}/{total_nodes} 실행 실패 (예외 발생) - ID: {node_id}, 타입: {node_type}, 이름: {node_name}, 에러: {node_error}"
+                        )
+                        node_id = node.get("id", f"node_{i}")
+                        node_name = node.get("data", {}).get("title") or node.get("data", {}).get("name")
+                        error_msg = str(node_error)
+
+                        # 에러 발생 플래그 설정
+                        has_error = True
+                        if not error_message:
+                            error_message = error_msg
+
+                        # 에러 결과도 항상 dict로 반환
+                        error_result = {
+                            "action": node.get("type", "unknown"),
+                            "status": "failed",
+                            "error": error_msg,
+                            "node_id": node_id,
+                            "output": None,
+                        }
+                        iteration_results.append(error_result)
+
+                        # 에러 결과도 컨텍스트에 저장 (다음 노드에서 참조 가능)
+                        context.add_node_result(node_id, node_name, error_result)
+
+                results = iteration_results
+                logger.info(f"[API] 반복 {current_iteration}/{total_iterations} 실행 완료 - {len(results)}개 노드 실행")
+            else:
+                # 서버에서 모든 반복을 한 번에 실행하는 경우 (레거시)
+                logger.info(f"[API] 반복 노드 실행 시작 - 반복 횟수: {repeat_count}, 반복 노드 ID: {repeat_node_id}")
+                # 반복 실행
+                all_iteration_results = []
+                for iteration in range(repeat_count):
+                    logger.info(f"[API] 반복 실행 {iteration + 1}/{repeat_count} 시작")
+                    iteration_results = []
+
+                    for i, node in enumerate(request.nodes):
+                        node_id = node.get("id", f"node_{i}")
+                        node_type = node.get("type", "unknown")
+                        node_name = node.get("data", {}).get("title") or node.get("data", {}).get("name") or node_id
+
+                        # 노드의 repeat_info 확인
+                        node_repeat_info = node.get("repeat_info", {})
+                        is_repeat_start = node_repeat_info.get("is_repeat_start", False)
+                        is_repeat_end = node_repeat_info.get("is_repeat_end", False)
+
+                        # 현재 노드 순번 계산
+                        current_node_number = start_index + i + 1
+                        logger.info(
+                            f"[API] 반복 {iteration + 1}/{repeat_count} - 노드 {current_node_number}/{total_nodes} 실행 시작 - "
+                            f"ID: {node_id}, 타입: {node_type}, 이름: {node_name}, "
+                            f"반복 시작: {is_repeat_start}, 반복 종료: {is_repeat_end}"
+                        )
+
+                        try:
+                            # 반복 정보를 노드 데이터에 추가 (서버에서 사용할 수 있도록)
+                            node_with_repeat = {**node}
+                            if not node_with_repeat.get("repeat_info"):
+                                node_with_repeat["repeat_info"] = {}
+                            node_with_repeat["repeat_info"]["current_iteration"] = iteration + 1
+                            node_with_repeat["repeat_info"]["total_iterations"] = repeat_count
+
+                            # 실행 컨텍스트와 함께 노드 실행 (execution_id와 메타데이터 전달)
+                            result = await action_service.process_node(
+                                node_with_repeat, context, execution_id=execution_id, script_id=script_id
+                            )
+
+                            # 결과가 None이면 기본값으로 변환
+                            if result is None:
+                                result = {"action": node.get("type", "unknown"), "status": "completed", "output": None}
+
+                            # 결과가 dict가 아니면 dict로 변환
+                            if not isinstance(result, dict):
+                                result = {
+                                    "action": node.get("type", "unknown"),
+                                    "status": "completed",
+                                    "output": result,
+                                }
+
+                            # 결과의 status가 "failed"인지 확인 (NodeExecutor가 에러를 catch해서 dict로 반환하는 경우)
+                            if result.get("status") == "failed" or result.get("error"):
+                                # 에러 발생 플래그 설정
+                                has_error = True
+                                error_msg = result.get("error") or result.get("message") or "노드 실행 실패"
+                                if not error_message:
+                                    error_message = error_msg
+                                logger.error(
+                                    f"[API] 반복 {iteration + 1}/{repeat_count} - 노드 {current_node_number}/{total_nodes} 실행 실패 (status: failed) - ID: {node_id}, 타입: {node_type}, 이름: {node_name}, 에러: {error_msg}"
+                                )
+                            else:
+                                logger.info(
+                                    f"[API] 반복 {iteration + 1}/{repeat_count} - 노드 {current_node_number}/{total_nodes} 실행 성공 - ID: {node_id}, 타입: {node_type}, 이름: {node_name}, 상태: {result.get('status', 'completed')}"
+                                )
+
+                            iteration_results.append(result)
+                            logger.debug(
+                                f"[API] 반복 {iteration + 1}/{repeat_count} - 노드 {i + 1} 실행 결과: {result}"
+                            )
+
+                            # 에러 결과도 컨텍스트에 저장 (다음 노드에서 참조 가능)
+                            context.add_node_result(node_id, node_name, result)
+
+                        except Exception as node_error:
+                            logger.error(
+                                f"[API] 반복 {iteration + 1}/{repeat_count} - 노드 {current_node_number}/{total_nodes} 실행 실패 (예외 발생) - ID: {node_id}, 타입: {node_type}, 이름: {node_name}, 에러: {node_error}"
+                            )
+                            node_id = node.get("id", f"node_{i}")
+                            node_name = node.get("data", {}).get("title") or node.get("data", {}).get("name")
+                            error_msg = str(node_error)
+
+                            # 에러 발생 플래그 설정
+                            has_error = True
+                            if not error_message:
+                                error_message = error_msg
+
+                            # 에러 결과도 항상 dict로 반환
+                            error_result = {
+                                "action": node.get("type", "unknown"),
+                                "status": "failed",
+                                "error": error_msg,
+                                "node_id": node_id,
+                                "output": None,
+                            }
+                            iteration_results.append(error_result)
+
+                            # 에러 결과도 컨텍스트에 저장 (다음 노드에서 참조 가능)
+                            context.add_node_result(node_id, node_name, error_result)
+
+                    # 반복 결과 저장
+                    all_iteration_results.append({"iteration": iteration + 1, "results": iteration_results})
+                    logger.info(f"[API] 반복 실행 {iteration + 1}/{repeat_count} 완료")
+
+                # 모든 반복 결과를 results에 추가 (평탄화)
+                results = []
+                for iteration_data in all_iteration_results:
+                    results.extend(iteration_data["results"])
+                logger.info(
+                    f"[API] 반복 노드 실행 완료 - 총 {repeat_count}회 반복, 각 반복당 {len(request.nodes)}개 노드 실행"
+                )
+        else:
+            # 일반 노드 실행 (반복 정보가 없는 경우)
+            for i, node in enumerate(request.nodes):
+                node_id = node.get("id", f"node_{i}")
+                node_type = node.get("type", "unknown")
+                node_name = node.get("data", {}).get("title") or node.get("data", {}).get("name") or node_id
+                # 현재 노드 순번 계산 (클라이언트에서 전달된 순번 + 루프 인덱스)
+                current_node_number = start_index + i + 1
+                logger.info(
+                    f"[API] 노드 {current_node_number}/{total_nodes} 실행 시작 - ID: {node_id}, 타입: {node_type}, 이름: {node_name}"
+                )
+                try:
+                    # 실행 컨텍스트와 함께 노드 실행 (execution_id와 메타데이터 전달)
+                    result = await action_service.process_node(
+                        node, context, execution_id=execution_id, script_id=script_id
+                    )
+
+                    # 결과가 None이면 기본값으로 변환
+                    if result is None:
+                        result = {"action": node.get("type", "unknown"), "status": "completed", "output": None}
+
+                    # 결과가 dict가 아니면 dict로 변환
+                    if not isinstance(result, dict):
+                        result = {"action": node.get("type", "unknown"), "status": "completed", "output": result}
+
+                    # 결과의 status가 "failed"인지 확인 (NodeExecutor가 에러를 catch해서 dict로 반환하는 경우)
+                    if result.get("status") == "failed" or result.get("error"):
+                        # 에러 발생 플래그 설정
+                        has_error = True
+                        error_msg = result.get("error") or result.get("message") or "노드 실행 실패"
+                        if not error_message:
+                            error_message = error_msg
+                        logger.error(
+                            f"[API] 노드 {current_node_number}/{total_nodes} 실행 실패 (status: failed) - ID: {node_id}, 타입: {node_type}, 이름: {node_name}, 에러: {error_msg}"
+                        )
+                    else:
+                        logger.info(
+                            f"[API] 노드 {current_node_number}/{total_nodes} 실행 성공 - ID: {node_id}, 타입: {node_type}, 이름: {node_name}, 상태: {result.get('status', 'completed')}"
+                        )
+
+                    results.append(result)
+                    logger.debug(f"[API] 노드 {i + 1} 실행 결과: {result}")
+
+                    # 에러 결과도 컨텍스트에 저장 (다음 노드에서 참조 가능)
+                    context.add_node_result(node_id, node_name, result)
+                except Exception as node_error:
+                    logger.error(
+                        f"[API] 노드 {current_node_number}/{total_nodes} 실행 실패 (예외 발생) - ID: {node_id}, 타입: {node_type}, 이름: {node_name}, 에러: {node_error}"
+                    )
+                    node_id = node.get("id", f"node_{i}")
+                    node_name = node.get("data", {}).get("title") or node.get("data", {}).get("name")
+                    error_msg = str(node_error)
+
                     # 에러 발생 플래그 설정
                     has_error = True
-                    error_msg = result.get("error") or result.get("message") or "노드 실행 실패"
                     if not error_message:
                         error_message = error_msg
-                    logger.error(
-                        f"[API] 노드 {current_node_number}/{total_nodes} 실행 실패 (status: failed) - ID: {node_id}, 타입: {node_type}, 이름: {node_name}, 에러: {error_msg}"
-                    )
-                else:
-                    logger.info(
-                        f"[API] 노드 {current_node_number}/{total_nodes} 실행 성공 - ID: {node_id}, 타입: {node_type}, 이름: {node_name}, 상태: {result.get('status', 'completed')}"
-                    )
 
-                results.append(result)
-                logger.debug(f"[API] 노드 {i + 1} 실행 결과: {result}")
-            except Exception as node_error:
-                logger.error(
-                    f"[API] 노드 {current_node_number}/{total_nodes} 실행 실패 (예외 발생) - ID: {node_id}, 타입: {node_type}, 이름: {node_name}, 에러: {node_error}"
-                )
-                node_id = node.get("id", f"node_{i}")
-                node_name = node.get("data", {}).get("title") or node.get("data", {}).get("name")
-                error_msg = str(node_error)
+                    # 에러 결과도 항상 dict로 반환
+                    error_result = {
+                        "action": node.get("type", "unknown"),
+                        "status": "failed",
+                        "error": error_msg,
+                        "node_id": node_id,
+                        "output": None,
+                    }
+                    results.append(error_result)
 
-                # 에러 발생 플래그 설정
-                has_error = True
-                if not error_message:
-                    error_message = error_msg
-
-                # 에러 결과도 항상 dict로 반환
-                error_result = {
-                    "action": node.get("type", "unknown"),
-                    "status": "failed",
-                    "error": error_msg,
-                    "node_id": node_id,
-                    "output": None,
-                }
-                results.append(error_result)
-
-                # 에러 결과도 컨텍스트에 저장 (다음 노드에서 참조 가능)
-                context.add_node_result(node_id, node_name, error_result)
-    elif request.execution_mode == "parallel":
-        logger.error("병렬 실행은 아직 지원되지 않음")
-        # 병렬 실행 로직 (향후 구현)
-        raise HTTPException(status_code=501, detail="병렬 실행은 아직 지원되지 않습니다.")
+                    # 에러 결과도 컨텍스트에 저장 (다음 노드에서 참조 가능)
+                    context.add_node_result(node_id, node_name, error_result)
 
     logger.info(
         f"[API] 모든 노드 실행 완료 - 총 {len(request.nodes)}개 노드, 성공: {len([r for r in results if r.get('status') != 'failed' and not r.get('error')])}개, 실패: {len([r for r in results if r.get('status') == 'failed' or r.get('error')])}개"

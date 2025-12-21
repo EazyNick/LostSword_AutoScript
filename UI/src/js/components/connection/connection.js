@@ -113,7 +113,7 @@ export class ConnectionManager {
      * @param {HTMLElement} connectorElement - 클릭된 커넥터 요소
      * @returns {void}
      */
-    handleConnectorClick(nodeElement, connectorType, connectorElement) {
+    handleConnectorClick(nodeElement, connectorType, connectorElement, outputType = null) {
         const logger = getLogger();
         const nodeId = nodeElement.dataset.nodeId;
 
@@ -126,42 +126,63 @@ export class ConnectionManager {
 
         if (!this.isConnecting) {
             // 연결 모드가 아닐 때: 연결 시작
-            // 출력 타입 감지 (조건 노드의 경우)
-            let outputType = null;
-            if (connectorType === 'output' && connectorElement) {
+            // 출력 타입 감지 (조건 노드, 반복 노드의 경우)
+            let detectedOutputType = outputType || null;
+            if (connectorType === 'output' && connectorElement && !detectedOutputType) {
                 if (connectorElement.classList.contains('true-output') || connectorElement.closest('.true-output')) {
-                    outputType = 'true';
+                    detectedOutputType = 'true';
                 } else if (
                     connectorElement.classList.contains('false-output') ||
                     connectorElement.closest('.false-output')
                 ) {
-                    outputType = 'false';
+                    detectedOutputType = 'false';
+                } else if (
+                    connectorElement.classList.contains('node-bottom-output') ||
+                    connectorElement.closest('.node-bottom-output')
+                ) {
+                    detectedOutputType = 'bottom';
                 }
             }
 
             // 조건 노드의 경우 .output-dot을 찾아서 사용
+            // 반복 노드의 경우 .bottom-output-dot을 찾아서 사용
             let actualConnector = connectorElement;
-            if (connectorType === 'output' && outputType) {
-                // .true-output 또는 .false-output이 클릭된 경우, 내부의 .output-dot을 찾음
-                if (
-                    connectorElement.classList.contains('true-output') ||
-                    connectorElement.classList.contains('false-output')
-                ) {
-                    const outputDot = connectorElement.querySelector('.output-dot');
-                    if (outputDot) {
-                        actualConnector = outputDot;
-                        logger.log('[ConnectionManager] .output-dot 찾음:', {
-                            original: connectorElement,
-                            actual: actualConnector,
-                            outputType: outputType
-                        });
+            if (connectorType === 'output' && detectedOutputType) {
+                if (detectedOutputType === 'true' || detectedOutputType === 'false') {
+                    // .true-output 또는 .false-output이 클릭된 경우, 내부의 .output-dot을 찾음
+                    if (
+                        connectorElement.classList.contains('true-output') ||
+                        connectorElement.classList.contains('false-output')
+                    ) {
+                        const outputDot = connectorElement.querySelector('.output-dot');
+                        if (outputDot) {
+                            actualConnector = outputDot;
+                            logger.log('[ConnectionManager] .output-dot 찾음:', {
+                                original: connectorElement,
+                                actual: actualConnector,
+                                outputType: detectedOutputType
+                            });
+                        }
+                    }
+                } else if (detectedOutputType === 'bottom') {
+                    // .node-bottom-output이 클릭된 경우, 내부의 .bottom-output-dot을 찾음
+                    if (connectorElement.classList.contains('node-bottom-output')) {
+                        const bottomDot = connectorElement.querySelector('.bottom-output-dot');
+                        if (bottomDot) {
+                            actualConnector = bottomDot;
+                            logger.log('[ConnectionManager] .bottom-output-dot 찾음:', {
+                                original: connectorElement,
+                                actual: actualConnector,
+                                outputType: detectedOutputType
+                            });
+                        }
                     }
                 }
             }
 
             // 연결 시작 (입력/출력 모두 시작점이 될 수 있음)
             // 이미 연결된 커넥터도 클릭하면 연결 모드 시작 가능
-            this.startConnection(nodeElement, actualConnector, connectorType);
+            this.startConnection(nodeElement, actualConnector, connectorType, detectedOutputType);
         } else {
             // 연결 모드 중일 때
             // 같은 커넥터를 다시 클릭하면 연결 취소
@@ -429,18 +450,33 @@ export class ConnectionManager {
 
         // 연결 방향 결정
         // 출력 -> 입력 방향으로만 연결 가능
+        // 아래 연결점(bottom)도 출력으로 취급
         let fromNodeId, toNodeId;
 
-        if (this.startConnectorType === 'output' && targetConnectorElement.classList.contains('node-input')) {
-            // 시작: 출력, 타겟: 입력 -> start -> target (정상)
+        const isBottomOutput =
+            this.startConnectorType === 'output' &&
+            (this.startOutputType === 'bottom' ||
+                this.startConnector.classList.contains('node-bottom-output') ||
+                this.startConnector.closest('.node-bottom-output'));
+
+        if (
+            (this.startConnectorType === 'output' || isBottomOutput) &&
+            targetConnectorElement.classList.contains('node-input')
+        ) {
+            // 시작: 출력(또는 아래 연결점), 타겟: 입력 -> start -> target (정상)
             fromNodeId = startNodeId;
             toNodeId = targetNodeId;
             logger.log('[ConnectionManager] 연결 방향: 출력 -> 입력 (정상)', {
                 from: fromNodeId,
-                to: toNodeId
+                to: toNodeId,
+                outputType: this.startOutputType
             });
-        } else if (this.startConnectorType === 'input' && targetConnectorElement.classList.contains('node-output')) {
-            // 시작: 입력, 타겟: 출력 -> target -> start (반대)
+        } else if (
+            this.startConnectorType === 'input' &&
+            (targetConnectorElement.classList.contains('node-output') ||
+                targetConnectorElement.classList.contains('node-bottom-output'))
+        ) {
+            // 시작: 입력, 타겟: 출력(또는 아래 연결점) -> target -> start (반대)
             fromNodeId = targetNodeId;
             toNodeId = startNodeId;
             logger.log('[ConnectionManager] 연결 방향: 입력 -> 출력 (반대로 변환)', {
@@ -451,11 +487,14 @@ export class ConnectionManager {
             // 잘못된 연결 타입 조합
             logger.warn('[ConnectionManager] 잘못된 연결 타입 조합:', {
                 startType: this.startConnectorType,
+                startOutputType: this.startOutputType,
                 targetType: targetConnectorElement.classList.contains('node-input')
                     ? 'input'
                     : targetConnectorElement.classList.contains('node-output')
                       ? 'output'
-                      : 'unknown'
+                      : targetConnectorElement.classList.contains('node-bottom-output')
+                        ? 'bottom'
+                        : 'unknown'
             });
             this.cancelConnection();
             return;
@@ -481,10 +520,10 @@ export class ConnectionManager {
             this.deleteConnection(conn.id || `${conn.from}-${conn.to}`);
         });
 
-        // 출력 타입 감지 (조건 노드의 경우) - 검증 전에 먼저 감지
-        // .output-dot이 클릭된 경우 부모 요소(.true-output 또는 .false-output)를 확인
-        let outputType = null;
-        if (this.startConnectorType === 'output') {
+        // 출력 타입 감지 (조건 노드, 반복 노드의 경우) - 검증 전에 먼저 감지
+        // startOutputType이 이미 설정되어 있으면 사용, 없으면 자동 감지
+        let outputType = this.startOutputType || null;
+        if (!outputType && this.startConnectorType === 'output') {
             const startConnector = this.startConnector;
             if (startConnector) {
                 if (startConnector.classList.contains('true-output') || startConnector.closest('.true-output')) {
@@ -494,11 +533,32 @@ export class ConnectionManager {
                     startConnector.closest('.false-output')
                 ) {
                     outputType = 'false';
+                } else if (
+                    startConnector.classList.contains('node-bottom-output') ||
+                    startConnector.closest('.node-bottom-output') ||
+                    startConnector.classList.contains('bottom-output-dot') ||
+                    startConnector.closest('.bottom-output-dot')
+                ) {
+                    outputType = 'bottom';
                 }
             }
-        } else if (this.startConnectorType === 'input' && targetConnectorElement.classList.contains('node-output')) {
+        } else if (
+            !outputType &&
+            this.startConnectorType === 'input' &&
+            (targetConnectorElement.classList.contains('node-output') ||
+                targetConnectorElement.classList.contains('node-bottom-output') ||
+                targetConnectorElement.closest('.node-bottom-output'))
+        ) {
             // 입력에서 출력으로 연결하는 경우 (반대 방향)
+            // 타겟이 반복 노드의 아래 연결점인지 먼저 확인 (우선순위 높음)
             if (
+                targetConnectorElement.classList.contains('node-bottom-output') ||
+                targetConnectorElement.closest('.node-bottom-output') ||
+                targetConnectorElement.classList.contains('bottom-output-dot') ||
+                targetConnectorElement.closest('.bottom-output-dot')
+            ) {
+                outputType = 'bottom';
+            } else if (
                 targetConnectorElement.classList.contains('true-output') ||
                 targetConnectorElement.closest('.true-output')
             ) {
@@ -511,28 +571,40 @@ export class ConnectionManager {
             }
         }
 
-        // 출력 연결 개수 검증 (조건 노드 제외)
+        // 출력 연결 개수 검증 (조건 노드, 반복 노드 제외)
         // fromNodeId에서 나가는 연결 개수 확인
         // 조건 노드의 경우, 같은 outputType을 가진 연결만 카운트
+        // 반복 노드의 경우, 아래 연결점(bottom)은 출력으로 카운트하지 않음
         const fromNodeElement = document.querySelector(`[data-node-id="${fromNodeId}"]`);
         const nodeType = fromNodeElement ? fromNodeElement.dataset.nodeType : null;
         const isConditionNode = nodeType === 'condition';
+        const isRepeatNode = nodeType === 'repeat';
 
-        let existingOutputConnections = Array.from(this.connections.values()).filter(
-            (conn) => conn.from === fromNodeId
-        );
+        // 모든 출력 연결 가져오기 (원본)
+        const allOutputConnections = Array.from(this.connections.values()).filter((conn) => conn.from === fromNodeId);
+
+        // 검증용 연결 목록 (카운트용)
+        let existingOutputConnections = allOutputConnections;
 
         // 조건 노드인 경우, 같은 outputType을 가진 연결만 카운트
         if (isConditionNode && outputType) {
             existingOutputConnections = existingOutputConnections.filter((conn) => conn.outputType === outputType);
         }
 
+        // 반복 노드인 경우, 아래 연결점(bottom)은 출력으로 카운트하지 않음
+        if (isRepeatNode) {
+            existingOutputConnections = existingOutputConnections.filter((conn) => conn.outputType !== 'bottom');
+        }
+
         logger.log('[ConnectionManager] 출력 연결 검증:', {
             fromNodeId: fromNodeId,
             nodeType: nodeType,
             isCondition: isConditionNode,
+            isRepeat: isRepeatNode,
             outputType: outputType,
+            allConnections: allOutputConnections.length,
             existingOutputConnections: existingOutputConnections.length,
+            allConnectionsList: allOutputConnections.map((c) => `${c.from} → ${c.to} (${c.outputType || 'default'})`),
             existingConnections: existingOutputConnections.map(
                 (c) => `${c.from} → ${c.to} (${c.outputType || 'default'})`
             )
@@ -544,12 +616,51 @@ export class ConnectionManager {
                 fromNodeId: fromNodeId,
                 nodeType: nodeType,
                 isCondition: isConditionNode,
+                isRepeat: isRepeatNode,
                 existingCount: existingOutputConnections.length
             });
 
             // 조건 노드는 출력 연결 개수 제한 없음 (각 outputType별로 독립적)
-            // 조건 노드가 아니고 이미 출력 연결이 있는 경우: 기존 연결 삭제 (덮어쓰기)
-            if (!isConditionNode && existingOutputConnections.length >= 1) {
+            // 반복 노드는 아래 연결점(bottom)과 오른쪽 출력을 모두 가질 수 있음
+            // 반복 노드의 경우, 같은 outputType을 가진 연결만 삭제
+            if (isRepeatNode) {
+                // 반복 노드에서 같은 outputType의 기존 연결만 삭제
+                // 원본 연결 목록(allOutputConnections)에서 필터링
+                const sameTypeConnections = allOutputConnections.filter((conn) => {
+                    // outputType이 null인 경우 (일반 출력 연결점)
+                    if (outputType === null || outputType === undefined) {
+                        // outputType이 null이거나 undefined인 연결만 (아래 연결점 제외)
+                        return conn.outputType === null || conn.outputType === undefined;
+                    } else {
+                        // outputType이 'bottom'인 경우, 같은 타입만
+                        return conn.outputType === outputType;
+                    }
+                });
+
+                if (sameTypeConnections.length >= 1) {
+                    logger.log('[ConnectionManager] 반복 노드의 같은 타입 출력 연결 삭제:', {
+                        nodeId: fromNodeId,
+                        outputType: outputType,
+                        existingConnections: sameTypeConnections.length,
+                        existingConnectionsList: sameTypeConnections.map(
+                            (c) => `${c.from} → ${c.to} (${c.outputType || 'default'})`
+                        )
+                    });
+
+                    // 같은 타입의 기존 연결만 삭제
+                    sameTypeConnections.forEach((conn) => {
+                        const connId = conn.id || `${conn.from}-${conn.to}`;
+                        logger.log('[ConnectionManager] 반복 노드 출력 커넥터 기존 연결 삭제:', {
+                            connectionId: connId,
+                            from: conn.from,
+                            to: conn.to,
+                            outputType: conn.outputType
+                        });
+                        this.deleteConnection(connId);
+                    });
+                }
+            } else if (!isConditionNode && !isRepeatNode && existingOutputConnections.length >= 1) {
+                // 조건 노드와 반복 노드가 아니고 이미 출력 연결이 있는 경우: 기존 연결 삭제 (덮어쓰기)
                 logger.log('[ConnectionManager] 조건 노드가 아닌 노드의 기존 출력 연결 삭제:', {
                     nodeId: fromNodeId,
                     nodeType: nodeType || 'undefined',
@@ -570,7 +681,33 @@ export class ConnectionManager {
             }
         } else {
             // 노드 요소를 찾을 수 없어도 기존 연결이 있으면 삭제
-            if (existingOutputConnections.length >= 1) {
+            // 반복 노드인 경우 같은 outputType만 삭제
+            if (isRepeatNode) {
+                // 원본 연결 목록(allOutputConnections)에서 필터링
+                const sameTypeConnections = allOutputConnections.filter((conn) => {
+                    // outputType이 null인 경우 (일반 출력 연결점)
+                    if (outputType === null || outputType === undefined) {
+                        // outputType이 null이거나 undefined인 연결만 (아래 연결점 제외)
+                        return conn.outputType === null || conn.outputType === undefined;
+                    } else {
+                        // outputType이 'bottom'인 경우, 같은 타입만
+                        return conn.outputType === outputType;
+                    }
+                });
+
+                if (sameTypeConnections.length >= 1) {
+                    logger.log('[ConnectionManager] 노드 요소를 찾을 수 없지만 반복 노드의 같은 타입 연결 삭제:', {
+                        fromNodeId: fromNodeId,
+                        outputType: outputType,
+                        existingConnections: sameTypeConnections.length
+                    });
+
+                    sameTypeConnections.forEach((conn) => {
+                        const connId = conn.id || `${conn.from}-${conn.to}`;
+                        this.deleteConnection(connId);
+                    });
+                }
+            } else if (existingOutputConnections.length >= 1) {
                 logger.log('[ConnectionManager] 노드 요소를 찾을 수 없지만 기존 연결 삭제:', {
                     fromNodeId: fromNodeId,
                     existingConnections: existingOutputConnections.length
@@ -723,44 +860,95 @@ export class ConnectionManager {
             });
         }
 
-        // 출력 연결 개수 검증 (조건 노드 제외) - createConnection에서도 재검증
+        // 출력 연결 개수 검증 (조건 노드, 반복 노드 제외) - createConnection에서도 재검증
         // 조건 노드의 경우, 같은 outputType을 가진 연결만 카운트
+        // 반복 노드의 경우, 아래 연결점(bottom)과 오른쪽 출력은 독립적
         const fromNodeElement = document.querySelector(`[data-node-id="${fromNodeId}"]`);
         const nodeType = fromNodeElement ? fromNodeElement.dataset.nodeType : null;
         const isConditionNode = nodeType === 'condition';
+        const isRepeatNode = nodeType === 'repeat';
 
-        let existingOutputConnections = Array.from(this.connections.values()).filter(
-            (conn) => conn.from === fromNodeId
-        );
+        // 모든 출력 연결 가져오기 (원본)
+        const allOutputConnections = Array.from(this.connections.values()).filter((conn) => conn.from === fromNodeId);
+
+        // 검증용 연결 목록 (카운트용)
+        let existingOutputConnections = allOutputConnections;
 
         // 조건 노드인 경우, 같은 outputType을 가진 연결만 카운트
         if (isConditionNode && outputType) {
             existingOutputConnections = existingOutputConnections.filter((conn) => conn.outputType === outputType);
         }
 
+        // 반복 노드인 경우, 아래 연결점(bottom)은 출력으로 카운트하지 않음
+        if (isRepeatNode) {
+            existingOutputConnections = existingOutputConnections.filter((conn) => conn.outputType !== 'bottom');
+        }
+
         logger.log('[ConnectionManager] createConnection 출력 연결 검증:', {
             fromNodeId: fromNodeId,
             nodeType: nodeType,
             isCondition: isConditionNode,
+            isRepeat: isRepeatNode,
             outputType: outputType,
+            allConnections: allOutputConnections.length,
             existingOutputConnections: existingOutputConnections.length,
+            allConnectionsList: allOutputConnections.map((c) => `${c.from} → ${c.to} (${c.outputType || 'default'})`),
             existingConnections: existingOutputConnections.map(
                 (c) => `${c.from} → ${c.to} (${c.outputType || 'default'})`
             )
         });
 
-        // 노드 타입 확인 (조건 노드가 아닌 경우 출력은 최대 1개만 허용)
+        // 노드 타입 확인 (조건 노드, 반복 노드가 아닌 경우 출력은 최대 1개만 허용)
         if (fromNodeElement) {
             logger.log('[ConnectionManager] createConnection 노드 타입 확인:', {
                 fromNodeId: fromNodeId,
                 nodeType: nodeType,
                 isCondition: isConditionNode,
+                isRepeat: isRepeatNode,
                 existingCount: existingOutputConnections.length
             });
 
             // 조건 노드는 출력 연결 개수 제한 없음 (각 outputType별로 독립적)
-            // 조건 노드가 아니고 이미 출력 연결이 있는 경우: 기존 연결 삭제 (덮어쓰기)
-            if (!isConditionNode && existingOutputConnections.length >= 1) {
+            // 반복 노드는 아래 연결점(bottom)과 오른쪽 출력을 모두 가질 수 있음
+            // 반복 노드의 경우, 같은 outputType을 가진 연결만 삭제
+            if (isRepeatNode) {
+                // 반복 노드에서 같은 outputType의 기존 연결만 삭제
+                // 원본 연결 목록(allOutputConnections)에서 필터링
+                const sameTypeConnections = allOutputConnections.filter((conn) => {
+                    // outputType이 null인 경우 (일반 출력 연결점)
+                    if (outputType === null || outputType === undefined) {
+                        // outputType이 null이거나 undefined인 연결만 (아래 연결점 제외)
+                        return conn.outputType === null || conn.outputType === undefined;
+                    } else {
+                        // outputType이 'bottom'인 경우, 같은 타입만
+                        return conn.outputType === outputType;
+                    }
+                });
+
+                if (sameTypeConnections.length >= 1) {
+                    logger.log('[ConnectionManager] createConnection: 반복 노드의 같은 타입 출력 연결 삭제:', {
+                        nodeId: fromNodeId,
+                        outputType: outputType,
+                        existingConnections: sameTypeConnections.length,
+                        existingConnectionsList: sameTypeConnections.map(
+                            (c) => `${c.from} → ${c.to} (${c.outputType || 'default'})`
+                        )
+                    });
+
+                    // 같은 타입의 기존 연결만 삭제
+                    sameTypeConnections.forEach((conn) => {
+                        const connId = conn.id || `${conn.from}-${conn.to}`;
+                        logger.log('[ConnectionManager] createConnection 반복 노드 출력 커넥터 기존 연결 삭제:', {
+                            connectionId: connId,
+                            from: conn.from,
+                            to: conn.to,
+                            outputType: conn.outputType
+                        });
+                        this.deleteConnection(connId);
+                    });
+                }
+            } else if (!isConditionNode && !isRepeatNode && existingOutputConnections.length >= 1) {
+                // 조건 노드와 반복 노드가 아니고 이미 출력 연결이 있는 경우: 기존 연결 삭제 (덮어쓰기)
                 logger.log('[ConnectionManager] createConnection: 조건 노드가 아닌 노드의 기존 출력 연결 삭제:', {
                     nodeId: fromNodeId,
                     nodeType: nodeType || 'undefined',
@@ -776,7 +964,36 @@ export class ConnectionManager {
             }
         } else {
             // 노드 요소를 찾을 수 없어도 기존 연결이 있으면 삭제
-            if (existingOutputConnections.length >= 1) {
+            // 반복 노드인 경우 같은 outputType만 삭제
+            if (isRepeatNode) {
+                // 원본 연결 목록(allOutputConnections)에서 필터링
+                const sameTypeConnections = allOutputConnections.filter((conn) => {
+                    // outputType이 null인 경우 (일반 출력 연결점)
+                    if (outputType === null || outputType === undefined) {
+                        // outputType이 null이거나 undefined인 연결만 (아래 연결점 제외)
+                        return conn.outputType === null || conn.outputType === undefined;
+                    } else {
+                        // outputType이 'bottom'인 경우, 같은 타입만
+                        return conn.outputType === outputType;
+                    }
+                });
+
+                if (sameTypeConnections.length >= 1) {
+                    logger.log(
+                        '[ConnectionManager] createConnection: 노드 요소를 찾을 수 없지만 반복 노드의 같은 타입 연결 삭제:',
+                        {
+                            fromNodeId: fromNodeId,
+                            outputType: outputType,
+                            existingConnections: sameTypeConnections.length
+                        }
+                    );
+
+                    sameTypeConnections.forEach((conn) => {
+                        const connId = conn.id || `${conn.from}-${conn.to}`;
+                        this.deleteConnection(connId);
+                    });
+                }
+            } else if (existingOutputConnections.length >= 1) {
                 logger.log('[ConnectionManager] createConnection: 노드 요소를 찾을 수 없지만 기존 연결 삭제:', {
                     fromNodeId: fromNodeId,
                     existingConnections: existingOutputConnections.length

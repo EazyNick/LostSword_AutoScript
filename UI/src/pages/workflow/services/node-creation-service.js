@@ -66,7 +66,7 @@ export class NodeCreationService {
                 }
             }
         } catch (e) {
-            console.warn('이미지 개수 조회 실패:', e);
+            // 에러 무시 (선택적 기능)
         }
     }
 

@@ -21,7 +21,6 @@ class ExecutionMode(Enum):
     """실행 모드 열거형"""
 
     SEQUENTIAL = "sequential"
-    PARALLEL = "parallel"
     CONDITIONAL = "conditional"
 
 
@@ -111,8 +110,6 @@ class WorkflowEngine:
         try:
             if self.execution_mode == ExecutionMode.SEQUENTIAL:
                 await self._execute_sequential()
-            elif self.execution_mode == ExecutionMode.PARALLEL:
-                await self._execute_parallel()
             elif self.execution_mode == ExecutionMode.CONDITIONAL:
                 await self._execute_conditional()
 
@@ -140,23 +137,6 @@ class WorkflowEngine:
             # 실패한 경우 중단 여부 확인
             if node.status == NodeStatus.FAILED and node.data.get("stop_on_failure", True):
                 break
-
-    async def _execute_parallel(self) -> None:
-        """병렬 실행"""
-        tasks = []
-        for node in self.nodes:
-            task = asyncio.create_task(self._execute_node(node))
-            tasks.append(task)
-
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-
-        for i, result in enumerate(results):
-            if isinstance(result, Exception):
-                self.nodes[i].status = NodeStatus.FAILED
-                self.nodes[i].error_message = str(result)
-                self.results.append(self.nodes[i].to_dict())
-            elif isinstance(result, dict):
-                self.results.append(result)
 
     async def _execute_conditional(self) -> None:
         """조건부 실행"""

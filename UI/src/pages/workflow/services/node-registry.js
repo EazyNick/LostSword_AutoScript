@@ -35,7 +35,6 @@ export class NodeRegistry {
                 // 변경된 응답 형식: {success: true, message: "...", data: {nodes: {...}}}
                 const nodes = result.data?.nodes || result.nodes || {};
                 this.nodeConfigs = nodes;
-                console.log('[NodeRegistry] 서버에서 노드 설정 로드 완료:', Object.keys(this.nodeConfigs).length, '개');
                 return this.nodeConfigs;
             } else {
                 throw new Error(`HTTP ${response.status}`);
@@ -116,7 +115,6 @@ export class NodeRegistry {
 
             script.onload = () => {
                 this.loadedScripts.add(config.script);
-                console.log(`[NodeRegistry] 노드 스크립트 로드 완료: ${config.script} (경로: ${scriptPath})`);
                 resolve();
             };
 

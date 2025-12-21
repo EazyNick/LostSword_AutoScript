@@ -397,30 +397,6 @@
     transform: translateY(0);
 }
 
-/* 설정 알림 메시지 */
-.settings-notification {
-    position: fixed;
-    bottom: 30px;
-    right: 30px;
-    padding: 16px 24px;
-    background-color: #14b8a6;
-    color: #ffffff;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    opacity: 0;
-    transform: translateY(20px);
-    transition: all 0.3s ease;
-    z-index: 10001;
-}
-
-/* 설정 알림 메시지 표시 */
-.settings-notification.show {
-    opacity: 1;
-    transform: translateY(0);
-}
-
 /* ========================================== */
 /* 반응형 디자인 */
 /* ========================================== */

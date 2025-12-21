@@ -15,6 +15,7 @@ export class WorkflowSaveService {
      * 워크플로우 저장
      * @param {Object} options - 저장 옵션
      * @param {boolean} options.useToast - Toast 알림 사용 여부
+     * @param {boolean} options.showAlert - 팝업 알림 표시 여부 (기본값: true)
      */
     async save(options = {}) {
         const sidebarManager = this.workflowPage.getSidebarManager();
@@ -49,14 +50,14 @@ export class WorkflowSaveService {
 
                 logger.log('[WorkflowPage] 저장 완료 응답:', response);
 
-                this.showSuccess(t('common.workflowSaved'), options.useToast);
+                this.showSuccess(t('common.workflowSaved'), options.useToast, options.showAlert);
             } else {
                 // API를 사용할 수 없는 경우 로컬 스토리지에 저장 (fallback)
                 this.workflowPage.saveWorkflowToLocalStorage();
             }
         } catch (error) {
             console.error('워크플로우 저장 실패:', error);
-            this.showError(`${t('common.saveError')}: ${error.message}`, options.useToast);
+            this.showError(`${t('common.saveError')}: ${error.message}`, options.useToast, options.showAlert);
         }
     }
 
@@ -143,8 +144,6 @@ export class WorkflowSaveService {
                 }
             }
 
-            console.log(`[WorkflowSaveService] 노드 ${node.id} 파라미터:`, parameters);
-
             // description 추출
             let description = null;
             if (nodeManager && nodeManager.nodeData && nodeManager.nodeData[node.id]) {
@@ -188,15 +187,15 @@ export class WorkflowSaveService {
     /**
      * 성공 메시지 표시
      */
-    async showSuccess(message, useToast) {
+    async showSuccess(message, useToast, showAlert = true) {
         if (useToast) {
             // 토스트 메시지 사용 (Ctrl+S, 자동 저장 등)
             const toastManager = this.workflowPage.getToastManager();
             if (toastManager) {
                 toastManager.success(message);
             }
-        } else {
-            // 모달 팝업 사용 (저장 버튼 클릭 시)
+        } else if (showAlert) {
+            // 모달 팝업 사용 (저장 버튼 클릭 시, showAlert가 true인 경우만)
             const modalManager = this.workflowPage.getModalManager();
             if (modalManager) {
                 await modalManager.showCenterAlert(t('common.saveComplete'), message);
@@ -207,15 +206,15 @@ export class WorkflowSaveService {
     /**
      * 에러 메시지 표시
      */
-    async showError(message, useToast) {
+    async showError(message, useToast, showAlert = true) {
         if (useToast) {
             // 토스트 메시지 사용 (Ctrl+S, 자동 저장 등)
             const toastManager = this.workflowPage.getToastManager();
             if (toastManager) {
                 toastManager.error(message);
             }
-        } else {
-            // 모달 팝업 사용 (저장 버튼 클릭 시)
+        } else if (showAlert) {
+            // 모달 팝업 사용 (저장 버튼 클릭 시, showAlert가 true인 경우만)
             const modalManager = this.workflowPage.getModalManager();
             if (modalManager) {
                 await modalManager.showCenterAlert(t('common.saveFailed'), message);

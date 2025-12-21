@@ -95,6 +95,19 @@ class ExcelOpenNode(BaseNode):
             )
 
         try:
+            import asyncio
+            import time
+
+            # execution_id 가져오기 (메타데이터에서) - 대기 로직 전에 먼저 확인
+            execution_id = parameters.get("_execution_id")
+            if not execution_id:
+                return create_failed_result(
+                    action="excel-open",
+                    reason="execution_id_required",
+                    message="execution_id가 필요합니다. 엑셀 객체를 저장할 수 없습니다.",
+                    output={"file_path": file_path, "visible": visible, "success": False},
+                )
+
             # Excel 애플리케이션 객체 생성
             excel_app = win32com.client.Dispatch("Excel.Application")
 
@@ -104,15 +117,32 @@ class ExcelOpenNode(BaseNode):
             # 엑셀 파일 열기
             workbook = excel_app.Workbooks.Open(file_path)
 
-            # execution_id 가져오기 (메타데이터에서)
-            execution_id = parameters.get("_execution_id")
-            if not execution_id:
-                return create_failed_result(
-                    action="excel-open",
-                    reason="execution_id_required",
-                    message="execution_id가 필요합니다. 엑셀 객체를 저장할 수 없습니다.",
-                    output={"file_path": file_path, "visible": visible, "success": False},
+            # Excel이 완전히 준비될 때까지 대기
+            # workbook.Open()이 반환되어도 Excel이 완전히 로드되기 전에 다음 노드가 실행될 수 있음
+            max_wait_time = 30  # 최대 30초 대기
+            check_interval = 0.1  # 0.1초마다 확인
+            start_time = time.time()
+            excel_ready = False
+
+            while (time.time() - start_time) < max_wait_time:
+                try:
+                    # Excel이 준비되었는지 확인
+                    # Ready 속성 확인 및 간단한 속성 접근 시도
+                    if excel_app.Ready and workbook.Name:
+                        excel_ready = True
+                        break
+                except Exception:
+                    # 아직 준비되지 않았으면 계속 대기
+                    pass
+
+                await asyncio.sleep(check_interval)
+
+            if not excel_ready:
+                logger.warning(
+                    f"[ExcelOpenNode] Excel 준비 확인 타임아웃 - execution_id: {execution_id}, 하지만 계속 진행합니다."
                 )
+            else:
+                logger.info(f"[ExcelOpenNode] Excel 준비 완료 - execution_id: {execution_id}")
 
             # 엑셀 객체를 저장소에 저장
             store_excel_objects(execution_id, excel_app, workbook, file_path)

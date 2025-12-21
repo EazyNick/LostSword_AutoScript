@@ -23,8 +23,6 @@ const translations = {
             defaultTimeoutDescription: '각 노드의 기본 대기 시간 (초)',
             retryCount: '재시도 횟수',
             retryCountDescription: '실패 시 자동 재시도 횟수',
-            parallelExecution: '병렬 실행',
-            parallelExecutionDescription: '여러 워크플로우를 동시에 실행합니다',
             screenshot: '스크린샷',
             screenshotSubtitle: '스크린샷 캡처 설정을 변경합니다',
             autoScreenshot: '자동 스크린샷',
@@ -190,6 +188,18 @@ const translations = {
             minutesAgo: '{{minutes}}분 전',
             hoursAgo: '{{hours}}시간 전',
             daysAgo: '{{days}}일 전'
+        },
+        // 노드 관련
+        node: {
+            repeat: {
+                title: '반복',
+                description: '반복 실행',
+                repeatCount: '반복 횟수',
+                repeatLabel: '반복',
+                outputLabel: '출력',
+                connectNodesBelow: '반복할 노드들을 연결',
+                repeatComplete: '반복 완료 후 실행'
+            }
         }
     },
     en: {
@@ -210,8 +220,6 @@ const translations = {
             defaultTimeoutDescription: 'Default wait time for each node (seconds)',
             retryCount: 'Retry Count',
             retryCountDescription: 'Number of automatic retries on failure',
-            parallelExecution: 'Parallel Execution',
-            parallelExecutionDescription: 'Run multiple workflows simultaneously',
             screenshot: 'Screenshot',
             screenshotSubtitle: 'Change screenshot capture settings',
             autoScreenshot: 'Auto Screenshot',
@@ -371,6 +379,18 @@ const translations = {
             minutesAgo: '{{minutes}} minutes ago',
             hoursAgo: '{{hours}} hours ago',
             daysAgo: '{{days}} days ago'
+        },
+        // 노드 관련
+        node: {
+            repeat: {
+                title: 'Repeat',
+                description: 'Repeat execution',
+                repeatCount: 'Repeat Count',
+                repeatLabel: 'Repeat',
+                outputLabel: 'Output',
+                connectNodesBelow: 'Connect nodes to repeat',
+                repeatComplete: 'Execute after repeat completion'
+            }
         }
     }
 };

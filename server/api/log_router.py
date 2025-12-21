@@ -223,12 +223,17 @@ async def check_logs_ready(
         import asyncio
         from datetime import datetime
 
-        max_wait_time = 30  # 최대 30초 대기
+        # 최대 60초 대기 (엑셀 열기/닫기 등 시간이 걸리는 작업 고려)
+        # 엑셀 열기: Excel 애플리케이션 시작 및 워크북 열기 작업
+        # 엑셀 닫기: 워크북 저장 및 Excel 애플리케이션 종료 작업
+        max_wait_time = 60
         check_interval = 0.5  # 0.5초마다 확인
         start_time = datetime.now()
+        check_count = 0
 
         while (datetime.now() - start_time).total_seconds() < max_wait_time:
             logs = db_manager.node_execution_logs.get_logs_by_execution_id(execution_id)
+            check_count += 1
 
             if logs and len(logs) > 0:
                 # expected_status가 지정된 경우 해당 상태의 로그 확인
@@ -236,7 +241,7 @@ async def check_logs_ready(
                     has_expected_status = any(log.get("status") == expected_status for log in logs)
                     if has_expected_status:
                         logger.info(
-                            f"[API] 로그 저장 완료 확인 성공 - execution_id: {execution_id}, 상태: {expected_status}, 로그 개수: {len(logs)}"
+                            f"[API] 로그 저장 완료 확인 성공 - execution_id: {execution_id}, 상태: {expected_status}, 로그 개수: {len(logs)}, 확인 횟수: {check_count}"
                         )
                         return success_response(
                             {
@@ -253,7 +258,7 @@ async def check_logs_ready(
                     has_final_status = any(log.get("status") in ("completed", "failed") for log in logs)
                     if has_final_status:
                         logger.info(
-                            f"[API] 로그 저장 완료 확인 성공 - execution_id: {execution_id}, 로그 개수: {len(logs)}"
+                            f"[API] 로그 저장 완료 확인 성공 - execution_id: {execution_id}, 로그 개수: {len(logs)}, 확인 횟수: {check_count}"
                         )
                         return success_response(
                             {"execution_id": execution_id, "ready": True, "logs_count": len(logs)},
@@ -261,15 +266,36 @@ async def check_logs_ready(
                         )
 
             # 아직 로그가 저장되지 않았으면 잠시 대기 후 재확인
-            await asyncio.sleep(check_interval)
+            # 처음 몇 번은 빠르게 확인하고, 이후에는 점진적으로 간격을 늘림
+            if check_count < 10:
+                await asyncio.sleep(check_interval)
+            else:
+                # 10번 확인 후에도 로그가 없으면 1초 간격으로 확인
+                await asyncio.sleep(1.0)
 
         # 타임아웃
         logger.warning(
-            f"[API] 로그 저장 완료 확인 타임아웃 - execution_id: {execution_id}, 최대 대기 시간: {max_wait_time}초"
+            f"[API] 로그 저장 완료 확인 타임아웃 - execution_id: {execution_id}, 최대 대기 시간: {max_wait_time}초, 확인 횟수: {check_count}"
         )
+        # 타임아웃이 발생했지만 로그가 있는 경우라도 반환 (부분적으로라도 로그가 저장되었을 수 있음)
+        final_logs = db_manager.node_execution_logs.get_logs_by_execution_id(execution_id)
+        if final_logs and len(final_logs) > 0:
+            logger.info(
+                f"[API] 타임아웃 발생했지만 로그가 존재함 - execution_id: {execution_id}, 로그 개수: {len(final_logs)}"
+            )
+            return success_response(
+                {
+                    "execution_id": execution_id,
+                    "ready": True,
+                    "logs_count": len(final_logs),
+                    "timeout": True,
+                    "partial": True,
+                },
+                "로그 저장 확인 타임아웃 (60초) - 일부 로그만 저장되었을 수 있습니다.",
+            )
         return success_response(
             {"execution_id": execution_id, "ready": False, "timeout": True},
-            "로그 저장 확인 타임아웃 (30초)",
+            "로그 저장 확인 타임아웃 (60초)",
         )
     except Exception as e:
         logger.error(f"[API] 로그 저장 완료 확인 실패: {e!s}")

@@ -1,5 +1,7 @@
 **최신 수정일자: 2025.12.21**
 
+> **참고**: 반복 노드(Repeat Node)는 특수한 연결점과 실행 로직을 가진 노드의 예시입니다. 특수 기능이 필요한 노드를 만들 때는 "6. 특수 기능 노드 구현" 섹션을 참고하세요.
+
 # Python 노드 생성 가이드
 
 Python (서버)에서 커스텀 노드를 만드는 방법을 설명합니다.
@@ -463,7 +465,99 @@ Python 노드도 클라이언트에서 렌더링하기 위해 JavaScript 파일�
 [node-my-node] 노드 타입 등록 완료
 ```
 
-## 6. 노드 등록
+## 6. 특수 기능 노드 구현
+
+일부 노드는 특수한 연결점이나 실행 로직을 가질 수 있습니다. 반복 노드(Repeat Node)를 예시로 설명합니다.
+
+### 6.1 아래 연결점 (Bottom Output) 구현
+
+반복 노드처럼 노드 하단에 특별한 연결점이 필요한 경우:
+
+**1. `nodes_config.py`에 플래그 추가**:
+```python
+"repeat": {
+    "has_bottom_output": True,  # 아래 연결점이 있음을 표시
+    # ... 기타 설정
+}
+```
+
+**2. JavaScript 렌더링에 아래 연결점 추가** (`node-repeat.js`):
+```javascript
+renderContent(nodeData) {
+    return `
+        <div class="node-input"></div>
+        <div class="node-content">
+            <!-- 노드 내용 -->
+        </div>
+        <div class="node-output" title="출력"></div>
+        <div class="node-bottom-output" title="반복할 노드들을 연결">
+            <div class="bottom-output-dot">
+                <span class="output-symbol">↓</span>
+            </div>
+            <span class="bottom-output-label">반복</span>
+        </div>
+        <div class="node-settings">⚙</div>
+    `;
+}
+```
+
+**3. 연결 관리**: `ConnectionManager`가 `has_bottom_output` 플래그를 확인하여 아래 연결점을 자동으로 처리합니다.
+
+### 6.2 특수 실행 로직 구현
+
+반복 노드처럼 특수한 실행 로직이 필요한 경우:
+
+**1. 서버 측**: 노드 클래스는 기본 실행만 수행하고, 실제 반복 로직은 워크플로우 실행 엔진에서 처리합니다.
+```python
+@NodeExecutor("repeat")
+async def execute(parameters: dict[str, Any]) -> dict[str, Any]:
+    # 기본 검증만 수행
+    repeat_count = get_parameter(parameters, "repeat_count", default=1)
+    return {
+        "action": "repeat",
+        "status": "completed",
+        "output": {
+            "repeat_count": repeat_count,
+            "completed": True,
+            "iterations": [],  # 실제 반복 결과는 엔진에서 채움
+        },
+    }
+```
+
+**2. 프론트엔드**: `workflow-execution-service.js`에서 노드 타입을 확인하여 특수 로직을 처리합니다.
+```javascript
+if (nodeData.type === 'repeat') {
+    // 반복 노드 특수 처리 로직
+    // - 반복 블록 정의
+    // - 각 반복마다 개별 API 요청
+    // - 실시간 UI 업데이트
+}
+```
+
+**3. 서버 API**: `action_router.py`에서 `repeat_info`를 확인하여 반복 실행을 처리합니다.
+```python
+if repeat_info and repeat_info.get("repeat_count"):
+    current_iteration = repeat_info.get("current_iteration")
+    total_iterations = repeat_info.get("total_iterations")
+    # 단일 반복 실행
+```
+
+### 6.3 메타데이터 전달
+
+반복 블록 내 노드에 메타데이터를 추가하여 서버에서 활용할 수 있습니다:
+```javascript
+nodeCopy.repeat_info = {
+    repeat_count: repeatCount,
+    is_repeat_start: index === 0,
+    is_repeat_end: index === nodesToRepeat.length - 1,
+    current_iteration: iteration + 1,
+    total_iterations: repeatCount
+};
+```
+
+서버에서는 이 메타데이터를 사용하여 로깅이나 특수 처리를 수행할 수 있습니다.
+
+## 7. 노드 등록
 
 노드는 **완전 자동으로 등록**됩니다. 별도의 등록 코드는 필요하지 않습니다.
 

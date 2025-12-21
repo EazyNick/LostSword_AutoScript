@@ -265,6 +265,51 @@ NODES_CONFIG: dict[str, dict[str, Any]] = {
             },
         },
     },
+    "repeat": {
+        "label": "반복 노드",
+        "title": "반복",
+        "description": "아래에 연결된 노드들을 지정한 횟수만큼 반복 실행하는 노드입니다.",
+        "script": "node-repeat.js",
+        "is_boundary": False,
+        "category": "logic",
+        "has_bottom_output": True,  # 아래 연결점이 있음을 표시
+        # 노드 레벨 파라미터
+        "parameters": {
+            "repeat_count": {
+                "type": "number",
+                "label": "반복 횟수",
+                "description": "반복할 횟수를 설정합니다.",
+                "default": 1,
+                "min": 1,
+                "max": 10000,
+                "required": True,
+            },
+        },
+        # 상세 노드 타입 정의
+        "detail_types": {},
+        "input_schema": {
+            "action": {"type": "string", "description": "이전 노드 타입"},
+            "status": {"type": "string", "description": "이전 노드 실행 상태"},
+            "output": {"type": "any", "description": "이전 노드 출력 데이터"},
+        },
+        "output_schema": {
+            "action": {"type": "string", "description": "노드 타입"},
+            "status": {"type": "string", "description": "실행 상태"},
+            "output": {
+                "type": "object",
+                "description": "출력 데이터",
+                "properties": {
+                    "repeat_count": {"type": "number", "description": "실행된 반복 횟수"},
+                    "completed": {"type": "boolean", "description": "반복 완료 여부"},
+                    "iterations": {
+                        "type": "array",
+                        "description": "각 반복의 실행 결과",
+                        "items": {"type": "object"},
+                    },
+                },
+            },
+        },
+    },
     # === 예시 노드: 파일 읽기 ===
     "file-read": {
         "label": "파일 읽기 노드",

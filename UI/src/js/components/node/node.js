@@ -352,6 +352,9 @@ export class NodeManager {
             // 5-1. 노드 크기 조정 (텍스트 길이에 따라)
             this.adjustNodeSize(nodeElement);
 
+            // 5-2. 아래 연결점 위치 조정 (반복 노드 등)
+            this.adjustBottomOutputPosition(nodeElement);
+
             // 6. 노드 데이터 저장
             this.saveNodeData(nodeData);
 
@@ -401,23 +404,38 @@ export class NodeManager {
      * @returns {string} HTML 문자열
      */
     generateNodeContent(nodeData) {
+        // nodeManager.nodeData와 병합하여 최신 파라미터 값 포함
+        const nodeId = nodeData.id;
+        let mergedNodeData = { ...nodeData };
+
+        // nodeManager.nodeData에 저장된 데이터와 병합 (파라미터 등 최신 값 포함)
+        if (nodeId && this.nodeData && this.nodeData[nodeId]) {
+            mergedNodeData = {
+                ...this.nodeData[nodeId],
+                ...nodeData // 전달된 nodeData가 우선순위 높음
+            };
+        }
+
         // 정적 노드 타입 정의 레지스트리에서 타입별 렌더러를 찾는다.
         const registry = this.constructor.nodeTypeDefinitions || {};
 
-        log(`[NodeManager] generateNodeContent 호출: type=${nodeData.type}, registry keys:`, Object.keys(registry));
+        log(
+            `[NodeManager] generateNodeContent 호출: type=${mergedNodeData.type}, registry keys:`,
+            Object.keys(registry)
+        );
 
         // 우선순위: 명시된 type → 'action' → 'default'
-        const def = registry[nodeData.type] || registry['action'] || registry['default'];
+        const def = registry[mergedNodeData.type] || registry['action'] || registry['default'];
 
         if (def && typeof def.renderContent === 'function') {
-            log(`[NodeManager] 노드 타입 '${nodeData.type}' 렌더러 사용`);
+            log(`[NodeManager] 노드 타입 '${mergedNodeData.type}' 렌더러 사용`);
             // renderContent 내부에서 this.escapeHtml 등을 쓸 수 있게 this 바인딩
-            return def.renderContent.call(this, nodeData);
+            return def.renderContent.call(this, mergedNodeData);
         }
 
-        log(`[NodeManager] ⚠️ 노드 타입 '${nodeData.type}'에 대한 렌더러를 찾을 수 없음. 기본 형태로 렌더링`);
+        log(`[NodeManager] ⚠️ 노드 타입 '${mergedNodeData.type}'에 대한 렌더러를 찾을 수 없음. 기본 형태로 렌더링`);
         // 어떠한 정의도 등록되어 있지 않을 경우 기본 형태로 렌더링
-        const icon = window.NodeIcons ? window.NodeIcons.getIcon('default', nodeData) : '⚙';
+        const icon = window.NodeIcons ? window.NodeIcons.getIcon('default', mergedNodeData) : '⚙';
         return `
             <div class="node-input"></div>
             <div class="node-content">
@@ -425,8 +443,8 @@ export class NodeManager {
                     <div class="node-icon">${icon}</div>
                 </div>
                 <div class="node-text-area">
-                    <div class="node-title">${this.escapeHtml(nodeData.title)}</div>
-                    <div class="node-description">${this.escapeHtml(nodeData.description || '')}</div>
+                    <div class="node-title">${this.escapeHtml(mergedNodeData.title)}</div>
+                    <div class="node-description">${this.escapeHtml(mergedNodeData.description || '')}</div>
                 </div>
             </div>
             <div class="node-output"></div>
@@ -1139,17 +1157,29 @@ export class NodeManager {
         const nodeId = nodeElement.dataset.nodeId;
 
         try {
-            // 출력 타입 감지 (조건 노드의 경우)
+            // 출력 타입 감지 (조건 노드, 반복 노드의 경우)
             let outputType = null;
             if (connectorType === 'output' && connector) {
                 if (connector.classList.contains('true-output') || connector.closest('.true-output')) {
                     outputType = 'true';
                 } else if (connector.classList.contains('false-output') || connector.closest('.false-output')) {
                     outputType = 'false';
+                } else if (
+                    connector.classList.contains('node-bottom-output') ||
+                    connector.closest('.node-bottom-output') ||
+                    connector.classList.contains('bottom-output-dot') ||
+                    connector.closest('.bottom-output-dot')
+                ) {
+                    // 반복 노드의 아래 연결점인 경우
+                    outputType = 'bottom';
                 }
+                // 일반 출력 연결점인 경우 outputType은 null로 유지
+            } else if (connectorType === 'bottom' && connector) {
+                // 아래 연결점 타입인 경우
+                outputType = 'bottom';
             }
 
-            // 연결 목록 조회 (조건 노드의 경우 outputType 고려)
+            // 연결 목록 조회 (조건 노드, 반복 노드의 경우 outputType 고려)
             const connections = this.findConnectionsByNode(nodeId, connectorType, outputType);
 
             if (connections.length === 0) {
@@ -1191,6 +1221,11 @@ export class NodeManager {
             return [];
         }
 
+        // 노드 타입 확인 (반복 노드의 경우 아래 연결점 제외 처리)
+        const node = this.nodes.find((n) => n.id === nodeId);
+        const nodeType = node ? this.nodeData[nodeId]?.type || node.element?.dataset?.nodeType : null;
+        const isRepeatNode = nodeType === 'repeat';
+
         const connections = [];
         this.connectionManager.connections.forEach((connection, connectionId) => {
             if (connectorType === 'input' && connection.to === nodeId) {
@@ -1202,7 +1237,20 @@ export class NodeManager {
                         connections.push({ id: connectionId, ...connection });
                     }
                 } else {
-                    // 일반 노드의 경우, 모든 연결 반환
+                    // 반복 노드의 경우, 일반 출력 연결점을 더블클릭하면 아래 연결점(bottom)은 제외
+                    if (isRepeatNode) {
+                        // 반복 노드에서 일반 출력 연결점을 더블클릭한 경우, 아래 연결점(bottom) 제외
+                        if (connection.outputType !== 'bottom') {
+                            connections.push({ id: connectionId, ...connection });
+                        }
+                    } else {
+                        // 일반 노드의 경우, 모든 연결 반환
+                        connections.push({ id: connectionId, ...connection });
+                    }
+                }
+            } else if (connectorType === 'bottom' && connection.from === nodeId) {
+                // 아래 연결점 타입인 경우, bottom 타입 연결만 반환
+                if (connection.outputType === 'bottom') {
                     connections.push({ id: connectionId, ...connection });
                 }
             }
@@ -1235,16 +1283,29 @@ export class NodeManager {
      * 연결 삭제 피드백(애니메이션 + 토스트 느낌)
      */
     showConnectionDeletedFeedback(connector, deletedCount) {
-        connector.style.transform = 'scale(0.8)';
-        connector.style.backgroundColor = '#FF3B30';
-        connector.style.borderColor = '#FF3B30';
+        // 반복 노드의 아래 연결점인 경우, 실제 연결점 요소(.bottom-output-dot)를 찾아서 스타일 적용
+        let targetElement = connector;
+        if (connector.classList.contains('node-bottom-output')) {
+            const bottomDot = connector.querySelector('.bottom-output-dot');
+            if (bottomDot) {
+                targetElement = bottomDot;
+            }
+        }
+
+        // .connecting 클래스 제거 (혹시 남아있을 수 있음)
+        targetElement.classList.remove('connecting');
+        connector.classList.remove('connecting');
+
+        targetElement.style.transform = 'scale(0.8)';
+        targetElement.style.backgroundColor = '#FF3B30';
+        targetElement.style.borderColor = '#FF3B30';
 
         this.showConnectorTooltip(connector, `${deletedCount}개의 연결이 삭제되었습니다.`);
 
         setTimeout(() => {
-            connector.style.transform = '';
-            connector.style.backgroundColor = '';
-            connector.style.borderColor = '';
+            targetElement.style.transform = '';
+            targetElement.style.backgroundColor = '';
+            targetElement.style.borderColor = '';
             this.hideConnectorTooltip();
         }, 300);
     }
@@ -1456,9 +1517,19 @@ export class NodeManager {
             return 0;
         }
 
+        // 노드 타입 확인 (반복 노드의 경우 아래 연결점 제외)
+        const node = this.nodes.find((n) => n.id === nodeId);
+        const nodeType = node ? this.nodeData[nodeId]?.type || node.element?.dataset?.nodeType : null;
+        const isRepeatNode = nodeType === 'repeat';
+
         let connections = Array.from(this.connectionManager.connections.values()).filter(
             (connection) => connection.from === nodeId
         );
+
+        // 반복 노드인 경우, 아래 연결점(bottom)은 출력으로 카운트하지 않음
+        if (isRepeatNode) {
+            connections = connections.filter((connection) => connection.outputType !== 'bottom');
+        }
 
         // 조건 노드인 경우, 같은 outputType을 가진 연결만 카운트
         if (outputType) {
@@ -1520,9 +1591,15 @@ export class NodeManager {
             }
         }
 
-        // 출력 연결 개수 검증 (조건 노드 제외)
+        // 출력 연결 개수 검증 (조건 노드, 반복 노드 제외)
         // 조건 노드의 경우 출력 타입 추출
-        const outputType = fromOutputType === 'true' || fromOutputType === 'false' ? fromOutputType : null;
+        // 반복 노드의 경우 아래 연결점(bottom)은 출력으로 카운트하지 않음
+        const outputType =
+            fromOutputType === 'true' || fromOutputType === 'false'
+                ? fromOutputType
+                : fromOutputType === 'bottom'
+                  ? 'bottom'
+                  : null;
 
         if (fromOutputType === 'output' || outputType) {
             const fromNode = this.nodes.find((n) => n.id === fromNodeId);
@@ -1530,18 +1607,24 @@ export class NodeManager {
                 ? this.nodeData[fromNodeId]?.type || fromNode.element?.dataset?.nodeType
                 : null;
             const isConditionNode = fromNodeType === 'condition';
-            const existingCount = this.getOutputConnectionCount(fromNodeId, outputType);
+            const isRepeatNode = fromNodeType === 'repeat';
+
+            // 반복 노드의 아래 연결점은 출력으로 카운트하지 않음
+            const countOutputType = isRepeatNode && outputType === 'bottom' ? null : outputType;
+            const existingCount = this.getOutputConnectionCount(fromNodeId, countOutputType);
 
             log('[NodeManager] createNodeConnection 출력 연결 검증:', {
                 fromNodeId: fromNodeId,
                 fromNodeType: fromNodeType,
                 isCondition: isConditionNode,
+                isRepeat: isRepeatNode,
                 outputType: outputType,
+                countOutputType: countOutputType,
                 existingCount: existingCount
             });
 
-            // 조건 노드가 아니고 이미 출력 연결이 있는 경우 (nodeType이 undefined이어도 조건 노드가 아니라고 가정)
-            if (!isConditionNode && existingCount >= 1) {
+            // 조건 노드와 반복 노드가 아니고 이미 출력 연결이 있는 경우
+            if (!isConditionNode && !isRepeatNode && existingCount >= 1) {
                 logWarn('조건 노드가 아닌 노드는 출력을 최대 1개만 연결할 수 있습니다.', {
                     fromNodeId: fromNodeId,
                     fromNodeType: fromNodeType,
@@ -1819,6 +1902,8 @@ export class NodeManager {
             const maxHeight = oneLineHeight * 5; // 최대 5줄 높이
 
             // 5줄을 넘으면 가로로 확장
+            // 노드 크기 조정 후 아래 연결점 위치 업데이트
+            this.adjustBottomOutputPosition(nodeElement);
             if (totalTextHeight > maxHeight) {
                 nodeElement.classList.add('text-overflow');
                 // 높이 제한 제거
@@ -1836,6 +1921,56 @@ export class NodeManager {
                 // 5줄 이내면 높이 자동 조정
                 nodeElement.style.height = 'auto';
             }
+
+            // 노드 크기 조정 후 아래 연결점 위치 업데이트
+            this.adjustBottomOutputPosition(nodeElement);
+        });
+    }
+
+    /**
+     * 아래 연결점 위치 동적 조정 (노드 크기에 따라 가운데 최하단에 배치)
+     * @param {HTMLElement} nodeElement - 노드 요소
+     */
+    adjustBottomOutputPosition(nodeElement) {
+        // DOM이 완전히 렌더링될 때까지 대기
+        requestAnimationFrame(() => {
+            const bottomOutput = nodeElement.querySelector('.node-bottom-output');
+            if (!bottomOutput) {
+                return; // 아래 연결점이 없는 노드는 스킵
+            }
+
+            // 노드의 실제 크기 측정 (패딩 포함)
+            const nodeRect = nodeElement.getBoundingClientRect();
+            const nodeWidth = nodeRect.width;
+            const nodeHeight = nodeRect.height;
+
+            // 노드의 스타일 정보 가져오기 (패딩 계산용)
+            const nodeStyle = window.getComputedStyle(nodeElement);
+            const nodePaddingBottom = parseFloat(nodeStyle.paddingBottom) || 0;
+            const nodePaddingTop = parseFloat(nodeStyle.paddingTop) || 0;
+
+            // 아래 연결점의 크기 측정
+            const bottomOutputRect = bottomOutput.getBoundingClientRect();
+            const bottomOutputHeight = bottomOutputRect.height || 30; // 기본값 (도트 + 라벨)
+
+            // 노드의 실제 콘텐츠 높이 (패딩 제외)
+            const contentHeight = nodeHeight - nodePaddingTop - nodePaddingBottom;
+
+            // 아래 연결점을 노드 최하단에 배치
+            // bottom: -(bottomOutputHeight/2 + 여유공간)로 설정하여 연결점 도트가 노드 하단 밖에 위치하도록
+            // 더 아래로 배치하기 위해 여유공간을 더 크게 설정
+            const offsetFromBottom = Math.max(21, bottomOutputHeight / 2 + 16); // 최소 20px, 연결점 높이의 절반 + 여유공간(16px)
+
+            // 절대 위치로 설정 (노드의 상대 위치 기준)
+            bottomOutput.style.position = 'absolute';
+            bottomOutput.style.left = '50%'; // 가운데
+            bottomOutput.style.bottom = `-${offsetFromBottom}px`; // 노드 하단 밖으로
+            bottomOutput.style.right = 'auto'; // right 초기화
+            bottomOutput.style.transform = 'translateX(-50%)'; // 정확한 가운데 정렬
+
+            log(
+                `[NodeManager] 아래 연결점 위치 조정: 노드 ${nodeElement.dataset.nodeId}, 노드 크기 (${nodeWidth}x${nodeHeight}), 콘텐츠 높이 (${contentHeight}), 연결점 높이 (${bottomOutputHeight}), 위치 (left: 50%, bottom: -${offsetFromBottom}px)`
+            );
         });
     }
 
