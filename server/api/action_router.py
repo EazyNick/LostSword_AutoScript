@@ -24,6 +24,7 @@ from models.process_focus_models import (
     ProcessFocusParams,  # Pydantic 모델로 입력 검증 (process_id 또는 hwnd 중 하나는 필수)
 )
 from models.response_models import ListResponse
+from nodes.excelnodes.excel_manager import cleanup_excel_objects
 from services.action_service import ActionService
 from services.node_execution_context import NodeExecutionContext
 from utils.execution_id_generator import generate_execution_id
@@ -175,6 +176,12 @@ async def execute_nodes(request: NodeExecutionRequest) -> ActionResponse:
     )
     logger.debug(f"[API] 실행 결과 상세: {results}")
 
+    # 엑셀 객체 정리 (열려있는 엑셀 파일이 있으면 닫기)
+    try:
+        cleanup_excel_objects(execution_id)
+    except Exception as e:
+        logger.warning(f"[API] 엑셀 객체 정리 중 오류 발생 (무시): {e!s}")
+
     # 실행 완료 시간 계산
     execution_time_ms = int((time.time() - execution_start_time) * 1000) if execution_start_time else None
 
@@ -197,6 +204,12 @@ async def execute_nodes(request: NodeExecutionRequest) -> ActionResponse:
 
     # 에러가 발생했으면 success: False 반환
     if has_error:
+        # 에러 발생 시에도 엑셀 객체 정리
+        try:
+            cleanup_excel_objects(execution_id)
+        except Exception as e:
+            logger.warning(f"[API] 엑셀 객체 정리 중 오류 발생 (무시): {e!s}")
+
         logger.warning(f"[API] 노드 실행 중 오류 발생 - 에러 메시지: {error_message}")
         return ActionResponse(
             success=False,

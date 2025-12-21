@@ -564,11 +564,12 @@ export class WorkflowPage {
         const logger = this.getLogger();
         const log = logger.log;
 
-        const { script, previousScript } = event.detail;
+        const { script, previousScript, forceReload = false } = event.detail;
 
         log('[WorkflowPage] onScriptChanged() 호출됨');
         log('[WorkflowPage] 현재 스크립트:', script);
         log('[WorkflowPage] 이전 스크립트:', previousScript);
+        log('[WorkflowPage] 강제 재로드:', forceReload);
 
         // 유효성 검사
         if (!script || !script.id) {
@@ -576,8 +577,8 @@ export class WorkflowPage {
             return;
         }
 
-        // 중복 로드 방지
-        if (this.loadService) {
+        // 중복 로드 방지 (강제 재로드가 아닌 경우에만)
+        if (this.loadService && !forceReload) {
             if (this.loadService.isLoading) {
                 log('[WorkflowPage] ⚠️ 이미 로딩 중입니다. 중복 로드 방지');
                 return;
@@ -588,6 +589,12 @@ export class WorkflowPage {
                 log('[WorkflowPage] 같은 스크립트가 이미 로드되었습니다. 중복 로드 방지:', script.id);
                 return;
             }
+        }
+
+        // 강제 재로드인 경우 로드된 스크립트 ID 초기화
+        if (forceReload && this.loadService) {
+            this.loadService._lastLoadedScriptId = null;
+            log('[WorkflowPage] 강제 재로드를 위해 로드된 스크립트 ID 초기화');
         }
 
         // 이전 스크립트가 있으면 저장 후 새 스크립트 로드

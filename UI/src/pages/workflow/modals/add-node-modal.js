@@ -182,7 +182,33 @@ export class AddNodeModal {
 
                 let parameterFormResult = { html: '', buttons: [] };
                 if (parametersToUse) {
-                    parameterFormResult = generateParameterForm(parametersToUse, 'node-', {});
+                    // excel-close 노드의 execution_id 기본값 설정
+                    const defaultValues = {};
+                    if (selectedType === 'excel-close' && parametersToUse.execution_id) {
+                        // 이전 노드가 있는지 확인하고 기본값 설정
+                        const nodeManager = this.workflowPage.getNodeManager();
+                        if (nodeManager) {
+                            const allNodes = nodeManager.getAllNodes();
+                            // 마지막 노드가 엑셀 열기 노드인지 확인
+                            if (allNodes.length > 0) {
+                                const lastNode = allNodes[allNodes.length - 1];
+                                const lastNodeData = nodeManager.nodeData?.[lastNode.id];
+                                if (lastNodeData?.type === 'excel-open') {
+                                    defaultValues.execution_id = 'output.data.execution_id';
+                                } else {
+                                    // 이전 노드가 없거나 엑셀 열기 노드가 아니어도 기본값 설정
+                                    defaultValues.execution_id = 'output.data.execution_id';
+                                }
+                            } else {
+                                // 노드가 없어도 기본값 설정
+                                defaultValues.execution_id = 'output.data.execution_id';
+                            }
+                        } else {
+                            // nodeManager가 없어도 기본값 설정
+                            defaultValues.execution_id = 'output.data.execution_id';
+                        }
+                    }
+                    parameterFormResult = generateParameterForm(parametersToUse, 'node-', defaultValues, {});
                     parameterFormHtml = parameterFormResult.html;
                     console.log('[AddNodeModal] 파라미터 폼 생성:', {
                         nodeType: selectedType,

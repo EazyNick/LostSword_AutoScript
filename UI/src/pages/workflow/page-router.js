@@ -51,7 +51,7 @@ export class PageRouter {
 
             // 서버에서 언어 설정 로드
             const savedLanguage = await UserSettingsAPI.getSetting('language');
-            const language = savedLanguage || 'ko';
+            const language = savedLanguage || 'en';
 
             // 언어 적용 (초기 로드 시에는 silent=true로 설정하여 이벤트를 발생시키지 않음)
             await setLanguage(language, true);
@@ -449,6 +449,7 @@ document.addEventListener('languageChanged', async (event) => {
             // 설정 페이지: renderSettings()와 setupEventListeners()만 호출하여 무한 루프 방지
             const { getSettingsManagerInstance } = await import('./settings.js');
             const settingsManager = getSettingsManagerInstance();
+            settingsManager.updateStaticTexts();
             settingsManager.renderSettings();
             settingsManager.setupEventListeners();
         } else if (router.currentPage === 'history') {

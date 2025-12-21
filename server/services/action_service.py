@@ -46,6 +46,9 @@ class ActionService:
         from nodes.base_node import BaseNode
 
         # nodes 모듈의 모든 속성을 순회
+        logger.info(
+            f"[ActionService] 노드 핸들러 등록 시작 - nodes 모듈 속성 개수: {len([x for x in dir(nodes) if not x.startswith('_')])}"
+        )
         for _name, obj in inspect.getmembers(nodes):
             # 클래스이고 BaseNode를 상속받았으며, execute 메서드가 있는 경우
             if inspect.isclass(obj) and issubclass(obj, BaseNode) and obj is not BaseNode and hasattr(obj, "execute"):
@@ -55,7 +58,15 @@ class ActionService:
                     action_name = execute_method.action_name
                     # node_handlers에 등록
                     self.node_handlers[action_name] = execute_method
-                    logger.debug(f"노드 핸들러 자동 등록: {action_name} -> {obj.__name__}.execute")
+                    logger.info(f"[ActionService] 노드 핸들러 자동 등록: {action_name} -> {obj.__name__}.execute")
+                else:
+                    logger.warning(
+                        f"[ActionService] 노드 클래스 {obj.__name__}의 execute 메서드에 action_name 속성이 없습니다."
+                    )
+
+        logger.info(
+            f"[ActionService] 노드 핸들러 등록 완료 - 총 {len(self.node_handlers)}개 핸들러 등록됨: {list(self.node_handlers.keys())}"
+        )
 
         # action_node_types.py의 handler와 매칭하여 action_node_handlers에 등록
         for _node_type, action_nodes in ACTION_NODE_TYPES.items():
@@ -107,12 +118,17 @@ class ActionService:
                     return result
 
             # 노드 핸들러 사용
-            logger.debug(f"사용 가능한 핸들러: {list(self.node_handlers.keys())}")
+            logger.info(f"[process_action] 사용 가능한 핸들러: {list(self.node_handlers.keys())}")
+            logger.info(f"[process_action] 요청된 액션 타입: {action_type}")
 
             handler = self.node_handlers.get(action_type)
             if not handler:
-                logger.error(f"지원하지 않는 액션 타입: {action_type}")
+                logger.error(
+                    f"[process_action] 지원하지 않는 액션 타입: {action_type} (등록된 핸들러: {list(self.node_handlers.keys())})"
+                )
                 raise ValueError(f"지원하지 않는 액션 타입: {action_type}")
+
+            logger.info(f"[process_action] 핸들러 찾음: {handler} (action_type: {action_type})")
 
             logger.debug(f"핸들러 실행 중: {handler.__name__}")
             result = await handler(parameters)
@@ -204,6 +220,18 @@ class ActionService:
                 # 조건 노드인 경우 조건 서비스를 통해 데이터 준비
                 if node_type == "condition":
                     node_data = ConditionService.prepare_condition_node_data(node_data, context)
+
+                # 엑셀 닫기 노드인 경우 이전 노드의 출력에서 execution_id 가져오기
+                if node_type == "excel-close":
+                    prev_result = context.get_previous_node_result()
+                    if prev_result and isinstance(prev_result, dict):
+                        prev_output = prev_result.get("output")
+                        if isinstance(prev_output, dict) and "execution_id" in prev_output:
+                            # 이전 노드의 출력에서 execution_id를 가져와서 node_data에 추가
+                            node_data["_execution_id_from_prev"] = prev_output.get("execution_id")
+                            logger.info(
+                                f"[process_node][excel-close] 이전 노드 출력에서 execution_id 가져옴: {prev_output.get('execution_id')}"
+                            )
 
                 logger.debug(f"준비된 노드 데이터: {node_data}")
 

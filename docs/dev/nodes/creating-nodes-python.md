@@ -1,4 +1,4 @@
-**최신 수정일자: 2025.12.20**
+**최신 수정일자: 2025.12.21**
 
 # Python 노드 생성 가이드
 
@@ -194,7 +194,92 @@ NODES_CONFIG: dict[str, dict[str, Any]] = {
 
 - **`requires_folder_path`**: `True`로 설정하면 폴더 경로가 필수임을 표시합니다 (예: `image-touch` 노드)
 
-## 2. 노드 클래스 생성
+## 2. 필요한 라이브러리 설치
+
+노드에서 외부 라이브러리를 사용하는 경우, 다음 단계를 따라야 합니다:
+
+### 2.1 requirements.txt에 라이브러리 추가
+
+노드에서 사용하는 모든 외부 라이브러리를 `server/requirements.txt` 파일에 추가하세요:
+
+```txt
+# 예시: win32 관련 라이브러리
+pywin32>=306
+```
+
+### 2.2 라이브러리 설치
+
+`requirements.txt`에 추가한 후 다음 명령어로 설치하세요:
+
+```bash
+pip install -r server/requirements.txt
+```
+
+또는 특정 라이브러리만 설치하려면:
+
+```bash
+pip install pywin32
+```
+
+### 2.3 노드 코드에서 라이브러리 import
+
+노드 코드에서 라이브러리를 import할 때는 에러 처리를 포함하세요:
+
+```python
+try:
+    import win32com.client
+except ImportError:
+    win32com = None
+
+# 노드 실행 시 라이브러리 확인
+if win32com is None:
+    return create_failed_result(
+        action="my-node",
+        reason="library_not_installed",
+        message="필요한 라이브러리가 설치되어 있지 않습니다. pip install pywin32를 실행하세요.",
+        output={"success": False}
+    )
+```
+
+### 실제 예시: 엑셀 열기 노드
+
+엑셀 파일을 열기 위해 `pywin32` 라이브러리를 사용하는 노드 예시:
+
+**1. requirements.txt에 추가** (이미 추가되어 있음):
+```txt
+pywin32>=306
+```
+
+**2. 노드 코드에서 사용** (`server/nodes/actionnodes/excel_open.py`):
+```python
+try:
+    import win32com.client
+except ImportError:
+    win32com = None
+
+@NodeExecutor("excel-open")
+async def execute(parameters: dict[str, Any]) -> dict[str, Any]:
+    if win32com is None:
+        return create_failed_result(
+            action="excel-open",
+            reason="win32com_not_installed",
+            message="pywin32가 설치되어 있지 않습니다. pip install pywin32를 실행하세요.",
+            output={"success": False}
+        )
+    
+    # 엑셀 파일 열기 로직
+    excel_app = win32com.client.Dispatch("Excel.Application")
+    # ...
+```
+
+### 주의사항
+
+- **Windows 전용 라이브러리**: `pywin32`와 같은 Windows 전용 라이브러리는 Windows 환경에서만 동작합니다.
+- **의존성 관리**: 노드를 배포하거나 다른 개발자와 공유할 때는 `requirements.txt`에 모든 의존성을 명시해야 합니다.
+- **버전 고정**: 특정 버전이 필요한 경우 버전을 명시하세요 (예: `pywin32>=306`).
+- **에러 처리**: 라이브러리가 설치되지 않은 경우를 대비해 항상 try-except로 감싸고 적절한 에러 메시지를 반환하세요.
+
+## 3. 노드 클래스 생성
 
 노드 타입에 따라 적절한 디렉토리에 Python 파일을 생성하세요:
 
@@ -307,7 +392,7 @@ if not some_condition:
 return {"action": "click", "status": "completed", "output": {"x": x, "y": y}}
 ```
 
-## 3. JavaScript 렌더링 파일 생성
+## 4. JavaScript 렌더링 파일 생성
 
 Python 노드도 클라이언트에서 렌더링하기 위해 JavaScript 파일이 필요합니다.
 
@@ -349,7 +434,7 @@ Python 노드도 클라이언트에서 렌더링하기 위해 JavaScript 파일�
 })();
 ```
 
-## 4. 자동 스크립트 로드 (Import)
+## 5. 자동 스크립트 로드 (Import)
 
 **중요**: JavaScript 파일은 **자동으로 로드**됩니다. `index.html`을 수정할 필요가 없습니다.
 
@@ -378,7 +463,7 @@ Python 노드도 클라이언트에서 렌더링하기 위해 JavaScript 파일�
 [node-my-node] 노드 타입 등록 완료
 ```
 
-## 5. 노드 등록
+## 6. 노드 등록
 
 노드는 **완전 자동으로 등록**됩니다. 별도의 등록 코드는 필요하지 않습니다.
 

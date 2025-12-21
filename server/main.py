@@ -120,8 +120,21 @@ def initialize_database() -> None:
             # 언어 설정 기본값 확인 및 추가
             language = db_manager.get_user_setting("language")
             if language is None:
-                db_manager.save_user_setting("language", "ko")
-                logger.info("✅ 기본 설정값 추가: language = ko")
+                db_manager.save_user_setting("language", "en")
+                logger.info("✅ 기본 설정값 추가: language = en")
+
+            # 포커스된 스크립트 ID 기본값 확인 및 추가
+            focused_script_id = db_manager.get_user_setting("focused-script-id")
+            if focused_script_id is None:
+                if len(scripts) > 0:
+                    # 첫 번째 스크립트 ID를 기본값으로 설정
+                    first_script_id = scripts[0]["id"]
+                    db_manager.save_user_setting("focused-script-id", str(first_script_id))
+                    logger.info(f"✅ 기본 설정값 추가: focused-script-id = {first_script_id}")
+                else:
+                    # 스크립트가 없으면 빈 문자열로 설정 (나중에 스크립트가 생성되면 업데이트됨)
+                    db_manager.save_user_setting("focused-script-id", "")
+                    logger.info("✅ 기본 설정값 추가: focused-script-id = '' (스크립트 없음)")
 
             # 중복 설정 정리 (같은 setting_key에 대해 최신 것만 남기고 나머지 삭제)
             deleted_count = db_manager.user_settings.cleanup_duplicate_settings()

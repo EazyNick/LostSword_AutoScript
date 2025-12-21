@@ -755,18 +755,28 @@ export class WorkflowExecutionService {
                         // 파라미터 정의에 따라 nodeData에서 값 추출
                         if (parametersToExtract) {
                             for (const [paramKey, paramConfig] of Object.entries(parametersToExtract)) {
-                                // nodeData에 값이 있으면 사용
-                                if (
-                                    nodeData &&
-                                    nodeData[paramKey] !== undefined &&
-                                    nodeData[paramKey] !== null &&
-                                    nodeData[paramKey] !== ''
-                                ) {
-                                    parameters[paramKey] = nodeData[paramKey];
-                                }
-                                // 값이 없고 기본값이 있으면 기본값 사용
-                                else if (paramConfig.default !== undefined && paramConfig.default !== null) {
-                                    parameters[paramKey] = paramConfig.default;
+                                // boolean 타입은 false도 유효한 값이므로 별도 처리
+                                if (paramConfig.type === 'boolean') {
+                                    // boolean은 undefined, null이 아닌 경우 모두 저장 (false도 유효)
+                                    if (nodeData && nodeData[paramKey] !== undefined && nodeData[paramKey] !== null) {
+                                        parameters[paramKey] = Boolean(nodeData[paramKey]);
+                                    } else if (paramConfig.default !== undefined) {
+                                        parameters[paramKey] = Boolean(paramConfig.default);
+                                    }
+                                } else {
+                                    // 다른 타입은 기존 로직 사용
+                                    if (
+                                        nodeData &&
+                                        nodeData[paramKey] !== undefined &&
+                                        nodeData[paramKey] !== null &&
+                                        nodeData[paramKey] !== ''
+                                    ) {
+                                        parameters[paramKey] = nodeData[paramKey];
+                                    }
+                                    // 값이 없고 기본값이 있으면 기본값 사용
+                                    else if (paramConfig.default !== undefined && paramConfig.default !== null) {
+                                        parameters[paramKey] = paramConfig.default;
+                                    }
                                 }
                             }
                         }

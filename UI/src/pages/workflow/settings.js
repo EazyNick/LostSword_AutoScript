@@ -31,7 +31,7 @@ export class SettingsManager {
             // 외관 설정
             appearance: {
                 theme: currentTheme, // 'light', 'dark', 'system'
-                language: 'ko' // 'ko', 'en'
+                language: 'en' // 'en', 'ko'
             },
             // 실행 설정
             execution: {
@@ -63,9 +63,26 @@ export class SettingsManager {
         logger.log('[Settings] 설정 페이지 초기화 시작');
 
         await this.loadSettings();
+        // 정적 텍스트 업데이트 (페이지 제목 및 부제목)
+        this.updateStaticTexts();
         // 언어 로드 후 설정 페이지를 다시 렌더링하여 번역 적용
         this.renderSettings();
         this.setupEventListeners();
+    }
+
+    /**
+     * HTML의 정적 텍스트 업데이트
+     */
+    updateStaticTexts() {
+        // 페이지 제목 및 부제목
+        const pageTitle = document.querySelector('#page-settings .page-title');
+        if (pageTitle) {
+            pageTitle.textContent = t('header.settings');
+        }
+        const pageSubtitle = document.querySelector('#page-settings .page-subtitle');
+        if (pageSubtitle) {
+            pageSubtitle.textContent = t('header.settingsSubtitle');
+        }
     }
 
     /**
@@ -104,7 +121,7 @@ export class SettingsManager {
                 if (UserSettingsAPI) {
                     // 언어 설정 로드
                     const language = await UserSettingsAPI.getSetting('language');
-                    const currentLang = language !== null ? language : 'ko';
+                    const currentLang = language !== null ? language : 'en';
                     this.settings.appearance.language = currentLang;
                     // i18n 언어 설정 (silent 모드로 호출하여 이벤트 발생 방지)
                     // 로컬 스토리지와 HTML lang 속성만 업데이트 (서버 저장 및 이벤트 발생 안 함)
@@ -191,8 +208,8 @@ export class SettingsManager {
                         </div>
                         <div class="settings-item-control">
                             <select class="settings-select" id="setting-language">
-                                <option value="ko" ${this.settings.appearance.language === 'ko' ? 'selected' : ''}>한국어</option>
                                 <option value="en" ${this.settings.appearance.language === 'en' ? 'selected' : ''}>English</option>
+                                <option value="ko" ${this.settings.appearance.language === 'ko' ? 'selected' : ''}>한국어</option>
                             </select>
                         </div>
                     </div>

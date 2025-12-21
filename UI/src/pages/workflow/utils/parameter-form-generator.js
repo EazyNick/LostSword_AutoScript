@@ -124,8 +124,12 @@ export function generateParameterInput(paramKey, paramConfig, prefix = 'node-', 
                                 </div>
                             `;
                     } else {
-                        // field_path 파라미터인 경우 자동완성 입력 필드 생성
-                        const isFieldPath = paramKey.toLowerCase() === 'field_path';
+                        // field_path 또는 execution_id 파라미터인 경우 자동완성 입력 필드 생성
+                        // source가 "previous_output"인 경우도 포함
+                        const isFieldPath =
+                            paramKey.toLowerCase() === 'field_path' ||
+                            paramKey.toLowerCase() === 'execution_id' ||
+                            paramConfig.source === 'previous_output';
 
                         if (isFieldPath) {
                             // 커스텀 자동완성 입력 필드 (회색 미리보기 포함)
@@ -181,16 +185,25 @@ export function generateParameterInput(paramKey, paramConfig, prefix = 'node-', 
             break;
 
         case 'boolean':
-            // boolean 타입은 label이 input을 감싸므로 외부 label이 필요 없음
+            // boolean 타입은 레이블과 체크박스를 분리하여 표시
+            // 설명이 있으면 설명을 먼저 표시하고, 레이블과 체크박스를 한 줄에 배치
             inputHtml = `
-                <label style="display: flex; align-items: center; gap: 8px;">
-                    <input 
-                        type="checkbox" 
-                        id="${fieldId}" 
-                        ${value ? 'checked' : ''}
-                        class="node-settings-checkbox">
-                    <span>${escapeHtml(label)}${requiredMark}</span>
-                </label>
+                <div class="node-settings-boolean-group">
+                    <div class="node-settings-boolean-label-wrapper">
+                        <label for="${fieldId}" class="node-settings-boolean-label">
+                            ${escapeHtml(label)}${requiredMark}
+                        </label>
+                        ${description ? `<small class="node-settings-help-text node-settings-boolean-help">${escapeHtml(description)}</small>` : ''}
+                    </div>
+                    <label class="node-settings-checkbox-wrapper">
+                        <input 
+                            type="checkbox" 
+                            id="${fieldId}" 
+                            ${value ? 'checked' : ''}
+                            class="node-settings-checkbox">
+                        <span class="node-settings-checkbox-slider"></span>
+                    </label>
+                </div>
             `;
             break;
 
@@ -214,7 +227,7 @@ export function generateParameterInput(paramKey, paramConfig, prefix = 'node-', 
             ? `${fieldId}-browse-btn`
             : null;
 
-    // boolean 타입은 label이 input을 감싸므로 외부 label이 필요 없음
+    // boolean 타입은 inputHtml에 이미 레이블과 설명이 포함되어 있으므로 외부 label과 description 불필요
     const labelHtml =
         type === 'boolean'
             ? ''
@@ -224,7 +237,7 @@ export function generateParameterInput(paramKey, paramConfig, prefix = 'node-', 
         <div class="form-group node-settings-form-group">
             ${labelHtml}
             ${inputHtml}
-            ${description ? `<small class="node-settings-help-text">${escapeHtml(description)}</small>` : ''}
+            ${type !== 'boolean' && description ? `<small class="node-settings-help-text">${escapeHtml(description)}</small>` : ''}
         </div>
     `;
 
@@ -243,29 +256,34 @@ export function generateParameterInput(paramKey, paramConfig, prefix = 'node-', 
  * @param {Object} currentValues - 현재 값 객체 (기존 노드 수정 시 사용)
  * @returns {Object} {html: string, buttons: Array<{buttonId: string, paramKey: string, type: 'folder'|'file'}>} 생성된 HTML과 버튼 정보
  */
-export function generateParameterForm(parameters, prefix = 'node-', currentValues = {}) {
+export function generateParameterForm(parameters, prefix = 'node-', currentValues = {}, options = {}) {
     if (!parameters || Object.keys(parameters).length === 0) {
         return { html: '', buttons: [] };
     }
 
+    // 제외할 파라미터 목록 (options.excludeParams)
+    const excludeParams = options.excludeParams || [];
+
     const buttons = [];
-    const formGroups = Object.entries(parameters).map(([paramKey, paramConfig]) => {
-        const currentValue = currentValues[paramKey];
-        const result = generateParameterInput(paramKey, paramConfig, prefix, currentValue);
+    const formGroups = Object.entries(parameters)
+        .filter(([paramKey]) => !excludeParams.includes(paramKey)) // 제외할 파라미터 필터링
+        .map(([paramKey, paramConfig]) => {
+            const currentValue = currentValues[paramKey];
+            const result = generateParameterInput(paramKey, paramConfig, prefix, currentValue);
 
-        // 버튼이 있는 경우 정보 저장
-        if (result.buttonId) {
-            const isFolder = paramKey.toLowerCase() === 'folder_path';
-            buttons.push({
-                buttonId: result.buttonId,
-                fieldId: `${prefix}${paramKey}`,
-                paramKey: paramKey,
-                type: isFolder ? 'folder' : 'file'
-            });
-        }
+            // 버튼이 있는 경우 정보 저장
+            if (result.buttonId) {
+                const isFolder = paramKey.toLowerCase() === 'folder_path';
+                buttons.push({
+                    buttonId: result.buttonId,
+                    fieldId: `${prefix}${paramKey}`,
+                    paramKey: paramKey,
+                    type: isFolder ? 'folder' : 'file'
+                });
+            }
 
-        return result.html;
-    });
+            return result.html;
+        });
 
     return {
         html: formGroups.join(''),
@@ -309,7 +327,21 @@ export function extractParameterValues(parameters, prefix = 'node-') {
                 value = fieldElement.value ? parseFloat(fieldElement.value) : paramConfig.default || 0;
                 break;
             case 'boolean':
-                value = fieldElement.checked;
+                // 체크박스는 input 요소이므로 checked 속성 사용
+                // 중첩된 label 안에 있어도 getElementById로 찾을 수 있음
+                if (fieldElement.type === 'checkbox') {
+                    value = fieldElement.checked;
+                    console.log(
+                        `[extractParameterValues] boolean 파라미터 추출: ${paramKey} = ${value} (checked: ${fieldElement.checked})`
+                    );
+                } else {
+                    // 예외 처리: 체크박스가 아닌 경우
+                    console.warn(
+                        `[extractParameterValues] boolean 타입이지만 체크박스가 아님: ${fieldId}`,
+                        fieldElement
+                    );
+                    value = false;
+                }
                 break;
             case 'string':
                 if (fieldElement.tagName === 'SELECT') {

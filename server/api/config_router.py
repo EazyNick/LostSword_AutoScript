@@ -52,6 +52,12 @@ async def get_nodes_config() -> SuccessResponse:
         if "parameters" in config:
             nodes_config_client[node_type]["parameters"] = config["parameters"]
 
+        # 입력/출력 스키마 포함 (미리보기 생성에 필요, 클라이언트 코드가 snake_case를 사용하므로 그대로 전달)
+        if "input_schema" in config:
+            nodes_config_client[node_type]["input_schema"] = config["input_schema"]
+        if "output_schema" in config:
+            nodes_config_client[node_type]["output_schema"] = config["output_schema"]
+
         # 상세 노드 타입이 있으면 포함 (대분류 노드 타입 아래의 하위 카테고리)
         if "detail_types" in config:
             detail_types_client = {}

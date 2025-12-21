@@ -1,3 +1,5 @@
+**최신 수정일자: 2025.12.21**
+
 # 노드 목록
 
 AutoScript에서 사용 가능한 모든 노드 타입을 설명합니다.
@@ -52,6 +54,32 @@ AutoScript에서 사용 가능한 모든 노드 타입을 설명합니다.
   - `content`: 작성할 내용
   - `mode`: 작성 모드 (write, append)
   - `encoding`: 파일 인코딩 (utf-8, utf-16, ascii, latin-1)
+
+## 엑셀 노드 (Excel Nodes) - Windows 전용
+
+### 엑셀 열기 노드 (Excel Open)
+- **설명**: `win32com`을 사용하여 Microsoft Excel 파일을 여는 노드
+- **용도**: 엑셀 파일을 열고 워크플로우 실행 중 객체 유지
+- **주의사항**: Windows 환경에서만 사용 가능, `pywin32` 라이브러리 필요
+- **파라미터**:
+  - `file_path`: 열 엑셀 파일 경로 (필수)
+  - `visible`: 엑셀 창 표시 여부 (기본값: True)
+- **출력**:
+  - `file_path`: 열린 엑셀 파일 경로
+  - `visible`: 엑셀 창 표시 여부
+  - `success`: 성공 여부
+  - `execution_id`: 스크립트 실행 ID (다음 노드에서 사용)
+
+### 엑셀 닫기 노드 (Excel Close)
+- **설명**: 엑셀 열기 노드로 열린 엑셀 파일을 닫는 노드
+- **용도**: 열려있는 엑셀 파일을 닫고 변경사항 저장 옵션 제공
+- **주의사항**: Windows 환경에서만 사용 가능, `pywin32` 라이브러리 필요
+- **파라미터**:
+  - `execution_id`: 엑셀 실행 ID (이전 노드 출력에서 선택하거나 직접 입력, 기본값: `output.data.execution_id`)
+  - `save_changes`: 변경사항 저장 여부 (기본값: True)
+- **출력**:
+  - `success`: 성공 여부
+  - `save_changes`: 변경사항 저장 여부
 
 ## 이미지 노드 (Image Nodes)
 

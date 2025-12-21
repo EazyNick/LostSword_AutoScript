@@ -181,6 +181,11 @@ const translations = {
             inactive: '비활성',
             edit: '편집',
             run: '실행',
+            scripts: '스크립트',
+            totalWorkflows: '전체 워크플로우',
+            totalExecutions: '전체 실행',
+            failedScripts: '실패한 스크립트',
+            inactiveScripts: '비활성 스크립트',
             justNow: '방금 전',
             minutesAgo: '{{minutes}}분 전',
             hoursAgo: '{{hours}}시간 전',
@@ -387,7 +392,7 @@ function getCurrentLanguage() {
         }
     }
     // 기본값은 한국어
-    return 'ko';
+    return 'en';
 }
 
 /**
@@ -423,7 +428,7 @@ export function t(key, params = {}) {
 
 /**
  * 언어 변경
- * @param {string} lang - 언어 코드 ('ko' 또는 'en')
+ * @param {string} lang - 언어 코드 ('en' 또는 'ko')
  * @param {boolean} silent - 이벤트를 발생시키지 않을지 여부 (기본값: false)
  */
 export async function setLanguage(lang, silent = false) {

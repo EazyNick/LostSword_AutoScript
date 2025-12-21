@@ -569,50 +569,11 @@ class DatabaseManager:
             self.scripts.update_script_timestamp(script1_id)
             log_func(f"스크립트 1에 {len(script1_nodes)}개의 노드 추가 완료")
 
-            # 스크립트 2: 결제 프로세스 테스트
-            script2_id = self.scripts.create_script("결제 프로세스 테스트", "온라인 결제 과정 검증")
+            # 스크립트 2: 이미지 터치 테스트
+            script2_id = self.scripts.create_script("이미지 터치 테스트", "이미지 터치 노드를 사용한 자동화 테스트")
             log_func(f"스크립트 2 생성: ID={script2_id}")
 
             script2_nodes = [
-                {
-                    "id": "start",
-                    "type": "start",
-                    "position": {"x": 0.0, "y": 0.0},
-                    "data": {"title": "시작"},
-                    "parameters": {},
-                },
-                {
-                    "id": "node1",
-                    "type": "wait",
-                    "position": {"x": 300.0, "y": 0.0},
-                    "data": {"title": "결제 처리 대기"},
-                    "parameters": {"wait_time": 3.0},
-                    "description": "결제 처리 대기",
-                },
-                {
-                    "id": "node2",
-                    "type": "condition",
-                    "position": {"x": 600.0, "y": 0.0},
-                    "data": {"title": "결제 성공 확인"},
-                    "parameters": {"condition": "check_payment_success"},
-                    "description": "결제 성공 여부 확인",
-                },
-            ]
-
-            script2_connections = [
-                {"from": "start", "to": "node1", "outputType": None},
-                {"from": "node1", "to": "node2", "outputType": None},
-            ]
-
-            self.nodes.save_nodes(script2_id, script2_nodes, script2_connections)
-            self.scripts.update_script_timestamp(script2_id)
-            log_func(f"스크립트 2에 {len(script2_nodes)}개의 노드 추가 완료")
-
-            # 스크립트 3: 이미지 터치 테스트
-            script3_id = self.scripts.create_script("이미지 터치 테스트", "이미지 터치 노드를 사용한 자동화 테스트")
-            log_func(f"스크립트 3 생성: ID={script3_id}")
-
-            script3_nodes = [
                 {
                     "id": "start",
                     "type": "start",
@@ -636,9 +597,72 @@ class DatabaseManager:
                 },
             ]
 
+            script2_connections = [
+                {"from": "start", "to": "node1", "outputType": None},
+                {"from": "node1", "to": "node2", "outputType": None},
+            ]
+
+            self.nodes.save_nodes(script2_id, script2_nodes, script2_connections)
+            self.scripts.update_script_timestamp(script2_id)
+            log_func(f"스크립트 2에 {len(script2_nodes)}개의 노드 추가 완료")
+
+            # 스크립트 3: 엑셀 테스트
+            # 엑셀 관련 노드들을 테스트하기 위한 스크립트입니다.
+            # 새로운 엑셀 노드를 추가할 때마다 이 스크립트에 노드를 추가하세요.
+            script3_id = self.scripts.create_script("엑셀 테스트", "엑셀 노드를 사용한 자동화 테스트")
+            log_func(f"스크립트 3 생성: ID={script3_id}")
+
+            script3_nodes = [
+                {
+                    "id": "start",
+                    "type": "start",
+                    "position": {"x": 0.0, "y": 0.0},
+                    "data": {"title": "시작"},
+                    "parameters": {},
+                },
+                {
+                    "id": "node1",
+                    "type": "excel-open",
+                    "position": {"x": 300.0, "y": 0.0},
+                    "data": {"title": "엑셀 열기"},
+                    "parameters": {
+                        "file_path": "C:\\Users\\User\\Desktop\\test.xlsx",
+                        "visible": True,
+                    },
+                    "description": "엑셀 파일 열기",
+                },
+                {
+                    "id": "node2",
+                    "type": "excel-close",
+                    "position": {"x": 600.0, "y": 0.0},
+                    "data": {"title": "엑셀 닫기"},
+                    "parameters": {
+                        "execution_id": "",  # 실행 시 이전 노드 출력에서 자동으로 가져옴
+                        "save_changes": True,
+                    },
+                    "description": "엑셀 파일 닫기",
+                },
+                # TODO: 새로운 엑셀 노드를 추가할 때 여기에 노드를 추가하세요.
+                # 예시:
+                # {
+                #     "id": "node3",
+                #     "type": "excel-read-cell",  # 새로운 엑셀 노드 타입
+                #     "position": {"x": 900.0, "y": 0.0},
+                #     "data": {"title": "셀 읽기"},
+                #     "parameters": {
+                #         "sheet": "Sheet1",
+                #         "cell": "A1",
+                #     },
+                #     "description": "엑셀 셀 읽기",
+                # },
+            ]
+
             script3_connections = [
                 {"from": "start", "to": "node1", "outputType": None},
                 {"from": "node1", "to": "node2", "outputType": None},
+                # TODO: 새로운 엑셀 노드를 추가할 때 연결도 추가하세요.
+                # 예시:
+                # {"from": "node2", "to": "node3", "outputType": None},
             ]
 
             self.nodes.save_nodes(script3_id, script3_nodes, script3_connections)
@@ -646,30 +670,48 @@ class DatabaseManager:
             log_func(f"스크립트 3에 {len(script3_nodes)}개의 노드 추가 완료")
 
             # 사용자 설정 예시 데이터 추가
-            self.user_settings.save_setting("theme", "dark")
-            self.user_settings.save_setting("language", "ko")  # 언어 설정 (기본값: 한국어)
-            self.user_settings.save_setting("auto_save", "true")
+            user_settings_to_save = [
+                ("theme", "dark"),
+                ("language", "en"),  # 언어 설정 (기본값: 영어)
+                ("auto_save", "true"),
+                ("sidebar-width", "300"),  # 기본 사이드바 너비
+            ]
 
-            # 기본 UI 설정값 추가
             import json
 
-            self.user_settings.save_setting("sidebar-width", "300")  # 기본 사이드바 너비
             script_order = json.dumps([script1_id, script2_id, script3_id], ensure_ascii=False)
-            self.user_settings.save_setting("script-order", script_order)  # 스크립트 순서
+            user_settings_to_save.append(("script-order", script_order))  # 스크립트 순서
+
+            # 첫 번째 스크립트 ID를 포커스된 스크립트로 설정
+            user_settings_to_save.append(("focused-script-id", str(script1_id)))
 
             # 스크린샷 기본 설정값 추가
-            self.user_settings.save_setting("screenshot.autoScreenshot", "true")
-            self.user_settings.save_setting("screenshot.screenshotOnError", "true")
-            self.user_settings.save_setting("screenshot.savePath", "./screenshots")
-            self.user_settings.save_setting("screenshot.imageFormat", "PNG")
+            screenshot_settings = [
+                ("screenshot.autoScreenshot", "true"),
+                ("screenshot.screenshotOnError", "true"),
+                ("screenshot.savePath", "./screenshots"),
+                ("screenshot.imageFormat", "PNG"),
+            ]
+            user_settings_to_save.extend(screenshot_settings)
+
+            # 사용자 설정 저장
+            for setting_key, setting_value in user_settings_to_save:
+                self.user_settings.save_setting(setting_key, setting_value)
 
             log_func("사용자 설정 예시 데이터 추가 완료")
 
+            # 생성된 스크립트 및 노드 개수 계산
+            created_scripts = [script1_id, script2_id, script3_id]
+            total_scripts = len(created_scripts)
             total_nodes = len(script1_nodes) + len(script2_nodes) + len(script3_nodes)
+
+            # 사용자 설정 개수 계산 (실제 저장된 설정 개수)
+            user_settings_count = len(user_settings_to_save)
+
             log_func("✅ 예시 데이터 생성 완료!")
-            log_func("   - 스크립트: 3개")
+            log_func(f"   - 스크립트: {total_scripts}개")
             log_func(f"   - 노드: {total_nodes}개")
-            log_func("   - 사용자 설정: 3개")
+            log_func(f"   - 사용자 설정: {user_settings_count}개")
             log_func(f"   - 데이터베이스 경로: {self.connection.db_path}")
 
         except Exception as e:
@@ -695,7 +737,7 @@ db_manager = DatabaseManager()
 # 테스트 항목:
 # 1. DatabaseManager 초기화 (모든 리포지토리 통합)
 # 2. 테이블 생성 확인 (scripts, nodes, user_settings)
-# 3. 예시 데이터 생성 (3개 스크립트, 17개 노드, 3개 사용자 설정)
+# 3. 예시 데이터 생성 (스크립트, 노드, 사용자 설정 자동 생성)
 # 4. 데이터 검증 (스크립트, 노드, 연결 정보 확인)
 # 5. 사용자 설정 CRUD 테스트
 # 6. 스크립트 CRUD 테스트

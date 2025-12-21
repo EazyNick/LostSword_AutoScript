@@ -352,8 +352,10 @@ export class SidebarScriptManager {
 
     /**
      * 스크립트 선택
+     * @param {number} index - 선택할 스크립트 인덱스
+     * @param {boolean} forceReload - 강제로 다시 로드할지 여부 (기본값: false)
      */
-    async selectScript(index) {
+    async selectScript(index, forceReload = false) {
         // 이전 스크립트 정보 저장 (스크립트 변경 전에)
         const previousScript = this.sidebarManager.getCurrentScript();
         this.sidebarManager.previousScript = previousScript;
@@ -385,11 +387,11 @@ export class SidebarScriptManager {
         // 헤더 업데이트
         this.sidebarManager.uiManager.updateHeader();
 
-        // 이벤트 발생
-        this.sidebarManager.dispatchScriptChangeEvent();
+        // 이벤트 발생 (강제 재로드 플래그 전달)
+        this.sidebarManager.dispatchScriptChangeEvent(forceReload);
 
         const logger = getLogger();
-        logger.log('스크립트 선택됨:', this.sidebarManager.scripts[index].name);
+        logger.log('스크립트 선택됨:', this.sidebarManager.scripts[index].name, forceReload ? '(강제 재로드)' : '');
     }
 
     /**

@@ -79,12 +79,18 @@ export class NodeSettingsModal {
         // 이전 노드 출력 변수 목록 표시
         this.updatePreviousNodeVariables(nodeId);
 
-        // field_path 필드 설정 (조건 노드 등에서 사용)
+        // field_path 또는 execution_id 필드 설정 (조건 노드, 엑셀 닫기 노드 등에서 사용)
         // 약간의 지연을 두어 DOM이 완전히 렌더링된 후 설정
         setTimeout(() => {
             const fieldPathInput = document.getElementById('edit-node-field_path');
+            const executionIdInput = document.getElementById('edit-node-execution_id');
+
             if (fieldPathInput) {
                 this.setupFieldPathInput(nodeId, fieldPathInput);
+            }
+
+            if (executionIdInput) {
+                this.setupFieldPathInput(nodeId, executionIdInput);
             }
         }, 100);
     }
@@ -314,6 +320,33 @@ export class NodeSettingsModal {
                 acc[key] = nodeData?.[key];
                 return acc;
             }, {});
+        }
+
+        // excel-close 노드의 execution_id 기본값 설정 (값이 없을 때만)
+        if (nodeType === 'excel-close' && parametersToUse?.execution_id) {
+            if (!currentValues.execution_id || currentValues.execution_id === '') {
+                // 이전 노드 확인
+                const nodeManager = this.workflowPage.getNodeManager();
+                if (nodeManager) {
+                    const previousNodes = this.getPreviousNodeChain(nodeData.id);
+                    if (previousNodes.length > 0) {
+                        const lastNode = previousNodes[previousNodes.length - 1];
+                        const lastNodeData = lastNode.data || {};
+                        if (lastNodeData.type === 'excel-open') {
+                            currentValues.execution_id = 'output.data.execution_id';
+                        } else {
+                            // 이전 노드가 없거나 엑셀 열기 노드가 아니어도 기본값 설정
+                            currentValues.execution_id = 'output.data.execution_id';
+                        }
+                    } else {
+                        // 이전 노드가 없어도 기본값 설정
+                        currentValues.execution_id = 'output.data.execution_id';
+                    }
+                } else {
+                    // nodeManager가 없어도 기본값 설정
+                    currentValues.execution_id = 'output.data.execution_id';
+                }
+            }
         }
 
         let parameterFormResult = { html: '', buttons: [] };
@@ -583,13 +616,20 @@ export class NodeSettingsModal {
                 });
             });
 
-            // field_path 필드에 이전 노드 출력 변수 목록 추가
+            // field_path 또는 execution_id 필드에 이전 노드 출력 변수 목록 추가
             const fieldPathInput = document.getElementById('edit-node-field_path');
+            const executionIdInput = document.getElementById('edit-node-execution_id');
+
             if (fieldPathInput) {
                 console.log('[setupEventListeners] field_path 필드 찾음, setupFieldPathInput 호출');
                 this.setupFieldPathInput(nodeId, fieldPathInput);
             } else {
                 console.log('[setupEventListeners] field_path 필드를 찾을 수 없음');
+            }
+
+            if (executionIdInput) {
+                console.log('[setupEventListeners] execution_id 필드 찾음, setupFieldPathInput 호출');
+                this.setupFieldPathInput(nodeId, executionIdInput);
             }
         }, 100); // 지연 시간 증가
 
@@ -1780,20 +1820,46 @@ export class NodeSettingsModal {
                     <span class="node-output-variable-value">${escapeHtml(valuePreview)}</span>
                 `;
 
-                // 변수 클릭 시 입력 필드에 변수 키만 삽입
+                // 변수 클릭 시 입력 필드에 변수 값 삽입
                 tag.addEventListener('click', () => {
+                    // 1. execution_id 필드가 있으면 그곳에 삽입
+                    const executionIdInput = document.getElementById('edit-node-execution_id');
+                    if (executionIdInput) {
+                        // execution_id 변수인 경우 값 삽입, 아니면 키 삽입
+                        if (variable.key === 'execution_id') {
+                            executionIdInput.value =
+                                typeof variable.value === 'string' ? variable.value : String(variable.value);
+                            executionIdInput.dispatchEvent(new Event('input', { bubbles: true }));
+                        } else {
+                            // 다른 변수인 경우 경로 형태로 삽입
+                            executionIdInput.value = `output.${variable.key}`;
+                            executionIdInput.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
+                        return;
+                    }
+
+                    // 2. field_path 필드가 있으면 그곳에 삽입
+                    const fieldPathInput = document.getElementById('edit-node-field_path');
+                    if (fieldPathInput) {
+                        const cursorPos = fieldPathInput.selectionStart;
+                        const textBefore = fieldPathInput.value.substring(0, cursorPos);
+                        const textAfter = fieldPathInput.value.substring(fieldPathInput.selectionEnd);
+                        const variableKey = variable.key;
+                        fieldPathInput.value = textBefore + variableKey + textAfter;
+                        const newCursorPos = cursorPos + variableKey.length;
+                        fieldPathInput.setSelectionRange(newCursorPos, newCursorPos);
+                        fieldPathInput.focus();
+                        return;
+                    }
+
+                    // 3. 입력 미리보기 필드에 삽입 (기본 동작)
                     const inputPreview = document.getElementById('node-input-preview');
                     if (inputPreview) {
-                        // 현재 커서 위치에 변수 키 삽입
                         const cursorPos = inputPreview.selectionStart;
                         const textBefore = inputPreview.value.substring(0, cursorPos);
                         const textAfter = inputPreview.value.substring(inputPreview.selectionEnd);
-
-                        // 변수 키만 삽입
                         const variableKey = variable.key;
                         inputPreview.value = textBefore + variableKey + textAfter;
-
-                        // 커서 위치 조정
                         const newCursorPos = cursorPos + variableKey.length;
                         inputPreview.setSelectionRange(newCursorPos, newCursorPos);
                         inputPreview.focus();

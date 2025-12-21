@@ -66,7 +66,7 @@ export class HistoryManager {
             // 서버에서 언어 설정 로드
             const savedLanguage = await UserSettingsAPI.getSetting('language');
             const currentLanguage = getLanguage();
-            const language = savedLanguage || 'ko';
+            const language = savedLanguage || 'en';
 
             // 언어가 다르면 적용 (초기 로드 시에는 silent=true로 설정)
             if (currentLanguage !== language) {
@@ -827,7 +827,7 @@ export class HistoryManager {
         }
         try {
             const date = new Date(dateString);
-            const lang = document.documentElement.lang || 'ko';
+            const lang = document.documentElement.lang || 'en';
             const locale = lang === 'en' ? 'en-US' : 'ko-KR';
             return date.toLocaleString(locale, {
                 year: 'numeric',

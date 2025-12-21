@@ -50,7 +50,43 @@ export function extractOutputVariables(nodeResult) {
 
     // output의 각 키-값 쌍을 변수로 변환
     const variables = [];
+
+    // output.data가 있으면 data 안의 변수들을 추출 (buildPreviousNodeOutput에서 래핑한 경우)
+    if (output.data && typeof output.data === 'object' && !Array.isArray(output.data)) {
+        for (const [key, value] of Object.entries(output.data)) {
+            // 표준 필드는 제외
+            const standardFields = ['action', 'status', 'output', 'error', 'message', 'meta'];
+            if (standardFields.includes(key)) {
+                continue;
+            }
+
+            // 값의 타입 추정
+            let type = 'unknown';
+            if (value === null) {
+                type = 'null';
+            } else if (Array.isArray(value)) {
+                type = 'array';
+            } else if (typeof value === 'object') {
+                type = 'object';
+            } else {
+                type = typeof value;
+            }
+
+            variables.push({
+                key,
+                value,
+                type
+            });
+        }
+    }
+
+    // output의 최상위 레벨 변수들도 추출 (data가 없는 경우 또는 data 외의 변수)
     for (const [key, value] of Object.entries(output)) {
+        // data와 metadata는 이미 처리했거나 제외
+        if (key === 'data' || key === 'metadata') {
+            continue;
+        }
+
         // 표준 필드는 제외 (action, status, error, message, meta 등)
         const standardFields = ['action', 'status', 'output', 'error', 'message', 'meta'];
         if (standardFields.includes(key)) {

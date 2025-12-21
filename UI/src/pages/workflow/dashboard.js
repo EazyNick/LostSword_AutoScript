@@ -53,7 +53,7 @@ export class DashboardManager {
             // 서버에서 언어 설정 로드
             const savedLanguage = await UserSettingsAPI.getSetting('language');
             const currentLanguage = getLanguage();
-            const language = savedLanguage || 'ko';
+            const language = savedLanguage || 'en';
 
             // 언어가 다르면 적용 (초기 로드 시에는 silent=true로 설정)
             if (currentLanguage !== language) {
@@ -580,6 +580,13 @@ export class DashboardManager {
      * 스크립트 페이지로 전환
      */
     switchToEditor(scriptId) {
+        const logger = getLogger();
+
+        // 현재 포커스된 스크립트 확인
+        const sidebarManager = window.sidebarManager;
+        const currentScript = sidebarManager ? sidebarManager.getCurrentScript() : null;
+        const isCurrentScript = currentScript && currentScript.id === scriptId;
+
         // 페이지 라우터로 전환
         if (window.pageRouter) {
             window.pageRouter.showPage('editor');
@@ -591,13 +598,21 @@ export class DashboardManager {
             }
         }
 
-        // 스크립트 선택
-        if (window.sidebarManager) {
-            const scripts = window.sidebarManager.getAllScripts();
+        // 스크립트 선택 (현재 포커스된 스크립트인 경우 강제 재로드)
+        if (sidebarManager) {
+            const scripts = sidebarManager.getAllScripts();
             const scriptIndex = scripts.findIndex((s) => s.id === scriptId);
             if (scriptIndex >= 0) {
                 setTimeout(() => {
-                    window.sidebarManager.selectScript(scriptIndex);
+                    // 현재 포커스된 스크립트를 다시 클릭한 경우 강제로 다시 로드
+                    const forceReload = isCurrentScript;
+                    if (forceReload) {
+                        logger.log(
+                            '[Dashboard] 현재 포커스된 스크립트를 다시 클릭하여 강제로 다시 로드합니다:',
+                            scriptId
+                        );
+                    }
+                    sidebarManager.scriptManager.selectScript(scriptIndex, forceReload);
                 }, 100);
             }
         }
@@ -652,7 +667,7 @@ export class DashboardManager {
         } else if (diffDays < 7) {
             return t('dashboard.daysAgo', { days: diffDays });
         } else {
-            const lang = document.documentElement.lang || 'ko';
+            const lang = document.documentElement.lang || 'en';
             const locale = lang === 'en' ? 'en-US' : 'ko-KR';
             return lastRun.toLocaleDateString(locale);
         }
