@@ -20,13 +20,31 @@ pip install -r server/requirements.txt
 pip install -r server/requirements-dev.txt
 ```
 
-### 3. 환경 변수 설정 (선택)
-```bash
-# .env 파일 생성 (프로젝트 루트)
-ENVIRONMENT=dev
+### 3. 환경 변수 설정 (선택사항)
+
+프로젝트 루트 디렉토리에 `.env` 파일을 생성하여 서버 설정을 변경할 수 있습니다:
+
+**`.env` 파일 생성 방법:**
+
+1. 프로젝트 루트 디렉토리에 `.env` 파일 생성
+2. 다음 내용을 추가:
+
+```env
+# 환경 설정
+ENVIRONMENT=dev  # dev: 개발 모드, prd: 프로덕션 모드 (기본값)
+
+# API 설정
 API_HOST=127.0.0.1  # 보안: 로컬호스트에서만 접근 가능 (기본값)
-API_PORT=8001  # 기본 포트 8001
+API_PORT=8001  # 서버 포트 (기본값: 8001)
+
+# 로그 설정
+LOG_LEVEL=INFO  # DEBUG, INFO, WARNING, ERROR (기본값: INFO)
 ```
+
+> **참고**: 
+> - `.env` 파일이 없어도 기본값으로 서버가 실행됩니다
+> - `start-server.bat`가 `.env` 파일을 자동으로 읽어서 사용합니다
+> - 자세한 설정 옵션은 [환경 변수 설정 가이드](environment.md)를 참고하세요
 
 ## 서버 실행
 

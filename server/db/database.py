@@ -1,9 +1,14 @@
 """통합 데이터베이스 관리자 모듈"""
 
+from __future__ import annotations
+
 import logging
 import os
 import sys
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 # 로거 초기화
 logger = logging.getLogger(__name__)
@@ -511,7 +516,7 @@ class DatabaseManager:
         cursor = self.connection.get_cursor(conn)
 
         # 로거가 없으면 print 사용
-        log_func = logger.info if logger else print
+        log_func: Callable[[str], None] = logger.info if logger else print
 
         try:
             # 기존 데이터 확인

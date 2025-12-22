@@ -2,8 +2,11 @@
 REM Server startup batch file
 REM Usage: start-server.bat
 
+REM Enable delayed expansion for variable handling in loops
+setlocal enabledelayedexpansion
+
 echo ========================================
-echo LostSword AutoScript Server Starting
+echo AutoScript Server Starting
 echo ========================================
 echo.
 
@@ -34,20 +37,51 @@ if exist ".venv\Scripts\activate.bat" (
     echo.
 )
 
+REM Read .env file and set environment variables
+REM Default values if .env file doesn't exist or variables are not set
+set API_HOST=127.0.0.1
+set API_PORT=8001
+
+REM Check if .env file exists
+if exist ".env" (
+    echo Reading .env file...
+    REM Read .env file line by line
+    for /f "usebackq eol=# tokens=1,2 delims==" %%a in (".env") do (
+        REM eol=# skips lines starting with #
+        set "key=%%a"
+        set "value=%%b"
+        REM Remove leading/trailing spaces from key
+        for /f "tokens=*" %%k in ("!key!") do set "key=%%k"
+        REM Check if this is API_HOST or API_PORT (case-insensitive)
+        if /i "!key!"=="API_HOST" (
+            REM Remove quotes and spaces from value
+            set "value=!value:"=!"
+            for /f "tokens=*" %%v in ("!value!") do set API_HOST=%%v
+        )
+        if /i "!key!"=="API_PORT" (
+            REM Remove quotes and spaces from value
+            set "value=!value:"=!"
+            for /f "tokens=*" %%v in ("!value!") do set API_PORT=%%v
+        )
+    )
+) else (
+    echo [INFO] .env file not found. Using default values.
+)
+
 REM Change to server directory
 cd server
 
 REM Start server
 echo Starting server...
-echo Host: 127.0.0.1
-echo Port: 8001
+echo Host: %API_HOST%
+echo Port: %API_PORT%
 echo Auto-reload: Enabled
 echo.
 echo Press Ctrl+C to stop the server.
 echo ========================================
 echo.
 
-python -m uvicorn main:app --reload --host 127.0.0.1 --port 8001
+python -m uvicorn main:app --reload --host %API_HOST% --port %API_PORT%
 
 REM Handle errors
 if errorlevel 1 (
