@@ -4,7 +4,6 @@
 
 from .action_models import ActionRequest, ActionResponse, NodeExecutionRequest
 from .folder_path_models import FolderPathParams
-from .http_api_request_models import HttpApiRequestParams
 from .log_models import NodeExecutionLogRequest, NodeExecutionLogResponse
 from .process_focus_models import ProcessFocusParams
 from .response_models import (
@@ -23,7 +22,6 @@ __all__ = [
     "BaseResponse",
     "ErrorResponse",
     "FolderPathParams",
-    "HttpApiRequestParams",
     "ListResponse",
     "NodeExecutionLogRequest",
     "NodeExecutionLogResponse",

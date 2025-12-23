@@ -29,9 +29,6 @@ export function generatePreviewOutput(nodeType, nodeData) {
         case 'file-write':
             return generateFileWriteOutput(nodeData);
 
-        case 'http-api-request':
-            return generateHttpApiRequestOutput(nodeData);
-
         default:
             return generateDefaultOutput(nodeType);
     }
@@ -100,10 +97,11 @@ function generateProcessFocusOutput(nodeData) {
             action: 'process-focus',
             status: 'completed',
             output: {
+                success: true,
                 process_id: nodeData?.process_id || 1234,
                 process_name: nodeData?.process_name || 'example.exe',
                 hwnd: nodeData?.hwnd || 5678,
-                focused: true
+                window_title: nodeData?.window_title || 'Example Window'
             }
         },
         null,
@@ -171,36 +169,6 @@ function generateFileWriteOutput(nodeData) {
                 encoding: writeEncoding,
                 written: true,
                 bytes_written: content.length
-            }
-        },
-        null,
-        2
-    );
-}
-
-/**
- * HTTP API 요청 노드 예시 출력
- */
-function generateHttpApiRequestOutput(nodeData) {
-    const url = nodeData?.url || 'https://api.example.com/endpoint';
-    const method = nodeData?.method || 'GET';
-    const headers = nodeData?.headers || {};
-    const body = nodeData?.body || {};
-    return JSON.stringify(
-        {
-            action: 'http-api-request',
-            status: 'completed',
-            output: {
-                success: true,
-                status_code: 200,
-                status_text: 'OK',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                data: {
-                    message: '요청 성공',
-                    data: body
-                }
             }
         },
         null,

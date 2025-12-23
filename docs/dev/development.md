@@ -5,6 +5,9 @@
 ## 개발 환경 설정
 
 ### 1. 가상환경 생성 및 활성화
+
+> **중요**: 가상환경 이름은 반드시 `venv`로 생성해야 합니다. 다른 이름을 사용하면 자동 스크립트(`start-server.bat`, `lint-all.bat` 등)가 가상환경을 찾지 못할 수 있습니다.
+
 ```bash
 python -m venv venv
 venv\Scripts\activate  # Windows

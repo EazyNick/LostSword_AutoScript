@@ -139,9 +139,35 @@ NODES_CONFIG: dict[str, dict[str, Any]] = {
         "description": "선택한 프로세스의 창을 화면 최상단에 포커스합니다.",
         "script": "node-process-focus.js",
         "is_boundary": False,
-        "category": "action",
+        "category": "process",
         # 상세 노드 타입 정의
         "detail_types": {},
+        "parameters": {
+            "process_id": {
+                "type": "number",
+                "description": "프로세스 ID",
+                "required": False,
+                "default": None,
+            },
+            "hwnd": {
+                "type": "number",
+                "description": "창 핸들 (Window Handle)",
+                "required": False,
+                "default": None,
+            },
+            "process_name": {
+                "type": "string",
+                "description": "프로세스 이름",
+                "required": False,
+                "default": None,
+            },
+            "window_title": {
+                "type": "string",
+                "description": "창 제목",
+                "required": False,
+                "default": None,
+            },
+        },
         "input_schema": {
             "action": {"type": "string", "description": "이전 노드 타입"},
             "status": {"type": "string", "description": "이전 노드 실행 상태"},
@@ -154,10 +180,11 @@ NODES_CONFIG: dict[str, dict[str, Any]] = {
                 "type": "object",
                 "description": "출력 데이터",
                 "properties": {
+                    "success": {"type": "boolean", "description": "포커스 성공 여부"},
                     "process_id": {"type": "number", "description": "프로세스 ID"},
                     "process_name": {"type": "string", "description": "프로세스 이름"},
                     "hwnd": {"type": "number", "description": "윈도우 핸들"},
-                    "focused": {"type": "boolean", "description": "포커스 성공 여부"},
+                    "window_title": {"type": "string", "description": "창 제목"},
                 },
             },
         },

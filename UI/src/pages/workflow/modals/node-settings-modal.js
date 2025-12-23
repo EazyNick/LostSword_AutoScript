@@ -188,41 +188,6 @@ export class NodeSettingsModal {
         }
 
         switch (detailNodeType) {
-            case 'http-api-request':
-                const url = nodeData?.url || '';
-                const method = nodeData?.method || 'GET';
-                const headers = nodeData?.headers || '{}';
-                const body = nodeData?.body || '';
-                const timeout = nodeData?.timeout || 30;
-
-                return `
-                    <div class="form-group node-settings-form-group">
-                        <label for="edit-http-url" class="node-settings-label">요청 URL:</label>
-                        <input type="text" id="edit-http-url" value="${escapeHtml(url)}" placeholder="https://api.example.com/endpoint" class="node-settings-input">
-                    </div>
-                    <div class="form-group node-settings-form-group">
-                        <label for="edit-http-method" class="node-settings-label">HTTP 메서드:</label>
-                        <select id="edit-http-method" class="node-settings-select">
-                            <option value="GET" ${method === 'GET' ? 'selected' : ''}>GET</option>
-                            <option value="POST" ${method === 'POST' ? 'selected' : ''}>POST</option>
-                            <option value="PUT" ${method === 'PUT' ? 'selected' : ''}>PUT</option>
-                            <option value="DELETE" ${method === 'DELETE' ? 'selected' : ''}>DELETE</option>
-                            <option value="PATCH" ${method === 'PATCH' ? 'selected' : ''}>PATCH</option>
-                        </select>
-                    </div>
-                    <div class="form-group node-settings-form-group">
-                        <label for="edit-http-headers" class="node-settings-label">HTTP 헤더 (JSON):</label>
-                        <textarea id="edit-http-headers" rows="3" placeholder='{"Content-Type": "application/json"}' class="node-settings-textarea">${escapeHtml(typeof headers === 'string' ? headers : JSON.stringify(headers, null, 2))}</textarea>
-                    </div>
-                    <div class="form-group node-settings-form-group">
-                        <label for="edit-http-body" class="node-settings-label">요청 본문 (JSON 또는 텍스트):</label>
-                        <textarea id="edit-http-body" rows="4" placeholder='{"key": "value"}' class="node-settings-textarea">${escapeHtml(typeof body === 'string' ? body : JSON.stringify(body, null, 2))}</textarea>
-                    </div>
-                    <div class="form-group node-settings-form-group">
-                        <label for="edit-http-timeout" class="node-settings-label">타임아웃 (초):</label>
-                        <input type="number" id="edit-http-timeout" value="${timeout}" min="1" max="300" class="node-settings-input">
-                    </div>
-                `;
             default:
                 return '';
         }
@@ -298,6 +263,29 @@ export class NodeSettingsModal {
             parameters: config?.parameters,
             currentDetailNodeType
         });
+
+        // process-focus 노드의 경우 파라미터 폼을 생성하지 않고 프로세스 선택 UI만 표시
+        if (nodeType === 'process-focus') {
+            const processFocusHtml = `
+                <div class="form-group node-settings-form-group">
+                    <label for="edit-node-process-select">프로세스 선택:</label>
+                    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                        <select id="edit-node-process-select" class="node-settings-select" style="flex: 1;">
+                            <option value="">프로세스를 선택하세요</option>
+                        </select>
+                        <button type="button" id="edit-refresh-processes-btn" class="btn btn-secondary">새로고침</button>
+                    </div>
+                    <input type="hidden" id="edit-node-process-id">
+                    <input type="hidden" id="edit-node-process-hwnd">
+                    <input type="hidden" id="edit-node-process-name">
+                    <input type="hidden" id="edit-node-window-title">
+                    <small class="node-settings-help-text">화면에 보이는 프로세스만 표시됩니다. 선택한 프로세스가 실행 시 화면 최상단에 포커스됩니다.</small>
+                </div>
+            `;
+            // process-focus 노드는 파라미터 폼을 생성하지 않고 프로세스 선택 UI만 반환
+            console.log('[NodeSettingsModal] process-focus 노드: 프로세스 선택 UI만 반환');
+            return processFocusHtml;
+        }
 
         // 파라미터 기반 폼 생성
         // parameterFormHtml: 생성된 파라미터 폼 HTML 문자열
@@ -382,6 +370,29 @@ export class NodeSettingsModal {
                 hasDetailTypes: !!config?.detailTypes,
                 currentDetailNodeType
             });
+        }
+
+        // process-focus 노드의 경우 파라미터 폼 대신 프로세스 선택 UI만 표시
+        if (nodeType === 'process-focus') {
+            const processFocusHtml = `
+                <div class="form-group node-settings-form-group">
+                    <label for="edit-node-process-select">프로세스 선택:</label>
+                    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                        <select id="edit-node-process-select" class="node-settings-select" style="flex: 1;">
+                            <option value="">프로세스를 선택하세요</option>
+                        </select>
+                        <button type="button" id="edit-refresh-processes-btn" class="btn btn-secondary">새로고침</button>
+                    </div>
+                    <input type="hidden" id="edit-node-process-id">
+                    <input type="hidden" id="edit-node-process-hwnd">
+                    <input type="hidden" id="edit-node-process-name">
+                    <input type="hidden" id="edit-node-window-title">
+                    <small class="node-settings-help-text">화면에 보이는 프로세스만 표시됩니다. 선택한 프로세스가 실행 시 화면 최상단에 포커스됩니다.</small>
+                </div>
+            `;
+            // process-focus 노드는 파라미터 폼을 생성하지 않고 프로세스 선택 UI만 반환
+            console.log('[NodeSettingsModal] process-focus 노드: 프로세스 선택 UI만 반환');
+            return processFocusHtml;
         }
 
         // 파라미터 폼이 생성된 경우 버튼 정보는 setupEventListeners에서 처리
@@ -620,12 +631,12 @@ export class NodeSettingsModal {
                 console.log('[setupEventListeners] execution_id 필드 찾음, setupFieldPathInput 호출');
                 this.setupFieldPathInput(nodeId, executionIdInput);
             }
-        }, 100); // 지연 시간 증가
 
-        // 프로세스 선택 관련
-        if (nodeType === 'process-focus') {
-            this.setupProcessSelection(nodeData);
-        }
+            // process-focus 노드의 경우 프로세스 선택 UI 설정
+            if (nodeType === 'process-focus') {
+                this.setupProcessSelection(nodeData);
+            }
+        }, 100); // 지연 시간 증가
 
         // 저장 버튼
         const saveBtn = document.getElementById('edit-node-save');
@@ -731,11 +742,6 @@ export class NodeSettingsModal {
                     });
                 });
             }, 50);
-
-            // 프로세스 선택 설정
-            if (selectedType === 'process-focus') {
-                this.setupProcessSelection(nodeData);
-            }
 
             // 파라미터 폼의 모든 입력 필드에 이벤트 리스너 설정
             const nodeElement =
@@ -1696,21 +1702,6 @@ export class NodeSettingsModal {
         if (nodeType === 'wait' && !prepared.wait_time && nodeData.wait_time !== undefined) {
             prepared.wait_time = nodeData.wait_time;
         }
-        // process-focus
-        if (nodeType === 'process-focus') {
-            if (nodeData.process_id !== undefined) {
-                prepared.process_id = nodeData.process_id;
-            }
-            if (nodeData.hwnd !== undefined) {
-                prepared.hwnd = nodeData.hwnd;
-            }
-            if (nodeData.process_name) {
-                prepared.process_name = nodeData.process_name;
-            }
-            if (nodeData.window_title) {
-                prepared.window_title = nodeData.window_title;
-            }
-        }
         // condition
         if (nodeType === 'condition' && !prepared.condition && nodeData.condition) {
             prepared.condition = nodeData.condition;
@@ -1722,6 +1713,21 @@ export class NodeSettingsModal {
             }
             if (nodeData.y !== undefined) {
                 prepared.y = nodeData.y;
+            }
+        }
+        // process-focus
+        if (nodeType === 'process-focus') {
+            if (nodeData.process_id !== undefined) {
+                prepared.process_id = nodeData.process_id;
+            }
+            if (nodeData.hwnd !== undefined) {
+                prepared.hwnd = nodeData.hwnd;
+            }
+            if (nodeData.process_name !== undefined) {
+                prepared.process_name = nodeData.process_name;
+            }
+            if (nodeData.window_title !== undefined) {
+                prepared.window_title = nodeData.window_title;
             }
         }
 

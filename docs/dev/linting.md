@@ -21,7 +21,12 @@ cd UI && npm install                        # JavaScript 린팅 도구 (ESLint, 
 
 **Python 린팅 환경 설정**
 
+> **중요**: 가상환경 이름은 반드시 `venv`로 생성해야 합니다. 다른 이름을 사용하면 자동 스크립트(`lint-all.bat` 등)가 가상환경을 찾지 못할 수 있습니다.
+
 ```bash
+# 가상환경 생성 (아직 없다면)
+python -m venv venv
+
 # 가상환경 활성화 (Windows)
 venv\Scripts\activate
 
@@ -53,8 +58,10 @@ scripts\lint-all.bat
 - Python 린팅 및 포매팅 (ruff)
 - Python 타입 체크 (mypy)
 - JavaScript 린팅 및 포매팅 (ESLint, Prettier)
-- 가상환경 자동 감지 및 활성화
+- 가상환경 자동 감지 및 활성화 (`venv` 폴더 우선 검색)
 - 프로젝트 루트 자동 감지
+
+> **중요**: 가상환경 이름은 반드시 `venv`로 생성해야 합니다. `lint-all.bat`가 `venv` 폴더를 우선적으로 찾습니다.
 
 ### 수동 린팅 실행
 

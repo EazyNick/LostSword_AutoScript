@@ -182,6 +182,27 @@ export class NodeUpdateService {
             updatedNodeData.output_override = null;
         }
 
+        // process-focus 노드의 경우 프로세스 선택 값 추가
+        if (newType === 'process-focus') {
+            const processIdInput = document.getElementById('edit-node-process-id');
+            const processHwndInput = document.getElementById('edit-node-process-hwnd');
+            const processNameInput = document.getElementById('edit-node-process-name');
+            const windowTitleInput = document.getElementById('edit-node-window-title');
+
+            if (processIdInput && processIdInput.value) {
+                updatedNodeData.process_id = parseInt(processIdInput.value, 10) || null;
+            }
+            if (processHwndInput && processHwndInput.value) {
+                updatedNodeData.hwnd = parseInt(processHwndInput.value, 10) || null;
+            }
+            if (processNameInput && processNameInput.value) {
+                updatedNodeData.process_name = processNameInput.value;
+            }
+            if (windowTitleInput && windowTitleInput.value) {
+                updatedNodeData.window_title = windowTitleInput.value;
+            }
+        }
+
         // 파라미터 기반 데이터 추출
         const registry = getNodeRegistry();
         const config = await registry.getConfig(newType);

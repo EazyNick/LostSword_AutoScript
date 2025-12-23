@@ -502,11 +502,6 @@ export class WorkflowLoadService {
                         }
                     }
                 }
-
-                // process-focus 노드는 별도 처리 (비동기 검증 필요)
-                if (nodeType === 'process-focus') {
-                    await this.restoreProcessFocusNode(nodeData, nodeManager, nodeDataForManager);
-                }
             }
         }
 

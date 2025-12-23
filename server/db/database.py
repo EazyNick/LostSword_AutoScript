@@ -588,15 +588,22 @@ class DatabaseManager:
                 },
                 {
                     "id": "node1",
-                    "type": "image-touch",
+                    "type": "process-focus",
                     "position": {"x": 300.0, "y": 0.0},
+                    "data": {"title": "화면 포커스"},
+                    "parameters": {"process_id": 1234},
+                },
+                {
+                    "id": "node2",
+                    "type": "image-touch",
+                    "position": {"x": 600.0, "y": 0.0},
                     "data": {"title": "이미지 터치"},
                     "parameters": {"folder_path": "C:/Users/User/Desktop/images", "image_count": 5},
                 },
                 {
-                    "id": "node2",
+                    "id": "node3",
                     "type": "wait",
-                    "position": {"x": 600.0, "y": 0.0},
+                    "position": {"x": 900.0, "y": 0.0},
                     "data": {"title": "대기"},
                     "parameters": {"wait_time": 2.0},
                 },
@@ -605,6 +612,7 @@ class DatabaseManager:
             script2_connections = [
                 {"from": "start", "to": "node1", "outputType": None},
                 {"from": "node1", "to": "node2", "outputType": None},
+                {"from": "node2", "to": "node3", "outputType": None},
             ]
 
             self.nodes.save_nodes(script2_id, script2_nodes, script2_connections)

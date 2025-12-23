@@ -819,17 +819,36 @@ export class WorkflowExecutionService {
                         const nodeTitle = nodeData.data?.title || nodeData.type || nodeData.id;
                         let errorMessage = '알 수 없는 오류';
 
+                        // 에러 메시지 추출 헬퍼 함수
+                        const extractErrorMessage = (errorObj) => {
+                            if (!errorObj) {
+                                return null;
+                            }
+                            // 문자열이면 그대로 반환
+                            if (typeof errorObj === 'string') {
+                                return errorObj;
+                            }
+                            // 객체인 경우 message, reason, detail 등을 우선순위로 추출
+                            if (typeof errorObj === 'object') {
+                                return (
+                                    errorObj.message || errorObj.reason || errorObj.detail || JSON.stringify(errorObj)
+                                );
+                            }
+                            // 그 외의 경우 문자열로 변환
+                            return String(errorObj);
+                        };
+
                         // 에러 메시지 추출 (우선순위: nodeResult.error > nodeResult.output.error > nodeResult.message > result.message)
                         if (nodeResult?.error) {
-                            errorMessage = nodeResult.error;
+                            errorMessage = extractErrorMessage(nodeResult.error) || '알 수 없는 오류';
                         } else if (nodeResult?.output?.error) {
-                            errorMessage = nodeResult.output.error;
+                            errorMessage = extractErrorMessage(nodeResult.output.error) || '알 수 없는 오류';
                         } else if (nodeResult?.message) {
-                            errorMessage = nodeResult.message;
+                            errorMessage = extractErrorMessage(nodeResult.message) || '알 수 없는 오류';
                         } else if (result.message) {
-                            errorMessage = result.message;
+                            errorMessage = extractErrorMessage(result.message) || '알 수 없는 오류';
                         } else if (result.detail) {
-                            errorMessage = result.detail;
+                            errorMessage = extractErrorMessage(result.detail) || '알 수 없는 오류';
                         }
 
                         // 에러 발생 시 실행 중단 (에러를 throw하여 상위로 전파)
@@ -1257,12 +1276,20 @@ export class WorkflowExecutionService {
 
                 // parameters 추출
                 const parameters = {};
+                // nodeManager.nodeData에서 실제 노드 데이터 가져오기 (메모리상의 최신 데이터)
+                const managerNodeData =
+                    nodeManager && nodeManager.nodeData && nodeManager.nodeData[nodeId]
+                        ? nodeManager.nodeData[nodeId]
+                        : null;
+                // nodeData는 DOM에서 가져온 데이터, managerNodeData는 메모리상의 데이터 (우선순위 높음)
+                const actualNodeData = managerNodeData || nodeData || {};
+
                 if (nodeManager && nodeManager.nodeData && nodeManager.nodeData[nodeId]) {
                     const config = allConfigs[nodeType];
 
                     if (config) {
                         // 상세 노드 타입이 있으면 상세 노드 타입의 파라미터 우선 사용
-                        const detailNodeType = nodeData?.action_node_type;
+                        const detailNodeType = actualNodeData?.action_node_type;
                         let parametersToExtract = null;
 
                         if (detailNodeType && config.detailTypes?.[detailNodeType]?.parameters) {
@@ -1271,16 +1298,20 @@ export class WorkflowExecutionService {
                             parametersToExtract = config.parameters;
                         }
 
-                        // 파라미터 정의에 따라 nodeData에서 값 추출
+                        // 파라미터 정의에 따라 actualNodeData에서 값 추출
                         if (parametersToExtract) {
                             // 각 파라미터 정의를 순회하며 값 추출
                             for (const [paramKey, paramConfig] of Object.entries(parametersToExtract)) {
                                 // boolean 타입은 false도 유효한 값이므로 별도 처리
                                 if (paramConfig.type === 'boolean') {
                                     // boolean은 undefined, null이 아닌 경우 모두 저장 (false도 유효)
-                                    if (nodeData && nodeData[paramKey] !== undefined && nodeData[paramKey] !== null) {
-                                        // nodeData에 값이 있으면 Boolean으로 변환하여 저장
-                                        parameters[paramKey] = Boolean(nodeData[paramKey]);
+                                    if (
+                                        actualNodeData &&
+                                        actualNodeData[paramKey] !== undefined &&
+                                        actualNodeData[paramKey] !== null
+                                    ) {
+                                        // actualNodeData에 값이 있으면 Boolean으로 변환하여 저장
+                                        parameters[paramKey] = Boolean(actualNodeData[paramKey]);
                                     } else if (paramConfig.default !== undefined) {
                                         // 값이 없고 기본값이 있으면 기본값을 Boolean으로 변환하여 저장
                                         parameters[paramKey] = Boolean(paramConfig.default);
@@ -1289,13 +1320,13 @@ export class WorkflowExecutionService {
                                     // boolean이 아닌 다른 타입은 기존 로직 사용
                                     // 값이 존재하고 빈 문자열이 아닌 경우에만 저장
                                     if (
-                                        nodeData &&
-                                        nodeData[paramKey] !== undefined &&
-                                        nodeData[paramKey] !== null &&
-                                        nodeData[paramKey] !== ''
+                                        actualNodeData &&
+                                        actualNodeData[paramKey] !== undefined &&
+                                        actualNodeData[paramKey] !== null &&
+                                        actualNodeData[paramKey] !== ''
                                     ) {
-                                        // nodeData의 값을 그대로 저장
-                                        parameters[paramKey] = nodeData[paramKey];
+                                        // actualNodeData의 값을 그대로 저장
+                                        parameters[paramKey] = actualNodeData[paramKey];
                                     }
                                     // 값이 없고 기본값이 있으면 기본값 사용
                                     else if (paramConfig.default !== undefined && paramConfig.default !== null) {

@@ -158,6 +158,68 @@ export class AddNodeModal {
                     tempDiv
                 );
 
+                // process-focus 노드의 경우 파라미터 폼을 생성하지 않고 프로세스 선택 UI만 표시
+                if (selectedType === 'process-focus') {
+                    // 프로세스 포커스 노드: 프로세스 선택 UI
+                    const processFocusHtml = `
+                        <label for="node-process-select">프로세스 선택:</label>
+                        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                            <select id="node-process-select" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                <option value="">프로세스를 선택하세요</option>
+                            </select>
+                            <button type="button" id="refresh-processes-btn" class="btn btn-secondary">새로고침</button>
+                        </div>
+                        <input type="hidden" id="node-process-id">
+                        <input type="hidden" id="node-process-hwnd">
+                        <input type="hidden" id="node-process-name">
+                        <input type="hidden" id="node-window-title">
+                        <small style="color: #666; font-size: 12px;">화면에 보이는 프로세스만 표시됩니다. 선택한 프로세스가 실행 시 화면 최상단에 포커스됩니다.</small>
+                    `;
+                    customSettings.innerHTML = detailNodeTypeSettings + processFocusHtml;
+                    customSettings.style.display = 'block';
+
+                    // 프로세스 목록 로드
+                    this.loadProcessListForAddModal();
+
+                    // 새로고침 버튼 이벤트
+                    const refreshBtn = document.getElementById('refresh-processes-btn');
+                    if (refreshBtn) {
+                        refreshBtn.addEventListener('click', () => {
+                            refreshBtn.disabled = true;
+                            refreshBtn.textContent = '새로고침 중...';
+                            this.loadProcessListForAddModal().finally(() => {
+                                refreshBtn.disabled = false;
+                                refreshBtn.textContent = '새로고침';
+                            });
+                        });
+                    }
+
+                    // 프로세스 선택 이벤트
+                    const processSelect = document.getElementById('node-process-select');
+                    if (processSelect) {
+                        processSelect.addEventListener('change', (e) => {
+                            const selectedValue = e.target.value;
+                            if (selectedValue) {
+                                const [processId, hwnd] = selectedValue.split('|');
+                                const option = e.target.options[e.target.selectedIndex];
+                                const processName = option.dataset.processName || '';
+                                const windowTitle = option.dataset.windowTitle || '';
+
+                                document.getElementById('node-process-id').value = processId;
+                                document.getElementById('node-process-hwnd').value = hwnd;
+                                document.getElementById('node-process-name').value = processName;
+                                document.getElementById('node-window-title').value = windowTitle;
+                            } else {
+                                document.getElementById('node-process-id').value = '';
+                                document.getElementById('node-process-hwnd').value = '';
+                                document.getElementById('node-process-name').value = '';
+                                document.getElementById('node-window-title').value = '';
+                            }
+                        });
+                    }
+                    return; // process-focus 노드는 여기서 종료
+                }
+
                 // 파라미터 기반 폼 생성
                 let parameterFormHtml = '';
 
@@ -264,67 +326,6 @@ export class AddNodeModal {
                         }, 50); // 지연 시간 증가
                     }
                     return; // 파라미터 폼이 있으면 여기서 종료
-                }
-
-                // 파라미터 폼이 없을 때만 특수 노드 처리
-                if (selectedType === 'process-focus') {
-                    // 프로세스 포커스 노드: 프로세스 선택 UI
-                    const processFocusHtml = `
-                        <label for="node-process-select">프로세스 선택:</label>
-                        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-                            <select id="node-process-select" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                                <option value="">프로세스를 선택하세요</option>
-                            </select>
-                            <button type="button" id="refresh-processes-btn" class="btn btn-secondary">새로고침</button>
-                        </div>
-                        <input type="hidden" id="node-process-id">
-                        <input type="hidden" id="node-process-hwnd">
-                        <input type="hidden" id="node-process-name">
-                        <input type="hidden" id="node-window-title">
-                        <small style="color: #666; font-size: 12px;">화면에 보이는 프로세스만 표시됩니다. 선택한 프로세스가 실행 시 화면 최상단에 포커스됩니다.</small>
-                    `;
-                    customSettings.innerHTML = detailNodeTypeSettings + processFocusHtml;
-                    customSettings.style.display = 'block';
-
-                    // 프로세스 목록 로드
-                    this.loadProcessListForAddModal();
-
-                    // 새로고침 버튼 이벤트
-                    const refreshBtn = document.getElementById('refresh-processes-btn');
-                    if (refreshBtn) {
-                        refreshBtn.addEventListener('click', () => {
-                            refreshBtn.disabled = true;
-                            refreshBtn.textContent = '새로고침 중...';
-                            this.loadProcessListForAddModal().finally(() => {
-                                refreshBtn.disabled = false;
-                                refreshBtn.textContent = '새로고침';
-                            });
-                        });
-                    }
-
-                    // 프로세스 선택 이벤트
-                    const processSelect = document.getElementById('node-process-select');
-                    if (processSelect) {
-                        processSelect.addEventListener('change', (e) => {
-                            const selectedValue = e.target.value;
-                            if (selectedValue) {
-                                const [processId, hwnd] = selectedValue.split('|');
-                                const option = e.target.options[e.target.selectedIndex];
-                                const processName = option.dataset.processName || '';
-                                const windowTitle = option.dataset.windowTitle || '';
-
-                                document.getElementById('node-process-id').value = processId;
-                                document.getElementById('node-process-hwnd').value = hwnd;
-                                document.getElementById('node-process-name').value = processName;
-                                document.getElementById('node-window-title').value = windowTitle;
-                            } else {
-                                document.getElementById('node-process-id').value = '';
-                                document.getElementById('node-process-hwnd').value = '';
-                                document.getElementById('node-process-name').value = '';
-                                document.getElementById('node-window-title').value = '';
-                            }
-                        });
-                    }
                 } else {
                     // 파라미터 폼도 없고 특수 노드도 아닌 경우
                     if (detailNodeTypeSettings) {

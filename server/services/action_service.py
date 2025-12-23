@@ -32,7 +32,21 @@ logger = log_manager.logger
 class ActionService:
     """액션을 처리하는 서비스 클래스"""
 
+    _instance: "ActionService | None" = None
+
+    def __new__(cls) -> "ActionService":
+        """싱글톤 패턴: 인스턴스가 이미 있으면 기존 인스턴스 반환"""
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
     def __init__(self) -> None:
+        # 싱글톤 패턴: 이미 초기화되었으면 다시 초기화하지 않음
+        if hasattr(self, "_initialized"):
+            return
+
+        # 초기화 플래그 설정
+        self._initialized = True
         # 노드 타입별 핸들러 매핑 (자동으로 등록됨)
         # key: 노드 타입 (예: "click", "wait", "condition"), value: execute 메서드
         self.node_handlers: dict[str, Any] = {}

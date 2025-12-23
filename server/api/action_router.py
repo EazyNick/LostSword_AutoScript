@@ -25,12 +25,11 @@ from models.process_focus_models import (
 )
 from models.response_models import ListResponse
 from nodes.excelnodes.excel_manager import cleanup_excel_objects
-from services.action_service import ActionService
+from services import action_service
 from services.node_execution_context import NodeExecutionContext
 from utils.execution_id_generator import generate_execution_id
 
 router = APIRouter(prefix="/api", tags=["actions"])
-action_service = ActionService()
 logger = log_manager.logger
 
 
