@@ -334,18 +334,18 @@ export class NodeSettingsModal {
                         const lastNode = previousNodes[previousNodes.length - 1];
                         const lastNodeData = lastNode.data || {};
                         if (lastNodeData.type === 'excel-open') {
-                            currentValues.execution_id = 'output.data.execution_id';
+                            currentValues.execution_id = 'outdata.output.execution_id';
                         } else {
                             // 이전 노드가 없거나 엑셀 열기 노드가 아니어도 기본값 설정
-                            currentValues.execution_id = 'output.data.execution_id';
+                            currentValues.execution_id = 'outdata.output.execution_id';
                         }
                     } else {
                         // 이전 노드가 없어도 기본값 설정
-                        currentValues.execution_id = 'output.data.execution_id';
+                        currentValues.execution_id = 'outdata.output.execution_id';
                     }
                 } else {
                     // nodeManager가 없어도 기본값 설정
-                    currentValues.execution_id = 'output.data.execution_id';
+                    currentValues.execution_id = 'outdata.output.execution_id';
                 }
             }
         }
@@ -1873,7 +1873,7 @@ export class NodeSettingsModal {
 
                 tag.innerHTML = `
                     <span class="node-output-variable-icon">${typeIcon}</span>
-                    <span class="node-output-variable-key">${escapeHtml(variable.key)}</span>
+                    <span class="node-output-variable-key">outdata.output.${escapeHtml(variable.key)}</span>
                     <span class="node-output-variable-value">${escapeHtml(valuePreview)}</span>
                 `;
 
@@ -1889,7 +1889,7 @@ export class NodeSettingsModal {
                             executionIdInput.dispatchEvent(new Event('input', { bubbles: true }));
                         } else {
                             // 다른 변수인 경우 경로 형태로 삽입
-                            executionIdInput.value = `output.${variable.key}`;
+                            executionIdInput.value = `outdata.output.${variable.key}`;
                             executionIdInput.dispatchEvent(new Event('input', { bubbles: true }));
                         }
                         return;

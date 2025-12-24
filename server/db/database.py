@@ -646,8 +646,20 @@ class DatabaseManager:
                 },
                 {
                     "id": "node2",
-                    "type": "excel-close",
+                    "type": "excel-select-sheet",
                     "position": {"x": 600.0, "y": 0.0},
+                    "data": {"title": "엑셀 시트 선택"},
+                    "parameters": {
+                        "execution_id": "",  # 실행 시 이전 노드 출력에서 자동으로 가져옴
+                        "sheet_name": "Sheet1",  # 시트 이름으로 선택
+                        "sheet_index": None,
+                    },
+                    "description": "엑셀 시트 선택",
+                },
+                {
+                    "id": "node3",
+                    "type": "excel-close",
+                    "position": {"x": 900.0, "y": 0.0},
                     "data": {"title": "엑셀 닫기"},
                     "parameters": {
                         "execution_id": "",  # 실행 시 이전 노드 출력에서 자동으로 가져옴
@@ -673,6 +685,7 @@ class DatabaseManager:
             script3_connections = [
                 {"from": "start", "to": "node1", "outputType": None},
                 {"from": "node1", "to": "node2", "outputType": None},
+                {"from": "node2", "to": "node3", "outputType": None},
                 # TODO: 새로운 엑셀 노드를 추가할 때 연결도 추가하세요.
                 # 예시:
                 # {"from": "node2", "to": "node3", "outputType": None},

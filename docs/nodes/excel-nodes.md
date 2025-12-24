@@ -185,6 +185,95 @@ async def execute(parameters: dict[str, Any]) -> dict[str, Any]:
     }
 ```
 
+---
+
+### excel-select-sheet (엑셀 시트 선택 노드)
+
+엑셀 열기 노드로 열린 워크북의 특정 시트를 선택하는 노드입니다.
+
+**파일 위치**: `server/nodes/excelnodes/excel_select_sheet.py`
+
+**노드 타입**: `excel-select-sheet`
+
+**설명**: Windows 환경에서 `win32com.client`를 사용하여 엑셀 워크북의 특정 시트를 선택하고 활성화합니다. 엑셀 열기 노드 이후에 사용해야 합니다.
+
+#### 파라미터
+
+- `execution_id` (string, 필수): 엑셀 실행 ID (엑셀 열기 노드의 출력에서 선택 가능, 기본값: `outdata.output.execution_id`)
+- `sheet_name` (string, 선택): 시트 이름 (sheet_index와 둘 중 하나는 필수)
+- `sheet_index` (number, 선택): 시트 인덱스 (1부터 시작, sheet_name과 둘 중 하나는 필수)
+
+#### 출력 스키마
+
+```json
+{
+  "action": "excel-select-sheet",
+  "status": "completed",
+  "output": {
+    "success": true,
+    "execution_id": "exec-123",
+    "sheet_name": "Sheet1",
+    "sheet_index": 1,
+    "selected_by": "name"
+  }
+}
+```
+
+#### 동작 방식
+
+1. **execution_id 확인**: `execution_id`가 제공되었는지 확인합니다
+2. **엑셀 객체 찾기**: `ExcelManager`에서 해당 `execution_id`의 엑셀 객체를 가져옵니다
+   - 찾지 못한 경우 메타데이터의 `_execution_id`도 시도합니다
+3. **시트 식별자 확인**: `sheet_name` 또는 `sheet_index` 중 하나가 제공되었는지 확인합니다
+4. **시트 선택**:
+   - `sheet_name`이 제공된 경우: 시트 이름으로 시트를 찾아 선택합니다
+   - `sheet_index`가 제공된 경우: 시트 인덱스(1부터 시작)로 시트를 찾아 선택합니다
+   - 시트 인덱스가 범위를 벗어나면 에러를 반환합니다
+5. **시트 활성화**: 선택된 시트를 활성화합니다 (`Activate()`)
+6. **결과 반환**: 선택된 시트 정보를 반환합니다
+
+#### 코드 예시
+
+```python
+@NodeExecutor("excel-select-sheet")
+async def execute(parameters: dict[str, Any]) -> dict[str, Any]:
+    execution_id = get_parameter(parameters, "execution_id", default="")
+    sheet_name = get_parameter(parameters, "sheet_name", default="")
+    sheet_index = get_parameter(parameters, "sheet_index")
+    
+    # 엑셀 객체 가져오기
+    excel_data = get_excel_objects(execution_id)
+    if not excel_data:
+        return create_failed_result(
+            action="excel-select-sheet",
+            reason="excel_objects_not_found",
+            message="엑셀 열기 노드를 먼저 실행하세요."
+        )
+    
+    workbook = excel_data.get("workbook")
+    
+    # 시트 선택
+    if sheet_name:
+        selected_sheet = workbook.Worksheets(sheet_name)
+    elif sheet_index is not None:
+        selected_sheet = workbook.Worksheets(sheet_index)
+    
+    # 시트 활성화
+    selected_sheet.Activate()
+    
+    return {
+        "action": "excel-select-sheet",
+        "status": "completed",
+        "output": {
+            "success": True,
+            "execution_id": execution_id,
+            "sheet_name": selected_sheet.Name,
+            "sheet_index": sheet_index,
+            "selected_by": "name" if sheet_name else "index"
+        }
+    }
+```
+
 ## 아키텍처 다이어그램
 
 ```
@@ -221,6 +310,19 @@ async def execute(parameters: dict[str, Any]) -> dict[str, Any]:
 │                     │                                    │
 │                     ▼                                    │
 │  ┌──────────────────────────────────────────────────┐  │
+│  │      엑셀 시트 선택 노드 (excel-select-sheet)     │  │
+│  │  ┌────────────────────────────────────────────┐  │  │
+│  │  │  입력: {execution_id, sheet_name/index}   │  │  │
+│  │  │  처리:                                      │  │  │
+│  │  │    1. ExcelManager에서 엑셀 객체 가져오기  │  │  │
+│  │  │    2. 시트 이름 또는 인덱스로 시트 찾기    │  │  │
+│  │  │    3. 시트 활성화                          │  │  │
+│  │  │  출력: {success, sheet_name, sheet_index}  │  │  │
+│  │  └────────────────────────────────────────────┘  │  │
+│  └──────────────────┬───────────────────────────────┘  │
+│                     │                                    │
+│                     ▼                                    │
+│  ┌──────────────────────────────────────────────────┐  │
 │  │          엑셀 닫기 노드 (excel-close)              │  │
 │  │  ┌────────────────────────────────────────────┐  │  │
 │  │  │  입력: {execution_id, save_changes}        │  │  │
@@ -249,17 +351,26 @@ async def execute(parameters: dict[str, Any]) -> dict[str, Any]:
 └──────────────────────────────────────────────────────────┘
 ```
 
+## 구현된 노드 목록
+
+1. **excel-open** (엑셀 열기): Excel 파일을 열고 Excel 애플리케이션 인스턴스를 생성합니다
+2. **excel-select-sheet** (엑셀 시트 선택): 열린 워크북의 특정 시트를 선택하고 활성화합니다
+3. **excel-close** (엑셀 닫기): 열린 Excel 파일을 닫고 Excel 애플리케이션을 종료합니다
+
 ## 특징
 
 1. **Windows 전용**: `win32com.client`를 사용하므로 Windows 환경에서만 동작합니다
 2. **인스턴스 관리**: `execution_id`로 Excel 인스턴스들을 그룹화하여 관리합니다
 3. **여러 파일 지원**: 같은 `execution_id`로 여러 Excel 파일을 열 수 있습니다
-4. **자동 정리**: `excel-close` 노드로 모든 인스턴스를 한 번에 닫을 수 있습니다
-5. **저장 제어**: 닫을 때 변경사항 저장 여부를 선택할 수 있습니다
+4. **시트 선택 지원**: 시트 이름 또는 인덱스로 특정 시트를 선택할 수 있습니다
+5. **자동 정리**: `excel-close` 노드로 모든 인스턴스를 한 번에 닫을 수 있습니다
+6. **저장 제어**: 닫을 때 변경사항 저장 여부를 선택할 수 있습니다
 
 ## 사용 예시
 
 ### 워크플로우 예시
+
+#### 기본 워크플로우
 
 ```
 [시작] → [엑셀 열기] → [대기] → [엑셀 닫기]
@@ -271,6 +382,21 @@ async def execute(parameters: dict[str, Any]) -> dict[str, Any]:
 1. 시작 노드로 워크플로우를 시작합니다
 2. 엑셀 열기 노드가 `C:\data\file1.xlsx` 파일을 엽니다 (`execution_id: exec-123`)
 3. 대기 노드로 잠시 대기합니다
+4. 엑셀 닫기 노드가 `exec-123`에 해당하는 모든 Excel 인스턴스를 닫습니다
+
+#### 시트 선택 워크플로우
+
+```
+[시작] → [엑셀 열기] → [엑셀 시트 선택] → [엑셀 닫기]
+         (file_path: C:\data\file1.xlsx)  (sheet_name: Sheet1)
+         (execution_id: exec-123)         (execution_id: exec-123)
+                                          (execution_id: exec-123)
+```
+
+이 워크플로우는:
+1. 시작 노드로 워크플로우를 시작합니다
+2. 엑셀 열기 노드가 `C:\data\file1.xlsx` 파일을 엽니다 (`execution_id: exec-123`)
+3. 엑셀 시트 선택 노드가 `Sheet1` 시트를 선택합니다 (`execution_id: exec-123`)
 4. 엑셀 닫기 노드가 `exec-123`에 해당하는 모든 Excel 인스턴스를 닫습니다
 
 ### 여러 파일 열기 예시
@@ -290,3 +416,10 @@ async def execute(parameters: dict[str, Any]) -> dict[str, Any]:
 3. **인스턴스 관리**: `execution_id`를 올바르게 설정하지 않으면 Excel 인스턴스가 정리되지 않을 수 있습니다
 4. **파일 경로**: 파일 경로는 절대 경로를 사용하는 것이 안전합니다
 5. **동시 실행**: 같은 `execution_id`로 여러 Excel 파일을 열 수 있지만, 같은 파일을 중복으로 열면 에러가 발생할 수 있습니다
+6. **엑셀 객체 생명주기**: 엑셀 열기 노드 실행 후 엑셀 객체는 엑셀 닫기 노드가 실행될 때까지 유지됩니다. 각 노드가 별도의 API 호출로 실행되므로, 엑셀 객체는 즉시 정리되지 않습니다.
+
+## 최근 변경사항 (v0.0.6)
+
+- **execution_id 연결 개선**: 엑셀 열기 노드의 출력 `execution_id`를 저장 키로 사용하여, 엑셀 시트 선택 노드에서 정확한 엑셀 객체를 찾을 수 있도록 개선
+- **엑셀 객체 생명주기 관리**: 엑셀 닫기 노드가 실행된 경우에만 엑셀 객체를 정리하도록 변경하여, 여러 노드에서 같은 엑셀 객체를 사용할 수 있도록 개선
+- **엑셀 닫기 노드 성능 개선**: Excel 종료 대기 로직을 제거하여 엑셀 닫기 노드의 응답 속도 개선

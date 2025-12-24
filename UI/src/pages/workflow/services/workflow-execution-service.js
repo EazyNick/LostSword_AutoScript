@@ -306,6 +306,7 @@ export class WorkflowExecutionService {
                         // condition 노드인 경우 결과에 따라 다음 노드 동적으로 선택
                         if (
                             nodeData.type === 'condition' &&
+                            nodeResult &&
                             nodeResult.output &&
                             typeof nodeResult.output.result === 'boolean'
                         ) {
@@ -798,6 +799,7 @@ export class WorkflowExecutionService {
                         }
 
                         // 이전 노드 결과 업데이트 (다음 노드 실행 시 전달)
+                        // nodeResult는 이미 outdata/indata 구조이므로 그대로 사용
                         previousNodeResult = {
                             ...nodeResult,
                             node_id: nodeData.id,

@@ -312,15 +312,25 @@ async def execute(parameters: dict[str, Any]) -> dict[str, Any]:
 
 ### 6. 결과 반환
 
-표준 형식의 결과가 반환됩니다.
+표준 형식의 결과가 반환됩니다 (메타데이터 포함).
 
 ```json
 {
   "action": "click",
   "status": "completed",
-  "output": {"x": 100, "y": 200}
+  "output": {"x": 100, "y": 200},
+  "_execution_id": "20250101-120000-abc123",
+  "_script_id": 1,
+  "_node_id": "node1",
+  "_node_name": "클릭 노드"
 }
 ```
+
+**v0.0.6 변경사항:** 
+- 메타데이터 필드 자동 추가 (`_execution_id`, `_script_id`, `_node_id`, `_node_name`)
+- 다음 노드에서 이전 노드 결과를 참조할 때는 `outdata.`/`indata.` 경로를 사용합니다.
+  - `outdata.output.execution_id` - 이전 노드의 출력 데이터
+  - `indata.parameter_name` - 이전 노드의 입력 파라미터
 
 ## 노드 등록 메커니즘
 
@@ -361,8 +371,23 @@ node_result = context.get_node_result_by_name("노드 이름")
 `ActionService.process_node()`는 노드 실행 전에 파라미터를 준비합니다:
 
 1. 노드의 기본 파라미터
-2. 이전 노드의 출력 (`previous_output`)
-3. 실행 메타데이터 (`_node_id`, `_node_name`, `_execution_id`, `_script_id`)
+2. 이전 노드의 출력 (`previous_output`) - v0.0.6: `outdata.` 경로로 자동 해석
+3. **자동 경로 해석 (v0.0.6)**: 파라미터 값이 `outdata.` 또는 `indata.`로 시작하면 자동으로 실제 값으로 변환
+
+**경로 해석 예시:**
+```python
+# 파라미터에 경로 문자열이 있는 경우
+parameters = {
+    "execution_id": "outdata.output.execution_id",  # 경로 문자열
+    "sheet_name": "Sheet1"
+}
+
+# 자동 해석 후 (이전 노드 결과를 outdata 구조로 래핑하여 해석)
+parameters = {
+    "execution_id": "20250101-120000-abc123",  # 실제 값
+    "sheet_name": "Sheet1"
+}
+```
 
 이렇게 준비된 파라미터가 노드의 `execute()` 메서드에 전달됩니다.
 

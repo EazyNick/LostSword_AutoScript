@@ -256,18 +256,18 @@ export class AddNodeModal {
                                 const lastNode = allNodes[allNodes.length - 1];
                                 const lastNodeData = nodeManager.nodeData?.[lastNode.id];
                                 if (lastNodeData?.type === 'excel-open') {
-                                    defaultValues.execution_id = 'output.data.execution_id';
+                                    defaultValues.execution_id = 'outdata.output.execution_id';
                                 } else {
                                     // 이전 노드가 없거나 엑셀 열기 노드가 아니어도 기본값 설정
-                                    defaultValues.execution_id = 'output.data.execution_id';
+                                    defaultValues.execution_id = 'outdata.output.execution_id';
                                 }
                             } else {
                                 // 노드가 없어도 기본값 설정
-                                defaultValues.execution_id = 'output.data.execution_id';
+                                defaultValues.execution_id = 'outdata.output.execution_id';
                             }
                         } else {
                             // nodeManager가 없어도 기본값 설정
-                            defaultValues.execution_id = 'output.data.execution_id';
+                            defaultValues.execution_id = 'outdata.output.execution_id';
                         }
                     }
                     parameterFormResult = generateParameterForm(parametersToUse, 'node-', defaultValues, {});
@@ -721,12 +721,12 @@ export class AddNodeModal {
                         const firstKey = outputKeys[0];
                         const firstValue = previousOutput.output[firstKey];
                         // field_path에 "output.{key}" 형식으로 설정
-                        fieldPath = `output.${firstKey}`;
+                        fieldPath = `outdata.output.${firstKey}`;
                         // compare_value에 첫 번째 값 설정 (객체/배열이면 JSON 문자열로, 아니면 그대로)
                         compareValue = typeof firstValue === 'object' ? JSON.stringify(firstValue) : String(firstValue);
                     } else {
-                        // output이 비어있으면 field_path만 "output"으로 설정
-                        fieldPath = 'output';
+                        // output이 비어있으면 field_path만 "outdata.output"으로 설정
+                        fieldPath = 'outdata.output';
                         compareValue = JSON.stringify(previousOutput);
                     }
                 } else {
