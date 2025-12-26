@@ -6,7 +6,6 @@
 
 - **[architecture.md](./architecture.md)**: 노드 시스템의 전체 아키텍처 구조 및 실행 흐름
 - **[boundary-nodes.md](./boundary-nodes.md)**: 경계 노드 (시작 노드 등)
-- **[action-nodes.md](./action-nodes.md)**: 액션 노드 (클릭, HTTP 요청, 프로세스 포커스 등)
 - **[image-nodes.md](./image-nodes.md)**: 이미지 노드 (이미지 터치)
 - **[excel-nodes.md](./excel-nodes.md)**: 엑셀 노드 (엑셀 열기/닫기)
 - **[condition-nodes.md](./condition-nodes.md)**: 조건 노드 (조건 평가)

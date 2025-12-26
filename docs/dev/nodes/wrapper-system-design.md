@@ -52,7 +52,7 @@ class StartNode(BoundaryNodeWrapper):
 
 **목적**: 워크플로우 실행 흐름을 제어하는 노드
 
-**대상 노드**: `condition`, `repeat`, `loop`
+**대상 노드**: `condition`, `repeat`
 
 **특징**:
 - 워크플로우 실행 흐름을 제어
@@ -193,9 +193,6 @@ class FileReadNode(CustomNodeWrapper):
     }
     
     @staticmethod
-    @NodeExecutor("file-read")
-    async def execute(parameters: dict[str, Any]) -> dict[str, Any]:
-        return await super().execute(parameters)
     
     async def _validate_custom_parameters(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """커스텀 파라미터 검증"""
@@ -244,7 +241,7 @@ BaseNode (추상 클래스)
     │   └── StartNode, EndNode
     │
     ├── LogicNodeWrapper
-    │   └── ConditionNode, RepeatNode, LoopNode
+    │   └── ConditionNode, RepeatNode
     │
     ├── BasicActionNodeWrapper
     │   └── WaitNode, ClickNode, ProcessFocusNode

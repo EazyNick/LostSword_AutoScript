@@ -804,7 +804,7 @@ DELETE /api/config/user-settings/{setting_key}
 - **액션 노드**: `image-touch`, `process-focus`
 - **대기 노드**: `wait`
 - **조건 노드**: `condition`
-- **반복 노드**: `loop`
+- **반복 노드**: `repeat`
 
 ## 관련 문서
 

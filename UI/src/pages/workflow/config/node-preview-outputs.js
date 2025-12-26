@@ -23,11 +23,6 @@ export function generatePreviewOutput(nodeType, nodeData) {
         case 'condition':
             return generateConditionOutput(nodeData);
 
-        case 'file-read':
-            return generateFileReadOutput(nodeData);
-
-        case 'file-write':
-            return generateFileWriteOutput(nodeData);
 
         default:
             return generateDefaultOutput(nodeType);
@@ -128,53 +123,6 @@ function generateConditionOutput(nodeData) {
     );
 }
 
-/**
- * 파일 읽기 노드 예시 출력
- */
-function generateFileReadOutput(nodeData) {
-    const filePath = nodeData?.file_path || 'C:/data/example.txt';
-    const encoding = nodeData?.encoding || 'utf-8';
-    return JSON.stringify(
-        {
-            action: 'file-read',
-            status: 'completed',
-            output: {
-                file_path: filePath,
-                encoding: encoding,
-                content: '파일 내용 예시\n여러 줄의 텍스트가 있을 수 있습니다.',
-                size: 1024
-            }
-        },
-        null,
-        2
-    );
-}
-
-/**
- * 파일 쓰기 노드 예시 출력
- */
-function generateFileWriteOutput(nodeData) {
-    const writeFilePath = nodeData?.file_path || 'C:/data/output.txt';
-    const content = nodeData?.content || '작성할 내용';
-    const mode = nodeData?.mode || 'w';
-    const writeEncoding = nodeData?.encoding || 'utf-8';
-    return JSON.stringify(
-        {
-            action: 'file-write',
-            status: 'completed',
-            output: {
-                file_path: writeFilePath,
-                content: content,
-                mode: mode,
-                encoding: writeEncoding,
-                written: true,
-                bytes_written: content.length
-            }
-        },
-        null,
-        2
-    );
-}
 
 /**
  * 기본 노드 예시 출력

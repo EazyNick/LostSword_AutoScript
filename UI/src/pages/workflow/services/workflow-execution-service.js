@@ -70,6 +70,25 @@ export class WorkflowExecutionService {
             }
             return;
         }
+        
+        // 엑셀 관련 노드 검증: 엑셀 열기 노드가 필요한 노드들이 이전 노드 체인에 excel-open이 있는지 확인
+        const excelValidationError = await this.validateExcelNodes(workflowData.nodes);
+        if (excelValidationError) {
+            // 검증 실패 시 에러 메시지 표시하고 실행 중단
+            if (toastManager) {
+                toastManager.error(excelValidationError.message);
+            }
+            // 노드에 에러 표시
+            if (excelValidationError.nodeId) {
+                const errorNode = document.getElementById(excelValidationError.nodeId);
+                if (errorNode) {
+                    this.showNodeError(errorNode);
+                }
+            }
+            // 실행 중단
+            this.isExecuting = false;
+            return;
+        }
 
         // 전체 노드 개수 계산 (시작 노드 포함)
         const totalNodesCount = nodes.length; // 화면의 모든 노드 개수 (시작 노드 포함)
@@ -152,9 +171,13 @@ export class WorkflowExecutionService {
         // currentNodeIndex: 현재 실행 중인 노드 인덱스 추적 (진행률 표시용)
         let currentNodeIndex = -1;
 
-        // Start 노드는 항상 성공으로 카운팅 (실행은 하지만 성공으로 간주)
-        // 시작 노드가 실행 목록에 포함되어 있으면 카운팅
-        if (workflowData.nodes.some((node) => node.id === 'start' || node.type === 'start')) {
+        // 경계 노드는 항상 성공으로 카운팅 (실행은 하지만 성공으로 간주)
+        // 경계 노드가 실행 목록에 포함되어 있으면 카운팅
+        const { isBoundaryNodeSync } = await import('../constants/node-types.js');
+        if (workflowData.nodes.some((node) => {
+            const nodeType = node.type || (node.id === 'start' ? 'start' : null);
+            return nodeType && isBoundaryNodeSync(nodeType);
+        })) {
             successCount = 1;
         }
 
@@ -1158,8 +1181,19 @@ export class WorkflowExecutionService {
         const connections =
             nodeManager && nodeManager.connectionManager ? nodeManager.connectionManager.getConnections() : [];
 
-        // 시작 노드가 있고 연결이 있으면 연결 순서대로 정렬
-        if (byId.has('start') && connections && connections.length > 0) {
+        // 경계 노드가 있고 연결이 있으면 연결 순서대로 정렬
+        // 경계 노드 찾기 (시작 노드 등)
+        const { isBoundaryNodeSync } = await import('../constants/node-types.js');
+        let boundaryNodeId = null;
+        for (const [nodeId, nodeElement] of byId.entries()) {
+            const nodeType = this.workflowPage.getNodeType(nodeElement);
+            if (isBoundaryNodeSync(nodeType)) {
+                boundaryNodeId = nodeId;
+                break;
+            }
+        }
+        
+        if (boundaryNodeId && connections && connections.length > 0) {
             // 연결 맵 생성: from -> [to1, to2, ...] (여러 분기 지원)
             const nextMap = new Map(); // Map<from, Array<{to, outputType}>>
 
@@ -1173,16 +1207,16 @@ export class WorkflowExecutionService {
                 });
             });
 
-            // 시작 노드부터 순차적으로 탐색
+            // 경계 노드부터 순차적으로 탐색
             const visited = new Set();
             const addedToOrdered = new Set(); // ordered에 추가된 노드 ID 추적 (중복 방지)
-            const queue = ['start']; // BFS를 위한 큐
+            const queue = [boundaryNodeId]; // BFS를 위한 큐
 
-            // 시작 노드를 ordered에 먼저 추가
-            if (byId.has('start')) {
-                const startElement = byId.get('start');
-                ordered.push(startElement);
-                addedToOrdered.add('start');
+            // 경계 노드를 ordered에 먼저 추가
+            if (byId.has(boundaryNodeId)) {
+                const boundaryElement = byId.get(boundaryNodeId);
+                ordered.push(boundaryElement);
+                addedToOrdered.add(boundaryNodeId);
             }
 
             while (queue.length > 0) {
@@ -1401,6 +1435,110 @@ export class WorkflowExecutionService {
         });
     }
 
+    /**
+     * 엑셀 관련 노드 검증: 엑셀 열기 노드가 필요한 노드들이 이전 노드 체인에 excel-open이 있는지 확인
+     * @param {Array} nodes - 실행할 노드 목록
+     * @returns {Promise<Object|null>} 검증 실패 시 에러 정보, 성공 시 null
+     */
+    async validateExcelNodes(nodes) {
+        // 노드 레지스트리에서 엑셀 관련 노드 목록 동적으로 가져오기
+        const { getNodeRegistry } = await import('../services/node-registry.js');
+        const registry = getNodeRegistry();
+        const allConfigs = await registry.getAllConfigs();
+        
+        // excel-로 시작하는 노드 타입들을 찾되, excel-open은 제외
+        const excelNodesRequiringOpen = Object.keys(allConfigs).filter(
+            nodeType => nodeType.startsWith('excel-') && nodeType !== 'excel-open'
+        );
+        
+        const nodeManager = this.workflowPage.getNodeManager();
+        if (!nodeManager || !nodeManager.connectionManager) {
+            return null; // 연결 정보가 없으면 검증 불가 (무시)
+        }
+        
+        const connections = nodeManager.connectionManager.getConnections();
+        if (!connections || connections.length === 0) {
+            return null; // 연결이 없으면 검증 불가 (무시)
+        }
+        
+        // 각 노드를 순회하며 엑셀 관련 노드인지 확인
+        for (const node of nodes) {
+            const nodeType = node.type;
+            const nodeId = node.id;
+            const nodeName = node.data?.title || nodeType || nodeId;
+            
+            // 엑셀 관련 노드가 아니면 건너뛰기
+            if (!excelNodesRequiringOpen.includes(nodeType)) {
+                continue;
+            }
+            
+            // 이전 노드 체인 가져오기
+            const previousNodes = await this.getPreviousNodeChainForValidation(nodeId, connections);
+            
+            // 이전 노드 체인에 excel-open이 있는지 확인
+            const hasExcelOpen = previousNodes.some(prevNode => prevNode.type === 'excel-open');
+            
+            if (!hasExcelOpen) {
+                // 검증 실패: 엑셀 열기 노드가 없음
+                const nodeLabel = nodeName || nodeType;
+                return {
+                    nodeId: nodeId,
+                    nodeName: nodeLabel,
+                    message: `'${nodeLabel}' 노드를 실행하려면 이전 노드 체인에 '엑셀 열기' 노드가 필요합니다. 엑셀 열기 노드를 추가하거나 이 노드 앞에 연결해주세요.`
+                };
+            }
+        }
+        
+        return null; // 검증 통과
+    }
+    
+    /**
+     * 이전 노드 체인 가져오기 (워크플로우 실행 검증용)
+     * @param {string} nodeId - 현재 노드 ID
+     * @param {Array} connections - 연결 정보 목록
+     * @returns {Promise<Array>} 이전 노드 체인
+     */
+    async getPreviousNodeChainForValidation(nodeId, connections) {
+        const nodeChain = [];
+        let currentNodeId = nodeId;
+        
+        while (currentNodeId) {
+            // 현재 노드로 들어오는 연결 찾기
+            const inputConnection = connections.find((conn) => conn.to === currentNodeId);
+            if (!inputConnection) {
+                break;
+            }
+            
+            const previousNodeId = inputConnection.from;
+            if (previousNodeId === currentNodeId) {
+                break;
+            }
+            
+            const previousNodeElement = document.getElementById(previousNodeId);
+            if (!previousNodeElement) {
+                break;
+            }
+            
+            const nodeType = this.workflowPage.getNodeType(previousNodeElement);
+            
+            // 이전 노드 정보 추가
+            nodeChain.unshift({
+                id: previousNodeId,
+                type: nodeType
+            });
+            
+            // 경계 노드에 도달하면 종료
+            const { isBoundaryNodeSync } = await import('../constants/node-types.js');
+            if (nodeType && isBoundaryNodeSync(nodeType)) {
+                break;
+            }
+            
+            currentNodeId = previousNodeId;
+        }
+        
+        return nodeChain;
+    }
+    
     /**
      * 재귀적으로 제거할 노드 수집 (condition 노드의 실행되지 않은 경로)
      * @param {string} nodeId - 시작 노드 ID

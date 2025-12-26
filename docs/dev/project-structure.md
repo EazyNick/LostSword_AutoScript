@@ -23,11 +23,13 @@ AutoScript/
 ### `server/`
 - **api/**: REST API 라우터 (`@api_handler` 데코레이터 사용)
 - **nodes/**: 노드 클래스 (`BaseNode` 상속, `@NodeExecutor` 데코레이터)
-  - `actionnodes/`: 액션 노드들
+  - `boundarynodes/`: 경계 노드들 (시작 노드 등)
   - `conditionnodes/`: 조건 노드들
-  - `waitnodes/`: 대기 노드들
+  - `excelnodes/`: 엑셀 노드들
   - `imagenodes/`: 이미지 노드들
-  - `boundarynodes/`: 시작/종료 노드들
+  - `logicnodes/`: 로직 노드들 (반복 노드 등)
+  - `processnodes/`: 프로세스 노드들 (프로세스 포커스 등)
+  - `waitnodes/`: 대기 노드들
 - **services/**: 비즈니스 로직
 - **automation/**: 화면 캡처, 입력 처리, 워크플로우 실행
 - **db/**: SQLite 데이터베이스 관리
