@@ -23,7 +23,6 @@ export function generatePreviewOutput(nodeType, nodeData) {
         case 'condition':
             return generateConditionOutput(nodeData);
 
-
         default:
             return generateDefaultOutput(nodeType);
     }
@@ -122,7 +121,6 @@ function generateConditionOutput(nodeData) {
         2
     );
 }
-
 
 /**
  * 기본 노드 예시 출력

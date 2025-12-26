@@ -2021,7 +2021,7 @@ export class NodeManager {
 
         // 즉시 커넥터 바인딩
         // bindNodeConnector는 async이지만 여기서는 await 불필요 (비동기 실행)
-        this.connectionManager.bindNodeConnector(nodeElement).catch(err => {
+        this.connectionManager.bindNodeConnector(nodeElement).catch((err) => {
             console.warn('[Node] bindNodeConnector 실패:', err);
         });
     }

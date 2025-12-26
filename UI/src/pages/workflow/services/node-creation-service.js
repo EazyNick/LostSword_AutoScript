@@ -113,18 +113,18 @@ export class NodeCreationService {
         // hasBoundaryNode가 false이면 경계 노드 생성
         if (!hasBoundaryNode) {
             // 모든 경계 노드 타입 가져오기
-            const registry = await import('../services/node-registry.js').then(m => m.getNodeRegistry());
+            const registry = await import('../services/node-registry.js').then((m) => m.getNodeRegistry());
             const allConfigs = await registry.getAllConfigs();
-            
+
             // 경계 노드 타입 찾기 (시작 노드 우선)
-            const boundaryNodeTypes = Object.keys(allConfigs).filter(type => {
+            const boundaryNodeTypes = Object.keys(allConfigs).filter((type) => {
                 const config = allConfigs[type];
                 return config?.isBoundary === true;
             });
-            
+
             // 시작 노드 타입 찾기 (일반적으로 'start')
-            const startNodeType = boundaryNodeTypes.find(type => type === 'start') || boundaryNodeTypes[0];
-            
+            const startNodeType = boundaryNodeTypes.find((type) => type === 'start') || boundaryNodeTypes[0];
+
             if (startNodeType) {
                 const startConfig = allConfigs[startNodeType];
                 boundaryNodes.push({

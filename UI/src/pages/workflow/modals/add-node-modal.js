@@ -604,8 +604,12 @@ export class AddNodeModal {
         // 경계 노드인지 확인하여 ID 생성
         const { isBoundaryNodeSync } = await import('../constants/node-types.js');
         const isBoundary = isBoundaryNodeSync(nodeType);
-        const nodeId = isBoundary ? (nodeType === 'start' ? 'start' : `${nodeType}_${Date.now()}`) : `node_${Date.now()}`;
-        
+        const nodeId = isBoundary
+            ? nodeType === 'start'
+                ? 'start'
+                : `${nodeType}_${Date.now()}`
+            : `node_${Date.now()}`;
+
         const nodeData = {
             id: nodeId,
             type: nodeType,

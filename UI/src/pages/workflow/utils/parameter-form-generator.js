@@ -148,9 +148,10 @@ export function generateParameterInput(paramKey, paramConfig, prefix = 'node-', 
                         // 필드 경로 파라미터면 자동완성 입력 필드 생성
                         if (isFieldPath) {
                             // 드롭다운 + 입력 하이브리드 지원 여부 확인
-                            const useDropdownInput = paramConfig.ui_type === 'dropdown_input' || 
-                                                      paramConfig.options_source === 'previous_output';
-                            
+                            const useDropdownInput =
+                                paramConfig.ui_type === 'dropdown_input' ||
+                                paramConfig.options_source === 'previous_output';
+
                             // datalistId: datalist 요소 ID (자동완성 옵션 목록)
                             const datalistId = `${fieldId}-datalist`;
                             // autocompleteId: 자동완성 미리보기 요소 ID (회색 미리보기 표시용)
@@ -159,7 +160,7 @@ export function generateParameterInput(paramKey, paramConfig, prefix = 'node-', 
                             const dropdownId = `${fieldId}-dropdown`;
                             // typeWarningId: 타입 경고 메시지 요소 ID
                             const typeWarningId = `${fieldId}-type-warning`;
-                            
+
                             if (useDropdownInput) {
                                 // 드롭다운 + 입력 하이브리드 UI
                                 inputHtml = `
@@ -216,7 +217,9 @@ export function generateParameterInput(paramKey, paramConfig, prefix = 'node-', 
                                 `;
                             } else {
                                 // 기존 방식: 입력 필드 + 버튼
-                                const defaultPlaceholder = placeholder || '이전 노드 출력에서 선택하거나 직접 입력 (예: outdata.output.execution_id)';
+                                const defaultPlaceholder =
+                                    placeholder ||
+                                    '이전 노드 출력에서 선택하거나 직접 입력 (예: outdata.output.execution_id)';
                                 inputHtml = `
                                     <div style="position: relative; display: flex; gap: 8px; align-items: center;">
                                         <div style="position: relative; flex: 1;">
